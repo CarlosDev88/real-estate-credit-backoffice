@@ -1,0 +1,37 @@
+# Framework y API REST
+Django>=5.2,<5.3
+djangorestframework>=3.17,<3.18
+drf-spectacular[sidecar]>=0.30,<0.31
+
+# Configuración, seguridad y autenticación
+django-environ>=0.12,<0.13
+django-cors-headers>=4.7,<5.0
+djangorestframework-simplejwt>=5.5,<6.0
+argon2-cffi>=25.0,<26.0
+django-ratelimit>=4.1,<5.0
+
+# PostgreSQL, caché y tareas asíncronas
+psycopg[binary]>=3.2,<4.0
+redis>=6.0,<7.0
+django-redis>=5.4,<6.0
+celery[redis]>=5.6,<5.7
+
+# Almacenamiento privado de archivos compatible con S3
+django-storages[s3]>=1.14,<2.0
+
+# Servidor de aplicación para entornos no locales
+gunicorn>=23.0,<24.0
+
+# Pruebas
+pytest>=8.0,<10.0
+pytest-django>=4.9,<5.0
+pytest-cov>=6.0,<8.0
+factory-boy>=3.3,<4.0
+Faker>=30.0,<40.0
+freezegun>=1.5,<2.0
+
+# Calidad y tipado estático
+ruff>=0.12,<1.0
+mypy>=1.13,<2.0
+django-stubs[compatible-mypy]>=5.2,<6.0
+djangorestframework-stubs>=3.15,<4.0

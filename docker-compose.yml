@@ -1,0 +1,80 @@
+name: mvp-credit-backend
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "${POSTGRES_HOST_PORT:-5433}:5432"
+    volumes:
+      - mvp_credit_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    networks:
+      - mvp_credit_network
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: python manage.py runserver 0.0.0.0:8000
+    env_file:
+      - .env
+    ports:
+      - "${BACKEND_HOST_PORT:-8000}:8000"
+    volumes:
+      - .:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - mvp_credit_network
+
+  redis:
+    image: redis:7-alpine
+    profiles: ["async"]
+    command: redis-server --appendonly yes
+    volumes:
+      - mvp_credit_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - mvp_credit_network
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    profiles: ["async"]
+    command: celery -A config worker --loglevel=INFO
+    env_file:
+      - .env
+    volumes:
+      - .:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - mvp_credit_network
+
+volumes:
+  mvp_credit_postgres_data:
+    name: mvp_credit_postgres_data
+  mvp_credit_redis_data:
+    name: mvp_credit_redis_data
+
+networks:
+  mvp_credit_network:
+    name: mvp_credit_network

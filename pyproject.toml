@@ -1,0 +1,27 @@
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+extend-exclude = ["migrations"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.mypy]
+python_version = "3.11"
+plugins = ["mypy_django_plugin.main"]
+check_untyped_defs = true
+disallow_untyped_defs = true
+warn_unused_ignores = true
+exclude = ["migrations"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["django.*", "rest_framework.*"]
+ignore_missing_imports = true
+
+[tool.django-stubs]
+django_settings_module = "config.settings.local"
