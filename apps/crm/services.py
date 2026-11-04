@@ -314,8 +314,8 @@ def assign_advisor(
     opportunity_assigned.send(
         sender=Opportunity,
         opportunity=locked,
-        previous_advisor=previous_advisor_id,
-        advisor=advisor,
+        previous_advisor_id=previous_advisor_id,
+        advisor_id=advisor.pk,
         actor=actor,
         reason=reason,
     )
