@@ -1,11 +1,13 @@
 import uuid
+from collections.abc import Callable
+from typing import Any
 
 import pytest
 from rest_framework.test import APIClient
 
 from apps.catalogs import services
 from apps.catalogs.models import WorkflowTransition
-from apps.identity.models import Permission
+from apps.identity.models import Permission, User
 from tests.helpers import assert_error, login
 
 pytestmark = pytest.mark.django_db
@@ -28,11 +30,11 @@ def transition_url(transition_id: str) -> str:
     return f"{TRANSITIONS_URL}/{transition_id}"
 
 
-def create(client, **overrides):
+def create(client: APIClient, **overrides: Any) -> Any:
     return client.post(TRANSITIONS_URL, {**VALID_TRANSITION, **overrides})
 
 
-def test_create_transition_is_inactive(admin_client):
+def test_create_transition_is_inactive(admin_client: APIClient) -> None:
     response = create(admin_client)
 
     assert response.status_code == 201
@@ -57,17 +59,19 @@ def test_create_transition_is_inactive(admin_client):
         ({"code": "minusculas"}, "code"),
     ],
 )
-def test_create_transition_validates_input(admin_client, overrides, field):
+def test_create_transition_validates_input(
+    admin_client: APIClient, overrides: dict[str, Any], field: str
+) -> None:
     body = assert_error(create(admin_client, **overrides), 400, "VALIDATION_ERROR")
     assert field in {detail["field"] for detail in body["details"]}
 
 
-def test_create_transition_rejects_duplicate_code_in_flow(admin_client):
+def test_create_transition_rejects_duplicate_code_in_flow(admin_client: APIClient) -> None:
     create(admin_client)
     assert_error(create(admin_client), 409, "DUPLICATE_CODE")
 
 
-def test_same_code_is_allowed_in_another_flow(admin_client):
+def test_same_code_is_allowed_in_another_flow(admin_client: APIClient) -> None:
     create(admin_client)
     response = create(
         admin_client,
@@ -79,7 +83,7 @@ def test_same_code_is_allowed_in_another_flow(admin_client):
     assert response.status_code == 201
 
 
-def test_update_inactive_transition(admin_client):
+def test_update_inactive_transition(admin_client: APIClient) -> None:
     transition_id = create(admin_client).json()["id"]
 
     response = admin_client.patch(
@@ -94,19 +98,19 @@ def test_update_inactive_transition(admin_client):
     assert body["guard_code"] is None
 
 
-def test_update_validates_states_against_the_existing_flow(admin_client):
+def test_update_validates_states_against_the_existing_flow(admin_client: APIClient) -> None:
     transition_id = create(admin_client).json()["id"]
     response = admin_client.patch(transition_url(transition_id), {"to_status": "CONVERTED"})
     assert_error(response, 400, "VALIDATION_ERROR")
 
 
-def test_flow_type_and_code_cannot_be_changed(admin_client):
+def test_flow_type_and_code_cannot_be_changed(admin_client: APIClient) -> None:
     transition_id = create(admin_client).json()["id"]
     response = admin_client.patch(transition_url(transition_id), {"code": "OTRO"})
     assert_error(response, 400, "VALIDATION_ERROR")
 
 
-def test_active_transition_cannot_be_edited(admin_client):
+def test_active_transition_cannot_be_edited(admin_client: APIClient) -> None:
     transition_id = create(admin_client).json()["id"]
     assert admin_client.post(f"{transition_url(transition_id)}/activate").status_code == 200
 
@@ -117,7 +121,9 @@ def test_active_transition_cannot_be_edited(admin_client):
     assert admin_client.patch(transition_url(transition_id), {"label": "Otro"}).status_code == 200
 
 
-def test_activation_requires_publish_permission(admin_client, make_user):
+def test_activation_requires_publish_permission(
+    admin_client: APIClient, make_user: Callable[..., User]
+) -> None:
     transition_id = create(admin_client).json()["id"]
     make_user(
         email="editor@example.com",
@@ -132,7 +138,7 @@ def test_activation_requires_publish_permission(admin_client, make_user):
     assert_error(response, 403, "PERMISSION_DENIED")
 
 
-def test_list_transitions_with_filters(admin_client):
+def test_list_transitions_with_filters(admin_client: APIClient) -> None:
     create(admin_client)
     create(
         admin_client,
@@ -149,7 +155,7 @@ def test_list_transitions_with_filters(admin_client):
     # Las creadas por API nacen inactivas; las activas son las sembradas de PROJECT.
     body = admin_client.get(TRANSITIONS_URL, {"is_active": "false"}).json()
     assert {item["code"] for item in body["items"]} == {"CONTACT", "MARK_READY_TO_FILE"}
-    body = admin_client.get(TRANSITIONS_URL, {"is_active": "true", "page_size": 100}).json()
+    body = admin_client.get(TRANSITIONS_URL, {"is_active": "true", "page_size": "100"}).json()
     assert {item["flow_type"] for item in body["items"]} == {"PROJECT"}
 
     assert_error(
@@ -157,11 +163,11 @@ def test_list_transitions_with_filters(admin_client):
     )
 
 
-def test_retrieve_unknown_transition_returns_404(admin_client):
+def test_retrieve_unknown_transition_returns_404(admin_client: APIClient) -> None:
     assert_error(admin_client.get(transition_url(str(uuid.uuid4()))), 404, "RESOURCE_NOT_FOUND")
 
 
-def test_transitions_require_permission(advisor_client):
+def test_transitions_require_permission(advisor_client: APIClient) -> None:
     assert_error(advisor_client.get(TRANSITIONS_URL), 403, "PERMISSION_DENIED")
 
 
@@ -169,14 +175,14 @@ def test_transitions_require_permission(advisor_client):
 
 
 @pytest.fixture
-def published_transition(admin_client) -> WorkflowTransition:
+def published_transition(admin_client: APIClient) -> WorkflowTransition:
     Permission.objects.create(code="documents.review", module="documents", name="Revisar")
     body = create(admin_client, required_permission="documents.review", roles=["ADVISOR"]).json()
     admin_client.post(f"{transition_url(body['id'])}/activate")
     return WorkflowTransition.objects.get(pk=body["id"])
 
 
-def _available(user):
+def _available(user: User) -> list[str]:
     return list(
         services.available_transitions(
             user, flow_type="APPLICATION", from_status="DOCUMENTS_REVIEW"
@@ -184,7 +190,9 @@ def _available(user):
     )
 
 
-def test_available_transitions_require_role_and_permission(published_transition, make_user):
+def test_available_transitions_require_role_and_permission(
+    published_transition: WorkflowTransition, make_user: Callable[..., User]
+) -> None:
     with_permission = make_user(
         email="con@example.com", role_code="ADVISOR", permissions=["documents.review"]
     )
@@ -198,7 +206,9 @@ def test_available_transitions_require_role_and_permission(published_transition,
     assert _available(broker) == []
 
 
-def test_available_transitions_require_the_permission(make_user, admin_client):
+def test_available_transitions_require_the_permission(
+    make_user: Callable[..., User], admin_client: APIClient
+) -> None:
     Permission.objects.create(code="filings.manage", module="filings", name="Radicar")
     body = create(admin_client, required_permission="filings.manage", roles=["ADVISOR"]).json()
     admin_client.post(f"{transition_url(body['id'])}/activate")
@@ -207,7 +217,9 @@ def test_available_transitions_require_the_permission(make_user, admin_client):
     assert _available(advisor) == []
 
 
-def test_admin_does_not_need_to_be_listed_in_roles(published_transition, make_user):
+def test_admin_does_not_need_to_be_listed_in_roles(
+    published_transition: WorkflowTransition, make_user: Callable[..., User]
+) -> None:
     admin = make_user(email="otro-admin@example.com", role_code="ADMIN")
     # El ADMIN necesita el permiso de la transición igual que los demás.
     assert _available(admin) == []
@@ -216,7 +228,9 @@ def test_admin_does_not_need_to_be_listed_in_roles(published_transition, make_us
     assert _available(superuser) == ["MARK_READY_TO_FILE"]
 
 
-def test_inactive_transitions_are_not_available(admin_client, make_user):
+def test_inactive_transitions_are_not_available(
+    admin_client: APIClient, make_user: Callable[..., User]
+) -> None:
     create(admin_client, required_permission=None, roles=["ADVISOR"])
     advisor = make_user(email="a2@example.com", role_code="ADVISOR")
     assert _available(advisor) == []

@@ -1,12 +1,16 @@
 import uuid
+from collections.abc import Callable
 from datetime import date
+from typing import Any
 
 import pytest
+from rest_framework.test import APIClient
 
-from apps.catalogs.models import WorkflowTransition
+from apps.catalogs.models import CatalogItem, WorkflowTransition
+from apps.identity.models import User
 from apps.partners import services
 from apps.partners.exceptions import ProjectNotActive
-from apps.partners.models import PartnerMembership, Project
+from apps.partners.models import Partner, PartnerMembership, Project
 from tests.helpers import assert_error
 
 pytestmark = pytest.mark.django_db
@@ -22,7 +26,7 @@ VALID_PROJECT = {
 }
 
 
-def project_url(project) -> str:
+def project_url(project: Project | str) -> str:
     project_id = project if isinstance(project, str) else project.id
     return f"{PROJECTS_URL}/{project_id}"
 
@@ -30,7 +34,9 @@ def project_url(project) -> str:
 # --- Crear ------------------------------------------------------------------------------
 
 
-def test_partner_user_creates_draft_project_for_own_partner(partner_client, partner):
+def test_partner_user_creates_draft_project_for_own_partner(
+    partner_client: APIClient, partner: Partner
+) -> None:
     response = partner_client.post(PROJECTS_URL, VALID_PROJECT)
 
     assert response.status_code == 201
@@ -48,7 +54,9 @@ def test_partner_user_creates_draft_project_for_own_partner(partner_client, part
     assert body["available_actions"] == ["SUBMIT_FOR_REVIEW"]
 
 
-def test_partner_user_cannot_create_for_another_partner(partner_client, partner, other_partner):
+def test_partner_user_cannot_create_for_another_partner(
+    partner_client: APIClient, partner: Partner, other_partner: Partner
+) -> None:
     """RF-15: el partner se deriva de la membresía; un `partner_id` ajeno se ignora."""
     response = partner_client.post(
         PROJECTS_URL, {**VALID_PROJECT, "partner_id": str(other_partner.id)}
@@ -57,7 +65,7 @@ def test_partner_user_cannot_create_for_another_partner(partner_client, partner,
     assert response.json()["partner"]["id"] == str(partner.id)
 
 
-def test_partner_user_without_membership_cannot_create(make_user):
+def test_partner_user_without_membership_cannot_create(make_user: Callable[..., User]) -> None:
     from tests.partners.conftest import client_for
 
     user = make_user(email="sin@example.com", role_code="CONSTRUCTION_PARTNER")
@@ -65,19 +73,23 @@ def test_partner_user_without_membership_cannot_create(make_user):
     assert_error(response, 403, "OUT_OF_SCOPE")
 
 
-def test_inactive_partner_cannot_create_projects(partner_client, partner):
+def test_inactive_partner_cannot_create_projects(
+    partner_client: APIClient, partner: Partner
+) -> None:
     partner.status = "INACTIVE"
     partner.save()
     assert_error(partner_client.post(PROJECTS_URL, VALID_PROJECT), 422, "PARTNER_NOT_ACTIVE")
 
 
-def test_advisor_creates_project_with_partner_id(advisor_client, partner):
+def test_advisor_creates_project_with_partner_id(
+    advisor_client: APIClient, partner: Partner
+) -> None:
     response = advisor_client.post(PROJECTS_URL, {**VALID_PROJECT, "partner_id": str(partner.id)})
     assert response.status_code == 201
     assert response.json()["partner"]["id"] == str(partner.id)
 
 
-def test_advisor_must_send_an_existing_partner(advisor_client):
+def test_advisor_must_send_an_existing_partner(advisor_client: APIClient) -> None:
     body = assert_error(advisor_client.post(PROJECTS_URL, VALID_PROJECT), 400, "VALIDATION_ERROR")
     assert body["details"][0]["field"] == "partner_id"
 
@@ -85,7 +97,7 @@ def test_advisor_must_send_an_existing_partner(advisor_client):
     assert_error(response, 400, "VALIDATION_ERROR")
 
 
-def test_broker_cannot_create_projects(broker_client, partner):
+def test_broker_cannot_create_projects(broker_client: APIClient, partner: Partner) -> None:
     response = broker_client.post(PROJECTS_URL, {**VALID_PROJECT, "partner_id": str(partner.id)})
     assert_error(response, 403, "PERMISSION_DENIED")
 
@@ -100,7 +112,7 @@ def test_broker_cannot_create_projects(broker_client, partner):
         ("estimated_delivery_date", "30/06/2027"),
     ],
 )
-def test_create_project_validates_input(partner_client, field, value):
+def test_create_project_validates_input(partner_client: APIClient, field: str, value: str) -> None:
     body = assert_error(
         partner_client.post(PROJECTS_URL, {**VALID_PROJECT, field: value}), 400, "VALIDATION_ERROR"
     )
@@ -108,8 +120,11 @@ def test_create_project_validates_input(partner_client, field, value):
 
 
 def test_project_name_is_unique_per_partner_while_open(
-    partner_client, partner, other_partner, make_project
-):
+    partner_client: APIClient,
+    partner: Partner,
+    other_partner: Partner,
+    make_project: Callable[..., Project],
+) -> None:
     make_project(other_partner)  # Mismo nombre en otra constructora: permitido.
     assert partner_client.post(PROJECTS_URL, VALID_PROJECT).status_code == 201
 
@@ -121,7 +136,7 @@ def test_project_name_is_unique_per_partner_while_open(
     assert partner_client.post(PROJECTS_URL, VALID_PROJECT).status_code == 201
 
 
-def test_project_code_is_unique_per_partner(partner_client):
+def test_project_code_is_unique_per_partner(partner_client: APIClient) -> None:
     partner_client.post(PROJECTS_URL, {**VALID_PROJECT, "code": "VER-01"})
     response = partner_client.post(
         PROJECTS_URL, {**VALID_PROJECT, "name": "Otro", "code": "VER-01"}
@@ -137,7 +152,12 @@ def test_project_code_is_unique_per_partner(partner_client):
 # --- Consultar y alcance ----------------------------------------------------------------
 
 
-def test_partner_user_only_sees_own_projects(partner_client, partner, other_partner, make_project):
+def test_partner_user_only_sees_own_projects(
+    partner_client: APIClient,
+    partner: Partner,
+    other_partner: Partner,
+    make_project: Callable[..., Project],
+) -> None:
     own = make_project(partner)
     foreign = make_project(other_partner, name="Ajeno")
 
@@ -150,8 +170,11 @@ def test_partner_user_only_sees_own_projects(partner_client, partner, other_part
 
 
 def test_broker_only_sees_active_projects_of_active_partners(
-    broker_client, partner, other_partner, make_project
-):
+    broker_client: APIClient,
+    partner: Partner,
+    other_partner: Partner,
+    make_project: Callable[..., Project],
+) -> None:
     active = make_project(partner, status="ACTIVE")
     make_project(partner, name="Borrador")
     make_project(other_partner, name="De partner inactivo", status="ACTIVE")
@@ -163,13 +186,24 @@ def test_broker_only_sees_active_projects_of_active_partners(
     assert broker_client.get(project_url(active)).json()["available_actions"] == []
 
 
-def test_advisor_sees_all_projects(advisor_client, partner, other_partner, make_project):
+def test_advisor_sees_all_projects(
+    advisor_client: APIClient,
+    partner: Partner,
+    other_partner: Partner,
+    make_project: Callable[..., Project],
+) -> None:
     make_project(partner)
     make_project(other_partner, name="Otro")
     assert advisor_client.get(PROJECTS_URL).json()["total"] == 2
 
 
-def test_list_projects_filters(admin_client, partner, other_partner, make_project, medellin):
+def test_list_projects_filters(
+    admin_client: APIClient,
+    partner: Partner,
+    other_partner: Partner,
+    make_project: Callable[..., Project],
+    medellin: CatalogItem,
+) -> None:
     make_project(partner, status="ACTIVE")
     make_project(partner, name="Medellín", city_item=medellin)
     make_project(other_partner, name="Otro")
@@ -185,7 +219,9 @@ def test_list_projects_filters(admin_client, partner, other_partner, make_projec
 # --- Editar -----------------------------------------------------------------------------
 
 
-def test_partner_user_edits_draft_project(partner_client, partner, make_project):
+def test_partner_user_edits_draft_project(
+    partner_client: APIClient, partner: Partner, make_project: Callable[..., Project]
+) -> None:
     project = make_project(partner)
 
     response = partner_client.patch(project_url(project), {"city_code": "05001", "code": "V-1"})
@@ -195,25 +231,33 @@ def test_partner_user_edits_draft_project(partner_client, partner, make_project)
     assert response.json()["code"] == "V-1"
 
 
-def test_partner_user_cannot_edit_after_draft(partner_client, partner, make_project):
+def test_partner_user_cannot_edit_after_draft(
+    partner_client: APIClient, partner: Partner, make_project: Callable[..., Project]
+) -> None:
     project = make_project(partner, status="PENDING_REVIEW")
     response = partner_client.patch(project_url(project), {"name": "Otro"})
     assert_error(response, 409, "PROJECT_NOT_EDITABLE")
 
 
-def test_advisor_can_correct_an_active_project(advisor_client, partner, make_project):
+def test_advisor_can_correct_an_active_project(
+    advisor_client: APIClient, partner: Partner, make_project: Callable[..., Project]
+) -> None:
     project = make_project(partner, status="ACTIVE")
     response = advisor_client.patch(project_url(project), {"address": "Calle 1 # 2-3"})
     assert response.status_code == 200
 
 
-def test_archived_projects_are_read_only(admin_client, partner, make_project):
+def test_archived_projects_are_read_only(
+    admin_client: APIClient, partner: Partner, make_project: Callable[..., Project]
+) -> None:
     project = make_project(partner, status="ARCHIVED")
     response = admin_client.patch(project_url(project), {"name": "Otro"})
     assert_error(response, 409, "PROJECT_NOT_EDITABLE")
 
 
-def test_project_partner_and_status_cannot_be_patched(admin_client, partner, make_project):
+def test_project_partner_and_status_cannot_be_patched(
+    admin_client: APIClient, partner: Partner, make_project: Callable[..., Project]
+) -> None:
     project = make_project(partner)
     for payload in ({"status": "ACTIVE"}, {"partner_id": str(partner.id)}):
         assert_error(admin_client.patch(project_url(project), payload), 400, "VALIDATION_ERROR")
@@ -222,7 +266,9 @@ def test_project_partner_and_status_cannot_be_patched(admin_client, partner, mak
 # --- Flujo de estados -------------------------------------------------------------------
 
 
-def test_full_project_lifecycle(partner_client, advisor_client, admin_client, partner):
+def test_full_project_lifecycle(
+    partner_client: APIClient, advisor_client: APIClient, admin_client: APIClient, partner: Partner
+) -> None:
     project_id = partner_client.post(PROJECTS_URL, VALID_PROJECT).json()["id"]
 
     body = partner_client.post(f"{project_url(project_id)}/submit").json()
@@ -242,7 +288,9 @@ def test_full_project_lifecycle(partner_client, advisor_client, admin_client, pa
     assert body["status"] == "ARCHIVED"
 
 
-def test_reject_returns_to_draft_and_requires_reason(partner_client, advisor_client, partner):
+def test_reject_returns_to_draft_and_requires_reason(
+    partner_client: APIClient, advisor_client: APIClient, partner: Partner
+) -> None:
     project_id = partner_client.post(PROJECTS_URL, VALID_PROJECT).json()["id"]
     partner_client.post(f"{project_url(project_id)}/submit")
 
@@ -255,24 +303,32 @@ def test_reject_returns_to_draft_and_requires_reason(partner_client, advisor_cli
     assert partner_client.patch(project_url(project_id), {"name": "Verona"}).status_code == 200
 
 
-def test_advisor_can_approve_a_draft_directly(advisor_client, partner, make_project):
+def test_advisor_can_approve_a_draft_directly(
+    advisor_client: APIClient, partner: Partner, make_project: Callable[..., Project]
+) -> None:
     project = make_project(partner)
     assert advisor_client.post(f"{project_url(project)}/activate").json()["status"] == "ACTIVE"
 
 
-def test_partner_user_cannot_approve(partner_client, partner, make_project):
+def test_partner_user_cannot_approve(
+    partner_client: APIClient, partner: Partner, make_project: Callable[..., Project]
+) -> None:
     project = make_project(partner, status="PENDING_REVIEW")
     response = partner_client.post(f"{project_url(project)}/activate")
     assert_error(response, 403, "PERMISSION_DENIED")
 
 
-def test_advisor_cannot_archive(advisor_client, partner, make_project):
+def test_advisor_cannot_archive(
+    advisor_client: APIClient, partner: Partner, make_project: Callable[..., Project]
+) -> None:
     project = make_project(partner, status="ACTIVE")
     response = advisor_client.post(f"{project_url(project)}/archive", {"reason": "x"})
     assert_error(response, 403, "PERMISSION_DENIED")
 
 
-def test_invalid_transitions_return_409(admin_client, partner, make_project):
+def test_invalid_transitions_return_409(
+    admin_client: APIClient, partner: Partner, make_project: Callable[..., Project]
+) -> None:
     archived = make_project(partner, status="ARCHIVED")
     assert_error(
         admin_client.post(f"{project_url(archived)}/activate"), 409, "INVALID_STATE_TRANSITION"
@@ -288,7 +344,9 @@ def test_invalid_transitions_return_409(admin_client, partner, make_project):
     )
 
 
-def test_deactivated_transition_blocks_the_action(admin_client, partner, make_project):
+def test_deactivated_transition_blocks_the_action(
+    admin_client: APIClient, partner: Partner, make_project: Callable[..., Project]
+) -> None:
     """La configuración de workflow_transitions decide qué acciones existen."""
     WorkflowTransition.objects.filter(flow_type="PROJECT", code="APPROVE_DRAFT").update(
         is_active=False
@@ -299,7 +357,9 @@ def test_deactivated_transition_blocks_the_action(admin_client, partner, make_pr
     )
 
 
-def test_partner_user_of_inactive_partner_cannot_submit(partner_client, partner, make_project):
+def test_partner_user_of_inactive_partner_cannot_submit(
+    partner_client: APIClient, partner: Partner, make_project: Callable[..., Project]
+) -> None:
     project = make_project(partner)
     partner.status = "INACTIVE"
     partner.save()
@@ -308,13 +368,15 @@ def test_partner_user_of_inactive_partner_cannot_submit(partner_client, partner,
     assert_error(partner_client.post(f"{project_url(project)}/submit"), 422, "PARTNER_NOT_ACTIVE")
 
 
-def test_transition_emits_signal_with_reason(admin_client, partner, make_project):
+def test_transition_emits_signal_with_reason(
+    admin_client: APIClient, partner: Partner, make_project: Callable[..., Project]
+) -> None:
     from apps.partners.signals import project_status_changed
 
     project = make_project(partner, status="ACTIVE")
-    received = []
+    received: list[dict[str, Any]] = []
 
-    def handler(**kwargs):
+    def handler(**kwargs: Any) -> None:
         received.append(kwargs)
 
     project_status_changed.connect(handler)
@@ -329,8 +391,11 @@ def test_transition_emits_signal_with_reason(admin_client, partner, make_project
 
 
 def test_membership_end_removes_access_to_projects(
-    partner_client, partner_user, partner, make_project
-):
+    partner_client: APIClient,
+    partner_user: User,
+    partner: Partner,
+    make_project: Callable[..., Project],
+) -> None:
     project = make_project(partner)
     PartnerMembership.objects.filter(user=partner_user).update(
         status="INACTIVE", ended_at=date.today()
@@ -341,7 +406,9 @@ def test_membership_end_removes_access_to_projects(
 # --- Regla para oportunidades (paso 5) --------------------------------------------------
 
 
-def test_only_active_projects_accept_opportunities(partner, make_project):
+def test_only_active_projects_accept_opportunities(
+    partner: Partner, make_project: Callable[..., Project]
+) -> None:
     active = make_project(partner, status="ACTIVE")
     services.ensure_project_accepts_opportunities(active)
 

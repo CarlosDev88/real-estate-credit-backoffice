@@ -1,6 +1,8 @@
 import re
 import uuid
-from datetime import timedelta
+from collections.abc import Callable
+from datetime import datetime, timedelta
+from typing import Any
 
 import pytest
 from django.core import mail
@@ -22,7 +24,7 @@ NEW_PASSWORD = "Clave-Nueva-Segura-2027"
 
 
 @pytest.fixture
-def admin_client(make_user) -> APIClient:
+def admin_client(make_user: Callable[..., User]) -> APIClient:
     make_user(email="admin@example.com", role_code="ADMIN")
     client = APIClient()
     assert login(client, email="admin@example.com").status_code == 200
@@ -30,11 +32,11 @@ def admin_client(make_user) -> APIClient:
 
 
 @pytest.fixture
-def partner(db) -> Partner:
+def partner(db: Any) -> Partner:
     return Partner.objects.create(legal_name="Constructora Andina S.A.S.", tax_id="900123456-8")
 
 
-def invite(client, **payload):
+def invite(client: APIClient, **payload: Any) -> Any:
     payload.setdefault("email", "nuevo@example.com")
     payload.setdefault("role", "ADVISOR")
     # El correo se envía en `on_commit`, y en pruebas la transacción nunca confirma.
@@ -42,12 +44,12 @@ def invite(client, **payload):
         return client.post(INVITATIONS_URL, payload)
 
 
-def four_days_ago():
+def four_days_ago() -> datetime:
     """Más que la vigencia de 72 horas, relativo a hoy."""
     return timezone.now() - timedelta(days=4)
 
 
-def invite_at(moment, email: str = "nuevo@example.com") -> InternalInvitation:
+def invite_at(moment: datetime, email: str = "nuevo@example.com") -> InternalInvitation:
     """Crea la invitación con el servicio en una fecha pasada.
 
     Por API no sirve: con el reloj en el pasado, el JWT del admin todavía no es válido.
@@ -63,12 +65,12 @@ def invite_at(moment, email: str = "nuevo@example.com") -> InternalInvitation:
 
 
 def token_from_last_email() -> str:
-    match = re.search(r"\?token=([A-Za-z0-9_\-]+)", mail.outbox[-1].body)
+    match = re.search(r"\?token=([A-Za-z0-9_\-]+)", str(mail.outbox[-1].body))
     assert match, mail.outbox[-1].body
     return match.group(1)
 
 
-def accept(token: str, **payload):
+def accept(token: str, **payload: Any) -> Any:
     payload = {
         "token": token,
         "password": NEW_PASSWORD,
@@ -83,7 +85,7 @@ def accept(token: str, **payload):
 # --- Crear ------------------------------------------------------------------------------
 
 
-def test_admin_invites_internal_user(admin_client):
+def test_admin_invites_internal_user(admin_client: APIClient) -> None:
     response = invite(admin_client, email="Nuevo@Example.com")
 
     assert response.status_code == 201
@@ -104,7 +106,7 @@ def test_admin_invites_internal_user(admin_client):
     assert abs(lifetime - timedelta(hours=72)) < timedelta(seconds=5)
 
 
-def test_partner_invitation_requires_partner(admin_client, partner):
+def test_partner_invitation_requires_partner(admin_client: APIClient, partner: Partner) -> None:
     body = assert_error(invite(admin_client, role="CONSTRUCTION_PARTNER"), 400, "VALIDATION_ERROR")
     assert body["details"][0]["field"] == "partner_id"
 
@@ -114,12 +116,14 @@ def test_partner_invitation_requires_partner(admin_client, partner):
     assert "Te unirás al equipo de" in mail.outbox[-1].body
 
 
-def test_only_partner_invitations_carry_a_partner(admin_client, partner):
+def test_only_partner_invitations_carry_a_partner(
+    admin_client: APIClient, partner: Partner
+) -> None:
     response = invite(admin_client, role="ADVISOR", partner_id=str(partner.id))
     assert_error(response, 400, "VALIDATION_ERROR")
 
 
-def test_cannot_invite_to_inactive_partner(admin_client, partner):
+def test_cannot_invite_to_inactive_partner(admin_client: APIClient, partner: Partner) -> None:
     partner.status = "INACTIVE"
     partner.save()
     response = invite(admin_client, role="CONSTRUCTION_PARTNER", partner_id=str(partner.id))
@@ -135,22 +139,26 @@ def test_cannot_invite_to_inactive_partner(admin_client, partner):
         {"is_superuser": True},
     ],
 )
-def test_create_invitation_validates_input(admin_client, payload):
+def test_create_invitation_validates_input(
+    admin_client: APIClient, payload: dict[str, Any]
+) -> None:
     assert_error(invite(admin_client, **payload), 400, "VALIDATION_ERROR")
 
 
-def test_cannot_invite_an_existing_account(admin_client, make_user):
+def test_cannot_invite_an_existing_account(
+    admin_client: APIClient, make_user: Callable[..., User]
+) -> None:
     make_user(email="existente@example.com")
     response = invite(admin_client, email="EXISTENTE@example.com")
     assert_error(response, 409, "USER_ALREADY_EXISTS")
 
 
-def test_only_one_pending_invitation_per_email(admin_client):
+def test_only_one_pending_invitation_per_email(admin_client: APIClient) -> None:
     invite(admin_client)
     assert_error(invite(admin_client, role="ADMIN"), 409, "INVITATION_ALREADY_PENDING")
 
 
-def test_invitations_require_permission(make_user):
+def test_invitations_require_permission(make_user: Callable[..., User]) -> None:
     make_user(email="asesor@example.com", role_code="ADVISOR")
     client = APIClient()
     login(client, email="asesor@example.com")
@@ -161,7 +169,7 @@ def test_invitations_require_permission(make_user):
 # --- Aceptar ----------------------------------------------------------------------------
 
 
-def test_accept_creates_user_with_role_and_allows_login(admin_client):
+def test_accept_creates_user_with_role_and_allows_login(admin_client: APIClient) -> None:
     invite(admin_client)
 
     response = accept(token_from_last_email())
@@ -180,7 +188,9 @@ def test_accept_creates_user_with_role_and_allows_login(admin_client):
     assert login(APIClient(), email="nuevo@example.com", password=NEW_PASSWORD).status_code == 200
 
 
-def test_accept_partner_invitation_creates_membership(admin_client, partner):
+def test_accept_partner_invitation_creates_membership(
+    admin_client: APIClient, partner: Partner
+) -> None:
     invite(admin_client, role="CONSTRUCTION_PARTNER", partner_id=str(partner.id))
 
     assert accept(token_from_last_email()).status_code == 200
@@ -190,7 +200,7 @@ def test_accept_partner_invitation_creates_membership(admin_client, partner):
     assert membership.status == "ACTIVE"
 
 
-def test_accept_links_an_existing_user_without_password(admin_client):
+def test_accept_links_an_existing_user_without_password(admin_client: APIClient) -> None:
     pending = User.objects.create_user(
         email="pendiente@example.com", password=None, first_name="Ana", last_name="Ruiz"
     )
@@ -209,7 +219,7 @@ def test_accept_links_an_existing_user_without_password(admin_client):
     assert User.objects.filter(email="pendiente@example.com").count() == 1
 
 
-def test_accept_requires_names_for_new_users(admin_client):
+def test_accept_requires_names_for_new_users(admin_client: APIClient) -> None:
     invite(admin_client)
     body = assert_error(
         accept(token_from_last_email(), first_name="", last_name=""), 400, "VALIDATION_ERROR"
@@ -217,23 +227,23 @@ def test_accept_requires_names_for_new_users(admin_client):
     assert {detail["field"] for detail in body["details"]} == {"first_name", "last_name"}
 
 
-def test_accept_is_single_use(admin_client):
+def test_accept_is_single_use(admin_client: APIClient) -> None:
     invite(admin_client)
     token = token_from_last_email()
     assert accept(token).status_code == 200
     assert_error(accept(token), 400, "INVITATION_INVALID")
 
 
-def test_accept_rejects_expired_invitations(admin_client):
+def test_accept_rejects_expired_invitations(admin_client: APIClient) -> None:
     invite_at(four_days_ago())
     assert_error(accept(token_from_last_email()), 400, "INVITATION_INVALID")
 
 
-def test_accept_rejects_unknown_token(db):
+def test_accept_rejects_unknown_token(db: Any) -> None:
     assert_error(accept("token-inventado"), 400, "INVITATION_INVALID")
 
 
-def test_accept_validates_passwords(admin_client):
+def test_accept_validates_passwords(admin_client: APIClient) -> None:
     invite(admin_client)
     token = token_from_last_email()
 
@@ -251,7 +261,7 @@ def test_accept_validates_passwords(admin_client):
     assert accept(token).status_code == 200
 
 
-def test_accept_fails_if_partner_was_deactivated(admin_client, partner):
+def test_accept_fails_if_partner_was_deactivated(admin_client: APIClient, partner: Partner) -> None:
     invite(admin_client, role="CONSTRUCTION_PARTNER", partner_id=str(partner.id))
     partner.status = "INACTIVE"
     partner.save()
@@ -260,7 +270,9 @@ def test_accept_fails_if_partner_was_deactivated(admin_client, partner):
     assert not User.objects.filter(email="nuevo@example.com").exists()
 
 
-def test_accept_cannot_take_over_an_account_created_meanwhile(admin_client, make_user):
+def test_accept_cannot_take_over_an_account_created_meanwhile(
+    admin_client: APIClient, make_user: Callable[..., User]
+) -> None:
     invite(admin_client)
     make_user(email="nuevo@example.com", password=DEFAULT_PASSWORD)
 
@@ -269,7 +281,7 @@ def test_accept_cannot_take_over_an_account_created_meanwhile(admin_client, make
     assert user.check_password(DEFAULT_PASSWORD)
 
 
-def test_accept_is_rate_limited(db):
+def test_accept_is_rate_limited(db: Any) -> None:
     for _ in range(10):
         accept("token-inventado")
     assert_error(accept("token-inventado"), 429, "RATE_LIMITED")
@@ -278,7 +290,7 @@ def test_accept_is_rate_limited(db):
 # --- Reenviar, revocar y listar ---------------------------------------------------------
 
 
-def test_resend_revokes_previous_token(admin_client):
+def test_resend_revokes_previous_token(admin_client: APIClient) -> None:
     invitation_id = invite(admin_client).json()["id"]
     old_token = token_from_last_email()
 
@@ -295,13 +307,13 @@ def test_resend_revokes_previous_token(admin_client):
     assert accept(token_from_last_email()).status_code == 200
 
 
-def test_resend_works_for_expired_invitations(admin_client):
+def test_resend_works_for_expired_invitations(admin_client: APIClient) -> None:
     invitation_id = invite_at(four_days_ago()).id
     response = admin_client.post(f"{INVITATIONS_URL}/{invitation_id}/resend")
     assert response.status_code == 201
 
 
-def test_cannot_resend_accepted_invitation(admin_client):
+def test_cannot_resend_accepted_invitation(admin_client: APIClient) -> None:
     invitation_id = invite(admin_client).json()["id"]
     accept(token_from_last_email())
 
@@ -312,7 +324,7 @@ def test_cannot_resend_accepted_invitation(admin_client):
     )
 
 
-def test_revoke_invitation(admin_client):
+def test_revoke_invitation(admin_client: APIClient) -> None:
     invitation_id = invite(admin_client).json()["id"]
     token = token_from_last_email()
 
@@ -323,13 +335,13 @@ def test_revoke_invitation(admin_client):
     assert invite(admin_client).status_code == 201
 
 
-def test_unknown_invitation_returns_404(admin_client):
+def test_unknown_invitation_returns_404(admin_client: APIClient) -> None:
     assert_error(
         admin_client.delete(f"{INVITATIONS_URL}/{uuid.uuid4()}"), 404, "RESOURCE_NOT_FOUND"
     )
 
 
-def test_list_invitations_with_filters(admin_client, partner):
+def test_list_invitations_with_filters(admin_client: APIClient, partner: Partner) -> None:
     invite(admin_client, email="a@example.com")
     invite(
         admin_client, email="b@example.com", role="CONSTRUCTION_PARTNER", partner_id=str(partner.id)
@@ -337,7 +349,7 @@ def test_list_invitations_with_filters(admin_client, partner):
     revoked_id = invite(admin_client, email="c@example.com").json()["id"]
     admin_client.delete(f"{INVITATIONS_URL}/{revoked_id}")
 
-    def emails(**params):
+    def emails(**params: Any) -> list[str]:
         return [item["email"] for item in admin_client.get(INVITATIONS_URL, params).json()["items"]]
 
     assert emails() == ["c@example.com", "b@example.com", "a@example.com"]
@@ -349,7 +361,7 @@ def test_list_invitations_with_filters(admin_client, partner):
     assert_error(admin_client.get(INVITATIONS_URL, {"status": "X"}), 400, "VALIDATION_ERROR")
 
 
-def test_expired_status_is_derived_from_dates(admin_client):
+def test_expired_status_is_derived_from_dates(admin_client: APIClient) -> None:
     invitation_id = str(invite_at(four_days_ago()).id)
     items = admin_client.get(INVITATIONS_URL, {"status": "EXPIRED"}).json()["items"]
     assert [item["id"] for item in items] == [invitation_id]
@@ -360,7 +372,9 @@ def test_expired_status_is_derived_from_dates(admin_client):
 # --- Invitar desde la constructora ------------------------------------------------------
 
 
-def test_partner_members_endpoint_can_invite_by_email(admin_client, partner):
+def test_partner_members_endpoint_can_invite_by_email(
+    admin_client: APIClient, partner: Partner
+) -> None:
     with TestCase.captureOnCommitCallbacks(execute=True):
         response = admin_client.post(
             f"/api/v1/partners/{partner.id}/members", {"email": "obra@example.com"}
@@ -384,6 +398,8 @@ def test_partner_members_endpoint_can_invite_by_email(admin_client, partner):
         {"email": "obra@example.com", "job_title": "Gerente"},
     ],
 )
-def test_partner_members_endpoint_validates_mode(admin_client, partner, payload):
+def test_partner_members_endpoint_validates_mode(
+    admin_client: APIClient, partner: Partner, payload: dict[str, Any]
+) -> None:
     response = admin_client.post(f"/api/v1/partners/{partner.id}/members", payload)
     assert_error(response, 400, "VALIDATION_ERROR")

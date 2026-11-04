@@ -1,12 +1,16 @@
+from collections.abc import Callable
+from typing import Any
+
 import pytest
 from rest_framework.test import APIClient
 
 from apps.catalogs.models import Catalog
+from apps.identity.models import User
 from tests.helpers import login
 
 
 @pytest.fixture
-def admin_client(make_user) -> APIClient:
+def admin_client(make_user: Callable[..., User]) -> APIClient:
     """Administrador: la migración 0002 le asigna los permisos catalogs.* y workflow.*."""
     make_user(email="admin@example.com", role_code="ADMIN")
     client = APIClient()
@@ -15,7 +19,7 @@ def admin_client(make_user) -> APIClient:
 
 
 @pytest.fixture
-def advisor_client(make_user) -> APIClient:
+def advisor_client(make_user: Callable[..., User]) -> APIClient:
     make_user(email="asesor@example.com", role_code="ADVISOR")
     client = APIClient()
     assert login(client, email="asesor@example.com").status_code == 200
@@ -23,10 +27,10 @@ def advisor_client(make_user) -> APIClient:
 
 
 @pytest.fixture
-def manageable_catalog(db) -> Catalog:
+def manageable_catalog(db: Any) -> Catalog:
     return Catalog.objects.get(code="loan_purpose")
 
 
 @pytest.fixture
-def system_catalog(db) -> Catalog:
+def system_catalog(db: Any) -> Catalog:
     return Catalog.objects.get(code="application_status")
