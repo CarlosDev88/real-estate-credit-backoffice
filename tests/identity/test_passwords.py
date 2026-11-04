@@ -1,13 +1,16 @@
 import re
+from collections.abc import Callable
 from datetime import timedelta
+from typing import Any
 
 import pytest
 from django.core import mail
 from django.test import TestCase
 from django.utils import timezone
 from freezegun import freeze_time
+from rest_framework.test import APIClient
 
-from apps.identity.models import AuthSession, PasswordResetToken
+from apps.identity.models import AuthSession, PasswordResetToken, User
 from apps.identity.tokens import hash_token
 from tests.helpers import (
     CHANGE_PASSWORD_URL,
@@ -25,14 +28,14 @@ pytestmark = pytest.mark.django_db
 NEW_PASSWORD = "Otra-Clave-Robusta-2027"
 
 
-def _request_reset(client, email="asesor@example.com"):
+def _request_reset(client: APIClient, email: str = "asesor@example.com") -> Any:
     # El correo se envía en `on_commit`, y en pruebas la transacción nunca confirma.
     with TestCase.captureOnCommitCallbacks(execute=True):
         return client.post(PASSWORD_RESET_REQUEST_URL, {"email": email})
 
 
 def _token_from_last_email() -> str:
-    match = re.search(r"\?token=([A-Za-z0-9_\-]+)", mail.outbox[-1].body)
+    match = re.search(r"\?token=([A-Za-z0-9_\-]+)", str(mail.outbox[-1].body))
     assert match, mail.outbox[-1].body
     return match.group(1)
 
@@ -40,7 +43,9 @@ def _token_from_last_email() -> str:
 # --- Solicitud de recuperación ----------------------------------------------------------
 
 
-def test_reset_request_sends_email_and_stores_only_the_hash(api_client, user):
+def test_reset_request_sends_email_and_stores_only_the_hash(
+    api_client: APIClient, user: User
+) -> None:
     with freeze_time("2026-11-04 10:00:00"):
         response = _request_reset(api_client)
 
@@ -55,7 +60,9 @@ def test_reset_request_sends_email_and_stores_only_the_hash(api_client, user):
     assert reset_token.expires_at - reset_token.created_at == timedelta(minutes=30)
 
 
-def test_reset_request_response_is_uniform_for_unknown_emails(api_client, user):
+def test_reset_request_response_is_uniform_for_unknown_emails(
+    api_client: APIClient, user: User
+) -> None:
     known = _request_reset(api_client)
     unknown = _request_reset(api_client, email="nadie@example.com")
 
@@ -65,13 +72,15 @@ def test_reset_request_response_is_uniform_for_unknown_emails(api_client, user):
     assert PasswordResetToken.objects.count() == 1
 
 
-def test_reset_request_ignores_inactive_users(api_client, make_user):
+def test_reset_request_ignores_inactive_users(
+    api_client: APIClient, make_user: Callable[..., User]
+) -> None:
     make_user(is_active=False)
     assert _request_reset(api_client).status_code == 202
     assert mail.outbox == []
 
 
-def test_new_reset_request_invalidates_the_previous_link(api_client, user):
+def test_new_reset_request_invalidates_the_previous_link(api_client: APIClient, user: User) -> None:
     _request_reset(api_client)
     first_token = _token_from_last_email()
     _request_reset(api_client)
@@ -82,7 +91,7 @@ def test_new_reset_request_invalidates_the_previous_link(api_client, user):
     assert_error(response, 400, "PASSWORD_RESET_TOKEN_INVALID")
 
 
-def test_reset_request_is_rate_limited(api_client, user):
+def test_reset_request_is_rate_limited(api_client: APIClient, user: User) -> None:
     for _ in range(3):
         assert _request_reset(api_client).status_code == 202
     assert_error(_request_reset(api_client), 429, "RATE_LIMITED")
@@ -91,7 +100,9 @@ def test_reset_request_is_rate_limited(api_client, user):
 # --- Confirmación -----------------------------------------------------------------------
 
 
-def test_confirm_reset_changes_password_and_revokes_all_sessions(api_client, user):
+def test_confirm_reset_changes_password_and_revokes_all_sessions(
+    api_client: APIClient, user: User
+) -> None:
     login(api_client)
     _request_reset(api_client)
 
@@ -108,7 +119,7 @@ def test_confirm_reset_changes_password_and_revokes_all_sessions(api_client, use
     assert login(api_client, password=NEW_PASSWORD).status_code == 200
 
 
-def test_reset_token_is_single_use(api_client, user):
+def test_reset_token_is_single_use(api_client: APIClient, user: User) -> None:
     _request_reset(api_client)
     token = _token_from_last_email()
     payload = {"token": token, "new_password": NEW_PASSWORD}
@@ -119,7 +130,7 @@ def test_reset_token_is_single_use(api_client, user):
     )
 
 
-def test_expired_reset_token_is_rejected(api_client, user):
+def test_expired_reset_token_is_rejected(api_client: APIClient, user: User) -> None:
     with freeze_time("2026-11-04 10:00:00"):
         _request_reset(api_client)
     token = _token_from_last_email()
@@ -131,14 +142,16 @@ def test_expired_reset_token_is_rejected(api_client, user):
     assert_error(response, 400, "PASSWORD_RESET_TOKEN_INVALID")
 
 
-def test_unknown_reset_token_is_rejected(api_client, db):
+def test_unknown_reset_token_is_rejected(api_client: APIClient, db: Any) -> None:
     response = api_client.post(
         PASSWORD_RESET_CONFIRM_URL, {"token": "inventado", "new_password": NEW_PASSWORD}
     )
     assert_error(response, 400, "PASSWORD_RESET_TOKEN_INVALID")
 
 
-def test_reset_rejects_weak_password_and_keeps_token_usable(api_client, user):
+def test_reset_rejects_weak_password_and_keeps_token_usable(
+    api_client: APIClient, user: User
+) -> None:
     _request_reset(api_client)
     token = _token_from_last_email()
 
@@ -154,7 +167,7 @@ def test_reset_rejects_weak_password_and_keeps_token_usable(api_client, user):
     assert response.status_code == 204
 
 
-def test_reset_token_of_deactivated_user_is_rejected(api_client, user):
+def test_reset_token_of_deactivated_user_is_rejected(api_client: APIClient, user: User) -> None:
     _request_reset(api_client)
     token = _token_from_last_email()
     user.is_active = False
@@ -169,7 +182,9 @@ def test_reset_token_of_deactivated_user_is_rejected(api_client, user):
 # --- Cambio de contraseña ---------------------------------------------------------------
 
 
-def test_change_password_keeps_current_session_and_revokes_others(logged_client, user):
+def test_change_password_keeps_current_session_and_revokes_others(
+    logged_client: APIClient, user: User
+) -> None:
     from rest_framework.test import APIClient
 
     other_device = APIClient()
@@ -187,7 +202,9 @@ def test_change_password_keeps_current_session_and_revokes_others(logged_client,
     assert_error(other_device.get(ME_URL), 401, "SESSION_EXPIRED")
 
 
-def test_change_password_rejects_wrong_current_password(logged_client, user):
+def test_change_password_rejects_wrong_current_password(
+    logged_client: APIClient, user: User
+) -> None:
     response = logged_client.post(
         CHANGE_PASSWORD_URL, {"current_password": "incorrecta", "new_password": NEW_PASSWORD}
     )
@@ -196,7 +213,7 @@ def test_change_password_rejects_wrong_current_password(logged_client, user):
     assert user.check_password(DEFAULT_PASSWORD)
 
 
-def test_change_password_rejects_same_password(logged_client):
+def test_change_password_rejects_same_password(logged_client: APIClient) -> None:
     response = logged_client.post(
         CHANGE_PASSWORD_URL,
         {"current_password": DEFAULT_PASSWORD, "new_password": DEFAULT_PASSWORD},
@@ -204,14 +221,14 @@ def test_change_password_rejects_same_password(logged_client):
     assert_error(response, 400, "VALIDATION_ERROR")
 
 
-def test_change_password_requires_authentication(api_client, db):
+def test_change_password_requires_authentication(api_client: APIClient, db: Any) -> None:
     response = api_client.post(
         CHANGE_PASSWORD_URL, {"current_password": "x", "new_password": NEW_PASSWORD}
     )
     assert_error(response, 401, "NOT_AUTHENTICATED")
 
 
-def test_change_password_requires_csrf_token(csrf_client, user):
+def test_change_password_requires_csrf_token(csrf_client: APIClient, user: User) -> None:
     login(csrf_client)
     payload = {"current_password": DEFAULT_PASSWORD, "new_password": NEW_PASSWORD}
 
@@ -222,20 +239,20 @@ def test_change_password_requires_csrf_token(csrf_client, user):
     assert response.status_code == 204
 
 
-def test_change_password_is_rate_limited(logged_client):
+def test_change_password_is_rate_limited(logged_client: APIClient) -> None:
     payload = {"current_password": "incorrecta", "new_password": NEW_PASSWORD}
     for _ in range(5):
         logged_client.post(CHANGE_PASSWORD_URL, payload)
     assert_error(logged_client.post(CHANGE_PASSWORD_URL, payload), 429, "RATE_LIMITED")
 
 
-def test_password_is_hashed_with_argon2_in_production_settings():
+def test_password_is_hashed_with_argon2_in_production_settings() -> None:
     from config.settings import base
 
     assert base.PASSWORD_HASHERS == ["django.contrib.auth.hashers.Argon2PasswordHasher"]
 
 
-def test_consumed_reset_tokens_keep_their_history(api_client, user):
+def test_consumed_reset_tokens_keep_their_history(api_client: APIClient, user: User) -> None:
     _request_reset(api_client)
     api_client.post(
         PASSWORD_RESET_CONFIRM_URL,

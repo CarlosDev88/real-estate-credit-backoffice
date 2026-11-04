@@ -1,9 +1,12 @@
 import uuid
+from collections.abc import Callable
+from typing import Any
 
 import pytest
 from rest_framework.test import APIClient
 
 from apps.catalogs.models import Catalog, CatalogItem
+from apps.identity.models import User
 from tests.helpers import assert_error, csrf_token, login
 
 pytestmark = pytest.mark.django_db
@@ -26,17 +29,17 @@ def item_url(item: CatalogItem) -> str:
 # --- Autenticación y permisos -----------------------------------------------------------
 
 
-def test_catalogs_require_authentication(api_client, db):
+def test_catalogs_require_authentication(api_client: APIClient, db: Any) -> None:
     assert_error(api_client.get(CATALOGS_URL), 401, "NOT_AUTHENTICATED")
 
 
-def test_catalogs_require_permission(advisor_client):
+def test_catalogs_require_permission(advisor_client: APIClient) -> None:
     assert_error(advisor_client.get(CATALOGS_URL), 403, "PERMISSION_DENIED")
     response = advisor_client.post(CATALOGS_URL, {"code": "x_y", "name": "X"})
     assert_error(response, 403, "PERMISSION_DENIED")
 
 
-def test_permission_is_checked_per_method(make_user):
+def test_permission_is_checked_per_method(make_user: Callable[..., User]) -> None:
     """Con `catalogs.read`, pero sin `catalogs.create`, se puede leer y no crear."""
     make_user(email="lector@example.com", role_code="ADVISOR", permissions=["catalogs.read"])
     client = APIClient()
@@ -47,11 +50,13 @@ def test_permission_is_checked_per_method(make_user):
     assert_error(response, 403, "PERMISSION_DENIED")
 
 
-def test_unsupported_method_returns_405(admin_client, manageable_catalog):
+def test_unsupported_method_returns_405(
+    admin_client: APIClient, manageable_catalog: Catalog
+) -> None:
     assert_error(admin_client.delete(catalog_url(manageable_catalog)), 405, "METHOD_NOT_ALLOWED")
 
 
-def test_writes_require_csrf_token(make_user):
+def test_writes_require_csrf_token(make_user: Callable[..., User]) -> None:
     make_user(email="admin@example.com", role_code="ADMIN")
     client = APIClient(enforce_csrf_checks=True)
     login(client, email="admin@example.com")
@@ -65,7 +70,7 @@ def test_writes_require_csrf_token(make_user):
 # --- Catálogos --------------------------------------------------------------------------
 
 
-def test_list_catalogs_is_paginated(admin_client):
+def test_list_catalogs_is_paginated(admin_client: APIClient) -> None:
     response = admin_client.get(CATALOGS_URL, {"page_size": 5})
 
     assert response.status_code == 200
@@ -82,7 +87,7 @@ def test_list_catalogs_is_paginated(admin_client):
     assert second["previous"] == "/api/v1/catalogs?page_size=5"
 
 
-def test_list_catalogs_includes_seeded_data(admin_client):
+def test_list_catalogs_includes_seeded_data(admin_client: APIClient) -> None:
     body = admin_client.get(CATALOGS_URL, {"search": "loan_purpose"}).json()
     assert [catalog["code"] for catalog in body["items"]] == ["loan_purpose"]
     catalog = body["items"][0]
@@ -91,25 +96,25 @@ def test_list_catalogs_includes_seeded_data(admin_client):
     assert catalog["version"] == 1
 
 
-def test_list_catalogs_filters_and_orders(admin_client):
+def test_list_catalogs_filters_and_orders(admin_client: APIClient) -> None:
     body = admin_client.get(CATALOGS_URL, {"is_public": "false", "ordering": "-code"}).json()
     codes = [catalog["code"] for catalog in body["items"]]
     assert "loan_purpose" not in codes
     assert codes == sorted(codes, reverse=True)
 
 
-def test_list_catalogs_rejects_unknown_ordering(admin_client):
+def test_list_catalogs_rejects_unknown_ordering(admin_client: APIClient) -> None:
     body = assert_error(
         admin_client.get(CATALOGS_URL, {"ordering": "description"}), 400, "VALIDATION_ERROR"
     )
     assert body["details"][0]["field"] == "ordering"
 
 
-def test_list_catalogs_rejects_invalid_boolean(admin_client):
+def test_list_catalogs_rejects_invalid_boolean(admin_client: APIClient) -> None:
     assert_error(admin_client.get(CATALOGS_URL, {"is_public": "quizas"}), 400, "VALIDATION_ERROR")
 
 
-def test_create_catalog(admin_client):
+def test_create_catalog(admin_client: APIClient) -> None:
     response = admin_client.post(
         CATALOGS_URL,
         {"code": "notary", "name": "Notaría", "description": "Notarías de Colombia"},
@@ -124,7 +129,7 @@ def test_create_catalog(admin_client):
     assert body["items_count"] == 0
 
 
-def test_create_catalog_validates_code_format(admin_client):
+def test_create_catalog_validates_code_format(admin_client: APIClient) -> None:
     body = assert_error(
         admin_client.post(CATALOGS_URL, {"code": "Notaría X", "name": "X"}),
         400,
@@ -133,24 +138,24 @@ def test_create_catalog_validates_code_format(admin_client):
     assert body["details"][0]["field"] == "code"
 
 
-def test_create_catalog_rejects_duplicate_code(admin_client):
+def test_create_catalog_rejects_duplicate_code(admin_client: APIClient) -> None:
     response = admin_client.post(CATALOGS_URL, {"code": "loan_purpose", "name": "Otra"})
     assert_error(response, 409, "DUPLICATE_CODE")
 
 
-def test_create_catalog_cannot_set_is_manageable(admin_client):
+def test_create_catalog_cannot_set_is_manageable(admin_client: APIClient) -> None:
     response = admin_client.post(
         CATALOGS_URL, {"code": "notary", "name": "Notaría", "is_manageable": False}
     )
     assert_error(response, 400, "VALIDATION_ERROR")
 
 
-def test_retrieve_unknown_catalog_returns_404(admin_client):
+def test_retrieve_unknown_catalog_returns_404(admin_client: APIClient) -> None:
     assert_error(admin_client.get(f"{CATALOGS_URL}/{uuid.uuid4()}"), 404, "RESOURCE_NOT_FOUND")
     assert admin_client.get(f"{CATALOGS_URL}/no-es-uuid").status_code == 404
 
 
-def test_update_catalog_bumps_version(admin_client, manageable_catalog):
+def test_update_catalog_bumps_version(admin_client: APIClient, manageable_catalog: Catalog) -> None:
     response = admin_client.patch(catalog_url(manageable_catalog), {"name": "Finalidad"})
 
     assert response.status_code == 200
@@ -158,12 +163,16 @@ def test_update_catalog_bumps_version(admin_client, manageable_catalog):
     assert response.json()["version"] == 2
 
 
-def test_update_catalog_code_is_not_allowed(admin_client, manageable_catalog):
+def test_update_catalog_code_is_not_allowed(
+    admin_client: APIClient, manageable_catalog: Catalog
+) -> None:
     response = admin_client.patch(catalog_url(manageable_catalog), {"code": "otro"})
     assert_error(response, 400, "VALIDATION_ERROR")
 
 
-def test_system_catalog_cannot_be_modified(admin_client, system_catalog):
+def test_system_catalog_cannot_be_modified(
+    admin_client: APIClient, system_catalog: Catalog
+) -> None:
     response = admin_client.patch(catalog_url(system_catalog), {"name": "Otro"})
     assert_error(response, 409, "CATALOG_NOT_MANAGEABLE")
 
@@ -171,7 +180,7 @@ def test_system_catalog_cannot_be_modified(admin_client, system_catalog):
 # --- Valores ----------------------------------------------------------------------------
 
 
-def test_list_items(admin_client, manageable_catalog):
+def test_list_items(admin_client: APIClient, manageable_catalog: Catalog) -> None:
     body = admin_client.get(items_url(manageable_catalog)).json()
 
     assert [item["code"] for item in body["items"]] == [
@@ -182,7 +191,7 @@ def test_list_items(admin_client, manageable_catalog):
     assert body["items"][0]["catalog_code"] == "loan_purpose"
 
 
-def test_list_items_filters_by_parent(admin_client):
+def test_list_items_filters_by_parent(admin_client: APIClient) -> None:
     municipality = Catalog.objects.get(code="municipality")
     antioquia = CatalogItem.objects.get(catalog__code="department", code="05")
 
@@ -193,7 +202,9 @@ def test_list_items_filters_by_parent(admin_client):
     assert_error(response, 400, "VALIDATION_ERROR")
 
 
-def test_create_item_appends_to_the_end_and_bumps_version(admin_client, manageable_catalog):
+def test_create_item_appends_to_the_end_and_bumps_version(
+    admin_client: APIClient, manageable_catalog: Catalog
+) -> None:
     response = admin_client.post(
         items_url(manageable_catalog),
         {"code": "LOT_PURCHASE", "label": "Compra de lote", "metadata": {"icon": "lote"}},
@@ -208,7 +219,7 @@ def test_create_item_appends_to_the_end_and_bumps_version(admin_client, manageab
     assert manageable_catalog.version == 2
 
 
-def test_create_item_with_parent(admin_client):
+def test_create_item_with_parent(admin_client: APIClient) -> None:
     municipality = Catalog.objects.get(code="municipality")
     antioquia = CatalogItem.objects.get(catalog__code="department", code="05")
 
@@ -220,7 +231,9 @@ def test_create_item_with_parent(admin_client):
     assert response.json()["parent_id"] == str(antioquia.id)
 
 
-def test_create_item_rejects_unknown_parent(admin_client, manageable_catalog):
+def test_create_item_rejects_unknown_parent(
+    admin_client: APIClient, manageable_catalog: Catalog
+) -> None:
     response = admin_client.post(
         items_url(manageable_catalog),
         {"code": "X", "label": "X", "parent_id": str(uuid.uuid4())},
@@ -229,14 +242,16 @@ def test_create_item_rejects_unknown_parent(admin_client, manageable_catalog):
     assert body["details"][0]["field"] == "parent_id"
 
 
-def test_create_item_rejects_duplicate_code(admin_client, manageable_catalog):
+def test_create_item_rejects_duplicate_code(
+    admin_client: APIClient, manageable_catalog: Catalog
+) -> None:
     response = admin_client.post(
         items_url(manageable_catalog), {"code": "PURCHASE_NEW", "label": "Otra"}
     )
     assert_error(response, 409, "DUPLICATE_CODE")
 
 
-def test_same_item_code_is_allowed_in_another_catalog(admin_client):
+def test_same_item_code_is_allowed_in_another_catalog(admin_client: APIClient) -> None:
     other = Catalog.objects.create(code="custom", name="Personalizado")
     response = admin_client.post(items_url(other), {"code": "PURCHASE_NEW", "label": "Otra"})
     assert response.status_code == 201
@@ -252,16 +267,22 @@ def test_same_item_code_is_allowed_in_another_catalog(admin_client):
         {"code": "X"},
     ],
 )
-def test_create_item_validates_input(admin_client, manageable_catalog, payload):
+def test_create_item_validates_input(
+    admin_client: APIClient, manageable_catalog: Catalog, payload: dict[str, Any]
+) -> None:
     assert_error(admin_client.post(items_url(manageable_catalog), payload), 400, "VALIDATION_ERROR")
 
 
-def test_items_of_system_catalog_cannot_be_created(admin_client, system_catalog):
+def test_items_of_system_catalog_cannot_be_created(
+    admin_client: APIClient, system_catalog: Catalog
+) -> None:
     response = admin_client.post(items_url(system_catalog), {"code": "NEW_STATE", "label": "X"})
     assert_error(response, 409, "CATALOG_NOT_MANAGEABLE")
 
 
-def test_update_item_label_metadata_and_validity(admin_client, manageable_catalog):
+def test_update_item_label_metadata_and_validity(
+    admin_client: APIClient, manageable_catalog: Catalog
+) -> None:
     item = manageable_catalog.items.get(code="PURCHASE_USED")
 
     response = admin_client.patch(
@@ -277,12 +298,14 @@ def test_update_item_label_metadata_and_validity(admin_client, manageable_catalo
     assert body["code"] == "PURCHASE_USED"
 
 
-def test_item_code_cannot_be_renamed(admin_client, manageable_catalog):
+def test_item_code_cannot_be_renamed(admin_client: APIClient, manageable_catalog: Catalog) -> None:
     item = manageable_catalog.items.get(code="PURCHASE_USED")
     assert_error(admin_client.patch(item_url(item), {"code": "USED"}), 400, "VALIDATION_ERROR")
 
 
-def test_update_item_checks_validity_against_stored_values(admin_client, manageable_catalog):
+def test_update_item_checks_validity_against_stored_values(
+    admin_client: APIClient, manageable_catalog: Catalog
+) -> None:
     item = manageable_catalog.items.get(code="PURCHASE_USED")
     item.valid_from = "2027-01-01"
     item.save()
@@ -291,7 +314,7 @@ def test_update_item_checks_validity_against_stored_values(admin_client, managea
     assert_error(response, 400, "VALIDATION_ERROR")
 
 
-def test_deactivate_and_activate_item(admin_client, manageable_catalog):
+def test_deactivate_and_activate_item(admin_client: APIClient, manageable_catalog: Catalog) -> None:
     item = manageable_catalog.items.get(code="HOME_IMPROVEMENT")
 
     response = admin_client.post(f"{item_url(item)}/deactivate")
@@ -308,13 +331,15 @@ def test_deactivate_and_activate_item(admin_client, manageable_catalog):
     assert admin_client.post(f"{item_url(item)}/activate").json()["is_active"] is True
 
 
-def test_system_items_cannot_be_deactivated(admin_client, system_catalog):
+def test_system_items_cannot_be_deactivated(
+    admin_client: APIClient, system_catalog: Catalog
+) -> None:
     item = system_catalog.items.get(code="DRAFT")
     response = admin_client.post(f"{item_url(item)}/deactivate")
     assert_error(response, 409, "CATALOG_NOT_MANAGEABLE")
 
 
-def test_reorder_items(admin_client, manageable_catalog):
+def test_reorder_items(admin_client: APIClient, manageable_catalog: Catalog) -> None:
     items = {item.code: item for item in manageable_catalog.items.all()}
     order = [items["HOME_IMPROVEMENT"].id, items["PURCHASE_NEW"].id, items["PURCHASE_USED"].id]
 
@@ -331,7 +356,9 @@ def test_reorder_items(admin_client, manageable_catalog):
     assert [item["sort_order"] for item in response.json()] == [10, 20, 30]
 
 
-def test_reorder_requires_every_item_exactly_once(admin_client, manageable_catalog):
+def test_reorder_requires_every_item_exactly_once(
+    admin_client: APIClient, manageable_catalog: Catalog
+) -> None:
     item_ids = [str(item.id) for item in manageable_catalog.items.all()]
     url = f"{items_url(manageable_catalog)}/order"
 
@@ -346,7 +373,7 @@ def test_reorder_requires_every_item_exactly_once(admin_client, manageable_catal
     )
 
 
-def test_retrieve_item(admin_client, manageable_catalog):
+def test_retrieve_item(admin_client: APIClient, manageable_catalog: Catalog) -> None:
     item = manageable_catalog.items.get(code="PURCHASE_NEW")
     body = admin_client.get(item_url(item)).json()
     assert body["label"] == "Compra de vivienda nueva"

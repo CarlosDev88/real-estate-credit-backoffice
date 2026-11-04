@@ -1,8 +1,12 @@
+from collections.abc import Callable
+from typing import Any
+
 import pytest
 from django.conf import settings
+from rest_framework.test import APIClient
 
 from apps.identity.cookies import access_cookie_name, refresh_cookie_name
-from apps.identity.models import AuthSession
+from apps.identity.models import AuthSession, User
 from apps.identity.tokens import decode_access_token, hash_token
 from tests.helpers import (
     DEFAULT_PASSWORD,
@@ -16,7 +20,7 @@ from tests.helpers import (
 pytestmark = pytest.mark.django_db
 
 
-def test_login_returns_profile_and_sets_session_cookies(api_client, user):
+def test_login_returns_profile_and_sets_session_cookies(api_client: APIClient, user: User) -> None:
     response = login(api_client)
 
     assert response.status_code == 200
@@ -50,7 +54,7 @@ def test_login_returns_profile_and_sets_session_cookies(api_client, user):
     assert not csrf["httponly"]
 
 
-def test_login_stores_only_the_refresh_token_hash(api_client, user):
+def test_login_stores_only_the_refresh_token_hash(api_client: APIClient, user: User) -> None:
     response = login(api_client)
     raw_refresh = response.cookies[refresh_cookie_name()].value
 
@@ -64,7 +68,7 @@ def test_login_stores_only_the_refresh_token_hash(api_client, user):
     assert claims.user_id == user.id
 
 
-def test_login_records_ip_user_agent_and_last_login(api_client, user):
+def test_login_records_ip_user_agent_and_last_login(api_client: APIClient, user: User) -> None:
     api_client.post(
         LOGIN_URL,
         {"email": user.email, "password": DEFAULT_PASSWORD},
@@ -78,7 +82,7 @@ def test_login_records_ip_user_agent_and_last_login(api_client, user):
     assert user.last_login is not None
 
 
-def test_login_ignores_untrusted_x_forwarded_for(api_client, user):
+def test_login_ignores_untrusted_x_forwarded_for(api_client: APIClient, user: User) -> None:
     api_client.post(
         LOGIN_URL,
         {"email": user.email, "password": DEFAULT_PASSWORD},
@@ -88,12 +92,14 @@ def test_login_ignores_untrusted_x_forwarded_for(api_client, user):
     assert AuthSession.objects.get(user=user).ip_address == "203.0.113.10"
 
 
-def test_login_email_is_case_insensitive(api_client, user):
+def test_login_email_is_case_insensitive(api_client: APIClient, user: User) -> None:
     response = login(api_client, email="  ASESOR@Example.COM ")
     assert response.status_code == 200
 
 
-def test_wrong_password_and_unknown_email_get_the_same_error(api_client, user):
+def test_wrong_password_and_unknown_email_get_the_same_error(
+    api_client: APIClient, user: User
+) -> None:
     wrong_password = assert_error(
         login(api_client, password="otra-clave"), 401, "INVALID_CREDENTIALS"
     )
@@ -104,25 +110,29 @@ def test_wrong_password_and_unknown_email_get_the_same_error(api_client, user):
     assert not AuthSession.objects.exists()
 
 
-def test_inactive_user_cannot_login(api_client, make_user):
+def test_inactive_user_cannot_login(api_client: APIClient, make_user: Callable[..., User]) -> None:
     make_user(is_active=False)
     assert_error(login(api_client), 403, "USER_INACTIVE")
     assert not AuthSession.objects.exists()
 
 
-def test_inactive_user_with_wrong_password_does_not_reveal_status(api_client, make_user):
+def test_inactive_user_with_wrong_password_does_not_reveal_status(
+    api_client: APIClient, make_user: Callable[..., User]
+) -> None:
     make_user(is_active=False)
     assert_error(login(api_client, password="otra-clave"), 401, "INVALID_CREDENTIALS")
 
 
-def test_soft_deleted_user_cannot_login(api_client, make_user):
+def test_soft_deleted_user_cannot_login(
+    api_client: APIClient, make_user: Callable[..., User]
+) -> None:
     from django.utils import timezone
 
     make_user(deleted_at=timezone.now())
     assert_error(login(api_client), 401, "INVALID_CREDENTIALS")
 
 
-def test_login_rejects_unknown_fields(api_client, user):
+def test_login_rejects_unknown_fields(api_client: APIClient, user: User) -> None:
     response = api_client.post(
         LOGIN_URL,
         {"email": user.email, "password": DEFAULT_PASSWORD, "is_superuser": True},
@@ -133,17 +143,17 @@ def test_login_rejects_unknown_fields(api_client, user):
     ]
 
 
-def test_login_validates_required_fields(api_client, db):
+def test_login_validates_required_fields(api_client: APIClient, db: Any) -> None:
     body = assert_error(api_client.post(LOGIN_URL, {}), 400, "VALIDATION_ERROR")
     assert {detail["field"] for detail in body["details"]} == {"email", "password"}
 
 
-def test_login_rejects_malformed_json(api_client, db):
+def test_login_rejects_malformed_json(api_client: APIClient, db: Any) -> None:
     response = api_client.post(LOGIN_URL, "{no-json", content_type="application/json")
     assert_error(response, 400, "MALFORMED_REQUEST")
 
 
-def test_login_is_rate_limited_per_email_and_ip(api_client, user):
+def test_login_is_rate_limited_per_email_and_ip(api_client: APIClient, user: User) -> None:
     for _ in range(5):
         assert login(api_client, password="otra-clave").status_code == 401
 
@@ -155,16 +165,16 @@ def test_login_is_rate_limited_per_email_and_ip(api_client, user):
     assert login(api_client, email="otro@example.com").status_code == 401
 
 
-def test_login_works_with_a_stale_access_cookie(api_client, user):
+def test_login_works_with_a_stale_access_cookie(api_client: APIClient, user: User) -> None:
     api_client.cookies[access_cookie_name()] = "token-vencido-o-alterado"
     assert login(api_client).status_code == 200
 
 
-def test_login_requires_post(api_client, db):
+def test_login_requires_post(api_client: APIClient, db: Any) -> None:
     assert_error(api_client.get(LOGIN_URL), 405, "METHOD_NOT_ALLOWED")
 
 
-def test_me_returns_profile_permissions_and_scope(logged_client, user):
+def test_me_returns_profile_permissions_and_scope(logged_client: APIClient, user: User) -> None:
     response = logged_client.get(ME_URL)
 
     assert response.status_code == 200
@@ -179,7 +189,9 @@ def test_me_returns_profile_permissions_and_scope(logged_client, user):
     }
 
 
-def test_me_for_admin_is_not_limited_to_assigned_applications(api_client, make_user):
+def test_me_for_admin_is_not_limited_to_assigned_applications(
+    api_client: APIClient, make_user: Callable[..., User]
+) -> None:
     make_user(email="admin@example.com", role_code="ADMIN")
     login(api_client, email="admin@example.com")
 
@@ -188,7 +200,9 @@ def test_me_for_admin_is_not_limited_to_assigned_applications(api_client, make_u
     assert body["scope"]["assigned_applications_only"] is False
 
 
-def test_me_ignores_permissions_of_inactive_roles(api_client, make_user):
+def test_me_ignores_permissions_of_inactive_roles(
+    api_client: APIClient, make_user: Callable[..., User]
+) -> None:
     from apps.identity.models import Role
 
     make_user(permissions=["documents.review"])

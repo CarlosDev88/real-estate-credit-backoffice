@@ -1,6 +1,8 @@
 import re
 import uuid
+from collections.abc import Callable
 from datetime import date
+from typing import Any
 
 import pytest
 from django.core import mail
@@ -18,28 +20,28 @@ NEW_PASSWORD = "Clave-Nueva-Segura-2027"
 
 
 @pytest.fixture
-def admin_user(make_user) -> User:
+def admin_user(make_user: Callable[..., User]) -> User:
     return make_user(email="admin@example.com", role_code="ADMIN")
 
 
 @pytest.fixture
-def admin_client(admin_user) -> APIClient:
+def admin_client(admin_user: User) -> APIClient:
     client = APIClient()
     assert login(client, email="admin@example.com").status_code == 200
     return client
 
 
 @pytest.fixture
-def partner(db) -> Partner:
+def partner(db: Any) -> Partner:
     return Partner.objects.create(legal_name="Constructora Andina S.A.S.", tax_id="900123456-8")
 
 
-def user_url(user) -> str:
+def user_url(user: User | str) -> str:
     user_id = user if isinstance(user, str) else user.id
     return f"{USERS_URL}/{user_id}"
 
 
-def create(client, **payload):
+def create(client: APIClient, **payload: Any) -> Any:
     payload = {
         "email": "Laura@Example.com",
         "first_name": "Laura",
@@ -53,7 +55,7 @@ def create(client, **payload):
 
 
 def token_from_last_email() -> str:
-    match = re.search(r"\?token=([A-Za-z0-9_\-]+)", mail.outbox[-1].body)
+    match = re.search(r"\?token=([A-Za-z0-9_\-]+)", str(mail.outbox[-1].body))
     assert match
     return match.group(1)
 
@@ -61,7 +63,7 @@ def token_from_last_email() -> str:
 # --- Crear ------------------------------------------------------------------------------
 
 
-def test_create_user_is_pending_and_sends_invitation(admin_client):
+def test_create_user_is_pending_and_sends_invitation(admin_client: APIClient) -> None:
     response = create(admin_client)
 
     assert response.status_code == 201
@@ -80,7 +82,7 @@ def test_create_user_is_pending_and_sends_invitation(admin_client):
     assert mail.outbox[0].to == ["laura@example.com"]
 
 
-def test_pending_user_accepts_invitation_and_logs_in(admin_client):
+def test_pending_user_accepts_invitation_and_logs_in(admin_client: APIClient) -> None:
     create(admin_client)
     response = APIClient().post(
         "/api/v1/invitations/accept",
@@ -95,7 +97,7 @@ def test_pending_user_accepts_invitation_and_logs_in(admin_client):
     assert login(APIClient(), email="laura@example.com", password=NEW_PASSWORD).status_code == 200
 
 
-def test_create_user_without_invitation(admin_client):
+def test_create_user_without_invitation(admin_client: APIClient) -> None:
     body = create(admin_client, send_invitation=False).json()
     assert body["invitation"] is None
     assert mail.outbox == []
@@ -107,7 +109,7 @@ def test_create_user_without_invitation(admin_client):
     assert response.status_code == 201
 
 
-def test_create_partner_user_creates_membership(admin_client, partner):
+def test_create_partner_user_creates_membership(admin_client: APIClient, partner: Partner) -> None:
     body = create(
         admin_client, role_codes=["CONSTRUCTION_PARTNER"], partner_id=str(partner.id)
     ).json()
@@ -142,7 +144,9 @@ def test_create_partner_user_creates_membership(admin_client, partner):
         ({"partner_id": str(uuid.uuid4()), "role_codes": ["CONSTRUCTION_PARTNER"]}, "partner_id"),
     ],
 )
-def test_create_user_validates_input(admin_client, partner, payload, field):
+def test_create_user_validates_input(
+    admin_client: APIClient, partner: Partner, payload: dict[str, Any], field: str
+) -> None:
     if payload.get("partner_id") == "PARTNER":
         payload = {**payload, "partner_id": str(partner.id)}
     body = assert_error(create(admin_client, **payload), 400, "VALIDATION_ERROR")
@@ -150,12 +154,16 @@ def test_create_user_validates_input(admin_client, partner, payload, field):
     assert not User.objects.filter(email="laura@example.com").exists()
 
 
-def test_email_is_unique_regardless_of_case(admin_client, make_user):
+def test_email_is_unique_regardless_of_case(
+    admin_client: APIClient, make_user: Callable[..., User]
+) -> None:
     make_user(email="laura@example.com")
     assert_error(create(admin_client, email="LAURA@example.com"), 409, "EMAIL_ALREADY_REGISTERED")
 
 
-def test_cannot_create_partner_user_for_inactive_partner(admin_client, partner):
+def test_cannot_create_partner_user_for_inactive_partner(
+    admin_client: APIClient, partner: Partner
+) -> None:
     partner.status = "INACTIVE"
     partner.save()
     response = create(admin_client, role_codes=["CONSTRUCTION_PARTNER"], partner_id=str(partner.id))
@@ -166,14 +174,16 @@ def test_cannot_create_partner_user_for_inactive_partner(admin_client, partner):
 # --- Consultar y editar -----------------------------------------------------------------
 
 
-def test_list_users_with_filters(admin_client, make_user, admin_user):
+def test_list_users_with_filters(
+    admin_client: APIClient, make_user: Callable[..., User], admin_user: User
+) -> None:
     make_user(email="asesor@example.com", role_code="ADVISOR")
     inactive = make_user(email="inactivo@example.com", role_code="INDEPENDENT_BROKER")
     inactive.is_active = False
     inactive.save()
     create(admin_client, email="pendiente@example.com", send_invitation=False)
 
-    def emails(**params):
+    def emails(**params: Any) -> list[str]:
         items = admin_client.get(USERS_URL, {"ordering": "email", **params}).json()["items"]
         return [item["email"] for item in items]
 
@@ -191,7 +201,9 @@ def test_list_users_with_filters(admin_client, make_user, admin_user):
     assert_error(admin_client.get(USERS_URL, {"status": "X"}), 400, "VALIDATION_ERROR")
 
 
-def test_soft_deleted_users_are_hidden(admin_client, make_user):
+def test_soft_deleted_users_are_hidden(
+    admin_client: APIClient, make_user: Callable[..., User]
+) -> None:
     from django.utils import timezone
 
     user = make_user(email="borrado@example.com")
@@ -199,7 +211,7 @@ def test_soft_deleted_users_are_hidden(admin_client, make_user):
     assert_error(admin_client.get(user_url(user)), 404, "RESOURCE_NOT_FOUND")
 
 
-def test_user_detail_never_exposes_password(admin_client, admin_user):
+def test_user_detail_never_exposes_password(admin_client: APIClient, admin_user: User) -> None:
     body = admin_client.get(user_url(admin_user)).json()
     assert body["email"] == "admin@example.com"
     assert body["roles"] == ["ADMIN"]
@@ -208,7 +220,9 @@ def test_user_detail_never_exposes_password(admin_client, admin_user):
     assert not {"password", "password_hash"} & set(body)
 
 
-def test_update_user_name_and_phone(admin_client, make_user):
+def test_update_user_name_and_phone(
+    admin_client: APIClient, make_user: Callable[..., User]
+) -> None:
     user = make_user(email="asesor@example.com")
     response = admin_client.patch(
         user_url(user), {"first_name": "Andrés", "phone": "+57 1 234 5678"}
@@ -219,12 +233,14 @@ def test_update_user_name_and_phone(admin_client, make_user):
 
 
 @pytest.mark.parametrize("payload", [{"email": "otro@example.com"}, {"is_superuser": True}])
-def test_update_user_rejects_protected_fields(admin_client, make_user, payload):
+def test_update_user_rejects_protected_fields(
+    admin_client: APIClient, make_user: Callable[..., User], payload: dict[str, Any]
+) -> None:
     user = make_user(email="asesor@example.com")
     assert_error(admin_client.patch(user_url(user), payload), 400, "VALIDATION_ERROR")
 
 
-def test_users_require_permission(make_user):
+def test_users_require_permission(make_user: Callable[..., User]) -> None:
     make_user(email="asesor@example.com", role_code="ADVISOR")
     client = APIClient()
     login(client, email="asesor@example.com")
@@ -235,7 +251,9 @@ def test_users_require_permission(make_user):
 # --- Activar y desactivar ---------------------------------------------------------------
 
 
-def test_deactivate_revokes_sessions_and_pending_invitations(admin_client, make_user):
+def test_deactivate_revokes_sessions_and_pending_invitations(
+    admin_client: APIClient, make_user: Callable[..., User]
+) -> None:
     user = make_user(email="asesor@example.com", role_code="ADVISOR")
     user_client = APIClient()
     login(user_client, email="asesor@example.com")
@@ -254,25 +272,27 @@ def test_deactivate_revokes_sessions_and_pending_invitations(admin_client, make_
     assert InternalInvitation.objects.get(email="pendiente@example.com").status == "REVOKED"
 
 
-def test_activate_user(admin_client, make_user):
+def test_activate_user(admin_client: APIClient, make_user: Callable[..., User]) -> None:
     user = make_user(email="asesor@example.com", is_active=False)
     response = admin_client.post(f"{user_url(user)}/activate")
     assert response.json()["status"] == "ACTIVE"
     assert login(APIClient(), email="asesor@example.com").status_code == 200
 
 
-def test_admin_cannot_deactivate_self(admin_client, admin_user):
+def test_admin_cannot_deactivate_self(admin_client: APIClient, admin_user: User) -> None:
     response = admin_client.post(f"{user_url(admin_user)}/deactivate", {"reason": "Prueba"})
     assert_error(response, 409, "CANNOT_MODIFY_OWN_ACCOUNT")
 
 
-def test_status_change_emits_signal(admin_client, make_user):
+def test_status_change_emits_signal(
+    admin_client: APIClient, make_user: Callable[..., User]
+) -> None:
     from apps.identity.users import user_status_changed
 
     user = make_user(email="asesor@example.com")
-    received = []
+    received: list[dict[str, Any]] = []
 
-    def handler(**kwargs):
+    def handler(**kwargs: Any) -> None:
         received.append(kwargs)
 
     user_status_changed.connect(handler)
@@ -289,7 +309,9 @@ def test_status_change_emits_signal(admin_client, make_user):
 # --- Roles ------------------------------------------------------------------------------
 
 
-def test_replace_roles(admin_client, make_user, admin_user):
+def test_replace_roles(
+    admin_client: APIClient, make_user: Callable[..., User], admin_user: User
+) -> None:
     user = make_user(email="asesor@example.com", role_code="ADVISOR")
 
     response = admin_client.put(
@@ -304,8 +326,8 @@ def test_replace_roles(admin_client, make_user, admin_user):
 
 
 def test_assigning_partner_role_requires_partner_and_creates_membership(
-    admin_client, make_user, partner
-):
+    admin_client: APIClient, make_user: Callable[..., User], partner: Partner
+) -> None:
     user = make_user(email="asesor@example.com", role_code="ADVISOR")
     url = f"{user_url(user)}/roles"
 
@@ -321,7 +343,9 @@ def test_assigning_partner_role_requires_partner_and_creates_membership(
     assert response.json()["partner"]["id"] == str(partner.id)
 
 
-def test_removing_partner_role_ends_membership(admin_client, make_user, partner):
+def test_removing_partner_role_ends_membership(
+    admin_client: APIClient, make_user: Callable[..., User], partner: Partner
+) -> None:
     user = make_user(email="obra@example.com", role_code="CONSTRUCTION_PARTNER")
     PartnerMembership.objects.create(partner=partner, user=user, started_at=date(2026, 1, 1))
 
@@ -334,8 +358,8 @@ def test_removing_partner_role_ends_membership(admin_client, make_user, partner)
 
 
 def test_partner_user_cannot_be_moved_to_another_partner_via_roles(
-    admin_client, make_user, partner
-):
+    admin_client: APIClient, make_user: Callable[..., User], partner: Partner
+) -> None:
     other = Partner.objects.create(legal_name="Otra", tax_id="901234567-7")
     user = make_user(email="obra@example.com", role_code="CONSTRUCTION_PARTNER")
     PartnerMembership.objects.create(partner=partner, user=user, started_at=date(2026, 1, 1))
@@ -347,7 +371,7 @@ def test_partner_user_cannot_be_moved_to_another_partner_via_roles(
     assert_error(response, 400, "VALIDATION_ERROR")
 
 
-def test_admin_cannot_remove_own_admin_role(admin_client, admin_user):
+def test_admin_cannot_remove_own_admin_role(admin_client: APIClient, admin_user: User) -> None:
     response = admin_client.put(f"{user_url(admin_user)}/roles", {"role_codes": ["ADVISOR"]})
     assert_error(response, 409, "CANNOT_MODIFY_OWN_ACCOUNT")
     # Agregar roles sin perder ADMIN sí está permitido.
@@ -357,7 +381,7 @@ def test_admin_cannot_remove_own_admin_role(admin_client, admin_user):
     assert response.status_code == 200
 
 
-def test_list_roles_with_permissions(admin_client):
+def test_list_roles_with_permissions(admin_client: APIClient) -> None:
     body = admin_client.get("/api/v1/roles").json()
 
     roles = {role["code"]: role for role in body["items"]}

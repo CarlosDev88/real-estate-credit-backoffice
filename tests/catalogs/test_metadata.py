@@ -1,7 +1,9 @@
 from datetime import timedelta
+from typing import Any
 
 import pytest
 from django.utils import timezone
+from rest_framework.test import APIClient
 
 from apps.catalogs.models import Catalog, CatalogItem
 from tests.helpers import assert_error, role_permissions
@@ -11,11 +13,11 @@ pytestmark = pytest.mark.django_db
 BOOTSTRAP_URL = "/api/v1/metadata/bootstrap"
 
 
-def test_bootstrap_requires_authentication(api_client, db):
+def test_bootstrap_requires_authentication(api_client: APIClient, db: Any) -> None:
     assert_error(api_client.get(BOOTSTRAP_URL), 401, "NOT_AUTHENTICATED")
 
 
-def test_bootstrap_returns_catalogs_permissions_and_features(advisor_client):
+def test_bootstrap_returns_catalogs_permissions_and_features(advisor_client: APIClient) -> None:
     response = advisor_client.get(BOOTSTRAP_URL)
 
     assert response.status_code == 200
@@ -49,14 +51,14 @@ def test_bootstrap_returns_catalogs_permissions_and_features(advisor_client):
     assert len(body["catalogs"]["application_status"]) == 17
 
 
-def test_bootstrap_includes_admin_permissions(admin_client):
+def test_bootstrap_includes_admin_permissions(admin_client: APIClient) -> None:
     body = admin_client.get(BOOTSTRAP_URL).json()
     assert body["actor"] == "ADMIN"
     assert "catalogs.read" in body["permissions"]
     assert "workflow.publish" in body["permissions"]
 
 
-def test_bootstrap_hides_inactive_and_out_of_validity_items(advisor_client):
+def test_bootstrap_hides_inactive_and_out_of_validity_items(advisor_client: APIClient) -> None:
     today = timezone.localdate()
     purposes = CatalogItem.objects.filter(catalog__code="loan_purpose")
     purposes.filter(code="PURCHASE_NEW").update(is_active=False)
@@ -67,7 +69,7 @@ def test_bootstrap_hides_inactive_and_out_of_validity_items(advisor_client):
     assert body["catalogs"]["loan_purpose"] == []
 
 
-def test_bootstrap_supports_conditional_requests(advisor_client):
+def test_bootstrap_supports_conditional_requests(advisor_client: APIClient) -> None:
     first = advisor_client.get(BOOTSTRAP_URL)
     etag = first["ETag"]
     assert first["Cache-Control"] == "private, no-cache"
@@ -85,11 +87,13 @@ def test_bootstrap_supports_conditional_requests(advisor_client):
     assert changed["ETag"] != etag
 
 
-def test_bootstrap_etag_depends_on_the_user_permissions(advisor_client, admin_client):
+def test_bootstrap_etag_depends_on_the_user_permissions(
+    advisor_client: APIClient, admin_client: APIClient
+) -> None:
     assert advisor_client.get(BOOTSTRAP_URL)["ETag"] != admin_client.get(BOOTSTRAP_URL)["ETag"]
 
 
-def test_metadata_catalog_filters_by_parent_code(advisor_client):
+def test_metadata_catalog_filters_by_parent_code(advisor_client: APIClient) -> None:
     response = advisor_client.get("/api/v1/metadata/catalogs/municipality", {"parent_code": "05"})
 
     assert response.status_code == 200
@@ -99,19 +103,19 @@ def test_metadata_catalog_filters_by_parent_code(advisor_client):
     assert body["items"][0]["parent_code"] == "05"
 
 
-def test_metadata_catalog_lists_all_capitals(advisor_client):
+def test_metadata_catalog_lists_all_capitals(advisor_client: APIClient) -> None:
     body = advisor_client.get("/api/v1/metadata/catalogs/municipality").json()
     codes = {item["code"] for item in body["items"]}
     assert len(codes) == 32
     assert "11001" in codes
 
 
-def test_metadata_catalog_unknown_code_returns_404(advisor_client):
+def test_metadata_catalog_unknown_code_returns_404(advisor_client: APIClient) -> None:
     response = advisor_client.get("/api/v1/metadata/catalogs/no_existe")
     assert_error(response, 404, "RESOURCE_NOT_FOUND")
 
 
-def test_metadata_catalog_supports_conditional_requests(advisor_client):
+def test_metadata_catalog_supports_conditional_requests(advisor_client: APIClient) -> None:
     url = "/api/v1/metadata/catalogs/loan_purpose"
     etag = advisor_client.get(url)["ETag"]
     assert advisor_client.get(url, HTTP_IF_NONE_MATCH=f"W/{etag}").status_code == 304

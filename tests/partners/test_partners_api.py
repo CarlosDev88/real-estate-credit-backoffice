@@ -1,9 +1,14 @@
 import uuid
+from collections.abc import Callable
 from datetime import date
+from typing import Any
 
 import pytest
+from rest_framework.test import APIClient
 
-from apps.partners.models import Partner, PartnerMembership
+from apps.catalogs.models import CatalogItem
+from apps.identity.models import User
+from apps.partners.models import Partner, PartnerMembership, Project
 from tests.helpers import ME_URL, assert_error
 from tests.partners.conftest import client_for
 
@@ -29,7 +34,7 @@ VALID_PARTNER = {
 # --- Crear y editar ---------------------------------------------------------------------
 
 
-def test_admin_creates_partner_with_normalized_data(admin_client):
+def test_admin_creates_partner_with_normalized_data(admin_client: APIClient) -> None:
     response = admin_client.post(PARTNERS_URL, VALID_PARTNER)
 
     assert response.status_code == 201
@@ -40,7 +45,7 @@ def test_admin_creates_partner_with_normalized_data(admin_client):
     assert body["status"] == "ACTIVE"
 
 
-def test_partner_tax_id_is_unique(admin_client, partner):
+def test_partner_tax_id_is_unique(admin_client: APIClient, partner: Partner) -> None:
     response = admin_client.post(PARTNERS_URL, {**VALID_PARTNER, "tax_id": "900.123.456-8"})
     assert_error(response, 409, "DUPLICATE_TAX_ID")
 
@@ -54,25 +59,25 @@ def test_partner_tax_id_is_unique(admin_client, partner):
         ("contact_email", "no-es-correo"),
     ],
 )
-def test_partner_validates_input(admin_client, field, value):
+def test_partner_validates_input(admin_client: APIClient, field: str, value: str) -> None:
     body = assert_error(
         admin_client.post(PARTNERS_URL, {**VALID_PARTNER, field: value}), 400, "VALIDATION_ERROR"
     )
     assert body["details"][0]["field"] == field
 
 
-def test_only_admin_creates_partners(advisor_client, partner_client):
+def test_only_admin_creates_partners(advisor_client: APIClient, partner_client: APIClient) -> None:
     for client in (advisor_client, partner_client):
         assert_error(client.post(PARTNERS_URL, VALID_PARTNER), 403, "PERMISSION_DENIED")
 
 
-def test_update_partner_contact(admin_client, partner):
+def test_update_partner_contact(admin_client: APIClient, partner: Partner) -> None:
     response = admin_client.patch(partner_url(partner), {"contact_name": "Nuevo contacto"})
     assert response.status_code == 200
     assert response.json()["contact_name"] == "Nuevo contacto"
 
 
-def test_partner_tax_id_cannot_be_changed(admin_client, partner):
+def test_partner_tax_id_cannot_be_changed(admin_client: APIClient, partner: Partner) -> None:
     response = admin_client.patch(partner_url(partner), {"tax_id": "901234567-7"})
     assert_error(response, 400, "VALIDATION_ERROR")
 
@@ -80,13 +85,17 @@ def test_partner_tax_id_cannot_be_changed(admin_client, partner):
 # --- Consultar --------------------------------------------------------------------------
 
 
-def test_admin_and_advisor_list_all_partners(admin_client, advisor_client, partner, other_partner):
+def test_admin_and_advisor_list_all_partners(
+    admin_client: APIClient, advisor_client: APIClient, partner: Partner, other_partner: Partner
+) -> None:
     for client in (admin_client, advisor_client):
         body = client.get(PARTNERS_URL).json()
         assert body["total"] == 2
 
 
-def test_partner_user_only_sees_own_partner(partner_client, partner, other_partner):
+def test_partner_user_only_sees_own_partner(
+    partner_client: APIClient, partner: Partner, other_partner: Partner
+) -> None:
     body = partner_client.get(PARTNERS_URL).json()
     assert [item["id"] for item in body["items"]] == [str(partner.id)]
 
@@ -95,11 +104,16 @@ def test_partner_user_only_sees_own_partner(partner_client, partner, other_partn
     assert_error(partner_client.get(partner_url(other_partner)), 404, "RESOURCE_NOT_FOUND")
 
 
-def test_broker_cannot_read_partners(broker_client, partner):
+def test_broker_cannot_read_partners(broker_client: APIClient, partner: Partner) -> None:
     assert_error(broker_client.get(PARTNERS_URL), 403, "PERMISSION_DENIED")
 
 
-def test_partner_detail_includes_metrics(admin_client, partner, partner_user, make_project):
+def test_partner_detail_includes_metrics(
+    admin_client: APIClient,
+    partner: Partner,
+    partner_user: User,
+    make_project: Callable[..., Project],
+) -> None:
     make_project(partner)
     make_project(partner, name="Torre Norte", status="ACTIVE")
 
@@ -113,7 +127,13 @@ def test_partner_detail_includes_metrics(admin_client, partner, partner_user, ma
     }
 
 
-def test_list_partners_filters(admin_client, partner, other_partner, make_project, medellin):
+def test_list_partners_filters(
+    admin_client: APIClient,
+    partner: Partner,
+    other_partner: Partner,
+    make_project: Callable[..., Project],
+    medellin: CatalogItem,
+) -> None:
     other_partner.status = "INACTIVE"
     other_partner.save()
     make_project(partner, city_item=medellin)
@@ -125,7 +145,7 @@ def test_list_partners_filters(admin_client, partner, other_partner, make_projec
     assert_error(admin_client.get(PARTNERS_URL, {"status": "X"}), 400, "VALIDATION_ERROR")
 
 
-def test_soft_deleted_partners_are_hidden(admin_client, partner):
+def test_soft_deleted_partners_are_hidden(admin_client: APIClient, partner: Partner) -> None:
     from django.utils import timezone
 
     Partner.objects.filter(pk=partner.pk).update(deleted_at=timezone.now())
@@ -136,7 +156,7 @@ def test_soft_deleted_partners_are_hidden(admin_client, partner):
 # --- Activar y desactivar ---------------------------------------------------------------
 
 
-def test_deactivate_requires_reason(admin_client, partner):
+def test_deactivate_requires_reason(admin_client: APIClient, partner: Partner) -> None:
     url = f"{partner_url(partner)}/deactivate"
     assert_error(admin_client.post(url, {}), 400, "VALIDATION_ERROR")
 
@@ -148,12 +168,12 @@ def test_deactivate_requires_reason(admin_client, partner):
     assert response.json()["status"] == "ACTIVE"
 
 
-def test_status_change_emits_signal(admin_client, partner):
+def test_status_change_emits_signal(admin_client: APIClient, partner: Partner) -> None:
     from apps.partners.signals import partner_status_changed
 
-    received = []
+    received: list[dict[str, Any]] = []
 
-    def handler(**kwargs):
+    def handler(**kwargs: Any) -> None:
         received.append(kwargs)
 
     partner_status_changed.connect(handler)
@@ -168,7 +188,7 @@ def test_status_change_emits_signal(admin_client, partner):
     assert received[0]["reason"] == "Convenio terminado"
 
 
-def test_only_admin_changes_partner_status(advisor_client, partner):
+def test_only_admin_changes_partner_status(advisor_client: APIClient, partner: Partner) -> None:
     response = advisor_client.post(f"{partner_url(partner)}/deactivate", {"reason": "x"})
     assert_error(response, 403, "PERMISSION_DENIED")
 
@@ -180,7 +200,9 @@ def members_url(partner: Partner) -> str:
     return f"{partner_url(partner)}/members"
 
 
-def test_admin_adds_partner_user_as_member(admin_client, partner, make_user):
+def test_admin_adds_partner_user_as_member(
+    admin_client: APIClient, partner: Partner, make_user: Callable[..., User]
+) -> None:
     user = make_user(email="nuevo@example.com", role_code="CONSTRUCTION_PARTNER")
 
     response = admin_client.post(
@@ -195,22 +217,28 @@ def test_admin_adds_partner_user_as_member(admin_client, partner, make_user):
     assert body["ended_at"] is None
 
 
-def test_member_must_have_partner_role(admin_client, partner, advisor_user):
+def test_member_must_have_partner_role(
+    admin_client: APIClient, partner: Partner, advisor_user: User
+) -> None:
     response = admin_client.post(members_url(partner), {"user_id": str(advisor_user.id)})
     assert_error(response, 422, "USER_NOT_ELIGIBLE")
 
 
-def test_member_must_exist(admin_client, partner):
+def test_member_must_exist(admin_client: APIClient, partner: Partner) -> None:
     response = admin_client.post(members_url(partner), {"user_id": str(uuid.uuid4())})
     assert_error(response, 400, "VALIDATION_ERROR")
 
 
-def test_user_cannot_belong_to_two_active_partners(admin_client, partner_user, other_partner):
+def test_user_cannot_belong_to_two_active_partners(
+    admin_client: APIClient, partner_user: User, other_partner: Partner
+) -> None:
     response = admin_client.post(members_url(other_partner), {"user_id": str(partner_user.id)})
     assert_error(response, 409, "USER_ALREADY_IN_PARTNER")
 
 
-def test_cannot_add_members_to_inactive_partner(admin_client, partner, make_user):
+def test_cannot_add_members_to_inactive_partner(
+    admin_client: APIClient, partner: Partner, make_user: Callable[..., User]
+) -> None:
     partner.status = "INACTIVE"
     partner.save()
     user = make_user(email="nuevo@example.com", role_code="CONSTRUCTION_PARTNER")
@@ -219,8 +247,8 @@ def test_cannot_add_members_to_inactive_partner(admin_client, partner, make_user
 
 
 def test_ending_membership_keeps_history_and_frees_the_user(
-    admin_client, partner_user, partner, other_partner
-):
+    admin_client: APIClient, partner_user: User, partner: Partner, other_partner: Partner
+) -> None:
     membership = PartnerMembership.objects.get(user=partner_user)
     url = f"/api/v1/partner-memberships/{membership.id}"
 
@@ -234,7 +262,9 @@ def test_ending_membership_keeps_history_and_frees_the_user(
     assert response.status_code == 201
 
 
-def test_ended_membership_cannot_be_reactivated(admin_client, partner_user):
+def test_ended_membership_cannot_be_reactivated(
+    admin_client: APIClient, partner_user: User
+) -> None:
     membership = PartnerMembership.objects.get(user=partner_user)
     url = f"/api/v1/partner-memberships/{membership.id}"
     admin_client.delete(url)
@@ -242,7 +272,7 @@ def test_ended_membership_cannot_be_reactivated(admin_client, partner_user):
     assert_error(admin_client.patch(url, {"status": "ACTIVE"}), 409, "MEMBERSHIP_ENDED")
 
 
-def test_update_membership(admin_client, partner_user):
+def test_update_membership(admin_client: APIClient, partner_user: User) -> None:
     membership = PartnerMembership.objects.get(user=partner_user)
     url = f"/api/v1/partner-memberships/{membership.id}"
 
@@ -251,7 +281,9 @@ def test_update_membership(admin_client, partner_user):
     assert body["status"] == "INACTIVE"
 
 
-def test_partner_user_only_sees_own_membership(partner_client, partner, partner_user, make_user):
+def test_partner_user_only_sees_own_membership(
+    partner_client: APIClient, partner: Partner, partner_user: User, make_user: Callable[..., User]
+) -> None:
     colleague = make_user(email="colega@example.com", role_code="CONSTRUCTION_PARTNER")
     colleague_membership = PartnerMembership.objects.create(
         partner=partner, user=colleague, started_at=date(2026, 1, 1)
@@ -263,19 +295,23 @@ def test_partner_user_only_sees_own_membership(partner_client, partner, partner_
     assert_error(response, 404, "RESOURCE_NOT_FOUND")
 
 
-def test_partner_user_cannot_manage_members(partner_client, partner, make_user):
+def test_partner_user_cannot_manage_members(
+    partner_client: APIClient, partner: Partner, make_user: Callable[..., User]
+) -> None:
     user = make_user(email="nuevo@example.com", role_code="CONSTRUCTION_PARTNER")
     response = partner_client.post(members_url(partner), {"user_id": str(user.id)})
     assert_error(response, 403, "PERMISSION_DENIED")
 
 
-def test_me_returns_partner_id_for_partner_users(partner_client, partner):
+def test_me_returns_partner_id_for_partner_users(
+    partner_client: APIClient, partner: Partner
+) -> None:
     body = partner_client.get(ME_URL).json()
     assert body["role"] == "CONSTRUCTION_PARTNER"
     assert body["scope"]["partner_id"] == str(partner.id)
 
 
-def test_me_partner_id_is_null_after_membership_ends(partner_user, partner):
+def test_me_partner_id_is_null_after_membership_ends(partner_user: User, partner: Partner) -> None:
     PartnerMembership.objects.filter(user=partner_user).update(
         status="INACTIVE", ended_at=date.today()
     )
