@@ -53,7 +53,9 @@ def _ensure_email_can_be_invited(email: str, partner: Partner | None) -> None:
         # debe servir para tomar el control de una cuenta existente.
         if user.deleted_at is not None or user.has_usable_password():
             raise UserAlreadyExists()
-        if partner is not None and get_active_membership(user) is not None:
+        # Un usuario creado con `/users` ya puede ser miembro de esta misma constructora.
+        membership = get_active_membership(user) if partner is not None else None
+        if partner is not None and membership is not None and membership.partner_id != partner.pk:
             raise UserAlreadyInPartner()
 
     pending = InternalInvitation.objects.filter(
@@ -187,7 +189,11 @@ def accept_invitation(
             user=user, role=invitation.role, defaults={"assigned_by": invitation.invited_by}
         )
         if invitation.partner is not None:
-            add_member(invitation.partner, user=user, job_title="", started_at=None)
+            membership = get_active_membership(user)
+            if membership is None:
+                add_member(invitation.partner, user=user, job_title="", started_at=None)
+            elif membership.partner_id != invitation.partner_id:
+                raise UserAlreadyInPartner()
 
         invitation.consumed_at = timezone.now()
         invitation.save(update_fields=["consumed_at", "updated_at"])

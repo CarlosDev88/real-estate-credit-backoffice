@@ -1,7 +1,8 @@
 import pytest
 from rest_framework.exceptions import ValidationError
 
-from apps.partners.validators import nit_check_digit, normalize_nit, validate_e164_phone
+from apps.partners.validators import nit_check_digit, normalize_nit
+from config.validators import validate_e164_phone
 
 
 @pytest.mark.parametrize(

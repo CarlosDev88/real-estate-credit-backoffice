@@ -163,6 +163,22 @@ Frontend integration rules:
 - On a `401 SESSION_EXPIRED`, call `/auth/refresh` once and retry. Serialize refresh calls (one at a time across tabs): two concurrent refreshes with the same token look like token theft and close the session.
 - Revoking a session or deactivating a user cuts access immediately: every request checks that the JWT session is still active.
 
+## Users and Roles
+
+| Method | Route | Permission |
+| --- | --- | --- |
+| `GET`, `POST` | `/api/v1/users` | `users.read`, `users.create`. Filters: `role`, `status` (`PENDING`, `ACTIVE`, `INACTIVE`), `search`. |
+| `GET`, `PATCH` | `/api/v1/users/{id}` | `users.read`, `users.update` (name and phone; the email cannot change). |
+| `POST` | `/api/v1/users/{id}/activate` (optional reason), `/deactivate` (reason required) | `users.manage_status` |
+| `PUT` | `/api/v1/users/{id}/roles` | `roles.assign`. `{role_codes, partner_id}` replaces every role. |
+| `GET` | `/api/v1/roles` | `roles.read`. Roles with their permissions. |
+
+- `POST /users` takes `{email, first_name, last_name, phone, role_codes, partner_id, send_invitation}`. The user is `PENDING` (no password) until they accept the invitation, which is sent right away unless `send_invitation` is `false`.
+- `CONSTRUCTION_PARTNER` cannot be combined with other roles and requires a partner: creating the user or assigning that role with `partner_id` creates the membership; removing the role ends it.
+- Deactivating a user revokes their sessions and pending invitations immediately.
+- Admins cannot deactivate themselves or remove their own `ADMIN` role.
+- Buyers are not internal users and are never created here.
+
 ## Internal Invitations
 
 Internal users join through a single-use invitation sent by email; they set their own password.
@@ -282,6 +298,6 @@ Build steps 1 to 4 are complete:
 1. `identity` core: internal users, roles and permissions, sessions with rotating refresh tokens, password reset, and `/api/v1/auth/*`.
 2. `catalogs`: catalogs and items, workflow transitions, and the metadata endpoints.
 3. `partners`: construction partners, memberships, and projects with their approval flow.
-4. `identity` invitations: internal invitations, including partner member invitations.
+4. `identity` invitations and user administration: internal invitations, partner member invitations, `/users`, and `/roles`.
 
 Remaining modules follow the documented build order, starting with the `crm` core (clients and opportunities).

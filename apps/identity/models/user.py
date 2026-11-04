@@ -2,9 +2,19 @@ import uuid
 from typing import Any, cast
 
 from django.contrib.auth.base_user import BaseUserManager
+from django.contrib.auth.hashers import UNUSABLE_PASSWORD_PREFIX
 from django.contrib.auth.models import AbstractUser
 from django.db import models
+from django.db.models import Q
 from django.db.models.functions import Lower
+
+
+class UserStatus(models.TextChoices):
+    """Estado derivado: no hay columna `status` en `users`."""
+
+    PENDING = "PENDING", "Pendiente de definir contraseña"
+    ACTIVE = "ACTIVE", "Activo"
+    INACTIVE = "INACTIVE", "Inactivo"
 
 
 class UserManager(BaseUserManager["User"]):
@@ -81,3 +91,21 @@ class User(AbstractUser):
     @property
     def can_authenticate(self) -> bool:
         return self.is_active and self.deleted_at is None
+
+    @property
+    def status(self) -> str:
+        if not self.is_active:
+            return UserStatus.INACTIVE
+        if not self.has_usable_password():
+            return UserStatus.PENDING
+        return UserStatus.ACTIVE
+
+
+def user_status_filter(status: str) -> Q:
+    """Filtro de base de datos equivalente a ``User.status``."""
+    unusable = Q(password__startswith=UNUSABLE_PASSWORD_PREFIX) | Q(password="")
+    return {
+        UserStatus.INACTIVE: Q(is_active=False),
+        UserStatus.PENDING: Q(is_active=True) & unusable,
+        UserStatus.ACTIVE: Q(is_active=True) & ~unusable,
+    }[UserStatus(status)]

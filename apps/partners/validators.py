@@ -5,7 +5,6 @@ from rest_framework import serializers
 # Pesos de la DIAN para calcular el dígito de verificación, de derecha a izquierda.
 _NIT_WEIGHTS = (3, 7, 13, 17, 19, 23, 29, 37, 41, 43, 47, 53, 59, 67, 71)
 _NIT_PATTERN = re.compile(r"^(\d{6,15})-(\d)$")
-_E164_PATTERN = re.compile(r"^\+[1-9]\d{6,14}$")
 
 
 def nit_check_digit(number: str) -> int:
@@ -34,12 +33,3 @@ def normalize_nit(value: str) -> str:
     if nit_check_digit(number) != int(check_digit):
         raise serializers.ValidationError("El dígito de verificación del NIT no es correcto.")
     return f"{number}-{check_digit}"
-
-
-def validate_e164_phone(value: str) -> str:
-    compact = re.sub(r"[\s()-]", "", value or "")
-    if compact and not _E164_PATTERN.match(compact):
-        raise serializers.ValidationError(
-            "Usa el formato internacional E.164, por ejemplo +573001234567."
-        )
-    return compact

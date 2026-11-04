@@ -75,3 +75,15 @@ class UserAlreadyExists(ApiError):
     status_code = status.HTTP_409_CONFLICT
     error_code = "USER_ALREADY_EXISTS"
     default_detail = "Ya existe un usuario activo con ese correo; asígnale el rol directamente."
+
+
+class EmailAlreadyRegistered(ApiError):
+    status_code = status.HTTP_409_CONFLICT
+    error_code = "EMAIL_ALREADY_REGISTERED"
+    default_detail = "Ya existe un usuario con ese correo."
+
+
+class CannotModifyOwnAccount(ApiError):
+    status_code = status.HTTP_409_CONFLICT
+    error_code = "CANNOT_MODIFY_OWN_ACCOUNT"
+    default_detail = "No puedes desactivarte ni quitarte el rol de administrador a ti mismo."

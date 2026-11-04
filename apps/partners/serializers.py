@@ -5,8 +5,9 @@ from rest_framework import serializers
 from apps.catalogs.fields import CatalogItemCodeField
 from apps.identity.models import User
 from apps.partners.models import Partner, PartnerMembership, PartnerStatus, Project
-from apps.partners.validators import normalize_nit, validate_e164_phone
+from apps.partners.validators import normalize_nit
 from config.serializers import StrictSerializer
+from config.validators import validate_e164_phone
 
 REASON_MAX_LENGTH = 1000
 
