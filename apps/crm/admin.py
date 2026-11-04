@@ -1,4 +1,5 @@
 from django.contrib import admin
+from django.http import HttpRequest
 
 from apps.crm.models import Client, ClientAddress, Opportunity, OpportunityAssignment
 
@@ -25,7 +26,7 @@ class OpportunityAssignmentInline(admin.TabularInline):
     readonly_fields = ["advisor", "assigned_by", "reason", "created_at", "ended_at"]
     can_delete = False
 
-    def has_add_permission(self, request, obj=None):  # type: ignore[no-untyped-def]
+    def has_add_permission(self, request: HttpRequest, obj: Opportunity | None = None) -> bool:
         return False
 
 
