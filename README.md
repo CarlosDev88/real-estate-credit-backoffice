@@ -10,7 +10,7 @@ The API is implemented as a modular monolith with Django REST Framework and Post
 - PostgreSQL 16.
 - Docker Compose for the local development environment.
 - OpenAPI 3.1 and Swagger UI through `drf-spectacular`.
-- Redis and Celery prepared for asynchronous work; they do not start by default.
+- Redis for shared cache and rate limiting (always on); Celery prepared for asynchronous work (opt-in).
 - Pytest, Ruff, and MyPy for testing and code quality.
 
 ## Data Flow and Database Domains
@@ -90,6 +90,7 @@ Default services:
 | --- | --- | --- |
 | Django backend | http://localhost:8000 | API and documentation. |
 | PostgreSQL | `localhost:5433` | Local development database. |
+| Redis | internal only | Shared cache used by authentication rate limits. |
 
 Useful endpoints:
 
@@ -125,10 +126,47 @@ docker compose exec -T backend mypy config apps
 docker compose exec -T backend pytest
 ```
 
-To start Redis and the Celery worker when asynchronous features are being built:
+Tests use `config.settings.test` (forced through `--ds` in `pytest.ini`): in-memory cache, a fast password hasher, and an isolated test database.
+
+To start the Celery worker when asynchronous features are being built:
 
 ```powershell
 docker compose --profile async up -d
+```
+
+## Internal Authentication
+
+Internal users (admin, advisors, brokers, and partner users) authenticate with email and password. The API never returns tokens in the body; it sets cookies:
+
+| Cookie | Content | Lifetime |
+| --- | --- | --- |
+| `__Host-app_access` | Signed JWT (HS256) with `iss`, `aud`, `exp`, `nbf`, `jti`, and the session id (`sid`). | 15 minutes |
+| `__Host-app_refresh` | Opaque, single-use, rotating refresh token. Only its SHA-256 hash is stored in `auth_sessions`. | 8 hours from login (rotation does not extend it) |
+| `app_csrf` | CSRF token, readable by the frontend. | Rotated on every login |
+
+In local development (`AUTH_COOKIE_SECURE=false`, plain HTTP) the cookie names drop the `__Host-` prefix, because browsers reject it without `Secure`.
+
+| Method | Route | Notes |
+| --- | --- | --- |
+| `POST` | `/api/v1/auth/login` | 5 attempts per email + IP every 15 minutes. |
+| `POST` | `/api/v1/auth/refresh` | Rotates the refresh token. Reusing a rotated token revokes the whole session chain. |
+| `POST` | `/api/v1/auth/logout` | `204`; revokes the current session. Idempotent. |
+| `GET` | `/api/v1/auth/me` | Profile, role, permissions, and scope. Source of truth for the frontend. |
+| `POST` | `/api/v1/auth/password-reset-requests` | Always `202`, whether or not the email exists. 3 per email + IP per hour. |
+| `POST` | `/api/v1/auth/password-resets/confirm` | Single-use token valid for 30 minutes; revokes every session. |
+| `POST` | `/api/v1/auth/change-password` | Requires the current password; revokes the other sessions. |
+
+Frontend integration rules:
+
+- Send requests with `credentials: "include"`.
+- On every `POST`, `PUT`, `PATCH`, or `DELETE`, send the `X-CSRFToken` header with the value of the `app_csrf` cookie.
+- On a `401 SESSION_EXPIRED`, call `/auth/refresh` once and retry. Serialize refresh calls (one at a time across tabs): two concurrent refreshes with the same token look like token theft and close the session.
+- Revoking a session or deactivating a user cuts access immediately: every request checks that the JWT session is still active.
+
+Every response includes `X-Request-ID` (an incoming value is kept when it is safe). Errors share one format:
+
+```json
+{"code": "INVALID_CREDENTIALS", "message": "...", "details": [], "request_id": "..."}
 ```
 
 ## Initial Structure
@@ -136,8 +174,9 @@ docker compose --profile async up -d
 ```text
 backend/
 ├── apps/                 # Django applications organized by domain
-│   └── identity/         # Internal users, roles, and permissions
-├── config/               # Settings, URLs, health endpoints, and OpenAPI
+│   └── identity/         # Internal users, roles, permissions, sessions, and auth API
+├── config/               # Settings, URLs, error format, request id, health, and OpenAPI
+├── tests/                # Pytest suite
 ├── Dockerfile
 ├── docker-compose.yml
 ├── requirements.txt
@@ -147,6 +186,8 @@ backend/
 ## Key Conventions
 
 - Functional endpoints use the `/api/v1` prefix.
+- Every endpoint requires an authenticated session unless it explicitly declares `AllowAny`.
+- Write serializers reject undeclared fields (`config.serializers.StrictSerializer`).
 - Models use UUID primary keys.
 - COP amounts are stored as integers, never as `float` values.
 - Buyers do not have a permanent user account or password; they use magic links and temporary sessions.
@@ -155,4 +196,4 @@ backend/
 
 ## Current Status
 
-The technical foundation is operational: Docker, Django, PostgreSQL, OpenAPI, and the initial `identity` module with internal user, role, and permission models. Remaining modules will follow the documented build order.
+Build step 1 (identity core) is complete: internal users, roles and permissions, sessions with rotating refresh tokens, password reset, and the `/api/v1/auth/*` endpoints, with tests. Remaining modules will follow the documented build order, starting with `catalogs`.

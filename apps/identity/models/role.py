@@ -4,6 +4,15 @@ from django.conf import settings
 from django.db import models
 
 
+class RoleCode(models.TextChoices):
+    """Roles internos definidos en la sección 3 de la especificación de la API."""
+
+    ADMIN = "ADMIN", "Administrador"
+    ADVISOR = "ADVISOR", "Asesor"
+    INDEPENDENT_BROKER = "INDEPENDENT_BROKER", "Broker independiente"
+    CONSTRUCTION_PARTNER = "CONSTRUCTION_PARTNER", "Usuario de constructora"
+
+
 class Role(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
 

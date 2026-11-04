@@ -34,12 +34,14 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     networks:
       - mvp_credit_network
 
+  # Redis arranca siempre: lo usan los límites de consumo de la autenticación.
   redis:
     image: redis:7-alpine
-    profiles: ["async"]
     command: redis-server --appendonly yes
     volumes:
       - mvp_credit_redis_data:/data
