@@ -117,15 +117,37 @@ class MembershipSerializer(serializers.ModelSerializer):
 
 
 class MembershipCreateSerializer(StrictSerializer):
-    user_id = serializers.UUIDField()
+    """Agrega un usuario existente (`user_id`) o invita a uno nuevo (`email`).
+
+    Con `email` se crea una invitación de rol CONSTRUCTION_PARTNER; la membresía se
+    crea cuando la persona acepta. `job_title` y `started_at` solo aplican con
+    `user_id` (la invitación no los guarda).
+    """
+
+    user_id = serializers.UUIDField(required=False, allow_null=True, default=None)
+    email = serializers.EmailField(max_length=254, required=False, allow_null=True, default=None)
     job_title = serializers.CharField(max_length=120, required=False, allow_blank=True, default="")
     started_at = serializers.DateField(required=False, allow_null=True, default=None)
 
-    def validate_user_id(self, value: Any) -> User:
+    def validate_user_id(self, value: Any) -> User | None:
+        if value is None:
+            return None
         user = User.objects.filter(pk=value, deleted_at__isnull=True).first()
         if user is None:
             raise serializers.ValidationError("El usuario no existe.")
         return user
+
+    def validate(self, attrs: dict[str, Any]) -> dict[str, Any]:
+        has_user, has_email = attrs["user_id"] is not None, attrs["email"] is not None
+        if has_user == has_email:
+            raise serializers.ValidationError(
+                {"user_id": ["Envía `user_id` para un usuario existente o `email` para invitar."]}
+            )
+        if has_email and (attrs["job_title"] or attrs["started_at"]):
+            raise serializers.ValidationError(
+                {"job_title": ["El cargo y la fecha de inicio solo aplican con `user_id`."]}
+            )
+        return attrs
 
 
 class MembershipUpdateSerializer(StrictSerializer):

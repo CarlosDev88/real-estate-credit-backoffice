@@ -159,6 +159,7 @@ AUTH_REFRESH_TOKEN_LIFETIME = timedelta(hours=env.int("AUTH_REFRESH_TOKEN_HOURS"
 AUTH_PASSWORD_RESET_TOKEN_LIFETIME = timedelta(
     minutes=env.int("AUTH_PASSWORD_RESET_TOKEN_MINUTES", default=30)
 )
+AUTH_INVITATION_LIFETIME = timedelta(hours=env.int("AUTH_INVITATION_HOURS", default=72))
 # En producción siempre True (HTTPS); habilita el prefijo `__Host-` en las cookies.
 AUTH_COOKIE_SECURE = env.bool("AUTH_COOKIE_SECURE", default=True)
 AUTH_COOKIE_SAMESITE = "Lax"
@@ -169,11 +170,16 @@ AUTH_RATE_LIMITS = {
     "password_reset_request": "3/1h",
     "password_reset_confirm": "10/15m",
     "change_password": "5/15m",
+    "invitation_accept": "10/15m",
 }
 
 # Página del frontend que recibe `?token=` para definir la nueva contraseña.
 PASSWORD_RESET_URL = env(
     "PASSWORD_RESET_URL", default="http://localhost:3000/restablecer-contrasena"
+)
+# Página del frontend que recibe `?token=` para aceptar una invitación interna.
+INVITATION_ACCEPT_URL = env(
+    "INVITATION_ACCEPT_URL", default="http://localhost:3000/aceptar-invitacion"
 )
 DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="no-responder@localhost")
 

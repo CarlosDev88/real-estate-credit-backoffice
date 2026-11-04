@@ -19,8 +19,10 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 
 from apps.catalogs.workflow import ProjectStatus
-from apps.identity.models import User
+from apps.identity import invitations
+from apps.identity.models import Role, RoleCode, User
 from apps.identity.permissions import HasPermissionCode
+from apps.identity.serializers import InvitationSerializer
 from apps.partners import services
 from apps.partners.models import Partner, PartnerMembership, PartnerStatus, Project
 from apps.partners.serializers import (
@@ -245,11 +247,19 @@ class PartnerMemberListView(PermissionCodeView):
     @extend_schema(
         tags=[PARTNERS_TAG],
         operation_id="partners_members_create",
-        summary="Agregar un usuario existente a la constructora",
+        summary="Agregar un usuario existente o invitar a uno nuevo",
+        description=(
+            "Con `user_id` crea la membresía y responde `201`. Con `email` crea una "
+            "invitación de rol `CONSTRUCTION_PARTNER` y responde `202`; la membresía se "
+            "crea cuando la persona acepta la invitación."
+        ),
         request=MembershipCreateSerializer,
         responses={
             201: MembershipSerializer,
-            409: _error("USER_ALREADY_IN_PARTNER"),
+            202: InvitationSerializer,
+            409: _error(
+                "USER_ALREADY_IN_PARTNER, USER_ALREADY_EXISTS o INVITATION_ALREADY_PENDING"
+            ),
             422: _error("PARTNER_NOT_ACTIVE o USER_NOT_ELIGIBLE"),
             **NOT_FOUND,
             **COMMON_ERRORS,
@@ -259,6 +269,14 @@ class PartnerMemberListView(PermissionCodeView):
         partner = get_object_or_404(services.partners_visible_to(self.actor), pk=partner_id)
         serializer = MembershipCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+        if serializer.validated_data["email"]:
+            invitation = invitations.create_invitation(
+                email=serializer.validated_data["email"],
+                role=Role.objects.get(code=RoleCode.CONSTRUCTION_PARTNER),
+                partner=partner,
+                invited_by=self.actor,
+            )
+            return Response(InvitationSerializer(invitation).data, status=status.HTTP_202_ACCEPTED)
         membership = services.add_member(
             partner,
             user=serializer.validated_data["user_id"],

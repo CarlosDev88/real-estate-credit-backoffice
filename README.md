@@ -163,6 +163,24 @@ Frontend integration rules:
 - On a `401 SESSION_EXPIRED`, call `/auth/refresh` once and retry. Serialize refresh calls (one at a time across tabs): two concurrent refreshes with the same token look like token theft and close the session.
 - Revoking a session or deactivating a user cuts access immediately: every request checks that the JWT session is still active.
 
+## Internal Invitations
+
+Internal users join through a single-use invitation sent by email; they set their own password.
+
+| Method | Route | Permission |
+| --- | --- | --- |
+| `GET` | `/api/v1/invitations` | `invitations.read`. Filters: `email`, `role`, `status` (`PENDING`, `ACCEPTED`, `REVOKED`, `EXPIRED`), `partner_id`. |
+| `POST` | `/api/v1/invitations` | `invitations.create`. `{email, role, partner_id}`; `partner_id` is required only for `CONSTRUCTION_PARTNER`. |
+| `POST` | `/api/v1/invitations/{id}/resend` | `invitations.create`. Revokes the old token and sends a new invitation. |
+| `DELETE` | `/api/v1/invitations/{id}` | `invitations.revoke` |
+| `POST` | `/api/v1/invitations/accept` | Public, 10 attempts per IP every 15 minutes. `{token, password, password_confirmation, first_name, last_name}`. |
+| `POST` | `/api/v1/partners/{id}/members` with `email` | `partner_members.create`. Invites a new partner user; the membership is created on acceptance. |
+
+- The invitation lasts 72 hours (`AUTH_INVITATION_HOURS`) and only its SHA-256 hash is stored.
+- Accepting creates the user, or links an existing user that never had a password (names are then optional), assigns the role, and creates the partner membership when applicable.
+- An email that already belongs to an account with a password cannot be invited or accepted, so an invitation can never take over an existing account. Only one pending invitation per email is allowed.
+- Accepting does not log the user in; the frontend then calls `POST /auth/login`.
+
 ## Catalogs and Workflow
 
 The frontend never hard-codes business lists: it reads them from the API.
@@ -259,10 +277,11 @@ backend/
 
 ## Current Status
 
-Build steps 1 to 3 are complete:
+Build steps 1 to 4 are complete:
 
 1. `identity` core: internal users, roles and permissions, sessions with rotating refresh tokens, password reset, and `/api/v1/auth/*`.
 2. `catalogs`: catalogs and items, workflow transitions, and the metadata endpoints.
 3. `partners`: construction partners, memberships, and projects with their approval flow.
+4. `identity` invitations: internal invitations, including partner member invitations.
 
-Remaining modules follow the documented build order, starting with internal invitations in `identity`.
+Remaining modules follow the documented build order, starting with the `crm` core (clients and opportunities).

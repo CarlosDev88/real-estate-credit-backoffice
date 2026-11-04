@@ -4,6 +4,7 @@ from django.http import HttpRequest
 
 from apps.identity.models import (
     AuthSession,
+    InternalInvitation,
     PasswordResetToken,
     Permission,
     Role,
@@ -93,4 +94,12 @@ class AuthSessionAdmin(ReadOnlyAdmin):
 class PasswordResetTokenAdmin(ReadOnlyAdmin):
     list_display = ["user", "created_at", "expires_at", "consumed_at", "requested_ip"]
     search_fields = ["user__email"]
+    exclude = ["token_hash"]
+
+
+@admin.register(InternalInvitation)
+class InternalInvitationAdmin(ReadOnlyAdmin):
+    list_display = ["email", "role", "partner", "status", "expires_at", "created_at"]
+    list_filter = ["role"]
+    search_fields = ["email"]
     exclude = ["token_hash"]

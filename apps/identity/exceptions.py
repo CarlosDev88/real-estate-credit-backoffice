@@ -51,3 +51,27 @@ class InvalidCurrentPassword(ApiError):
     status_code = status.HTTP_400_BAD_REQUEST
     error_code = "INVALID_CURRENT_PASSWORD"
     default_detail = "La contraseña actual no es correcta."
+
+
+class InvitationInvalid(ApiError):
+    status_code = status.HTTP_400_BAD_REQUEST
+    error_code = "INVITATION_INVALID"
+    default_detail = "La invitación no es válida, ya se usó, fue revocada o venció."
+
+
+class InvitationNotPending(ApiError):
+    status_code = status.HTTP_409_CONFLICT
+    error_code = "INVITATION_NOT_PENDING"
+    default_detail = "La invitación ya fue aceptada o revocada."
+
+
+class InvitationAlreadyPending(ApiError):
+    status_code = status.HTTP_409_CONFLICT
+    error_code = "INVITATION_ALREADY_PENDING"
+    default_detail = "Ya hay una invitación pendiente para ese correo. Reenvíala en su lugar."
+
+
+class UserAlreadyExists(ApiError):
+    status_code = status.HTTP_409_CONFLICT
+    error_code = "USER_ALREADY_EXISTS"
+    default_detail = "Ya existe un usuario activo con ese correo; asígnale el rol directamente."

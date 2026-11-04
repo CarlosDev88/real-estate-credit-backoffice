@@ -72,3 +72,9 @@ class ChangePasswordRateThrottle(AuthRateThrottle):
         if user_id is None:
             return None
         return self.cache_format % {"scope": self.scope, "ident": str(user_id)}
+
+
+class InvitationAcceptRateThrottle(PasswordResetConfirmRateThrottle):
+    """Limita por IP los intentos de adivinar tokens de invitación."""
+
+    scope = "invitation_accept"

@@ -309,7 +309,7 @@ def revoke_user_sessions(user: User, *, except_session_id: uuid.UUID | None = No
 # --------------------------------------------------------------------------------------
 
 
-def _validate_new_password(password: str, user: User, field_name: str) -> None:
+def validate_new_password(password: str, user: User, field_name: str) -> None:
     try:
         validate_password(password, user=user)
     except DjangoValidationError as exc:
@@ -362,7 +362,7 @@ def confirm_password_reset(*, token: str, new_password: str) -> User:
             raise PasswordResetTokenInvalid()
 
         user = reset_token.user
-        _validate_new_password(new_password, user, "new_password")
+        validate_new_password(new_password, user, "new_password")
 
         user.set_password(new_password)
         user.save(update_fields=["password", "updated_at"])
@@ -384,7 +384,7 @@ def change_password(
         raise ValidationError(
             {"new_password": ["La nueva contraseña debe ser distinta de la actual."]}
         )
-    _validate_new_password(new_password, user, "new_password")
+    validate_new_password(new_password, user, "new_password")
 
     with transaction.atomic():
         user.set_password(new_password)
