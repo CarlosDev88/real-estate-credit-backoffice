@@ -51,12 +51,6 @@ class ProjectNotEditable(ApiError):
     default_detail = "El proyecto no se puede editar en su estado actual."
 
 
-class InvalidStateTransition(ApiError):
-    status_code = status.HTTP_409_CONFLICT
-    error_code = "INVALID_STATE_TRANSITION"
-    default_detail = "La acción no está permitida en el estado actual del proyecto."
-
-
 class ProjectNotActive(ApiError):
     status_code = status.HTTP_422_UNPROCESSABLE_ENTITY
     error_code = "PROJECT_NOT_ACTIVE"

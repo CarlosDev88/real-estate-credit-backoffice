@@ -34,6 +34,13 @@ def validate_metadata(value: Any) -> None:
         raise serializers.ValidationError(f"Máximo {METADATA_MAX_BYTES} bytes.")
 
 
+class CatalogItemRefSerializer(serializers.Serializer):
+    """Referencia compacta a un valor de catálogo, para respuestas de otros módulos."""
+
+    code = serializers.CharField()
+    label = serializers.CharField()  # type: ignore[assignment]
+
+
 # --- Catálogos ------------------------------------------------------------------------
 
 

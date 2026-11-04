@@ -23,14 +23,13 @@ from django.utils import timezone
 from rest_framework.exceptions import PermissionDenied, ValidationError
 
 from apps.catalogs.models import WorkflowTransition
-from apps.catalogs.services import available_transitions
+from apps.catalogs.services import available_transitions, resolve_transition
 from apps.catalogs.workflow import FlowType, ProjectStatus
 from apps.identity.models import RoleCode, User
 from apps.identity.services import get_access_profile
 from apps.partners.exceptions import (
     DuplicateProjectName,
     DuplicateTaxId,
-    InvalidStateTransition,
     MembershipEnded,
     OutOfScope,
     PartnerNotActive,
@@ -325,17 +324,9 @@ def transition_project(
         locked = Project.objects.select_for_update().select_related("partner").get(pk=project.pk)
         from_status = locked.status
 
-        transition = _transitions_for(user, locked).filter(to_status=to_status).first()
-        if transition is None:
-            configured = WorkflowTransition.objects.filter(
-                flow_type=FlowType.PROJECT,
-                from_status=from_status,
-                to_status=to_status,
-                is_active=True,
-            ).exists()
-            if configured:
-                raise PermissionDenied()
-            raise InvalidStateTransition(f"No se puede pasar de {from_status} a {to_status}.")
+        transition = resolve_transition(
+            user, flow_type=FlowType.PROJECT, from_status=from_status, to_status=to_status
+        )
 
         if not get_scope(user).sees_everything and not locked.partner.is_active:
             raise PartnerNotActive()

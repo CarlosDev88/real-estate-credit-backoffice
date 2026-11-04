@@ -28,6 +28,8 @@ class ErrorDetailSerializer(serializers.Serializer):
     field = serializers.CharField(allow_null=True)
     code = serializers.CharField()
     message = serializers.CharField()
+    # Opcional: recurso relacionado, por ejemplo el cliente que ya usa ese documento.
+    resource_id = serializers.UUIDField(required=False)
 
 
 class ErrorSerializer(serializers.Serializer):

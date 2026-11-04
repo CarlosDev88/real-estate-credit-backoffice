@@ -15,6 +15,12 @@ class DuplicateCode(ApiError):
     default_detail = "Ya existe un registro con ese código."
 
 
+class InvalidStateTransition(ApiError):
+    status_code = status.HTTP_409_CONFLICT
+    error_code = "INVALID_STATE_TRANSITION"
+    default_detail = "La acción no está permitida en el estado actual."
+
+
 class TransitionNotEditable(ApiError):
     status_code = status.HTTP_409_CONFLICT
     error_code = "TRANSITION_NOT_EDITABLE"
