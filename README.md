@@ -163,6 +163,34 @@ Frontend integration rules:
 - On a `401 SESSION_EXPIRED`, call `/auth/refresh` once and retry. Serialize refresh calls (one at a time across tabs): two concurrent refreshes with the same token look like token theft and close the session.
 - Revoking a session or deactivating a user cuts access immediately: every request checks that the JWT session is still active.
 
+## Catalogs and Workflow
+
+The frontend never hard-codes business lists: it reads them from the API.
+
+| Method | Route | Permission |
+| --- | --- | --- |
+| `GET` | `/api/v1/metadata/bootstrap` | Any internal user. Small catalogs, permissions, features, and `metadata_version`. Supports `If-None-Match` (`304`). |
+| `GET` | `/api/v1/metadata/catalogs/{code}` | Any internal user. Active, currently valid items; filter with `parent_code` or `parent_id`. Supports `If-None-Match`. |
+| `GET`, `POST` | `/api/v1/catalogs` | `catalogs.read`, `catalogs.create` |
+| `GET`, `PATCH` | `/api/v1/catalogs/{id}` | `catalogs.read`, `catalogs.update` |
+| `GET`, `POST` | `/api/v1/catalogs/{id}/items` | `catalogs.read`, `catalogs.create` |
+| `PUT` | `/api/v1/catalogs/{id}/items/order` | `catalogs.update` |
+| `GET`, `PATCH` | `/api/v1/catalog-items/{id}` | `catalogs.read`, `catalogs.update` |
+| `POST` | `/api/v1/catalog-items/{id}/activate`, `/deactivate` | `catalogs.update` |
+| `GET`, `POST` | `/api/v1/workflow-transitions` | `workflow.read`, `workflow.create` |
+| `GET`, `PATCH` | `/api/v1/workflow-transitions/{id}` | `workflow.read`, `workflow.update` (inactive only) |
+| `POST` | `/api/v1/workflow-transitions/{id}/activate`, `/deactivate` | `workflow.publish` |
+
+Rules:
+
+- Codes are stable: they cannot be renamed or deleted. Items are deactivated instead, so historical records keep their label.
+- Every change to a catalog or its items increases `catalogs.version`; the metadata endpoints use it for caching.
+- Catalogs with `is_manageable = false` (structural status labels and bank response types) are read-only through the API.
+- Structural statuses for each flow are backend constants (`apps/catalogs/workflow.py`). A transition can only connect statuses of its own flow and can only use a guard implemented by the backend. Transitions are created inactive.
+- Other modules reference catalog items with `CatalogItemCodeField(catalog_code="...")`, which rejects codes from another catalog and inactive or expired items.
+
+Seed data (`catalogs/0002`) only contains values defined in the specifications plus Colombian standards: DANE departments and their capitals, and identity document types. The full DIVIPOLA municipality list must be imported separately. Every other catalog is created by the module that uses it.
+
 Every response includes `X-Request-ID` (an incoming value is kept when it is safe). Errors share one format:
 
 ```json
@@ -174,7 +202,8 @@ Every response includes `X-Request-ID` (an incoming value is kept when it is saf
 ```text
 backend/
 ├── apps/                 # Django applications organized by domain
-│   └── identity/         # Internal users, roles, permissions, sessions, and auth API
+│   ├── identity/         # Internal users, roles, permissions, sessions, and auth API
+│   └── catalogs/         # Catalogs, workflow transitions, and frontend metadata
 ├── config/               # Settings, URLs, error format, request id, health, and OpenAPI
 ├── tests/                # Pytest suite
 ├── Dockerfile
@@ -187,6 +216,8 @@ backend/
 
 - Functional endpoints use the `/api/v1` prefix.
 - Every endpoint requires an authenticated session unless it explicitly declares `AllowAny`.
+- Permission checks use `apps.identity.permissions.HasPermissionCode` with a per-method `required_permissions` map; undeclared methods are denied.
+- Lists use the paginated format `{items, page, page_size, total, next, previous}`; `ordering` and filters only accept allow-listed fields.
 - Write serializers reject undeclared fields (`config.serializers.StrictSerializer`).
 - Models use UUID primary keys.
 - COP amounts are stored as integers, never as `float` values.
@@ -196,4 +227,9 @@ backend/
 
 ## Current Status
 
-Build step 1 (identity core) is complete: internal users, roles and permissions, sessions with rotating refresh tokens, password reset, and the `/api/v1/auth/*` endpoints, with tests. Remaining modules will follow the documented build order, starting with `catalogs`.
+Build steps 1 and 2 are complete:
+
+1. `identity` core: internal users, roles and permissions, sessions with rotating refresh tokens, password reset, and `/api/v1/auth/*`.
+2. `catalogs`: catalogs and items, workflow transitions, and the metadata endpoints.
+
+Remaining modules follow the documented build order, starting with `partners`.

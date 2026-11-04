@@ -23,6 +23,7 @@ from config.views import health, ready
 
 api_v1_patterns = [
     path("auth/", include("apps.identity.urls")),
+    path("", include("apps.catalogs.urls")),
 ]
 
 urlpatterns = [

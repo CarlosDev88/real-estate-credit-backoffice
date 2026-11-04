@@ -24,6 +24,7 @@ INSTALLED_APPS = [
     "rest_framework",
     "drf_spectacular",
     "apps.identity",
+    "apps.catalogs",
 ]
 
 MIDDLEWARE = [
@@ -169,6 +170,13 @@ PASSWORD_RESET_URL = env(
     "PASSWORD_RESET_URL", default="http://localhost:3000/restablecer-contrasena"
 )
 DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="no-responder@localhost")
+
+# --- Metadatos para el frontend (sección 9) ------------------------------------------
+# Catálogos grandes que no viajan en /metadata/bootstrap; se piden con
+# /metadata/catalogs/{code}.
+METADATA_ON_DEMAND_CATALOGS = ["municipality"]
+# Configuración pública que el frontend usa para mostrar u ocultar funciones.
+PUBLIC_FEATURES = {"manual_filing": True, "buyer_magic_link": True}
 
 CELERY_BROKER_URL = env("REDIS_URL", default="redis://redis:6379/0")
 CELERY_RESULT_BACKEND = CELERY_BROKER_URL
