@@ -191,6 +191,37 @@ Rules:
 
 Seed data (`catalogs/0002`) only contains values defined in the specifications plus Colombian standards: DANE departments and their capitals, and identity document types. The full DIVIPOLA municipality list must be imported separately. Every other catalog is created by the module that uses it.
 
+## Partners and Projects
+
+| Method | Route | Permission |
+| --- | --- | --- |
+| `GET`, `POST` | `/api/v1/partners` | `partners.read`, `partners.create` |
+| `GET`, `PATCH` | `/api/v1/partners/{id}` | `partners.read`, `partners.update` |
+| `POST` | `/api/v1/partners/{id}/activate`, `/deactivate` (reason required) | `partners.manage_status` |
+| `GET`, `POST` | `/api/v1/partners/{id}/members` | `partner_members.read`, `partner_members.create` |
+| `GET`, `PATCH`, `DELETE` | `/api/v1/partner-memberships/{id}` | `partner_members.read`, `.update`, `.remove` |
+| `GET`, `POST` | `/api/v1/projects` | `projects.read`, `projects.create` |
+| `GET`, `PATCH` | `/api/v1/projects/{id}` | `projects.read`, `projects.update` |
+| `POST` | `/api/v1/projects/{id}/submit` | `projects.submit` |
+| `POST` | `/api/v1/projects/{id}/activate`, `/reject` (reason required) | `projects.approve` |
+| `POST` | `/api/v1/projects/{id}/archive` (reason required) | `projects.archive` |
+
+Access scope, computed on the server for every request:
+
+| Role | Partners | Memberships | Projects |
+| --- | --- | --- | --- |
+| `ADMIN` | All | All | All |
+| `ADVISOR` | All (read) | — | All; approves and corrects |
+| `CONSTRUCTION_PARTNER` | Own partner only | Own membership only | Own partner; edits only in `DRAFT` |
+| `INDEPENDENT_BROKER` | — | — | `ACTIVE` projects of active partners (read) |
+
+- A partner user's partner comes from their active membership; a `partner_id` sent by the client is ignored. Out-of-scope resources return `404`.
+- A user has at most one active membership. Ending a membership keeps it as history.
+- The partner `tax_id` is a NIT with a validated check digit, stored as `900123456-8`.
+- Project status changes use the `PROJECT` workflow transitions seeded in `partners/0002`: `DRAFT → PENDING_REVIEW → ACTIVE → ARCHIVED`, `PENDING_REVIEW → DRAFT` (reject), and `DRAFT → ACTIVE` for advisors. The project detail returns `available_actions` for the current user.
+- Status changes emit `project_status_changed` and `partner_status_changed` signals with the reason, ready for the activity and audit modules.
+- `GET /projects/{id}/summary` will be added with the CRM and applications modules, when there is data to count.
+
 Every response includes `X-Request-ID` (an incoming value is kept when it is safe). Errors share one format:
 
 ```json
@@ -203,7 +234,8 @@ Every response includes `X-Request-ID` (an incoming value is kept when it is saf
 backend/
 ├── apps/                 # Django applications organized by domain
 │   ├── identity/         # Internal users, roles, permissions, sessions, and auth API
-│   └── catalogs/         # Catalogs, workflow transitions, and frontend metadata
+│   ├── catalogs/         # Catalogs, workflow transitions, and frontend metadata
+│   └── partners/         # Construction partners, memberships, and projects
 ├── config/               # Settings, URLs, error format, request id, health, and OpenAPI
 ├── tests/                # Pytest suite
 ├── Dockerfile
@@ -227,9 +259,10 @@ backend/
 
 ## Current Status
 
-Build steps 1 and 2 are complete:
+Build steps 1 to 3 are complete:
 
 1. `identity` core: internal users, roles and permissions, sessions with rotating refresh tokens, password reset, and `/api/v1/auth/*`.
 2. `catalogs`: catalogs and items, workflow transitions, and the metadata endpoints.
+3. `partners`: construction partners, memberships, and projects with their approval flow.
 
-Remaining modules follow the documented build order, starting with `partners`.
+Remaining modules follow the documented build order, starting with internal invitations in `identity`.

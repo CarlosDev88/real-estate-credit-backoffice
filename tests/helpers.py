@@ -43,6 +43,17 @@ def assert_error(response: Any, status_code: int, code: str) -> dict[str, Any]:
     return body
 
 
+def role_permissions(role_code: str) -> list[str]:
+    """Permisos sembrados de un rol, ordenados como los devuelve la API."""
+    from apps.identity.models import Permission
+
+    return sorted(
+        Permission.objects.filter(role_assignments__role__code=role_code).values_list(
+            "code", flat=True
+        )
+    )
+
+
 def cookie_was_cleared(response: Any, name: str) -> bool:
     cookie = response.cookies.get(name)
     return cookie is not None and cookie.value == "" and str(cookie["max-age"]) == "0"

@@ -9,6 +9,7 @@ import uuid
 from dataclasses import dataclass
 from datetime import datetime
 
+from django.apps import apps
 from django.conf import settings
 from django.contrib.auth import user_logged_in, user_logged_out, user_login_failed
 from django.contrib.auth.password_validation import validate_password
@@ -105,6 +106,23 @@ def _user_agent_summary(request: HttpRequest) -> str:
 # --------------------------------------------------------------------------------------
 
 
+def _active_partner_id(user: User) -> uuid.UUID | None:
+    """Constructora de la membresía activa del usuario.
+
+    `identity` no importa `partners` (la dependencia va en sentido contrario), por eso
+    el modelo se resuelve por nombre.
+    """
+    if not apps.is_installed("apps.partners"):
+        return None
+    membership_model = apps.get_model("partners", "PartnerMembership")
+    membership = (
+        membership_model.objects.filter(user=user, status="ACTIVE", ended_at__isnull=True)
+        .only("partner_id")
+        .first()
+    )
+    return membership.partner_id if membership else None
+
+
 def get_access_profile(user: User) -> AccessProfile:
     assignments = (
         UserRole.objects.filter(user=user, role__is_active=True)
@@ -130,8 +148,7 @@ def get_access_profile(user: User) -> AccessProfile:
         roles=roles,
         permissions=permissions,
         assigned_applications_only=assigned_only,
-        # Se completará con `partner_memberships` cuando exista el módulo partners.
-        partner_id=None,
+        partner_id=_active_partner_id(user) if RoleCode.CONSTRUCTION_PARTNER in roles else None,
     )
 
 

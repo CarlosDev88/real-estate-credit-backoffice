@@ -25,6 +25,7 @@ INSTALLED_APPS = [
     "drf_spectacular",
     "apps.identity",
     "apps.catalogs",
+    "apps.partners",
 ]
 
 MIDDLEWARE = [
@@ -114,6 +115,11 @@ SPECTACULAR_SETTINGS = {
     "SERVE_INCLUDE_SCHEMA": False,
     "SERVE_AUTHENTICATION": [],
     "COMPONENT_SPLIT_REQUEST": True,
+    # Nombres estables para enums que se repiten en varios recursos (campo `status`).
+    "ENUM_NAME_OVERRIDES": {
+        "PartnerStatusEnum": "apps.partners.models.partner.PartnerStatus",
+        "ProjectStatusEnum": "apps.catalogs.workflow.ProjectStatus",
+    },
 }
 
 CORS_ALLOWED_ORIGINS = env.list("CORS_ALLOWED_ORIGINS", default=["http://localhost:3000"])

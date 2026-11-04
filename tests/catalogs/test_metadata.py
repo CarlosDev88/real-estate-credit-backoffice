@@ -4,7 +4,7 @@ import pytest
 from django.utils import timezone
 
 from apps.catalogs.models import Catalog, CatalogItem
-from tests.helpers import assert_error
+from tests.helpers import assert_error, role_permissions
 
 pytestmark = pytest.mark.django_db
 
@@ -21,7 +21,7 @@ def test_bootstrap_returns_catalogs_permissions_and_features(advisor_client):
     assert response.status_code == 200
     body = response.json()
     assert body["actor"] == "ADVISOR"
-    assert body["permissions"] == []
+    assert body["permissions"] == role_permissions("ADVISOR")
     assert body["features"] == {"manual_filing": True, "buyer_magic_link": True}
     assert body["on_demand_catalogs"] == ["municipality"]
     assert body["metadata_version"] == sum(

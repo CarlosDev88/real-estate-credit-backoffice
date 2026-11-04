@@ -4,7 +4,14 @@ from django.conf import settings
 from apps.identity.cookies import access_cookie_name, refresh_cookie_name
 from apps.identity.models import AuthSession
 from apps.identity.tokens import decode_access_token, hash_token
-from tests.helpers import DEFAULT_PASSWORD, LOGIN_URL, ME_URL, assert_error, login
+from tests.helpers import (
+    DEFAULT_PASSWORD,
+    LOGIN_URL,
+    ME_URL,
+    assert_error,
+    login,
+    role_permissions,
+)
 
 pytestmark = pytest.mark.django_db
 
@@ -20,7 +27,9 @@ def test_login_returns_profile_and_sets_session_cookies(api_client, user):
         "email": "asesor@example.com",
         "role": "ADVISOR",
     }
-    assert body["permissions"] == ["applications.read_assigned", "documents.review"]
+    # Los permisos sembrados del rol más los que agrega la prueba.
+    assert body["permissions"] == role_permissions("ADVISOR")
+    assert {"applications.read_assigned", "documents.review"} <= set(body["permissions"])
 
     access = response.cookies[access_cookie_name()]
     refresh = response.cookies[refresh_cookie_name()]
@@ -165,7 +174,7 @@ def test_me_returns_profile_permissions_and_scope(logged_client, user):
         "email": "asesor@example.com",
         "role": "ADVISOR",
         "roles": ["ADVISOR"],
-        "permissions": ["applications.read_assigned", "documents.review"],
+        "permissions": role_permissions("ADVISOR"),
         "scope": {"assigned_applications_only": True, "partner_id": None},
     }
 

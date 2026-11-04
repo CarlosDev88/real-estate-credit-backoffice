@@ -136,18 +136,21 @@ def test_list_transitions_with_filters(admin_client):
     create(admin_client)
     create(
         admin_client,
-        flow_type="PROJECT",
-        code="SUBMIT",
-        from_status="DRAFT",
-        to_status="PENDING_REVIEW",
+        flow_type="OPPORTUNITY",
+        code="CONTACT",
+        from_status="ASSIGNED",
+        to_status="CONTACTED",
         guard_code=None,
     )
 
-    body = admin_client.get(TRANSITIONS_URL, {"flow_type": "PROJECT"}).json()
-    assert [item["code"] for item in body["items"]] == ["SUBMIT"]
+    body = admin_client.get(TRANSITIONS_URL, {"flow_type": "OPPORTUNITY"}).json()
+    assert [item["code"] for item in body["items"]] == ["CONTACT"]
 
-    body = admin_client.get(TRANSITIONS_URL, {"is_active": "true"}).json()
-    assert body["items"] == []
+    # Las creadas por API nacen inactivas; las activas son las sembradas de PROJECT.
+    body = admin_client.get(TRANSITIONS_URL, {"is_active": "false"}).json()
+    assert {item["code"] for item in body["items"]} == {"CONTACT", "MARK_READY_TO_FILE"}
+    body = admin_client.get(TRANSITIONS_URL, {"is_active": "true", "page_size": 100}).json()
+    assert {item["flow_type"] for item in body["items"]} == {"PROJECT"}
 
     assert_error(
         admin_client.get(TRANSITIONS_URL, {"flow_type": "INVOICE"}), 400, "VALIDATION_ERROR"
