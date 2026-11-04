@@ -9,9 +9,14 @@ from django.conf import settings
 from django.db import IntegrityError, transaction
 from django.db.models import F, Max, Q, QuerySet
 from django.utils import timezone
-from rest_framework.exceptions import ValidationError
+from rest_framework.exceptions import PermissionDenied, ValidationError
 
-from apps.catalogs.exceptions import CatalogNotManageable, DuplicateCode, TransitionNotEditable
+from apps.catalogs.exceptions import (
+    CatalogNotManageable,
+    DuplicateCode,
+    InvalidStateTransition,
+    TransitionNotEditable,
+)
 from apps.catalogs.models import Catalog, CatalogItem, WorkflowTransition, WorkflowTransitionRole
 from apps.catalogs.workflow import guards_for, statuses_for
 from apps.identity.models import Permission, Role, RoleCode, User
@@ -369,3 +374,29 @@ def available_transitions(
         .distinct()
         .order_by("code")
     )
+
+
+def resolve_transition(
+    user: User, *, flow_type: str, from_status: str, to_status: str
+) -> WorkflowTransition:
+    """Devuelve la transición que ``user`` puede ejecutar de ``from_status`` a ``to_status``.
+
+    - Si no existe ninguna transición activa entre esos estados:
+      `409 INVALID_STATE_TRANSITION`.
+    - Si existe, pero el usuario no tiene el rol o el permiso: `403`.
+
+    Las guardas las evalúa el módulo dueño del flujo después de esta llamada.
+    """
+    transition = (
+        available_transitions(user, flow_type=flow_type, from_status=from_status)
+        .filter(to_status=to_status)
+        .first()
+    )
+    if transition is not None:
+        return transition
+    configured = WorkflowTransition.objects.filter(
+        flow_type=flow_type, from_status=from_status, to_status=to_status, is_active=True
+    ).exists()
+    if configured:
+        raise PermissionDenied()
+    raise InvalidStateTransition(f"No se puede pasar de {from_status} a {to_status}.")

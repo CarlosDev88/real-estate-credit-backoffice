@@ -26,6 +26,7 @@ INSTALLED_APPS = [
     "apps.identity",
     "apps.catalogs",
     "apps.partners",
+    "apps.crm",
 ]
 
 MIDDLEWARE = [
@@ -119,6 +120,7 @@ SPECTACULAR_SETTINGS = {
     "ENUM_NAME_OVERRIDES": {
         "PartnerStatusEnum": "apps.partners.models.partner.PartnerStatus",
         "ProjectStatusEnum": "apps.catalogs.workflow.ProjectStatus",
+        "OpportunityStatusEnum": "apps.catalogs.workflow.OpportunityStatus",
     },
 }
 

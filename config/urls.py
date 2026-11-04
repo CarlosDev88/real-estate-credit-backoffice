@@ -27,6 +27,7 @@ api_v1_patterns = [
     path("", include("apps.identity.invitation_urls")),
     path("", include("apps.catalogs.urls")),
     path("", include("apps.partners.urls")),
+    path("", include("apps.crm.urls")),
 ]
 
 urlpatterns = [
