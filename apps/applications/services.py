@@ -1,4 +1,5 @@
-"""Casos de uso de applications: alcance, creación, edición, asignación y participantes.
+"""Casos de uso de applications: alcance, creación, edición, asignación, participantes,
+inmueble y financiación.
 
 Alcance por rol (REQUERIMIENTOS §3 y §8.6, API §25):
 
@@ -20,7 +21,7 @@ from collections.abc import Iterable, Mapping
 from typing import Any
 
 from django.db import IntegrityError, transaction
-from django.db.models import Q, QuerySet, Sum
+from django.db.models import Prefetch, Q, QuerySet, Sum
 from django.db.models.functions import Coalesce
 from django.utils import timezone
 from rest_framework.exceptions import ValidationError
@@ -40,6 +41,7 @@ from apps.applications.models import (
     ApplicationStatusHistory,
     CreditApplication,
     FinancialProfile,
+    FinancingPreference,
     IncomeSource,
     ParticipantRole,
     Property,
@@ -77,6 +79,11 @@ OPEN_APPLICATION_CONSTRAINT = "uq_credit_applications_open_opportunity"
 PURCHASE_NEW = "PURCHASE_NEW"
 PURCHASE_USED = "PURCHASE_USED"
 HOME_IMPROVEMENT = "HOME_IMPROVEMENT"
+
+# Modalidades de financiación (catálogo `financing_mode`).
+BANK_CREDIT = "BANK_CREDIT"
+OWN_FUNDS = "OWN_FUNDS"
+EXTERNAL_CREDIT = "EXTERNAL_CREDIT"
 
 
 # --------------------------------------------------------------------------------------
@@ -120,6 +127,29 @@ def applications_visible_to(user: User) -> QuerySet[CreditApplication]:
     applications = applications_queryset()
     condition = _scope_filter(user, get_application_scope(user))
     return applications if condition is None else applications.filter(condition)
+
+
+def application_detail(
+    user: User, application_id: uuid.UUID, include: Iterable[str] = ()
+) -> CreditApplication | None:
+    """Solicitud visible con los bloques de ``?include=`` precargados."""
+    blocks = set(include)
+    applications = applications_visible_to(user)
+    if "participants" in blocks:
+        applications = applications.prefetch_related(
+            Prefetch(
+                "participants",
+                queryset=participants_queryset().filter(is_active=True),
+                to_attr="active_participants",
+            )
+        )
+    if "financing" in blocks:
+        applications = applications.select_related(
+            "financing__financing_mode_item",
+            "financing__currency_mode_item",
+            "financing__amortization_mode_item",
+        )
+    return applications.filter(pk=application_id).first()
 
 
 def client_applications(user: User, client: Client) -> QuerySet[CreditApplication]:
@@ -366,6 +396,40 @@ def _changed_fields(application: CreditApplication, changes: Mapping[str, Any]) 
     return changed
 
 
+def _ensure_product_fits_financing(
+    application: CreditApplication, product: BankProduct | None
+) -> None:
+    """El producto del ``PATCH`` debe cuadrar con la modalidad de financiación registrada.
+
+    Sin financiación registrada no hay nada que comparar.
+    """
+    mode = (
+        FinancingPreference.objects.filter(application=application)
+        .values_list("financing_mode_item__code", flat=True)
+        .first()
+    )
+    if mode is None:
+        return
+    if mode != BANK_CREDIT and product is not None:
+        raise ValidationError(
+            {
+                "bank_product_id": [
+                    "La financiación registrada no es crédito bancario: cambia la "
+                    "modalidad en `/financing`."
+                ]
+            }
+        )
+    if mode == BANK_CREDIT and product is None:
+        raise ValidationError(
+            {
+                "bank_product_id": [
+                    "El crédito bancario necesita un producto: para quitarlo, cambia la "
+                    "modalidad en `/financing`."
+                ]
+            }
+        )
+
+
 def update_application(
     actor: User,
     application: CreditApplication,
@@ -391,6 +455,8 @@ def update_application(
         if product is not None:
             field = "bank_product_id" if "bank_product" in changed else "purpose_code"
             _ensure_product_available(product, purpose, field)
+        if "bank_product" in changed:
+            _ensure_product_fits_financing(locked, product)
         if "purpose_item" in changed:
             prop = Property.objects.filter(application=locked).select_related("project").first()
             errors = property_errors(purpose.code, property_values(prop)) if prop else {}
@@ -735,3 +801,135 @@ def delete_income_source(actor: User, source: IncomeSource) -> None:
         bump_version(locked)
 
     _income_sources_changed(locked, actor)
+
+
+# --------------------------------------------------------------------------------------
+# Inmueble y financiación (API §18.1 y §18.2)
+# --------------------------------------------------------------------------------------
+#
+# Los dos ``PUT`` reemplazan el subrecurso completo, exigen ``If-Match`` y responden si
+# lo crearon. Reemplazar con los mismos datos no aumenta la versión.
+
+
+def put_property(
+    actor: User,
+    application: CreditApplication,
+    *,
+    expected_version: int,
+    values: dict[str, Any],
+) -> bool:
+    """Crea o reemplaza el inmueble. Devuelve ``True`` si lo creó.
+
+    ``values`` trae los campos del modelo, con ``project`` ya resuelto (visible y
+    `ACTIVE`). Las reglas por finalidad se comprueban con la solicitud bloqueada, para
+    no decidir con una finalidad que otra petición acaba de cambiar.
+    """
+    with transaction.atomic():
+        locked = lock_for_edit(application, expected_version)
+        errors = property_errors(locked.purpose_item.code, values)
+        if errors:
+            raise ValidationError(errors)
+        prop = Property.objects.filter(application=locked).first()
+        created = prop is None
+        if prop is None:
+            Property.objects.create(application=locked, **values)
+        else:
+            changed = _changed(prop, values)
+            if not changed:
+                return False
+            for field in changed:
+                setattr(prop, field, values[field])
+            prop.save(update_fields=[*changed, "updated_at"])
+        bump_version(locked)
+
+    application_updated.send(
+        sender=CreditApplication, application=locked, fields=["property"], actor=actor
+    )
+    return created
+
+
+def financing_errors(
+    mode_code: str, values: Mapping[str, Any], product: BankProduct | None
+) -> dict[str, list[str]]:
+    """Errores que cruzan la modalidad con el producto y los montos, por campo.
+
+    - ``BANK_CREDIT``: exige producto y monto solicitado; no lleva monto externo.
+    - ``OWN_FUNDS`` y ``EXTERNAL_CREDIT``: sin producto y con monto solicitado en 0.
+    - ``EXTERNAL_CREDIT``: exige el monto aprobado por otra entidad; los demás modos no
+      lo aceptan.
+    - Sin cesantías, su monto es 0 (CHECK ``ck_financing_severance``).
+
+    Los rangos de monto y plazo del producto no se validan al guardar: los verifica la
+    evaluación bancaria como validación bloqueante del sistema (Parte 5).
+    """
+    errors: dict[str, list[str]] = {}
+    if mode_code == BANK_CREDIT:
+        if product is None:
+            errors["bank_product_id"] = ["El crédito bancario necesita un producto."]
+        if values.get("requested_amount_cop") is None:
+            errors["requested_amount_cop"] = ["Indica el monto solicitado al banco."]
+    else:
+        if product is not None:
+            errors["bank_product_id"] = ["Solo el crédito bancario lleva producto."]
+        if values.get("requested_amount_cop") not in (None, 0):
+            errors["requested_amount_cop"] = [
+                "Sin crédito bancario no se solicita monto: déjalo vacío o en 0."
+            ]
+    external = values.get("external_approved_amount_cop")
+    if mode_code == EXTERNAL_CREDIT and external is None:
+        errors["external_approved_amount_cop"] = ["Indica el monto aprobado por la otra entidad."]
+    if mode_code != EXTERNAL_CREDIT and external is not None:
+        errors["external_approved_amount_cop"] = [
+            "Solo el crédito externo lleva monto aprobado por otra entidad."
+        ]
+    if not values.get("uses_severance_funds") and values.get("severance_funds_cop"):
+        errors["severance_funds_cop"] = ["Sin uso de cesantías, el monto de cesantías es 0."]
+    return errors
+
+
+def put_financing(
+    actor: User,
+    application: CreditApplication,
+    *,
+    expected_version: int,
+    values: dict[str, Any],
+    product: BankProduct | None,
+) -> bool:
+    """Crea o reemplaza la financiación y el producto elegido. Devuelve ``True`` si la creó.
+
+    El producto se guarda en ``credit_applications.bank_product``; con ``OWN_FUNDS`` o
+    ``EXTERNAL_CREDIT`` se limpia. Con crédito bancario debe estar disponible para la
+    finalidad de la solicitud.
+    """
+    errors = financing_errors(values["financing_mode_item"].code, values, product)
+    if errors:
+        raise ValidationError(errors)
+    values = {**values, "requested_amount_cop": values["requested_amount_cop"] or 0}
+
+    with transaction.atomic():
+        locked = lock_for_edit(application, expected_version)
+        financing = FinancingPreference.objects.filter(application=locked).first()
+        created = financing is None
+        changed = list(values) if financing is None else _changed(financing, values)
+        product_changed = locked.bank_product_id != (product.pk if product else None)
+        if not changed and not product_changed:
+            return False
+        if product is not None:
+            _ensure_product_available(product, locked.purpose_item, "bank_product_id")
+
+        if financing is None:
+            FinancingPreference.objects.create(application=locked, **values)
+        elif changed:
+            for field in changed:
+                setattr(financing, field, values[field])
+            financing.save(update_fields=[*changed, "updated_at"])
+        fields = ["financing"] if changed else []
+        if product_changed:
+            locked.bank_product = product
+            fields.append("bank_product")
+        bump_version(locked, ["bank_product"] if product_changed else [])
+
+    application_updated.send(
+        sender=CreditApplication, application=locked, fields=sorted(fields), actor=actor
+    )
+    return created

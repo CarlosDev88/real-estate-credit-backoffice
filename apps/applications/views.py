@@ -1,9 +1,10 @@
 """Endpoints de solicitudes de crédito (API §16), sus participantes, perfiles financieros
-e ingresos (§17) y `GET /clients/{id}/applications` (§13)."""
+e ingresos (§17), inmueble y financiación (§18) y `GET /clients/{id}/applications` (§13)."""
 
 from typing import Any, cast
 
 from django.db.models import QuerySet
+from django.http import Http404
 from django.shortcuts import get_object_or_404
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, extend_schema
@@ -20,23 +21,31 @@ from apps.applications.models import (
     ApplicationParticipant,
     CreditApplication,
     FinancialProfile,
+    FinancingPreference,
     IncomeSource,
+    Property,
 )
 from apps.applications.serializers import (
+    DETAIL_INCLUDES,
     ApplicationCreateSerializer,
     ApplicationDetailSerializer,
     ApplicationParticipantSerializer,
+    ApplicationPropertyInputSerializer,
     ApplicationSerializer,
     ApplicationSummarySerializer,
     ApplicationUpdateSerializer,
     AssignmentCreateSerializer,
     FinancialProfileInputSerializer,
     FinancialProfileSerializer,
+    FinancingInputSerializer,
+    FinancingSerializer,
     IncomeSourceCreateSerializer,
     IncomeSourceSerializer,
     IncomeSourceUpdateSerializer,
     ParticipantCreateSerializer,
     ParticipantUpdateSerializer,
+    PropertySerializer,
+    property_model_values,
 )
 from apps.catalogs.workflow import ApplicationStatus
 from apps.crm.services import CrmScope, clients_visible_to, resolve_visible_client
@@ -65,6 +74,15 @@ IF_MATCH = OpenApiParameter(
     description='Versión de la solicitud que se editó, tal como llegó en `ETag` (`"3"`).',
 )
 STATUS_PARAM = OpenApiParameter("status", OpenApiTypes.STR, enum=ApplicationStatus.values)
+INCLUDE_PARAM = OpenApiParameter(
+    "include",
+    OpenApiTypes.STR,
+    description=(
+        "Bloques opcionales separados por comas: `participants` (vigentes) y `financing`. "
+        "`property` se admite, pero sale siempre. El broker recibe el resumen y este "
+        "parámetro se ignora."
+    ),
+)
 
 
 class ApplicationView(GenericAPIView):
@@ -97,13 +115,40 @@ def _choice_param(request: Request, name: str, choices: list[str]) -> str | None
     return value
 
 
-def _detail_response(view: ApplicationView, application_id: Any, **kwargs: Any) -> Response:
-    """Detalle según el actor: el broker solo recibe el resumen."""
-    application = view.get_application(application_id)
-    serializer_class = (
-        ApplicationSummarySerializer if view.scope.is_restricted else ApplicationDetailSerializer
-    )
-    return with_etag(Response(serializer_class(application).data, **kwargs), application.version)
+def _include_param(request: Request) -> frozenset[str]:
+    """Bloques de ``?include=`` (separados por comas). Uno desconocido responde 400."""
+    raw = request.query_params.get("include", "")
+    blocks = frozenset(part.strip() for part in raw.split(",") if part.strip())
+    unknown = sorted(blocks - set(DETAIL_INCLUDES))
+    if unknown:
+        raise ValidationError(
+            {
+                "include": [
+                    f"Valores no permitidos: {', '.join(unknown)}. "
+                    f"Opciones: {', '.join(DETAIL_INCLUDES)}."
+                ]
+            }
+        )
+    return blocks
+
+
+def _detail_response(
+    view: ApplicationView,
+    application_id: Any,
+    include: frozenset[str] = frozenset(),
+    **kwargs: Any,
+) -> Response:
+    """Detalle según el actor: el broker solo recibe el resumen (sin ``include``)."""
+    if view.scope.is_restricted:
+        summary = view.get_application(application_id)
+        return with_etag(
+            Response(ApplicationSummarySerializer(summary).data, **kwargs), summary.version
+        )
+    application = services.application_detail(view.actor, application_id, include)
+    if application is None:
+        raise Http404
+    data = ApplicationDetailSerializer(application, context={"include": include}).data
+    return with_etag(Response(data, **kwargs), application.version)
 
 
 class ApplicationListView(ApplicationView):
@@ -217,13 +262,16 @@ class ApplicationDetailView(ApplicationView):
         operation_id="applications_retrieve",
         summary="Expediente según el rol",
         description=(
-            "Responde `ETag` con la versión, que se reenvía en `If-Match` al editar. El "
-            "broker recibe solo el resumen."
+            "Responde `ETag` con la versión, que se reenvía en `If-Match` al editar. "
+            "`property` y `assignments` salen siempre; `participants` y `financing`, solo "
+            "con `include`. El broker recibe solo el resumen."
         ),
+        parameters=[INCLUDE_PARAM],
         responses={200: ApplicationDetailSerializer, **NOT_FOUND, **COMMON_ERRORS},
     )
     def get(self, request: Request, application_id: Any) -> Response:
-        return _detail_response(self, application_id)
+        include = frozenset() if self.scope.is_restricted else _include_param(request)
+        return _detail_response(self, application_id, include)
 
     @extend_schema(
         tags=[APPLICATIONS_TAG],
@@ -231,7 +279,9 @@ class ApplicationDetailView(ApplicationView):
         summary="Cambiar la finalidad o el producto antes de radicar",
         description=(
             "El estado nunca cambia por `PATCH` (usa `/status-transitions`) ni el asesor "
-            "(usa `/assignments`). Montos, plazo y modalidades van por `/financing`."
+            "(usa `/assignments`). Montos, plazo y modalidades van por `/financing`. Con "
+            "una financiación registrada, el producto debe cuadrar con su modalidad: solo "
+            "`BANK_CREDIT` lleva producto, y no se puede dejar sin él."
         ),
         parameters=[IF_MATCH],
         request=ApplicationUpdateSerializer,
@@ -659,4 +709,144 @@ class IncomeSourceDetailView(ExpedienteView):
         return _application_etag(
             Response(status=status.HTTP_204_NO_CONTENT),
             source.financial_profile.participant.application_id,
+        )
+
+
+# --------------------------------------------------------------------------------------
+# Inmueble y financiación (API §18.1 y §18.2)
+# --------------------------------------------------------------------------------------
+
+PROPERTY_TAG = "Application property and financing"
+PUT_ERRORS = {
+    409: _error("STALE_VERSION o APPLICATION_NOT_EDITABLE"),
+    428: _error("PRECONDITION_REQUIRED (falta If-Match)"),
+    **NOT_FOUND,
+    **COMMON_ERRORS,
+}
+
+
+class ApplicationPropertyView(ExpedienteView):
+    required_permissions = {"GET": "applications.read", "PUT": "applications.update"}
+
+    def property_response(self, application_id: Any, **kwargs: Any) -> Response:
+        prop = get_object_or_404(
+            Property.objects.select_related(
+                "project", "property_type_item", "condition_item", "city_item"
+            ),
+            application_id=application_id,
+        )
+        return _application_etag(Response(PropertySerializer(prop).data, **kwargs), application_id)
+
+    @extend_schema(
+        tags=[PROPERTY_TAG],
+        operation_id="applications_property_retrieve",
+        summary="Inmueble de la solicitud",
+        description=f"`404` si todavía no se registró. {ETAG_NOTE}",
+        responses={200: PropertySerializer, **NOT_FOUND, **COMMON_ERRORS},
+    )
+    def get(self, request: Request, application_id: Any) -> Response:
+        application = self.get_application(application_id)
+        return self.property_response(application.pk)
+
+    @extend_schema(
+        tags=[PROPERTY_TAG],
+        operation_id="applications_property_update",
+        summary="Crear o reemplazar el inmueble",
+        description=(
+            "Reemplazo completo: lo que no llega vuelve a su valor por omisión. Reglas por "
+            "finalidad: solo `PURCHASE_NEW` admite `project_id` (proyecto `ACTIVE`); "
+            "`PURCHASE_USED` y `HOME_IMPROVEMENT` exigen `address`; `HOME_IMPROVEMENT` "
+            f"exige `is_owned_by_applicant`. Responde `201` si lo creó. {ETAG_NOTE}"
+        ),
+        parameters=[IF_MATCH],
+        request=ApplicationPropertyInputSerializer,
+        responses={
+            200: PropertySerializer,
+            201: PropertySerializer,
+            422: _error("PROJECT_NOT_ACTIVE"),
+            **PUT_ERRORS,
+        },
+    )
+    def put(self, request: Request, application_id: Any) -> Response:
+        application = self.get_application(application_id)
+        version = expected_version(request)
+        serializer = ApplicationPropertyInputSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        values = property_model_values(serializer.validated_data)
+        values["project"] = services.resolve_property_project(
+            self.actor, serializer.validated_data["project_id"]
+        )
+        created = services.put_property(
+            self.actor, application, expected_version=version, values=values
+        )
+        return self.property_response(
+            application.pk, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK
+        )
+
+
+class ApplicationFinancingView(ExpedienteView):
+    required_permissions = {"GET": "applications.read", "PUT": "applications.update"}
+
+    def financing_response(self, application_id: Any, **kwargs: Any) -> Response:
+        financing = get_object_or_404(
+            FinancingPreference.objects.select_related(
+                "application__bank_product__bank",
+                "financing_mode_item",
+                "currency_mode_item",
+                "amortization_mode_item",
+            ),
+            application_id=application_id,
+        )
+        return _application_etag(
+            Response(FinancingSerializer(financing).data, **kwargs), application_id
+        )
+
+    @extend_schema(
+        tags=[PROPERTY_TAG],
+        operation_id="applications_financing_retrieve",
+        summary="Preferencia de financiación",
+        description=f"`404` si todavía no se registró. {ETAG_NOTE}",
+        responses={200: FinancingSerializer, **NOT_FOUND, **COMMON_ERRORS},
+    )
+    def get(self, request: Request, application_id: Any) -> Response:
+        application = self.get_application(application_id)
+        return self.financing_response(application.pk)
+
+    @extend_schema(
+        tags=[PROPERTY_TAG],
+        operation_id="applications_financing_update",
+        summary="Crear o reemplazar la financiación y el producto elegido",
+        description=(
+            "Reemplazo completo. `BANK_CREDIT` exige `bank_product_id` (disponible para "
+            "la finalidad) y `requested_amount_cop`. Con `OWN_FUNDS` o `EXTERNAL_CREDIT` "
+            "no se envía producto (se limpia el de la solicitud) y el monto solicitado "
+            "queda en 0. `external_approved_amount_cop` es obligatorio con "
+            "`EXTERNAL_CREDIT` y no se acepta en los otros modos. Sin "
+            "`uses_severance_funds`, `severance_funds_cop` es 0. Los rangos del producto "
+            "no se validan al guardar: los verifica la evaluación bancaria. Responde "
+            f"`201` si la creó. {ETAG_NOTE}"
+        ),
+        parameters=[IF_MATCH],
+        request=FinancingInputSerializer,
+        responses={
+            200: FinancingSerializer,
+            201: FinancingSerializer,
+            **PUT_ERRORS,
+        },
+    )
+    def put(self, request: Request, application_id: Any) -> Response:
+        application = self.get_application(application_id)
+        version = expected_version(request)
+        serializer = FinancingInputSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        product = services.resolve_bank_product(serializer.validated_data["bank_product_id"])
+        created = services.put_financing(
+            self.actor,
+            application,
+            expected_version=version,
+            values=serializer.model_values(),
+            product=product,
+        )
+        return self.financing_response(
+            application.pk, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK
         )

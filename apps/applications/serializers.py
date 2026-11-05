@@ -11,6 +11,7 @@ from apps.applications.models import (
     ApplicationParticipant,
     CreditApplication,
     FinancialProfile,
+    FinancingPreference,
     IncomeSource,
     ParticipantRole,
     Property,
@@ -31,16 +32,20 @@ from apps.identity.models import User
 from config.serializers import StrictSerializer
 
 __all__ = [
+    "DETAIL_INCLUDES",
     "ApplicationAssignmentSerializer",
     "ApplicationCreateSerializer",
     "ApplicationDetailSerializer",
     "ApplicationParticipantSerializer",
+    "ApplicationPropertyInputSerializer",
     "ApplicationSerializer",
     "ApplicationSummarySerializer",
     "ApplicationUpdateSerializer",
     "AssignmentCreateSerializer",
     "FinancialProfileInputSerializer",
     "FinancialProfileSerializer",
+    "FinancingInputSerializer",
+    "FinancingSerializer",
     "IncomeSourceCreateSerializer",
     "IncomeSourceSerializer",
     "IncomeSourceUpdateSerializer",
@@ -121,12 +126,98 @@ class PropertyInputSerializer(StrictSerializer):
 def property_model_values(data: Mapping[str, Any]) -> dict[str, Any]:
     """Pasa los datos validados de ``PropertyInputSerializer`` a campos del modelo."""
     values = dict(data)
+    values.pop("project_id", None)
     return {
         "property_type_item": values.pop("property_type_code"),
         "condition_item": values.pop("condition_code"),
         "city_item": values.pop("city_code"),
         **values,
     }
+
+
+class ApplicationPropertyInputSerializer(PropertyInputSerializer):
+    """``PUT /property`` (API §18.1): reemplazo completo, con el proyecto en el cuerpo."""
+
+    project_id = serializers.UUIDField(required=False, allow_null=True, default=None)
+
+
+# --- Financiación -----------------------------------------------------------------------
+
+
+class FinancingSerializer(serializers.ModelSerializer):
+    """Preferencia de financiación. El producto elegido vive en la solicitud."""
+
+    application_id = serializers.UUIDField(read_only=True)
+    financing_mode = CatalogItemRefSerializer(source="financing_mode_item", read_only=True)
+    bank_product = BankProductRefSerializer(
+        source="application.bank_product", read_only=True, allow_null=True
+    )
+    currency_mode = CatalogItemRefSerializer(
+        source="currency_mode_item", read_only=True, allow_null=True
+    )
+    amortization_mode = CatalogItemRefSerializer(
+        source="amortization_mode_item", read_only=True, allow_null=True
+    )
+
+    class Meta:
+        model = FinancingPreference
+        fields = [
+            "id",
+            "application_id",
+            "financing_mode",
+            "bank_product",
+            "requested_amount_cop",
+            "term_months",
+            "currency_mode",
+            "amortization_mode",
+            "own_resources_cop",
+            "uses_severance_funds",
+            "severance_funds_cop",
+            "external_approved_amount_cop",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = fields
+
+
+class FinancingInputSerializer(StrictSerializer):
+    """``PUT /financing`` (API §18.2): reemplazo completo.
+
+    Las reglas que cruzan la modalidad con el producto y los montos las aplica
+    ``services.financing_errors``.
+    """
+
+    financing_mode_code = CatalogItemCodeField(catalog_code="financing_mode")
+    bank_product_id = serializers.UUIDField(required=False, allow_null=True, default=None)
+    requested_amount_cop = serializers.IntegerField(
+        min_value=0, required=False, allow_null=True, default=None
+    )
+    term_months = serializers.IntegerField(
+        min_value=1, max_value=32767, required=False, allow_null=True, default=None
+    )
+    currency_mode_code = CatalogItemCodeField(
+        catalog_code="currency_mode", required=False, allow_null=True, default=None
+    )
+    amortization_mode_code = CatalogItemCodeField(
+        catalog_code="amortization_mode", required=False, allow_null=True, default=None
+    )
+    own_resources_cop = serializers.IntegerField(min_value=0, required=False, default=0)
+    uses_severance_funds = serializers.BooleanField(required=False, default=False)
+    severance_funds_cop = serializers.IntegerField(min_value=0, required=False, default=0)
+    external_approved_amount_cop = serializers.IntegerField(
+        min_value=0, required=False, allow_null=True, default=None
+    )
+
+    def model_values(self) -> dict[str, Any]:
+        """Campos del modelo, sin ``bank_product_id`` (va en la solicitud)."""
+        values = dict(self.validated_data)
+        values.pop("bank_product_id")
+        return {
+            "financing_mode_item": values.pop("financing_mode_code"),
+            "currency_mode_item": values.pop("currency_mode_code"),
+            "amortization_mode_item": values.pop("amortization_mode_code"),
+            **values,
+        }
 
 
 # --- Solicitud --------------------------------------------------------------------------
@@ -185,25 +276,6 @@ class ApplicationSerializer(serializers.ModelSerializer):
         if prop is None or prop.project is None:
             return None
         return {"id": str(prop.project.pk), "name": prop.project.name}
-
-
-class ApplicationDetailSerializer(ApplicationSerializer):
-    property = serializers.SerializerMethodField()
-    assignments = serializers.SerializerMethodField()
-
-    class Meta(ApplicationSerializer.Meta):
-        fields = [*ApplicationSerializer.Meta.fields, "property", "assignments"]
-        read_only_fields = fields
-
-    def get_property(self, obj: CreditApplication) -> dict[str, Any] | None:
-        prop = getattr(obj, "financed_property", None)
-        return None if prop is None else cast(dict[str, Any], PropertySerializer(prop).data)
-
-    def get_assignments(self, obj: CreditApplication) -> list[dict[str, Any]]:
-        assignments = obj.assignments.select_related("advisor", "assigned_by")
-        return cast(
-            list[dict[str, Any]], ApplicationAssignmentSerializer(assignments, many=True).data
-        )
 
 
 class ApplicationSummarySerializer(serializers.ModelSerializer):
@@ -501,3 +573,59 @@ class IncomeSourceUpdateSerializer(IncomeSourceCreateSerializer):
     start_date = serializers.DateField(required=False, allow_null=True)
     is_primary = serializers.BooleanField(required=False)
     notes = serializers.CharField(max_length=2000, required=False, allow_blank=True)
+
+
+# --- Detalle de la solicitud ------------------------------------------------------------
+
+# Bloques que admite `?include=` en el detalle. `property` y `assignments` salen siempre.
+DETAIL_INCLUDES = ("participants", "property", "financing")
+
+
+class ApplicationDetailSerializer(ApplicationSerializer):
+    """Expediente interno. ``context["include"]`` agrega `participants` y `financing`.
+
+    Los bloques opcionales no se declaran de solo lectura para que OpenAPI no los marque
+    como obligatorios: faltan en la respuesta si no se pidieron. `participants` lee los
+    vigentes precargados en ``active_participants`` (``services.application_detail``).
+    """
+
+    property = serializers.SerializerMethodField()
+    assignments = serializers.SerializerMethodField()
+    participants = ApplicationParticipantSerializer(
+        source="active_participants",
+        many=True,
+        required=False,
+        help_text="Participantes vigentes. Solo con `include=participants`.",
+    )
+    financing = FinancingSerializer(
+        required=False,
+        allow_null=True,
+        help_text="Preferencia de financiación. Solo con `include=financing`.",
+    )
+
+    class Meta(ApplicationSerializer.Meta):
+        fields = [
+            *ApplicationSerializer.Meta.fields,
+            "property",
+            "assignments",
+            "participants",
+            "financing",
+        ]
+        read_only_fields = [*ApplicationSerializer.Meta.fields, "property", "assignments"]
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        include = self.context.get("include", ())
+        for name in ("participants", "financing"):
+            if name not in include:
+                self.fields.pop(name)
+
+    def get_property(self, obj: CreditApplication) -> dict[str, Any] | None:
+        prop = getattr(obj, "financed_property", None)
+        return None if prop is None else cast(dict[str, Any], PropertySerializer(prop).data)
+
+    def get_assignments(self, obj: CreditApplication) -> list[dict[str, Any]]:
+        assignments = obj.assignments.select_related("advisor", "assigned_by")
+        return cast(
+            list[dict[str, Any]], ApplicationAssignmentSerializer(assignments, many=True).data
+        )

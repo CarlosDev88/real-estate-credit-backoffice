@@ -48,6 +48,17 @@ urlpatterns = [
         views.IncomeSourceDetailView.as_view(),
         name="income-source-detail",
     ),
+    # Inmueble y financiación (sección 18)
+    path(
+        "applications/<uuid:application_id>/property",
+        views.ApplicationPropertyView.as_view(),
+        name="application-property",
+    ),
+    path(
+        "applications/<uuid:application_id>/financing",
+        views.ApplicationFinancingView.as_view(),
+        name="application-financing",
+    ),
     # Solicitudes del cliente (sección 13)
     path(
         "clients/<uuid:client_id>/applications",
