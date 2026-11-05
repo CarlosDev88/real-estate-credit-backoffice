@@ -1,4 +1,4 @@
-"""Casos de uso del módulo applications: alcance, creación, edición y asignación.
+"""Casos de uso de applications: alcance, creación, edición, asignación y participantes.
 
 Alcance por rol (REQUERIMIENTOS §3 y §8.6, API §25):
 
@@ -20,7 +20,8 @@ from collections.abc import Iterable, Mapping
 from typing import Any
 
 from django.db import IntegrityError, transaction
-from django.db.models import Q, QuerySet
+from django.db.models import Q, QuerySet, Sum
+from django.db.models.functions import Coalesce
 from django.utils import timezone
 from rest_framework.exceptions import ValidationError
 
@@ -29,6 +30,7 @@ from apps.applications.exceptions import (
     ApplicationAlreadyOpen,
     ApplicationClosed,
     ApplicationNotEditable,
+    ParticipantInactive,
 )
 from apps.applications.models import (
     FAILED_APPLICATION_STATUSES,
@@ -37,6 +39,8 @@ from apps.applications.models import (
     ApplicationParticipant,
     ApplicationStatusHistory,
     CreditApplication,
+    FinancialProfile,
+    IncomeSource,
     ParticipantRole,
     Property,
     next_application_code,
@@ -45,6 +49,8 @@ from apps.applications.signals import (
     application_assigned,
     application_created,
     application_updated,
+    participant_added,
+    participant_removed,
 )
 from apps.banking.models import BankProduct
 from apps.banking.services import available_products
@@ -55,6 +61,7 @@ from apps.crm.models import Client, Opportunity
 from apps.crm.services import (
     CrmScope,
     convert_opportunity,
+    create_client,
     ensure_advisor,
     get_scope,
     opportunities_visible_to,
@@ -218,14 +225,20 @@ def _creation_property_errors(
 # --------------------------------------------------------------------------------------
 
 
-def lock_for_edit(application: CreditApplication, expected_version: int) -> CreditApplication:
+def lock_for_edit(
+    application: CreditApplication | uuid.UUID, expected_version: int | None
+) -> CreditApplication:
     """Bloquea la solicitud para editar su expediente. Llamar dentro de una transacción.
 
     Comprueba la versión de ``If-Match`` (``409 STALE_VERSION``) y que la solicitud
-    esté antes de `FILED` (``409 APPLICATION_NOT_EDITABLE``).
+    esté antes de `FILED` (``409 APPLICATION_NOT_EDITABLE``). Con ``expected_version``
+    en ``None`` no compara la versión: es el caso de los ``POST`` que crean subrecursos
+    y de los ``DELETE`` (API §6).
     """
-    locked = CreditApplication.objects.select_for_update().get(pk=application.pk)
-    ensure_version(locked.version, expected_version)
+    pk = application.pk if isinstance(application, CreditApplication) else application
+    locked = CreditApplication.objects.select_for_update().get(pk=pk)
+    if expected_version is not None:
+        ensure_version(locked.version, expected_version)
     if not locked.is_editable:
         raise ApplicationNotEditable()
     return locked
@@ -441,3 +454,284 @@ def assign_application(
         reason=reason,
     )
     return locked
+
+
+# --------------------------------------------------------------------------------------
+# Participantes, perfil financiero e ingresos (API §17)
+# --------------------------------------------------------------------------------------
+#
+# Todo cambio bloquea la solicitud con ``lock_for_edit`` (estado previo a `FILED`) y
+# aumenta su versión. Los ``PATCH``/``PUT`` comparan la versión de ``If-Match``; los
+# ``POST`` y ``DELETE`` no. Los subrecursos se vuelven a leer después del bloqueo, para
+# no decidir con datos que otra petición acaba de cambiar.
+
+ADDITIONAL_PARTICIPANT_ROLES = (ParticipantRole.CO_APPLICANT, ParticipantRole.SOLIDARY_DEBTOR)
+
+
+def participants_queryset() -> QuerySet[ApplicationParticipant]:
+    return ApplicationParticipant.objects.select_related(
+        "client__document_type_item",
+        "client__origin_item",
+        "client__created_by",
+        "financial_profile",
+    )
+
+
+def participants_visible_to(user: User) -> QuerySet[ApplicationParticipant]:
+    """Participantes de las solicitudes visibles; el resto responde 404."""
+    return participants_queryset().filter(application__in=applications_visible_to(user))
+
+
+def financial_profiles_visible_to(user: User) -> QuerySet[FinancialProfile]:
+    return (
+        FinancialProfile.objects.select_related(
+            "participant",
+            "employment_profile_item",
+            "contract_type_item",
+            "funds_origin_item",
+        )
+        .annotate(income_sources_total_cop=Coalesce(Sum("income_sources__monthly_amount_cop"), 0))
+        .filter(participant__application__in=applications_visible_to(user))
+    )
+
+
+def income_sources_visible_to(user: User) -> QuerySet[IncomeSource]:
+    return IncomeSource.objects.select_related(
+        "financial_profile__participant", "source_type_item"
+    ).filter(financial_profile__participant__application__in=applications_visible_to(user))
+
+
+def _current_participant(
+    participant_id: uuid.UUID, *, active: bool = True
+) -> ApplicationParticipant:
+    """Relee el participante con la solicitud bloqueada y exige que siga vigente."""
+    participant = ApplicationParticipant.objects.get(pk=participant_id)
+    if active and not participant.is_active:
+        raise ParticipantInactive()
+    return participant
+
+
+def _ensure_income_share(contributes_income: bool, income_share_cop: int | None) -> None:
+    if not contributes_income and income_share_cop is not None:
+        raise ValidationError(
+            {"income_share_cop": ["Solo se declara aporte si el participante aporta ingresos."]}
+        )
+
+
+def _changed(instance: Any, changes: Mapping[str, Any]) -> list[str]:
+    return [field for field, value in changes.items() if getattr(instance, field) != value]
+
+
+def add_participant(
+    actor: User,
+    application: CreditApplication,
+    *,
+    role: str,
+    client: Client | None = None,
+    client_data: dict[str, Any] | None = None,
+    contributes_income: bool = True,
+    income_share_cop: int | None = None,
+) -> ApplicationParticipant:
+    """Agrega un co-solicitante o deudor solidario.
+
+    Recibe un cliente visible (``client``) o sus datos de identidad (``client_data``),
+    con los que crea el cliente en la misma transacción (``409
+    DUPLICATE_CLIENT_DOCUMENT`` si el documento ya existe). Un cliente retirado de la
+    solicitud se reactiva en su misma fila, porque ``(application, client)`` es única.
+    """
+    if role not in ADDITIONAL_PARTICIPANT_ROLES:
+        raise ValidationError({"role_code": ["El titular se crea con la solicitud."]})
+    _ensure_income_share(contributes_income, income_share_cop)
+    values = {
+        "role": role,
+        "contributes_income": contributes_income,
+        "income_share_cop": income_share_cop,
+    }
+
+    with transaction.atomic():
+        locked = lock_for_edit(application, None)
+        if client is None:
+            if client_data is None:
+                raise ValueError("Se necesita client o client_data.")
+            client = create_client(actor, client_data)
+        participant = ApplicationParticipant.objects.filter(
+            application=locked, client=client
+        ).first()
+        reactivated = participant is not None
+        if participant is None:
+            participant = ApplicationParticipant.objects.create(
+                application=locked, client=client, **values
+            )
+        elif participant.is_active:
+            raise ValidationError({"client_id": ["El cliente ya participa en la solicitud."]})
+        else:
+            for field, value in values.items():
+                setattr(participant, field, value)
+            participant.is_active = True
+            participant.save(update_fields=[*values, "is_active", "updated_at"])
+        bump_version(locked)
+
+    logger.info("Participante %s agregado a %s por %s", participant.pk, locked.code, actor.pk)
+    participant_added.send(
+        sender=CreditApplication,
+        application=locked,
+        participant=participant,
+        reactivated=reactivated,
+        actor=actor,
+    )
+    return participant
+
+
+def update_participant(
+    actor: User,
+    participant: ApplicationParticipant,
+    *,
+    expected_version: int,
+    changes: dict[str, Any],
+) -> ApplicationParticipant:
+    """Cambia el papel adicional, si aporta ingresos o su aporte declarado.
+
+    El titular conserva su papel. Sin cambios reales no aumenta la versión.
+    """
+    with transaction.atomic():
+        locked = lock_for_edit(participant.application_id, expected_version)
+        current = _current_participant(participant.pk)
+        changed = _changed(current, changes)
+        if not changed:
+            return current
+        if "role" in changed:
+            if current.role == ParticipantRole.PRIMARY:
+                raise ValidationError({"role_code": ["El titular no cambia de papel."]})
+            if changes["role"] not in ADDITIONAL_PARTICIPANT_ROLES:
+                raise ValidationError({"role_code": ["La solicitud ya tiene un titular."]})
+        for field in changed:
+            setattr(current, field, changes[field])
+        _ensure_income_share(current.contributes_income, current.income_share_cop)
+        current.save(update_fields=[*changed, "updated_at"])
+        bump_version(locked)
+
+    application_updated.send(
+        sender=CreditApplication, application=locked, fields=["participants"], actor=actor
+    )
+    return current
+
+
+def remove_participant(actor: User, participant: ApplicationParticipant) -> None:
+    """Retira un participante adicional (``is_active = false``). Repetirlo no hace nada."""
+    if participant.role == ParticipantRole.PRIMARY:
+        raise ValidationError({"role": ["El titular no se retira de la solicitud."]})
+    with transaction.atomic():
+        locked = lock_for_edit(participant.application_id, None)
+        current = _current_participant(participant.pk, active=False)
+        if not current.is_active:
+            return
+        current.is_active = False
+        current.save(update_fields=["is_active", "updated_at"])
+        bump_version(locked)
+
+    logger.info("Participante %s retirado de %s por %s", current.pk, locked.code, actor.pk)
+    participant_removed.send(
+        sender=CreditApplication, application=locked, participant=current, actor=actor
+    )
+
+
+def put_financial_profile(
+    actor: User,
+    participant: ApplicationParticipant,
+    *,
+    expected_version: int,
+    values: dict[str, Any],
+) -> bool:
+    """Crea o reemplaza el perfil financiero. Devuelve ``True`` si lo creó.
+
+    ``values`` trae todos los campos editables: lo que el cliente no envió llega con su
+    valor por omisión. ``data_confirmed_at`` no se toca: lo confirma el comprador
+    (paso 9). Reemplazar con los mismos datos no aumenta la versión.
+    """
+    with transaction.atomic():
+        locked = lock_for_edit(participant.application_id, expected_version)
+        current = _current_participant(participant.pk)
+        profile = FinancialProfile.objects.filter(participant=current).first()
+        created = profile is None
+        if profile is None:
+            FinancialProfile.objects.create(participant=current, **values)
+        else:
+            changed = _changed(profile, values)
+            if not changed:
+                return False
+            for field in changed:
+                setattr(profile, field, values[field])
+            profile.save(update_fields=[*changed, "updated_at"])
+        bump_version(locked)
+
+    application_updated.send(
+        sender=CreditApplication, application=locked, fields=["financial_profile"], actor=actor
+    )
+    return created
+
+
+def _unmark_other_primary_sources(profile_id: uuid.UUID, keep: uuid.UUID | None) -> None:
+    """Un perfil tiene como máximo una fuente principal: la nueva desplaza a la anterior."""
+    sources = IncomeSource.objects.filter(financial_profile_id=profile_id, is_primary=True)
+    if keep is not None:
+        sources = sources.exclude(pk=keep)
+    sources.update(is_primary=False, updated_at=timezone.now())
+
+
+def _income_sources_changed(locked: CreditApplication, actor: User) -> None:
+    application_updated.send(
+        sender=CreditApplication, application=locked, fields=["income_sources"], actor=actor
+    )
+
+
+def add_income_source(
+    actor: User, profile: FinancialProfile, values: dict[str, Any]
+) -> IncomeSource:
+    with transaction.atomic():
+        locked = lock_for_edit(profile.participant.application_id, None)
+        _current_participant(profile.participant_id)
+        if values.get("is_primary"):
+            _unmark_other_primary_sources(profile.pk, keep=None)
+        source = IncomeSource.objects.create(financial_profile=profile, **values)
+        bump_version(locked)
+
+    _income_sources_changed(locked, actor)
+    return source
+
+
+def update_income_source(
+    actor: User,
+    source: IncomeSource,
+    *,
+    expected_version: int,
+    changes: dict[str, Any],
+) -> IncomeSource:
+    """Edita una fuente. Sin cambios reales no aumenta la versión."""
+    participant = source.financial_profile.participant
+    with transaction.atomic():
+        locked = lock_for_edit(participant.application_id, expected_version)
+        _current_participant(participant.pk)
+        current = IncomeSource.objects.get(pk=source.pk)
+        changed = _changed(current, changes)
+        if not changed:
+            return current
+        if changes.get("is_primary"):
+            _unmark_other_primary_sources(current.financial_profile_id, keep=current.pk)
+        for field in changed:
+            setattr(current, field, changes[field])
+        current.save(update_fields=[*changed, "updated_at"])
+        bump_version(locked)
+
+    _income_sources_changed(locked, actor)
+    return current
+
+
+def delete_income_source(actor: User, source: IncomeSource) -> None:
+    participant = source.financial_profile.participant
+    with transaction.atomic():
+        locked = lock_for_edit(participant.application_id, None)
+        _current_participant(participant.pk)
+        IncomeSource.objects.filter(pk=source.pk).delete()
+        bump_version(locked)
+
+    _income_sources_changed(locked, actor)

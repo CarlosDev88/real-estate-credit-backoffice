@@ -125,6 +125,8 @@ SPECTACULAR_SETTINGS = {
         "ProjectStatusEnum": "apps.catalogs.workflow.ProjectStatus",
         "OpportunityStatusEnum": "apps.catalogs.workflow.OpportunityStatus",
         "ApplicationStatusEnum": "apps.catalogs.workflow.ApplicationStatus",
+        # Requisitos documentales (`participant_role`) y participantes (`role`).
+        "ParticipantRoleEnum": "apps.documents.models.ParticipantRole",
         "RuleOutcomeEnum": "apps.banking.rule_engine.Outcome",
     },
 }

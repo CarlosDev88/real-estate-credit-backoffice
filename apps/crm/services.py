@@ -3,7 +3,8 @@
 Alcance por rol (sección 8.6 de los requerimientos y RF-14):
 
 - ``ADMIN``: todo.
-- ``ADVISOR``: oportunidades asignadas a él o que él capturó, y sus clientes.
+- ``ADVISOR``: oportunidades asignadas a él o que él capturó, y sus clientes; también
+  los participantes de las solicitudes que tiene asignadas, aunque se hayan retirado.
 - ``INDEPENDENT_BROKER``: oportunidades que él capturó y clientes que creó. Solo ve
   datos de contacto y un resumen; nunca datos financieros ni documentos.
 - ``CONSTRUCTION_PARTNER``: no usa estos endpoints en el MVP (sección 14 de la API).
@@ -16,6 +17,7 @@ import uuid
 from dataclasses import dataclass
 from typing import Any
 
+from django.apps import apps
 from django.db import IntegrityError, transaction
 from django.db.models import Exists, OuterRef, Q, QuerySet
 from django.utils import timezone
@@ -108,7 +110,26 @@ def clients_visible_to(user: User) -> QuerySet[Client]:
     if not (scope.is_advisor or scope.is_broker):
         return clients.none()
     related_opportunity = Opportunity.objects.filter(condition, client=OuterRef("pk"))
-    return clients.filter(Q(created_by=user) | Exists(related_opportunity))
+    visible = Q(created_by=user) | Q(Exists(related_opportunity))
+    if scope.is_advisor:
+        visible |= Q(Exists(_assigned_participations(user)))
+    return clients.filter(visible)
+
+
+def _assigned_participations(user: User) -> QuerySet[Any]:
+    """Participaciones del cliente en solicitudes asignadas al asesor.
+
+    Incluye a los participantes retirados, para que el asesor pueda volver a agregarlos
+    y consultar su historia. El broker no gana visibilidad por participación: nunca ve
+    los participantes en detalle.
+
+    `crm` no importa `applications` (la dependencia va en sentido contrario), por eso el
+    modelo se resuelve por nombre.
+    """
+    participant_model = apps.get_model("applications", "ApplicationParticipant")
+    return participant_model.objects.filter(
+        client=OuterRef("pk"), application__assigned_advisor=user
+    )
 
 
 # --------------------------------------------------------------------------------------

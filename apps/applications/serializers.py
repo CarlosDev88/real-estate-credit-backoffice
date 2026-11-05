@@ -1,16 +1,31 @@
+import uuid
 from collections.abc import Mapping
+from datetime import date
 from typing import Any, cast
 
 from django.utils import timezone
 from rest_framework import serializers
 
-from apps.applications.models import ApplicationAssignment, CreditApplication, Property
+from apps.applications.models import (
+    ApplicationAssignment,
+    ApplicationParticipant,
+    CreditApplication,
+    FinancialProfile,
+    IncomeSource,
+    ParticipantRole,
+    Property,
+)
 from apps.catalogs.fields import CatalogItemCodeField
 from apps.catalogs.serializers import CatalogItemRefSerializer
 
 # Mismas formas que en CRM: se reutilizan para que OpenAPI no tenga dos componentes
 # con el mismo nombre.
-from apps.crm.serializers import AssignmentCreateSerializer, UserRefSerializer
+from apps.crm.serializers import (
+    AssignmentCreateSerializer,
+    ClientCreateSerializer,
+    ClientSerializer,
+    UserRefSerializer,
+)
 from apps.crm.validators import mask_document_number
 from apps.identity.models import User
 from config.serializers import StrictSerializer
@@ -19,10 +34,18 @@ __all__ = [
     "ApplicationAssignmentSerializer",
     "ApplicationCreateSerializer",
     "ApplicationDetailSerializer",
+    "ApplicationParticipantSerializer",
     "ApplicationSerializer",
     "ApplicationSummarySerializer",
     "ApplicationUpdateSerializer",
     "AssignmentCreateSerializer",
+    "FinancialProfileInputSerializer",
+    "FinancialProfileSerializer",
+    "IncomeSourceCreateSerializer",
+    "IncomeSourceSerializer",
+    "IncomeSourceUpdateSerializer",
+    "ParticipantCreateSerializer",
+    "ParticipantUpdateSerializer",
     "PropertyInputSerializer",
     "PropertySerializer",
     "property_model_values",
@@ -265,3 +288,216 @@ class ApplicationUpdateSerializer(StrictSerializer):
 
     purpose_code = CatalogItemCodeField(catalog_code="loan_purpose", required=False)
     bank_product_id = serializers.UUIDField(required=False, allow_null=True)
+
+
+# --- Participantes, perfil financiero e ingresos (API §17) ------------------------------
+
+ADDITIONAL_ROLE_CHOICES = [
+    (role.value, role.label)
+    for role in (ParticipantRole.CO_APPLICANT, ParticipantRole.SOLIDARY_DEBTOR)
+]
+# Datos de identidad con los que `POST /participants` crea el cliente (mismas reglas
+# que `POST /clients`).
+CLIENT_IDENTITY_FIELDS = (
+    "document_type_code",
+    "document_number",
+    "first_names",
+    "last_names",
+    "birth_date",
+    "email",
+    "phone",
+)
+
+
+class ApplicationParticipantSerializer(serializers.ModelSerializer):
+    application_id = serializers.UUIDField(read_only=True)
+    client = ClientSerializer(read_only=True)
+    financial_profile_id = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ApplicationParticipant
+        fields = [
+            "id",
+            "application_id",
+            "client",
+            "role",
+            "contributes_income",
+            "income_share_cop",
+            "is_active",
+            "financial_profile_id",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = fields
+
+    def get_financial_profile_id(self, obj: ApplicationParticipant) -> uuid.UUID | None:
+        profile = getattr(obj, "financial_profile", None)
+        return None if profile is None else profile.pk
+
+
+class ParticipantCreateSerializer(StrictSerializer):
+    """Un cliente visible (``client_id``) o sus datos de identidad, nunca ambos."""
+
+    role_code = serializers.ChoiceField(choices=ADDITIONAL_ROLE_CHOICES)
+    client_id = serializers.UUIDField(required=False)
+    contributes_income = serializers.BooleanField(required=False, default=True)
+    income_share_cop = serializers.IntegerField(
+        min_value=0, required=False, allow_null=True, default=None
+    )
+    # Los valida `ClientCreateSerializer`; se declaran aquí para el esquema.
+    document_type_code = serializers.CharField(required=False)
+    document_number = serializers.CharField(max_length=40, required=False)
+    first_names = serializers.CharField(max_length=120, required=False)
+    last_names = serializers.CharField(max_length=120, required=False)
+    birth_date = serializers.DateField(required=False, allow_null=True)
+    email = serializers.EmailField(max_length=254, required=False, allow_blank=True)
+    phone = serializers.CharField(max_length=25, required=False, allow_blank=True)
+
+    def validate(self, attrs: dict[str, Any]) -> dict[str, Any]:
+        identity = {
+            field: self.initial_data[field]
+            for field in CLIENT_IDENTITY_FIELDS
+            if field in self.initial_data
+        }
+        if "client_id" in attrs:
+            if identity:
+                raise serializers.ValidationError(
+                    {
+                        field: ["Envía `client_id` o los datos del cliente, no ambos."]
+                        for field in identity
+                    }
+                )
+            attrs["client_data"] = None
+            return attrs
+        client = ClientCreateSerializer(data=identity)
+        if not client.is_valid():
+            raise serializers.ValidationError(client.errors)
+        attrs["client_data"] = client.to_service_data()
+        return attrs
+
+
+class ParticipantUpdateSerializer(StrictSerializer):
+    role_code = serializers.ChoiceField(choices=ADDITIONAL_ROLE_CHOICES, required=False)
+    contributes_income = serializers.BooleanField(required=False)
+    income_share_cop = serializers.IntegerField(min_value=0, required=False, allow_null=True)
+
+    def changes(self) -> dict[str, Any]:
+        data = dict(self.validated_data)
+        if "role_code" in data:
+            data["role"] = data.pop("role_code")
+        return data
+
+
+class FinancialProfileSerializer(serializers.ModelSerializer):
+    participant_id = serializers.UUIDField(read_only=True)
+    employment_profile = CatalogItemRefSerializer(source="employment_profile_item", read_only=True)
+    contract_type = CatalogItemRefSerializer(
+        source="contract_type_item", read_only=True, allow_null=True
+    )
+    funds_origin = CatalogItemRefSerializer(
+        source="funds_origin_item", read_only=True, allow_null=True
+    )
+    # Informativo: no tiene que coincidir con `monthly_income_cop`.
+    income_sources_total_cop = serializers.IntegerField(read_only=True)
+
+    class Meta:
+        model = FinancialProfile
+        fields = [
+            "id",
+            "participant_id",
+            "employment_profile",
+            "contract_type",
+            "employer_name",
+            "job_title",
+            "employment_start_date",
+            "monthly_income_cop",
+            "income_sources_total_cop",
+            "monthly_expenses_cop",
+            "assets_cop",
+            "liabilities_cop",
+            "funds_origin",
+            "data_confirmed_at",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = fields
+
+
+class FinancialProfileInputSerializer(StrictSerializer):
+    """Reemplazo completo (``PUT``): lo que no llega vuelve a su valor por omisión."""
+
+    employment_profile_code = CatalogItemCodeField(catalog_code="employment_profile")
+    contract_type_code = CatalogItemCodeField(
+        catalog_code="contract_type", required=False, allow_null=True, default=None
+    )
+    employer_name = serializers.CharField(
+        max_length=180, required=False, allow_blank=True, default=""
+    )
+    job_title = serializers.CharField(max_length=120, required=False, allow_blank=True, default="")
+    employment_start_date = serializers.DateField(required=False, allow_null=True, default=None)
+    monthly_income_cop = serializers.IntegerField(min_value=0, required=False, default=0)
+    monthly_expenses_cop = serializers.IntegerField(min_value=0, required=False, default=0)
+    assets_cop = serializers.IntegerField(min_value=0, required=False, default=0)
+    liabilities_cop = serializers.IntegerField(min_value=0, required=False, default=0)
+    funds_origin_code = CatalogItemCodeField(
+        catalog_code="funds_origin", required=False, allow_null=True, default=None
+    )
+
+    def validate_employment_start_date(self, value: date | None) -> date | None:
+        if value is not None and value > timezone.localdate():
+            raise serializers.ValidationError("La fecha de ingreso no puede ser futura.")
+        return value
+
+    def model_values(self) -> dict[str, Any]:
+        values = dict(self.validated_data)
+        return {
+            "employment_profile_item": values.pop("employment_profile_code"),
+            "contract_type_item": values.pop("contract_type_code"),
+            "funds_origin_item": values.pop("funds_origin_code"),
+            **values,
+        }
+
+
+class IncomeSourceSerializer(serializers.ModelSerializer):
+    financial_profile_id = serializers.UUIDField(read_only=True)
+    source_type = CatalogItemRefSerializer(source="source_type_item", read_only=True)
+
+    class Meta:
+        model = IncomeSource
+        fields = [
+            "id",
+            "financial_profile_id",
+            "source_type",
+            "payer_name",
+            "monthly_amount_cop",
+            "start_date",
+            "is_primary",
+            "notes",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = fields
+
+
+class IncomeSourceCreateSerializer(StrictSerializer):
+    source_type_code = CatalogItemCodeField(catalog_code="income_source_type")
+    payer_name = serializers.CharField(max_length=180, required=False, allow_blank=True, default="")
+    monthly_amount_cop = serializers.IntegerField(min_value=0)
+    start_date = serializers.DateField(required=False, allow_null=True, default=None)
+    is_primary = serializers.BooleanField(required=False, default=False)
+    notes = serializers.CharField(max_length=2000, required=False, allow_blank=True, default="")
+
+    def model_values(self) -> dict[str, Any]:
+        values = dict(self.validated_data)
+        if "source_type_code" in values:
+            values["source_type_item"] = values.pop("source_type_code")
+        return values
+
+
+class IncomeSourceUpdateSerializer(IncomeSourceCreateSerializer):
+    source_type_code = CatalogItemCodeField(catalog_code="income_source_type", required=False)
+    payer_name = serializers.CharField(max_length=180, required=False, allow_blank=True)
+    monthly_amount_cop = serializers.IntegerField(min_value=0, required=False)
+    start_date = serializers.DateField(required=False, allow_null=True)
+    is_primary = serializers.BooleanField(required=False)
+    notes = serializers.CharField(max_length=2000, required=False, allow_blank=True)
