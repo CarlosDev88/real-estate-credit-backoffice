@@ -270,9 +270,14 @@ def test_assigned_is_reached_only_through_assignments(
     assert body["details"][0]["field"] == "target_status"
 
 
-def test_conversion_is_not_available_yet(admin_client: APIClient, assigned: Opportunity) -> None:
-    # La agrega el módulo de solicitudes: se convierte al crear la solicitud.
-    assert_error(transition(admin_client, assigned, "CONVERTED"), 409, "INVALID_STATE_TRANSITION")
+def test_conversion_is_reached_only_by_creating_the_application(
+    admin_client: APIClient, assigned: Opportunity
+) -> None:
+    # Las transiciones `CONVERT_*` existen, pero solo las ejecuta el módulo applications.
+    body = assert_error(transition(admin_client, assigned, "CONVERTED"), 400, "VALIDATION_ERROR")
+    assert body["details"][0]["field"] == "target_status"
+    assigned.refresh_from_db()
+    assert assigned.status == "ASSIGNED"
 
 
 def test_lost_requires_a_reason(admin_client: APIClient, assigned: Opportunity) -> None:

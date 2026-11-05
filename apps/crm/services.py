@@ -345,6 +345,11 @@ def transition_opportunity(
         raise ValidationError(
             {"target_status": ["Para asignar usa POST /opportunities/{id}/assignments."]}
         )
+    if to_status == OpportunityStatus.CONVERTED:
+        # Las transiciones `CONVERT_*` las ejecuta `applications` al crear la solicitud.
+        raise ValidationError(
+            {"target_status": ["La oportunidad se convierte al crear su solicitud."]}
+        )
     if to_status == OpportunityStatus.LOST and lost_reason is None:
         raise ValidationError({"reason_code": ["El motivo es obligatorio para LOST."]})
     if to_status != OpportunityStatus.LOST and lost_reason is not None:
