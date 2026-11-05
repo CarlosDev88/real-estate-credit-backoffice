@@ -30,6 +30,7 @@ api_v1_patterns = [
     path("", include("apps.crm.urls")),
     path("", include("apps.banking.urls")),
     path("", include("apps.documents.urls")),
+    path("", include("apps.applications.urls")),
 ]
 
 urlpatterns = [

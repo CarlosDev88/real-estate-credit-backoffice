@@ -266,7 +266,8 @@ def update_opportunity(opportunity: Opportunity, changes: dict[str, Any]) -> Opp
     return opportunity
 
 
-def _ensure_advisor(user: User) -> None:
+def ensure_advisor(user: User) -> None:
+    """El responsable de una oportunidad o solicitud es un usuario activo con rol ADVISOR."""
     roles = set(get_access_profile(user).roles)
     if not user.can_authenticate or RoleCode.ADVISOR not in roles:
         raise AdvisorNotEligible()
@@ -279,7 +280,7 @@ def assign_advisor(
 
     Si la oportunidad estaba en `NEW`, pasa a `ASSIGNED` con la transición `ASSIGN`.
     """
-    _ensure_advisor(advisor)
+    ensure_advisor(advisor)
     with transaction.atomic():
         locked = Opportunity.objects.select_for_update().get(pk=opportunity.pk)
         if not locked.is_open:
@@ -383,6 +384,40 @@ def transition_opportunity(
         comment=comment,
     )
     return locked
+
+
+def convert_opportunity(actor: User, opportunity: Opportunity) -> Opportunity:
+    """Pasa la oportunidad a `CONVERTED` con una transición `CONVERT_*`.
+
+    La llama el módulo applications al crear la solicitud, dentro de su transacción y
+    con la fila de la oportunidad ya bloqueada (``select_for_update``). Desde un estado
+    sin transición de conversión (por ejemplo `NEW`) responde
+    `409 INVALID_STATE_TRANSITION`. El evento sale solo si la transacción se confirma.
+    """
+    from_status = opportunity.status
+    transition = resolve_transition(
+        actor,
+        flow_type=FlowType.OPPORTUNITY,
+        from_status=from_status,
+        to_status=OpportunityStatus.CONVERTED,
+    )
+    opportunity.status = OpportunityStatus.CONVERTED
+    opportunity.converted_at = timezone.now()
+    opportunity.save(update_fields=["status", "converted_at", "updated_at"])
+
+    def _notify() -> None:
+        opportunity_status_changed.send(
+            sender=Opportunity,
+            opportunity=opportunity,
+            from_status=from_status,
+            to_status=OpportunityStatus.CONVERTED,
+            transition_code=transition.code,
+            actor=actor,
+            comment="",
+        )
+
+    transaction.on_commit(_notify)
+    return opportunity
 
 
 def available_actions(user: User, opportunity: Opportunity) -> list[str]:
