@@ -27,6 +27,7 @@ INSTALLED_APPS = [
     "apps.catalogs",
     "apps.partners",
     "apps.crm",
+    "apps.banking",
 ]
 
 MIDDLEWARE = [
@@ -121,6 +122,7 @@ SPECTACULAR_SETTINGS = {
         "PartnerStatusEnum": "apps.partners.models.partner.PartnerStatus",
         "ProjectStatusEnum": "apps.catalogs.workflow.ProjectStatus",
         "OpportunityStatusEnum": "apps.catalogs.workflow.OpportunityStatus",
+        "RuleOutcomeEnum": "apps.banking.rule_engine.Outcome",
     },
 }
 
