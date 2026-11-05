@@ -37,3 +37,9 @@ class ParticipantInactive(ApiError):
     status_code = status.HTTP_409_CONFLICT
     error_code = "PARTICIPANT_INACTIVE"
     default_detail = "El participante fue retirado de la solicitud. Para usarlo, agrégalo de nuevo."
+
+
+class BankProductRequired(ApiError):
+    status_code = status.HTTP_422_UNPROCESSABLE_ENTITY
+    error_code = "BANK_PRODUCT_REQUIRED"
+    default_detail = "Elige un producto bancario antes de evaluar las reglas."

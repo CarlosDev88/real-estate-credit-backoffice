@@ -8,6 +8,7 @@ from apps.banking.rule_engine import (
     ConditionError,
     Outcome,
     evaluate_condition,
+    referenced_fields,
     validate_condition,
     validate_context,
 )
@@ -296,3 +297,48 @@ def test_invalid_context(context: Any, path: str) -> None:
     with pytest.raises(ConditionError) as exc_info:
         validate_context(context)
     assert exc_info.value.path == path
+
+
+# --- Campos citados ---------------------------------------------------------------------
+
+
+def test_referenced_fields_follow_reading_order_without_repeats() -> None:
+    condition = {
+        "operator": "and",
+        "conditions": [
+            MAX_LTV_CONDITION,
+            {"operator": "in", "left": PROFILE, "right": ["EMPLOYEE"]},
+            {
+                "operator": "lte",
+                "left": {
+                    "operator": "sum",
+                    "fields": ["financing.own_resources_cop", "financing.requested_amount_cop"],
+                },
+                "right": VALUE,
+            },
+            {"operator": "gte", "left": 12, "right": field("financing.term_months")},
+        ],
+    }
+    assert referenced_fields(condition) == [
+        "financing.requested_amount_cop",
+        "property.estimated_value_cop",
+        "applicant.employment_profile_code",
+        "financing.own_resources_cop",
+        "financing.term_months",
+    ]
+
+
+def test_new_application_fields_are_whitelisted() -> None:
+    for name in (
+        "property.is_owned_by_applicant",
+        "property.has_project",
+        "financing.financing_mode_code",
+        "financing.amortization_mode_code",
+        "financing.external_approved_amount_cop",
+        "applicant.contract_type_code",
+        "applicant.employment_months",
+        "household.monthly_expenses_cop",
+        "household.liabilities_cop",
+        "application.participant_count",
+    ):
+        assert name in RULE_FIELDS

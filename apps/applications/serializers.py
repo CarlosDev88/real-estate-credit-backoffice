@@ -4,11 +4,20 @@ from datetime import date
 from typing import Any, cast
 
 from django.utils import timezone
+from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
+from apps.applications.bank_evaluation import (
+    EvaluationSummary,
+    blocking_rows,
+    is_current,
+    issue,
+    warning_rows,
+)
 from apps.applications.models import (
     ApplicationAssignment,
     ApplicationParticipant,
+    BankRuleEvaluation,
     CreditApplication,
     FinancialProfile,
     FinancingPreference,
@@ -16,6 +25,9 @@ from apps.applications.models import (
     ParticipantRole,
     Property,
 )
+from apps.banking.models import BankProduct
+from apps.banking.rule_engine import Outcome
+from apps.banking.serializers import BankRefSerializer
 from apps.catalogs.fields import CatalogItemCodeField
 from apps.catalogs.serializers import CatalogItemRefSerializer
 
@@ -42,6 +54,8 @@ __all__ = [
     "ApplicationSummarySerializer",
     "ApplicationUpdateSerializer",
     "AssignmentCreateSerializer",
+    "BankRuleEvaluationSerializer",
+    "EligibleBankProductSerializer",
     "FinancialProfileInputSerializer",
     "FinancialProfileSerializer",
     "FinancingInputSerializer",
@@ -629,3 +643,103 @@ class ApplicationDetailSerializer(ApplicationSerializer):
         return cast(
             list[dict[str, Any]], ApplicationAssignmentSerializer(assignments, many=True).data
         )
+
+
+# --- Reglas bancarias (API §18.2) -------------------------------------------------------
+
+
+class RuleIssueSerializer(serializers.Serializer):
+    """Regla incumplida (`FAILED`) o sin datos para decidir (`MISSING_DATA`)."""
+
+    rule_code = serializers.CharField()
+    outcome = serializers.ChoiceField(choices=[Outcome.FAILED.value, Outcome.MISSING_DATA.value])
+    message = serializers.CharField()
+    field = serializers.CharField(
+        allow_null=True,
+        help_text=(
+            "Campo de la lista segura (`financing.requested_amount_cop`): el primero que "
+            "falta o, si se incumple, el primero que cita la condición."
+        ),
+    )
+    unresolved_fields = serializers.ListField(child=serializers.CharField())
+
+
+class BankRuleEvaluationSerializer(serializers.ModelSerializer):
+    """Evaluación guardada. ``context["application"]`` decide ``is_current``."""
+
+    bank_product_id = serializers.UUIDField(read_only=True)
+    is_current = serializers.SerializerMethodField(
+        help_text="Corresponde a la versión y al producto actuales de la solicitud."
+    )
+    eligible = serializers.BooleanField(source="is_eligible", read_only=True)
+    blocking = serializers.SerializerMethodField()
+    warnings = serializers.SerializerMethodField()
+    evaluated_at = serializers.DateTimeField(source="created_at", read_only=True)
+
+    class Meta:
+        model = BankRuleEvaluation
+        fields = [
+            "id",
+            "bank_product_id",
+            "application_version",
+            "is_current",
+            "eligible",
+            "blocking",
+            "warnings",
+            "evaluated_at",
+        ]
+        read_only_fields = fields
+
+    def get_is_current(self, obj: BankRuleEvaluation) -> bool:
+        application: CreditApplication = self.context["application"]
+        return is_current(obj, application)
+
+    @extend_schema_field(RuleIssueSerializer(many=True))
+    def get_blocking(self, obj: BankRuleEvaluation) -> list[dict[str, Any]]:
+        return [issue(row) for row in blocking_rows(obj.result_snapshot["rules"])]
+
+    @extend_schema_field(RuleIssueSerializer(many=True))
+    def get_warnings(self, obj: BankRuleEvaluation) -> list[dict[str, Any]]:
+        return [issue(row) for row in warning_rows(obj.result_snapshot["rules"])]
+
+
+class ProductEligibilitySerializer(serializers.Serializer):
+    eligible = serializers.BooleanField()
+    blocking_count = serializers.IntegerField()
+    warning_count = serializers.IntegerField()
+
+
+class EligibleBankProductSerializer(serializers.ModelSerializer):
+    """Producto disponible para la finalidad, con una evaluación no guardada.
+
+    ``context["evaluations"]`` trae el resumen de cada producto, por id.
+    """
+
+    bank = BankRefSerializer(read_only=True)
+    product_type_code = serializers.CharField(source="product_type_item.code", read_only=True)
+    evaluation = serializers.SerializerMethodField()
+
+    class Meta:
+        model = BankProduct
+        fields = [
+            "id",
+            "code",
+            "name",
+            "bank",
+            "product_type_code",
+            "min_amount_cop",
+            "max_amount_cop",
+            "min_term_months",
+            "max_term_months",
+            "evaluation",
+        ]
+        read_only_fields = fields
+
+    @extend_schema_field(ProductEligibilitySerializer)
+    def get_evaluation(self, obj: BankProduct) -> dict[str, Any]:
+        summary: EvaluationSummary = self.context["evaluations"][obj.pk]
+        return {
+            "eligible": summary.eligible,
+            "blocking_count": summary.blocking_count,
+            "warning_count": summary.warning_count,
+        }

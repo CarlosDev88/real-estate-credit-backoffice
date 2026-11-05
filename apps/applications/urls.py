@@ -59,6 +59,21 @@ urlpatterns = [
         views.ApplicationFinancingView.as_view(),
         name="application-financing",
     ),
+    path(
+        "applications/<uuid:application_id>/eligible-bank-products",
+        views.EligibleBankProductsView.as_view(),
+        name="application-eligible-bank-products",
+    ),
+    path(
+        "applications/<uuid:application_id>/bank-rule-evaluations",
+        views.ApplicationRuleEvaluationView.as_view(),
+        name="application-bank-rule-evaluations",
+    ),
+    path(
+        "applications/<uuid:application_id>/bank-rule-evaluations/latest",
+        views.ApplicationLatestRuleEvaluationView.as_view(),
+        name="application-bank-rule-evaluation-latest",
+    ),
     # Solicitudes del cliente (sección 13)
     path(
         "clients/<uuid:client_id>/applications",

@@ -1,5 +1,5 @@
 """Casos de uso de applications: alcance, creación, edición, asignación, participantes,
-inmueble y financiación.
+inmueble, financiación y evaluación de reglas bancarias.
 
 Alcance por rol (REQUERIMIENTOS §3 y §8.6, API §25):
 
@@ -26,11 +26,18 @@ from django.db.models.functions import Coalesce
 from django.utils import timezone
 from rest_framework.exceptions import ValidationError
 
+from apps.applications.bank_evaluation import (
+    EvaluationSummary,
+    evaluate_product,
+    save_evaluation,
+    summarize,
+)
 from apps.applications.concurrency import ensure_version
 from apps.applications.exceptions import (
     ApplicationAlreadyOpen,
     ApplicationClosed,
     ApplicationNotEditable,
+    BankProductRequired,
     ParticipantInactive,
 )
 from apps.applications.models import (
@@ -39,6 +46,7 @@ from apps.applications.models import (
     ApplicationAssignment,
     ApplicationParticipant,
     ApplicationStatusHistory,
+    BankRuleEvaluation,
     CreditApplication,
     FinancialProfile,
     FinancingPreference,
@@ -47,6 +55,7 @@ from apps.applications.models import (
     Property,
     next_application_code,
 )
+from apps.applications.rule_context import build_rule_context
 from apps.applications.signals import (
     application_assigned,
     application_created,
@@ -440,7 +449,8 @@ def update_application(
     """Cambia la finalidad (``purpose_item``) o el producto (``bank_product``).
 
     El producto debe admitir la finalidad, y un inmueble ya registrado debe cumplir las
-    reglas de la nueva finalidad. Sin cambios reales no aumenta la versión.
+    reglas de la nueva finalidad. Sin cambios reales no aumenta la versión. Elegir un
+    producto guarda una evaluación de sus reglas con la versión nueva.
     """
     with transaction.atomic():
         locked = lock_for_edit(application, expected_version)
@@ -473,6 +483,8 @@ def update_application(
         for field in changed:
             setattr(locked, field, changes[field])
         bump_version(locked, changed)
+        if "bank_product" in changed and product is not None:
+            save_evaluation(actor, locked)
 
     application_updated.send(
         sender=CreditApplication, application=locked, fields=sorted(changed), actor=actor
@@ -899,7 +911,8 @@ def put_financing(
 
     El producto se guarda en ``credit_applications.bank_product``; con ``OWN_FUNDS`` o
     ``EXTERNAL_CREDIT`` se limpia. Con crédito bancario debe estar disponible para la
-    finalidad de la solicitud.
+    finalidad de la solicitud. Elegir un producto distinto guarda una evaluación de sus
+    reglas con la versión nueva.
     """
     errors = financing_errors(values["financing_mode_item"].code, values, product)
     if errors:
@@ -928,8 +941,58 @@ def put_financing(
             locked.bank_product = product
             fields.append("bank_product")
         bump_version(locked, ["bank_product"] if product_changed else [])
+        if product_changed and product is not None:
+            save_evaluation(actor, locked)
 
     application_updated.send(
         sender=CreditApplication, application=locked, fields=sorted(fields), actor=actor
     )
     return created
+
+
+# --------------------------------------------------------------------------------------
+# Reglas bancarias (API §18.2)
+# --------------------------------------------------------------------------------------
+
+
+def evaluate_application(actor: User, application: CreditApplication) -> BankRuleEvaluation:
+    """Evalúa las reglas del producto elegido y guarda el resultado.
+
+    Solo antes de `FILED` (``409 APPLICATION_NOT_EDITABLE``) y con producto
+    (``422 BANK_PRODUCT_REQUIRED``). No cambia la versión; bloquea la solicitud para que
+    el contexto evaluado corresponda exactamente a ``application_version``.
+    """
+    with transaction.atomic():
+        locked = lock_for_edit(application, None)
+        if locked.bank_product_id is None:
+            raise BankProductRequired()
+        evaluation = save_evaluation(actor, locked)
+    logger.info(
+        "Reglas de %s evaluadas por %s: elegible=%s",
+        locked.code,
+        actor.pk,
+        evaluation.is_eligible,
+    )
+    return evaluation
+
+
+def latest_evaluation(application: CreditApplication) -> BankRuleEvaluation | None:
+    return (
+        BankRuleEvaluation.objects.filter(application=application).order_by("-created_at").first()
+    )
+
+
+def eligible_products_queryset(application: CreditApplication) -> QuerySet[BankProduct]:
+    """Productos disponibles hoy para la finalidad, por banco y producto."""
+    return available_products(purpose=application.purpose_item).order_by("bank__name", "name", "id")
+
+
+def preview_products(
+    application: CreditApplication, products: Iterable[BankProduct]
+) -> dict[uuid.UUID, EvaluationSummary]:
+    """Evaluación no persistida de cada producto, con el contexto actual de la solicitud."""
+    context = build_rule_context(application)
+    return {
+        product.pk: summarize(evaluate_product(product, context, purpose=application.purpose_item))
+        for product in products
+    }

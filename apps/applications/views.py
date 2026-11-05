@@ -1,5 +1,6 @@
 """Endpoints de solicitudes de crédito (API §16), sus participantes, perfiles financieros
-e ingresos (§17), inmueble y financiación (§18) y `GET /clients/{id}/applications` (§13)."""
+e ingresos (§17), inmueble, financiación y reglas bancarias (§18) y
+`GET /clients/{id}/applications` (§13)."""
 
 from typing import Any, cast
 
@@ -35,6 +36,8 @@ from apps.applications.serializers import (
     ApplicationSummarySerializer,
     ApplicationUpdateSerializer,
     AssignmentCreateSerializer,
+    BankRuleEvaluationSerializer,
+    EligibleBankProductSerializer,
     FinancialProfileInputSerializer,
     FinancialProfileSerializer,
     FinancingInputSerializer,
@@ -850,3 +853,99 @@ class ApplicationFinancingView(ExpedienteView):
         return self.financing_response(
             application.pk, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK
         )
+
+
+# --------------------------------------------------------------------------------------
+# Reglas bancarias (API §18.2)
+# --------------------------------------------------------------------------------------
+
+BANK_RULES_TAG = "Application bank rules"
+
+
+class ApplicationRuleEvaluationView(ExpedienteView):
+    required_permissions = {"POST": "applications.update"}
+
+    @extend_schema(
+        tags=[BANK_RULES_TAG],
+        operation_id="applications_bank_rule_evaluations_create",
+        summary="Evaluar las reglas del producto elegido",
+        description=(
+            "Aplica las reglas publicadas del producto para la finalidad y los rangos de "
+            "monto y plazo del producto (`PRODUCT_AMOUNT_RANGE` y `PRODUCT_TERM_RANGE`, "
+            "siempre bloqueantes), y guarda el resultado con la versión actual. Una regla "
+            "bloqueante incumplida o sin datos (`MISSING_DATA`) deja `eligible = false`. "
+            "No aprueba ni rechaza el crédito, no cambia el estado ni la versión y no "
+            f"exige `If-Match`. Solo antes de radicar. {ETAG_NOTE}"
+        ),
+        request=None,
+        responses={
+            201: BankRuleEvaluationSerializer,
+            409: _error("APPLICATION_NOT_EDITABLE"),
+            422: _error("BANK_PRODUCT_REQUIRED (la solicitud no tiene producto)"),
+            **NOT_FOUND,
+            **COMMON_ERRORS,
+        },
+    )
+    def post(self, request: Request, application_id: Any) -> Response:
+        application = self.get_application(application_id)
+        evaluation = services.evaluate_application(self.actor, application)
+        data = BankRuleEvaluationSerializer(
+            evaluation, context={"application": evaluation.application}
+        ).data
+        return with_etag(
+            Response(data, status=status.HTTP_201_CREATED), evaluation.application_version
+        )
+
+
+class ApplicationLatestRuleEvaluationView(ExpedienteView):
+    required_permissions = {"GET": "applications.read"}
+
+    @extend_schema(
+        tags=[BANK_RULES_TAG],
+        operation_id="applications_bank_rule_evaluations_latest",
+        summary="Última evaluación de reglas",
+        description=(
+            "La más reciente, aunque la solicitud haya cambiado después: `is_current` dice "
+            "si corresponde a la versión y al producto actuales. `404` si nunca se evaluó. "
+            f"{ETAG_NOTE}"
+        ),
+        responses={200: BankRuleEvaluationSerializer, **NOT_FOUND, **COMMON_ERRORS},
+    )
+    def get(self, request: Request, application_id: Any) -> Response:
+        application = self.get_application(application_id)
+        evaluation = services.latest_evaluation(application)
+        if evaluation is None:
+            raise Http404
+        data = BankRuleEvaluationSerializer(evaluation, context={"application": application}).data
+        return with_etag(Response(data), application.version)
+
+
+class EligibleBankProductsView(ExpedienteView):
+    required_permissions = {"GET": "applications.read"}
+
+    @extend_schema(
+        tags=[BANK_RULES_TAG],
+        operation_id="applications_eligible_bank_products",
+        summary="Productos disponibles para la finalidad, con su evaluación",
+        description=(
+            "Productos activos y vigentes (con banco activo) que admiten la finalidad, por "
+            "banco y producto. Cada uno trae una evaluación **no guardada** con los datos "
+            "actuales: reglas publicadas y rangos del producto. Se listan aunque la "
+            f"modalidad registrada no sea `BANK_CREDIT`. {ETAG_NOTE}"
+        ),
+        responses={
+            200: EligibleBankProductSerializer(many=True),
+            **NOT_FOUND,
+            **COMMON_ERRORS,
+        },
+    )
+    def get(self, request: Request, application_id: Any) -> Response:
+        application = self.get_application(application_id)
+        page = self.paginate_queryset(services.eligible_products_queryset(application)) or []
+        evaluations = services.preview_products(application, page)
+        response = self.get_paginated_response(
+            EligibleBankProductSerializer(
+                page, many=True, context={"evaluations": evaluations}
+            ).data
+        )
+        return with_etag(response, application.version)

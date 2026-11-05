@@ -203,6 +203,43 @@ def validate_condition(condition: Any, fields: Fields = RULE_FIELDS) -> None:
     _Validator(fields).condition(condition, "condition", depth=1)
 
 
+def referenced_fields(condition: Mapping[str, Any]) -> list[str]:
+    """Campos que cita una condición ya validada, sin repetir y en orden de lectura.
+
+    Sirve para señalar el dato de una regla incumplida: en ``requested / value <= 0.7``
+    el primero es ``financing.requested_amount_cop``.
+    """
+    names: list[str] = []
+
+    def add(name: str) -> None:
+        if name not in names:
+            names.append(name)
+
+    def visit_value(node: Any) -> None:
+        if not isinstance(node, Mapping):
+            return
+        if "field" in node:
+            add(node["field"])
+        elif node["operator"] == "sum":
+            for name in node["fields"]:
+                add(name)
+        else:
+            add(node["numerator_field"])
+            add(node["denominator_field"])
+
+    def visit(node: Mapping[str, Any]) -> None:
+        if node["operator"] in LOGICAL_OPERATORS:
+            for child in node["conditions"]:
+                visit(child)
+            return
+        visit_value(node["left"])
+        if node["operator"] != "in":
+            visit_value(node["right"])
+
+    visit(condition)
+    return names
+
+
 def validate_context(context: Any, fields: Fields = RULE_FIELDS, path: str = "context") -> None:
     """Valida un contexto de evaluación: solo campos de la lista blanca, con su tipo.
 
