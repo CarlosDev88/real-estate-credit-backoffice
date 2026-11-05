@@ -28,6 +28,7 @@ INSTALLED_APPS = [
     "apps.partners",
     "apps.crm",
     "apps.banking",
+    "apps.documents",
 ]
 
 MIDDLEWARE = [
