@@ -7,7 +7,7 @@ Acceso (sección 8.6 de los requerimientos):
 - ``INDEPENDENT_BROKER`` y ``CONSTRUCTION_PARTNER`` no consultan esta configuración.
 
 No hay alcance por fila: quien tiene el permiso ve toda la configuración. La elección
-de banco dentro de una solicitud no pasa por ``/banks``: el paso 8 la resolverá en
+de banco dentro de una solicitud no pasa por ``/banks``: la resuelve
 ``/applications/{id}/eligible-bank-products`` con ``available_products`` y
 ``evaluate_rules``.
 """
@@ -37,6 +37,7 @@ from apps.banking.rule_engine import (
     ConditionError,
     Outcome,
     evaluate_condition,
+    referenced_fields,
     validate_condition,
     validate_context,
 )
@@ -228,7 +229,7 @@ def available_products(
 ) -> QuerySet[BankProduct]:
     """Productos que pueden elegirse hoy (o en ``on``): banco y producto activos y vigentes.
 
-    Con ``purpose``, solo los que admiten esa finalidad. Lo usará el paso 8.
+    Con ``purpose``, solo los que admiten esa finalidad.
     """
     day = on or today()
     products = products_queryset().filter(
@@ -448,6 +449,8 @@ class RuleResult:
     message: str
     outcome: Outcome
     unresolved_fields: list[str] = field(default_factory=list)
+    # Campos que cita la condición, en orden de lectura.
+    fields: list[str] = field(default_factory=list)
 
 
 def applicable_rules(
@@ -480,6 +483,7 @@ def evaluate_rule(rule: BankPolicyRule, context: Mapping[str, Any]) -> RuleResul
         message=rule.message,
         outcome=result.outcome,
         unresolved_fields=result.unresolved_fields,
+        fields=referenced_fields(rule.condition),
     )
 
 
@@ -490,7 +494,7 @@ def evaluate_rules(
     purpose: CatalogItem | None = None,
     at: datetime | None = None,
 ) -> list[RuleResult]:
-    """Evalúa las reglas aplicables. El paso 8 guardará el resultado en
+    """Evalúa las reglas aplicables. ``apps.applications`` guarda el resultado en
     ``bank_rule_evaluations`` con la versión exacta de cada regla."""
     return [
         evaluate_rule(rule, context) for rule in applicable_rules(product, purpose=purpose, at=at)

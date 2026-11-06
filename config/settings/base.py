@@ -29,6 +29,7 @@ INSTALLED_APPS = [
     "apps.crm",
     "apps.banking",
     "apps.documents",
+    "apps.applications",
 ]
 
 MIDDLEWARE = [
@@ -123,6 +124,9 @@ SPECTACULAR_SETTINGS = {
         "PartnerStatusEnum": "apps.partners.models.partner.PartnerStatus",
         "ProjectStatusEnum": "apps.catalogs.workflow.ProjectStatus",
         "OpportunityStatusEnum": "apps.catalogs.workflow.OpportunityStatus",
+        "ApplicationStatusEnum": "apps.catalogs.workflow.ApplicationStatus",
+        # Requisitos documentales (`participant_role`) y participantes (`role`).
+        "ParticipantRoleEnum": "apps.documents.models.ParticipantRole",
         "RuleOutcomeEnum": "apps.banking.rule_engine.Outcome",
     },
 }
@@ -131,7 +135,8 @@ CORS_ALLOWED_ORIGINS = env.list("CORS_ALLOWED_ORIGINS", default=["http://localho
 CSRF_TRUSTED_ORIGINS = env.list("CSRF_TRUSTED_ORIGINS", default=["http://localhost:3000"])
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_HEADERS = (*default_headers, "x-request-id", "idempotency-key", "if-match")
-CORS_EXPOSE_HEADERS = ["X-Request-ID", "Retry-After"]
+# `ETag` lleva la versión de la solicitud que el frontend reenvía en `If-Match`.
+CORS_EXPOSE_HEADERS = ["X-Request-ID", "Retry-After", "ETag"]
 
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = "Lax"

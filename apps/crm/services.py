@@ -3,7 +3,8 @@
 Alcance por rol (sección 8.6 de los requerimientos y RF-14):
 
 - ``ADMIN``: todo.
-- ``ADVISOR``: oportunidades asignadas a él o que él capturó, y sus clientes.
+- ``ADVISOR``: oportunidades asignadas a él o que él capturó, y sus clientes; también
+  los participantes de las solicitudes que tiene asignadas, aunque se hayan retirado.
 - ``INDEPENDENT_BROKER``: oportunidades que él capturó y clientes que creó. Solo ve
   datos de contacto y un resumen; nunca datos financieros ni documentos.
 - ``CONSTRUCTION_PARTNER``: no usa estos endpoints en el MVP (sección 14 de la API).
@@ -16,6 +17,7 @@ import uuid
 from dataclasses import dataclass
 from typing import Any
 
+from django.apps import apps
 from django.db import IntegrityError, transaction
 from django.db.models import Exists, OuterRef, Q, QuerySet
 from django.utils import timezone
@@ -108,7 +110,26 @@ def clients_visible_to(user: User) -> QuerySet[Client]:
     if not (scope.is_advisor or scope.is_broker):
         return clients.none()
     related_opportunity = Opportunity.objects.filter(condition, client=OuterRef("pk"))
-    return clients.filter(Q(created_by=user) | Exists(related_opportunity))
+    visible = Q(created_by=user) | Q(Exists(related_opportunity))
+    if scope.is_advisor:
+        visible |= Q(Exists(_assigned_participations(user)))
+    return clients.filter(visible)
+
+
+def _assigned_participations(user: User) -> QuerySet[Any]:
+    """Participaciones del cliente en solicitudes asignadas al asesor.
+
+    Incluye a los participantes retirados, para que el asesor pueda volver a agregarlos
+    y consultar su historia. El broker no gana visibilidad por participación: nunca ve
+    los participantes en detalle.
+
+    `crm` no importa `applications` (la dependencia va en sentido contrario), por eso el
+    modelo se resuelve por nombre.
+    """
+    participant_model = apps.get_model("applications", "ApplicationParticipant")
+    return participant_model.objects.filter(
+        client=OuterRef("pk"), application__assigned_advisor=user
+    )
 
 
 # --------------------------------------------------------------------------------------
@@ -266,7 +287,8 @@ def update_opportunity(opportunity: Opportunity, changes: dict[str, Any]) -> Opp
     return opportunity
 
 
-def _ensure_advisor(user: User) -> None:
+def ensure_advisor(user: User) -> None:
+    """El responsable de una oportunidad o solicitud es un usuario activo con rol ADVISOR."""
     roles = set(get_access_profile(user).roles)
     if not user.can_authenticate or RoleCode.ADVISOR not in roles:
         raise AdvisorNotEligible()
@@ -279,7 +301,7 @@ def assign_advisor(
 
     Si la oportunidad estaba en `NEW`, pasa a `ASSIGNED` con la transición `ASSIGN`.
     """
-    _ensure_advisor(advisor)
+    ensure_advisor(advisor)
     with transaction.atomic():
         locked = Opportunity.objects.select_for_update().get(pk=opportunity.pk)
         if not locked.is_open:
@@ -345,6 +367,11 @@ def transition_opportunity(
         raise ValidationError(
             {"target_status": ["Para asignar usa POST /opportunities/{id}/assignments."]}
         )
+    if to_status == OpportunityStatus.CONVERTED:
+        # Las transiciones `CONVERT_*` las ejecuta `applications` al crear la solicitud.
+        raise ValidationError(
+            {"target_status": ["La oportunidad se convierte al crear su solicitud."]}
+        )
     if to_status == OpportunityStatus.LOST and lost_reason is None:
         raise ValidationError({"reason_code": ["El motivo es obligatorio para LOST."]})
     if to_status != OpportunityStatus.LOST and lost_reason is not None:
@@ -378,6 +405,40 @@ def transition_opportunity(
         comment=comment,
     )
     return locked
+
+
+def convert_opportunity(actor: User, opportunity: Opportunity) -> Opportunity:
+    """Pasa la oportunidad a `CONVERTED` con una transición `CONVERT_*`.
+
+    La llama el módulo applications al crear la solicitud, dentro de su transacción y
+    con la fila de la oportunidad ya bloqueada (``select_for_update``). Desde un estado
+    sin transición de conversión (por ejemplo `NEW`) responde
+    `409 INVALID_STATE_TRANSITION`. El evento sale solo si la transacción se confirma.
+    """
+    from_status = opportunity.status
+    transition = resolve_transition(
+        actor,
+        flow_type=FlowType.OPPORTUNITY,
+        from_status=from_status,
+        to_status=OpportunityStatus.CONVERTED,
+    )
+    opportunity.status = OpportunityStatus.CONVERTED
+    opportunity.converted_at = timezone.now()
+    opportunity.save(update_fields=["status", "converted_at", "updated_at"])
+
+    def _notify() -> None:
+        opportunity_status_changed.send(
+            sender=Opportunity,
+            opportunity=opportunity,
+            from_status=from_status,
+            to_status=OpportunityStatus.CONVERTED,
+            transition_code=transition.code,
+            actor=actor,
+            comment="",
+        )
+
+    transaction.on_commit(_notify)
+    return opportunity
 
 
 def available_actions(user: User, opportunity: Opportunity) -> list[str]:

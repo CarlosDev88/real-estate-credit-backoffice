@@ -26,6 +26,16 @@ VALID_TRANSITION = {
 }
 
 
+@pytest.fixture(autouse=True)
+def _application_flow_without_seeds(db: Any) -> None:
+    """Estas pruebas ejercitan el motor genérico sobre un flujo vacío.
+
+    El módulo applications siembra sus propias transiciones (cubiertas en
+    `tests/applications/test_seed.py`); aquí se retiran para que no interfieran.
+    """
+    WorkflowTransition.objects.filter(flow_type="APPLICATION").delete()
+
+
 def transition_url(transition_id: str) -> str:
     return f"{TRANSITIONS_URL}/{transition_id}"
 

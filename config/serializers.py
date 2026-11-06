@@ -30,6 +30,8 @@ class ErrorDetailSerializer(serializers.Serializer):
     message = serializers.CharField()
     # Opcional: recurso relacionado, por ejemplo el cliente que ya usa ese documento.
     resource_id = serializers.UUIDField(required=False)
+    # Opcional: versión actual del recurso en un `409 STALE_VERSION` (API §6).
+    current_version = serializers.IntegerField(required=False)
 
 
 class ErrorSerializer(serializers.Serializer):
