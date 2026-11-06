@@ -22,6 +22,31 @@ urlpatterns = [
         views.ApplicationAssignmentView.as_view(),
         name="application-assignments",
     ),
+    path(
+        "applications/<uuid:application_id>/status-transitions",
+        views.ApplicationStatusTransitionView.as_view(),
+        name="application-status-transitions",
+    ),
+    path(
+        "applications/<uuid:application_id>/withdrawals",
+        views.ApplicationWithdrawalView.as_view(),
+        name="application-withdrawals",
+    ),
+    path(
+        "applications/<uuid:application_id>/status-history",
+        views.ApplicationStatusHistoryView.as_view(),
+        name="application-status-history",
+    ),
+    path(
+        "applications/<uuid:application_id>/available-actions",
+        views.ApplicationAvailableActionsView.as_view(),
+        name="application-available-actions",
+    ),
+    path(
+        "applications/<uuid:application_id>/completeness",
+        views.ApplicationCompletenessView.as_view(),
+        name="application-completeness",
+    ),
     # Participantes, perfil financiero e ingresos (sección 17)
     path(
         "applications/<uuid:application_id>/participants",

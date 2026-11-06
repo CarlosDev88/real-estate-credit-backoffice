@@ -108,6 +108,14 @@ def test_partner_has_no_access_to_applications() -> None:
                 "OWN_FUNDS_CONFIRMED",
                 "EXTERNAL_CREDIT_CONFIRMED",
                 "CANCELLED_BY_OPERATION",
+                # Motivos de cierre (migración 0003).
+                "CLIENT_UNREACHABLE",
+                "INSUFFICIENT_CAPACITY",
+                "CLIENT_DECLINED_PURCHASE",
+                "BETTER_RATE_ELSEWHERE",
+                "FASTER_ELSEWHERE",
+                "EXISTING_BANK_RELATIONSHIP",
+                "SOLD_OTHER_PROPERTY",
                 "OTHER",
             },
             False,
@@ -191,3 +199,12 @@ def test_opportunity_is_converted_from_managed_statuses() -> None:
         assert transition.required_permission is not None
         assert transition.required_permission.code == "applications.create"
         assert {role.code for role in transition.roles.all()} == {"ADMIN", "ADVISOR"}
+
+
+def test_other_stays_last_among_transition_reasons() -> None:
+    catalog = Catalog.objects.get(code="application_transition_reason")
+
+    codes = list(catalog.items.order_by("sort_order").values_list("code", flat=True))
+
+    assert codes[-1] == "OTHER"
+    assert codes[-2] == "SOLD_OTHER_PROPERTY"

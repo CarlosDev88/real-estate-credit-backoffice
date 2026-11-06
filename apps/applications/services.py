@@ -1,5 +1,5 @@
 """Casos de uso de applications: alcance, creación, edición, asignación, participantes,
-inmueble, financiación y evaluación de reglas bancarias.
+inmueble, financiación, evaluación de reglas bancarias, estados y completitud.
 
 Alcance por rol (REQUERIMIENTOS §3 y §8.6, API §25):
 
@@ -18,6 +18,8 @@ bloquea la fila, compara la versión de ``If-Match`` y exige un estado previo a 
 import logging
 import uuid
 from collections.abc import Iterable, Mapping
+from dataclasses import dataclass
+from datetime import datetime
 from typing import Any
 
 from django.db import IntegrityError, transaction
@@ -28,7 +30,10 @@ from rest_framework.exceptions import ValidationError
 
 from apps.applications.bank_evaluation import (
     EvaluationSummary,
+    blocking_rows,
     evaluate_product,
+    is_current,
+    issue,
     save_evaluation,
     summarize,
 )
@@ -37,10 +42,13 @@ from apps.applications.exceptions import (
     ApplicationAlreadyOpen,
     ApplicationClosed,
     ApplicationNotEditable,
+    ApplicationNotReady,
     BankProductRequired,
+    FinancingModeMismatch,
     ParticipantInactive,
 )
 from apps.applications.models import (
+    EDITABLE_APPLICATION_STATUSES,
     FAILED_APPLICATION_STATUSES,
     TERMINAL_APPLICATION_STATUSES,
     ApplicationAssignment,
@@ -59,6 +67,7 @@ from apps.applications.rule_context import build_rule_context
 from apps.applications.signals import (
     application_assigned,
     application_created,
+    application_status_changed,
     application_updated,
     participant_added,
     participant_removed,
@@ -66,8 +75,9 @@ from apps.applications.signals import (
 from apps.banking.models import BankProduct
 from apps.banking.services import available_products
 from apps.catalogs.exceptions import InvalidStateTransition
-from apps.catalogs.models import CatalogItem
-from apps.catalogs.workflow import ApplicationStatus, OpportunityStatus
+from apps.catalogs.models import CatalogItem, WorkflowTransition
+from apps.catalogs.services import available_transitions, resolve_transition
+from apps.catalogs.workflow import ApplicationStatus, FlowType, OpportunityStatus
 from apps.crm.models import Client, Opportunity
 from apps.crm.services import (
     CrmScope,
@@ -996,3 +1006,375 @@ def preview_products(
         product.pk: summarize(evaluate_product(product, context, purpose=application.purpose_item))
         for product in products
     }
+
+
+# --------------------------------------------------------------------------------------
+# Estados (API §16.3), desistimiento y acciones disponibles
+# --------------------------------------------------------------------------------------
+
+READY_TO_FILE_GUARD = "APPLICATION_READY_TO_FILE"
+# Cierres que exigen `reason_code`.
+REASON_REQUIRED_STATUSES: tuple[str, ...] = (
+    ApplicationStatus.CANCELLED,
+    ApplicationStatus.OWN_FUNDS,
+    ApplicationStatus.EXTERNAL_CREDIT_APPROVED,
+)
+# Cierre → modalidad de financiación que debe estar registrada.
+CLOSING_FINANCING_MODES: dict[str, str] = {
+    ApplicationStatus.OWN_FUNDS: OWN_FUNDS,
+    ApplicationStatus.EXTERNAL_CREDIT_APPROVED: EXTERNAL_CREDIT,
+}
+DOCUMENTS_NOT_VERIFIED_MESSAGE = (
+    "Los documentos obligatorios todavía no se pueden verificar: el expediente documental "
+    "aún no está disponible."
+)
+
+
+@dataclass(frozen=True)
+class StatusChange:
+    application: CreditApplication
+    previous_status: str
+    transitioned_at: datetime
+
+
+def documents_verified(application: CreditApplication) -> bool:
+    """Parte documental de `APPLICATION_READY_TO_FILE` y de la completitud.
+
+    Falla cerrada hasta que exista el expediente documental (paso 10).
+    """
+    return False
+
+
+def _lock_for_status_change(
+    application: CreditApplication, expected_version: int
+) -> CreditApplication:
+    """Bloquea la fila. Terminada: ``409 APPLICATION_CLOSED``; otra versión:
+    ``409 STALE_VERSION``. A diferencia de ``lock_for_edit``, admite estados posteriores
+    a `FILED` (el desistimiento y las transiciones del paso 11)."""
+    locked = CreditApplication.objects.select_for_update().get(pk=application.pk)
+    if locked.is_terminal:
+        raise ApplicationClosed()
+    ensure_version(locked.version, expected_version)
+    return locked
+
+
+def _ensure_financing_mode(locked: CreditApplication, to_status: str) -> None:
+    required = CLOSING_FINANCING_MODES.get(to_status)
+    if required is None:
+        return
+    mode = (
+        FinancingPreference.objects.filter(application=locked)
+        .values_list("financing_mode_item__code", flat=True)
+        .first()
+    )
+    if mode != required:
+        raise FinancingModeMismatch(
+            details=[
+                {
+                    "field": "financing_mode_code",
+                    "code": "FINANCING_MODE_MISMATCH",
+                    "message": (
+                        f"Para pasar a {to_status}, registra la financiación con la "
+                        f"modalidad {required} en `/financing`."
+                    ),
+                }
+            ]
+        )
+
+
+def _ready_to_file_problems(actor: User, locked: CreditApplication) -> list[dict[str, Any]]:
+    """Motivos por los que no cumple `APPLICATION_READY_TO_FILE`; vacío si la cumple.
+
+    Si la última evaluación no corresponde a la versión y al producto actuales, evalúa
+    y la guarda: la evaluación se conserva aunque la transición se rechace.
+    """
+    problems: list[dict[str, Any]] = []
+    if locked.bank_product_id is None:
+        problems.append(
+            {
+                "field": "bank_product_id",
+                "code": "BANK_PRODUCT_REQUIRED",
+                "message": "Elige un producto bancario.",
+            }
+        )
+    else:
+        evaluation = latest_evaluation(locked)
+        if evaluation is None or not is_current(evaluation, locked):
+            evaluation = save_evaluation(actor, locked)
+        for row in blocking_rows(evaluation.result_snapshot["rules"]):
+            blocked = issue(row)
+            problems.append(
+                {
+                    "field": blocked["field"],
+                    "code": "BANK_RULE_BLOCKED",
+                    "message": blocked["message"],
+                }
+            )
+    if not documents_verified(locked):
+        problems.append(
+            {
+                "field": "documents",
+                "code": "DOCUMENTS_NOT_VERIFIED",
+                "message": DOCUMENTS_NOT_VERIFIED_MESSAGE,
+            }
+        )
+    return problems
+
+
+def _apply_status_change(
+    actor: User,
+    locked: CreditApplication,
+    transition: WorkflowTransition,
+    *,
+    reason: CatalogItem | None,
+    comment: str,
+) -> StatusChange:
+    """Cambia el estado, sus fechas y la versión, y registra el historial."""
+    now = timezone.now()
+    previous = locked.status
+    target = transition.to_status
+    locked.status = target
+    locked.current_stage_started_at = now
+    fields = ["status", "current_stage_started_at"]
+    if target == ApplicationStatus.READY_TO_FILE:
+        locked.ready_to_file_at = now
+        fields.append("ready_to_file_at")
+    elif previous == ApplicationStatus.READY_TO_FILE and target in EDITABLE_APPLICATION_STATUSES:
+        # Reabrir la revisión: deja de estar lista para radicar.
+        locked.ready_to_file_at = None
+        fields.append("ready_to_file_at")
+    if target == ApplicationStatus.WITHDRAWN:
+        locked.withdrawn_at = now
+        locked.withdrawal_reason_item = reason
+        fields += ["withdrawn_at", "withdrawal_reason_item"]
+    if target in TERMINAL_APPLICATION_STATUSES:
+        locked.closed_at = now
+        fields.append("closed_at")
+    bump_version(locked, fields)
+    ApplicationStatusHistory.objects.create(
+        application=locked,
+        from_status=previous,
+        to_status=target,
+        transition=transition,
+        reason_item=reason,
+        comment=comment,
+        actor_user=actor,
+        application_version=locked.version,
+    )
+    return StatusChange(application=locked, previous_status=previous, transitioned_at=now)
+
+
+def _notify_status_change(
+    actor: User,
+    change: StatusChange,
+    transition: WorkflowTransition,
+    reason: CatalogItem | None,
+    comment: str,
+) -> None:
+    logger.info(
+        "Solicitud %s: %s → %s (%s) por %s",
+        change.application.code,
+        change.previous_status,
+        transition.to_status,
+        transition.code,
+        actor.pk,
+    )
+    application_status_changed.send(
+        sender=CreditApplication,
+        application=change.application,
+        from_status=change.previous_status,
+        to_status=transition.to_status,
+        transition_code=transition.code,
+        reason_code=reason.code if reason is not None else None,
+        comment=comment,
+        actor=actor,
+    )
+
+
+def transition_application(
+    actor: User,
+    application: CreditApplication,
+    *,
+    to_status: str,
+    expected_version: int,
+    reason: CatalogItem | None = None,
+    comment: str = "",
+) -> StatusChange:
+    """Cambia el estado según las transiciones configuradas del flujo APPLICATION.
+
+    - `WITHDRAWN` va por ``withdraw_application`` (``400``).
+    - `CANCELLED`, `OWN_FUNDS` y `EXTERNAL_CREDIT_APPROVED` exigen motivo (``400``), y los
+      dos últimos, la modalidad de financiación correspondiente
+      (``422 FINANCING_MODE_MISMATCH``).
+    - La guarda `APPLICATION_READY_TO_FILE` responde ``422 APPLICATION_NOT_READY`` con
+      todos los motivos en ``details``.
+    """
+    if to_status == ApplicationStatus.WITHDRAWN:
+        raise ValidationError(
+            {"target_status": ["Para desistir usa POST /applications/{id}/withdrawals."]}
+        )
+    if to_status in REASON_REQUIRED_STATUSES and reason is None:
+        raise ValidationError({"reason_code": [f"El motivo es obligatorio para {to_status}."]})
+
+    problems: list[dict[str, Any]] = []
+    change: StatusChange | None = None
+    with transaction.atomic():
+        locked = _lock_for_status_change(application, expected_version)
+        transition = resolve_transition(
+            actor, flow_type=FlowType.APPLICATION, from_status=locked.status, to_status=to_status
+        )
+        _ensure_financing_mode(locked, to_status)
+        if transition.guard_code == READY_TO_FILE_GUARD:
+            problems = _ready_to_file_problems(actor, locked)
+        if not problems:
+            change = _apply_status_change(actor, locked, transition, reason=reason, comment=comment)
+    if problems:
+        # Fuera del bloque: la evaluación que guardó la guarda queda confirmada.
+        raise ApplicationNotReady(details=problems)
+    assert change is not None
+    _notify_status_change(actor, change, transition, reason, comment)
+    return change
+
+
+def withdraw_application(
+    actor: User,
+    application: CreditApplication,
+    *,
+    expected_version: int,
+    reason: CatalogItem,
+    comment: str = "",
+) -> StatusChange:
+    """Registra el desistimiento con una transición `WITHDRAW_<estado>`.
+
+    Se admite desde cualquier estado no terminal, también después de `FILED`.
+    """
+    with transaction.atomic():
+        locked = _lock_for_status_change(application, expected_version)
+        transition = resolve_transition(
+            actor,
+            flow_type=FlowType.APPLICATION,
+            from_status=locked.status,
+            to_status=ApplicationStatus.WITHDRAWN,
+        )
+        change = _apply_status_change(actor, locked, transition, reason=reason, comment=comment)
+    _notify_status_change(actor, change, transition, reason, comment)
+    return change
+
+
+def available_actions(user: User, application: CreditApplication) -> list[WorkflowTransition]:
+    """Transiciones que ``user`` puede ejecutar desde el estado actual (rol y permiso).
+
+    La guarda no se evalúa. Incluye `WITHDRAW_*`, que se ejecutan por `/withdrawals`.
+    """
+    return list(
+        available_transitions(user, flow_type=FlowType.APPLICATION, from_status=application.status)
+    )
+
+
+def status_history_queryset(application: CreditApplication) -> QuerySet[ApplicationStatusHistory]:
+    return (
+        ApplicationStatusHistory.objects.filter(application=application)
+        .select_related("transition", "reason_item", "actor_user")
+        .order_by("-created_at", "-application_version")
+    )
+
+
+# --------------------------------------------------------------------------------------
+# Completitud
+# --------------------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class CompletenessItem:
+    code: str
+    complete: bool
+    message: str
+    participant_id: uuid.UUID | None = None
+
+
+@dataclass(frozen=True)
+class Completeness:
+    percentage: int
+    ready_to_file: bool
+    items: list[CompletenessItem]
+    documents_verified: bool
+    documents_message: str
+
+
+def _bank_items(application: CreditApplication) -> list[CompletenessItem]:
+    if application.bank_product_id is None:
+        return [
+            CompletenessItem("bank_product", False, "Elige un producto bancario."),
+            CompletenessItem(
+                "bank_evaluation", False, "Elige un producto para evaluar sus reglas."
+            ),
+        ]
+    evaluation = latest_evaluation(application)
+    if evaluation is None:
+        evaluated = CompletenessItem("bank_evaluation", False, "Evalúa las reglas del banco.")
+    elif not is_current(evaluation, application):
+        evaluated = CompletenessItem(
+            "bank_evaluation",
+            False,
+            "La última evaluación no corresponde a los datos actuales: evalúa de nuevo.",
+        )
+    elif not evaluation.is_eligible:
+        evaluated = CompletenessItem(
+            "bank_evaluation", False, "La última evaluación tiene reglas bloqueantes."
+        )
+    else:
+        evaluated = CompletenessItem(
+            "bank_evaluation", True, "Las reglas del banco no tienen bloqueos."
+        )
+    return [CompletenessItem("bank_product", True, "Producto bancario elegido."), evaluated]
+
+
+def completeness(application: CreditApplication) -> Completeness:
+    """Datos que faltan para radicar. Los documentos no cuentan hasta el paso 10."""
+    has_property = Property.objects.filter(application=application).exists()
+    mode = (
+        FinancingPreference.objects.filter(application=application)
+        .values_list("financing_mode_item__code", flat=True)
+        .first()
+    )
+    items = [
+        CompletenessItem(
+            "property",
+            has_property,
+            "Inmueble registrado." if has_property else "Registra el inmueble.",
+        ),
+        CompletenessItem(
+            "financing",
+            mode is not None,
+            "Financiación registrada." if mode is not None else "Registra la financiación.",
+        ),
+    ]
+    if mode in (None, BANK_CREDIT):
+        items += _bank_items(application)
+    contributors = (
+        participants_queryset()
+        .filter(application=application, is_active=True, contributes_income=True)
+        .select_related("financial_profile")
+    )
+    for participant in contributors:
+        has_profile = hasattr(participant, "financial_profile")
+        name = participant.client.full_name
+        items.append(
+            CompletenessItem(
+                "financial_profile",
+                has_profile,
+                f"Perfil financiero de {name} registrado."
+                if has_profile
+                else f"Registra el perfil financiero de {name}.",
+                participant_id=participant.pk,
+            )
+        )
+    percentage = sum(item.complete for item in items) * 100 // len(items)
+    verified = documents_verified(application)
+    return Completeness(
+        percentage=percentage,
+        ready_to_file=percentage == 100 and verified,
+        items=items,
+        documents_verified=verified,
+        documents_message=DOCUMENTS_NOT_VERIFIED_MESSAGE,
+    )

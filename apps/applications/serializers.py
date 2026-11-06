@@ -17,6 +17,7 @@ from apps.applications.bank_evaluation import (
 from apps.applications.models import (
     ApplicationAssignment,
     ApplicationParticipant,
+    ApplicationStatusHistory,
     BankRuleEvaluation,
     CreditApplication,
     FinancialProfile,
@@ -29,7 +30,9 @@ from apps.banking.models import BankProduct
 from apps.banking.rule_engine import Outcome
 from apps.banking.serializers import BankRefSerializer
 from apps.catalogs.fields import CatalogItemCodeField
+from apps.catalogs.models import WorkflowTransition
 from apps.catalogs.serializers import CatalogItemRefSerializer
+from apps.catalogs.workflow import ApplicationStatus
 
 # Mismas formas que en CRM: se reutilizan para que OpenAPI no tenga dos componentes
 # con el mismo nombre.
@@ -54,7 +57,9 @@ __all__ = [
     "ApplicationSummarySerializer",
     "ApplicationUpdateSerializer",
     "AssignmentCreateSerializer",
+    "AvailableActionSerializer",
     "BankRuleEvaluationSerializer",
+    "CompletenessSerializer",
     "EligibleBankProductSerializer",
     "FinancialProfileInputSerializer",
     "FinancialProfileSerializer",
@@ -67,6 +72,10 @@ __all__ = [
     "ParticipantUpdateSerializer",
     "PropertyInputSerializer",
     "PropertySerializer",
+    "StatusChangeSerializer",
+    "StatusHistorySerializer",
+    "StatusTransitionSerializer",
+    "WithdrawalSerializer",
     "property_model_values",
 ]
 
@@ -591,12 +600,25 @@ class IncomeSourceUpdateSerializer(IncomeSourceCreateSerializer):
 
 # --- Detalle de la solicitud ------------------------------------------------------------
 
+
+class AvailableActionSerializer(serializers.ModelSerializer):
+    """Transición que el actor puede ejecutar ahora; la guarda se evalúa al ejecutarla."""
+
+    target_status = serializers.ChoiceField(source="to_status", choices=ApplicationStatus.choices)
+
+    class Meta:
+        model = WorkflowTransition
+        fields = ["code", "label", "target_status", "guard_code"]
+        read_only_fields = fields
+
+
 # Bloques que admite `?include=` en el detalle. `property` y `assignments` salen siempre.
 DETAIL_INCLUDES = ("participants", "property", "financing")
 
 
 class ApplicationDetailSerializer(ApplicationSerializer):
-    """Expediente interno. ``context["include"]`` agrega `participants` y `financing`.
+    """Expediente interno. ``context["include"]`` agrega `participants` y `financing`, y
+    ``context["available_actions"]`` trae las transiciones que el actor puede ejecutar.
 
     Los bloques opcionales no se declaran de solo lectura para que OpenAPI no los marque
     como obligatorios: faltan en la respuesta si no se pidieron. `participants` lee los
@@ -605,6 +627,10 @@ class ApplicationDetailSerializer(ApplicationSerializer):
 
     property = serializers.SerializerMethodField()
     assignments = serializers.SerializerMethodField()
+    available_actions = serializers.SerializerMethodField(
+        help_text="Transiciones que el actor puede ejecutar ahora (rol y permiso; la guarda "
+        "se evalúa al ejecutarla). `WITHDRAW_*` se ejecuta por `/withdrawals`."
+    )
     participants = ApplicationParticipantSerializer(
         source="active_participants",
         many=True,
@@ -622,10 +648,16 @@ class ApplicationDetailSerializer(ApplicationSerializer):
             *ApplicationSerializer.Meta.fields,
             "property",
             "assignments",
+            "available_actions",
             "participants",
             "financing",
         ]
-        read_only_fields = [*ApplicationSerializer.Meta.fields, "property", "assignments"]
+        read_only_fields = [
+            *ApplicationSerializer.Meta.fields,
+            "property",
+            "assignments",
+            "available_actions",
+        ]
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
@@ -637,6 +669,11 @@ class ApplicationDetailSerializer(ApplicationSerializer):
     def get_property(self, obj: CreditApplication) -> dict[str, Any] | None:
         prop = getattr(obj, "financed_property", None)
         return None if prop is None else cast(dict[str, Any], PropertySerializer(prop).data)
+
+    @extend_schema_field(AvailableActionSerializer(many=True))
+    def get_available_actions(self, obj: CreditApplication) -> list[dict[str, Any]]:
+        actions: list[WorkflowTransition] = self.context["available_actions"]
+        return cast(list[dict[str, Any]], AvailableActionSerializer(actions, many=True).data)
 
     def get_assignments(self, obj: CreditApplication) -> list[dict[str, Any]]:
         assignments = obj.assignments.select_related("advisor", "assigned_by")
@@ -743,3 +780,89 @@ class EligibleBankProductSerializer(serializers.ModelSerializer):
             "blocking_count": summary.blocking_count,
             "warning_count": summary.warning_count,
         }
+
+
+# --- Estados, desistimiento, acciones e historial (API §16.3) ---------------------------
+
+
+class _StatusChangeInputSerializer(StrictSerializer):
+    comment = serializers.CharField(max_length=2000, required=False, allow_blank=True, default="")
+    expected_version = serializers.IntegerField(
+        min_value=1, help_text="Versión de la solicitud que se consultó (`ETag`)."
+    )
+
+
+class StatusTransitionSerializer(_StatusChangeInputSerializer):
+    """``POST /status-transitions``. `WITHDRAWN` va por `/withdrawals`."""
+
+    target_status = serializers.ChoiceField(choices=ApplicationStatus.choices)
+    reason_code = CatalogItemCodeField(
+        catalog_code="application_transition_reason",
+        required=False,
+        allow_null=True,
+        default=None,
+        help_text="Obligatorio al pasar a `CANCELLED`, `OWN_FUNDS` y `EXTERNAL_CREDIT_APPROVED`.",
+    )
+
+
+class WithdrawalSerializer(_StatusChangeInputSerializer):
+    reason_code = CatalogItemCodeField(catalog_code="application_withdrawal_reason")
+
+
+class StatusChangeSerializer(serializers.Serializer):
+    """Respuesta de un cambio de estado (API §16.3)."""
+
+    application_id = serializers.UUIDField(source="application.pk")
+    previous_status = serializers.ChoiceField(choices=ApplicationStatus.choices)
+    status = serializers.ChoiceField(source="application.status", choices=ApplicationStatus.choices)
+    version = serializers.IntegerField(source="application.version")
+    transitioned_at = serializers.DateTimeField()
+
+
+class StatusHistorySerializer(serializers.ModelSerializer):
+    transition_code = serializers.CharField(
+        source="transition.code", read_only=True, allow_null=True
+    )
+    reason = CatalogItemRefSerializer(source="reason_item", read_only=True, allow_null=True)
+    actor = UserRefSerializer(source="actor_user", read_only=True, allow_null=True)
+
+    class Meta:
+        model = ApplicationStatusHistory
+        fields = [
+            "id",
+            "from_status",
+            "to_status",
+            "transition_code",
+            "reason",
+            "comment",
+            "actor",
+            "application_version",
+            "created_at",
+        ]
+        read_only_fields = fields
+
+
+# --- Completitud ------------------------------------------------------------------------
+
+
+class CompletenessItemSerializer(serializers.Serializer):
+    code = serializers.ChoiceField(
+        choices=["property", "financing", "bank_product", "bank_evaluation", "financial_profile"]
+    )
+    complete = serializers.BooleanField()
+    message = serializers.CharField()
+    participant_id = serializers.UUIDField(
+        allow_null=True, help_text="Solo en `financial_profile`."
+    )
+
+
+class CompletenessDocumentsSerializer(serializers.Serializer):
+    verified = serializers.BooleanField(source="documents_verified")
+    message = serializers.CharField(source="documents_message")
+
+
+class CompletenessSerializer(serializers.Serializer):
+    percentage = serializers.IntegerField(help_text="Ítems de datos completos; sin documentos.")
+    ready_to_file = serializers.BooleanField()
+    items = CompletenessItemSerializer(many=True)
+    documents = CompletenessDocumentsSerializer(source="*")

@@ -1,5 +1,6 @@
 """Endpoints de solicitudes de crédito (API §16), sus participantes, perfiles financieros
-e ingresos (§17), inmueble, financiación y reglas bancarias (§18) y
+e ingresos (§17), inmueble, financiación y reglas bancarias (§18), estados, desistimiento,
+historial, acciones disponibles y completitud (§16 y §9) y
 `GET /clients/{id}/applications` (§13)."""
 
 from typing import Any, cast
@@ -36,7 +37,9 @@ from apps.applications.serializers import (
     ApplicationSummarySerializer,
     ApplicationUpdateSerializer,
     AssignmentCreateSerializer,
+    AvailableActionSerializer,
     BankRuleEvaluationSerializer,
+    CompletenessSerializer,
     EligibleBankProductSerializer,
     FinancialProfileInputSerializer,
     FinancialProfileSerializer,
@@ -48,6 +51,10 @@ from apps.applications.serializers import (
     ParticipantCreateSerializer,
     ParticipantUpdateSerializer,
     PropertySerializer,
+    StatusChangeSerializer,
+    StatusHistorySerializer,
+    StatusTransitionSerializer,
+    WithdrawalSerializer,
     property_model_values,
 )
 from apps.catalogs.workflow import ApplicationStatus
@@ -150,7 +157,11 @@ def _detail_response(
     application = services.application_detail(view.actor, application_id, include)
     if application is None:
         raise Http404
-    data = ApplicationDetailSerializer(application, context={"include": include}).data
+    context = {
+        "include": include,
+        "available_actions": services.available_actions(view.actor, application),
+    }
+    data = ApplicationDetailSerializer(application, context=context).data
     return with_etag(Response(data, **kwargs), application.version)
 
 
@@ -251,8 +262,12 @@ class ApplicationListView(ApplicationView):
         )
         # Se responde con lo creado aunque quien lo creó no quede como asesor asignado.
         created = services.applications_queryset().get(pk=application.pk)
+        context = {"available_actions": services.available_actions(self.actor, created)}
         return with_etag(
-            Response(ApplicationDetailSerializer(created).data, status=status.HTTP_201_CREATED),
+            Response(
+                ApplicationDetailSerializer(created, context=context).data,
+                status=status.HTTP_201_CREATED,
+            ),
             created.version,
         )
 
@@ -949,3 +964,150 @@ class EligibleBankProductsView(ExpedienteView):
             ).data
         )
         return with_etag(response, application.version)
+
+
+# --------------------------------------------------------------------------------------
+# Estados, desistimiento, historial, acciones y completitud (API §16 y §9)
+# --------------------------------------------------------------------------------------
+
+STATUS_ERRORS = {
+    409: _error("STALE_VERSION, APPLICATION_CLOSED o INVALID_STATE_TRANSITION"),
+    **NOT_FOUND,
+    **COMMON_ERRORS,
+}
+
+
+def _status_change_response(change: services.StatusChange) -> Response:
+    return with_etag(Response(StatusChangeSerializer(change).data), change.application.version)
+
+
+class ApplicationStatusTransitionView(ExpedienteView):
+    required_permissions = {"POST": "applications.transition"}
+
+    @extend_schema(
+        tags=[APPLICATIONS_TAG],
+        operation_id="applications_status_transitions_create",
+        summary="Cambiar el estado de la solicitud",
+        description=(
+            "Ejecuta una transición configurada del flujo `APPLICATION`. `expected_version` "
+            "es obligatorio (no se usa `If-Match`). `WITHDRAWN` va por `/withdrawals`. "
+            "`CANCELLED`, `OWN_FUNDS` y `EXTERNAL_CREDIT_APPROVED` exigen `reason_code`; los "
+            "dos últimos, además, la modalidad de financiación correspondiente. "
+            "`READY_TO_FILE` evalúa la guarda `APPLICATION_READY_TO_FILE`: si la última "
+            "evaluación bancaria no está vigente, evalúa y la guarda aunque la transición "
+            f"se rechace. {ETAG_NOTE}"
+        ),
+        request=StatusTransitionSerializer,
+        responses={
+            200: StatusChangeSerializer,
+            422: _error("APPLICATION_NOT_READY o FINANCING_MODE_MISMATCH"),
+            **STATUS_ERRORS,
+        },
+    )
+    def post(self, request: Request, application_id: Any) -> Response:
+        application = self.get_application(application_id)
+        serializer = StatusTransitionSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        change = services.transition_application(
+            self.actor,
+            application,
+            to_status=data["target_status"],
+            expected_version=data["expected_version"],
+            reason=data["reason_code"],
+            comment=data["comment"],
+        )
+        return _status_change_response(change)
+
+
+class ApplicationWithdrawalView(ExpedienteView):
+    required_permissions = {"POST": "applications.withdraw"}
+
+    @extend_schema(
+        tags=[APPLICATIONS_TAG],
+        operation_id="applications_withdrawals_create",
+        summary="Registrar el desistimiento",
+        description=(
+            "Pasa la solicitud a `WITHDRAWN` desde cualquier estado no terminal, también "
+            "después de radicar. `reason_code` (catálogo `application_withdrawal_reason`) y "
+            f"`expected_version` son obligatorios. {ETAG_NOTE}"
+        ),
+        request=WithdrawalSerializer,
+        responses={200: StatusChangeSerializer, **STATUS_ERRORS},
+    )
+    def post(self, request: Request, application_id: Any) -> Response:
+        application = self.get_application(application_id)
+        serializer = WithdrawalSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        change = services.withdraw_application(
+            self.actor,
+            application,
+            expected_version=data["expected_version"],
+            reason=data["reason_code"],
+            comment=data["comment"],
+        )
+        return _status_change_response(change)
+
+
+class ApplicationStatusHistoryView(ExpedienteView):
+    required_permissions = {"GET": "applications.read_history"}
+
+    @extend_schema(
+        tags=[APPLICATIONS_TAG],
+        operation_id="applications_status_history",
+        summary="Historial de estados",
+        description=(
+            "De la más reciente a la más antigua, incluido el registro de creación "
+            f"(`from_status` nulo). {ETAG_NOTE}"
+        ),
+        responses={200: StatusHistorySerializer(many=True), **NOT_FOUND, **COMMON_ERRORS},
+    )
+    def get(self, request: Request, application_id: Any) -> Response:
+        application = self.get_application(application_id)
+        page = self.paginate_queryset(services.status_history_queryset(application))
+        response = self.get_paginated_response(StatusHistorySerializer(page, many=True).data)
+        return with_etag(response, application.version)
+
+
+class ApplicationAvailableActionsView(ExpedienteView):
+    required_permissions = {"GET": "applications.read"}
+
+    @extend_schema(
+        tags=[APPLICATIONS_TAG],
+        operation_id="applications_available_actions",
+        summary="Acciones disponibles",
+        description=(
+            "Transiciones que el actor puede ejecutar desde el estado actual según su rol "
+            "y permiso. La guarda no se evalúa aquí. `WITHDRAW_*` se ejecuta por "
+            f"`/withdrawals`. {ETAG_NOTE}"
+        ),
+        responses={200: AvailableActionSerializer(many=True), **NOT_FOUND, **COMMON_ERRORS},
+    )
+    def get(self, request: Request, application_id: Any) -> Response:
+        application = self.get_application(application_id)
+        actions = services.available_actions(self.actor, application)
+        return with_etag(
+            Response(AvailableActionSerializer(actions, many=True).data), application.version
+        )
+
+
+class ApplicationCompletenessView(ExpedienteView):
+    required_permissions = {"GET": "applications.read"}
+
+    @extend_schema(
+        tags=[APPLICATIONS_TAG],
+        operation_id="applications_completeness",
+        summary="Completitud del expediente",
+        description=(
+            "Ítems de datos (inmueble, financiación, producto y evaluación bancaria cuando "
+            "aplica, y el perfil de cada participante que aporta ingresos). `percentage` "
+            "cuenta solo esos ítems. Los documentos todavía no se verifican, así que "
+            f"`ready_to_file` es `false`. {ETAG_NOTE}"
+        ),
+        responses={200: CompletenessSerializer, **NOT_FOUND, **COMMON_ERRORS},
+    )
+    def get(self, request: Request, application_id: Any) -> Response:
+        application = self.get_application(application_id)
+        data = CompletenessSerializer(services.completeness(application)).data
+        return with_etag(Response(data), application.version)

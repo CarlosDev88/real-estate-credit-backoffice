@@ -258,6 +258,41 @@ Access scope, computed on the server for every request:
 - Status changes emit `project_status_changed` and `partner_status_changed` signals with the reason, ready for the activity and audit modules.
 - `GET /projects/{id}/summary` will be added with the CRM and applications modules, when there is data to count.
 
+## Credit Applications
+
+The credit application is the central record of the process (API §16 to §18). All endpoints use the `/api/v1` prefix.
+
+| Method | Path | Access |
+| --- | --- | --- |
+| `GET`, `POST` | `/applications` | `applications.read`, `applications.create`. Filters: `status`, `bank_id`, `product_id`, `purpose`, `advisor_id`, `project_id`, `origin`, `search`, and `ordering`. |
+| `GET`, `PATCH` | `/applications/{id}` | `applications.read`, `applications.update`. `?include=participants,financing`. `PATCH` changes only `purpose_code` and `bank_product_id`. |
+| `GET` | `/applications/{id}/summary` | `applications.read_summary`. No financial or property data. |
+| `POST` | `/applications/{id}/assignments` | `applications.assign` |
+| `POST` | `/applications/{id}/status-transitions` | `applications.transition`. `{target_status, reason_code, comment, expected_version}`. |
+| `POST` | `/applications/{id}/withdrawals` | `applications.withdraw`. `{reason_code, comment, expected_version}`. |
+| `GET` | `/applications/{id}/status-history` | `applications.read_history` |
+| `GET` | `/applications/{id}/available-actions` | `applications.read` |
+| `GET` | `/applications/{id}/completeness` | `applications.read` |
+| `GET`, `POST` | `/applications/{id}/participants` | `applications.read`, `applications.update` |
+| `GET`, `PATCH`, `DELETE` | `/application-participants/{id}` | `applications.read`, `applications.update` |
+| `GET`, `PUT` | `/application-participants/{id}/financial-profile` | `applications.read`, `applications.update` |
+| `GET`, `POST` | `/financial-profiles/{id}/income-sources` | `applications.read`, `applications.update` |
+| `PATCH`, `DELETE` | `/income-sources/{id}` | `applications.update` |
+| `GET`, `PUT` | `/applications/{id}/property`, `/applications/{id}/financing` | `applications.read`, `applications.update` |
+| `GET` | `/applications/{id}/eligible-bank-products` | `applications.read` |
+| `POST` | `/applications/{id}/bank-rule-evaluations` | `applications.update` |
+| `GET` | `/applications/{id}/bank-rule-evaluations/latest` | `applications.read` |
+| `GET` | `/clients/{id}/applications` | `applications.read` |
+
+- Scope: `ADMIN` sees every application and `ADVISOR` the ones assigned to them. `INDEPENDENT_BROKER` only gets the summary of applications from opportunities they originated, and `403` on every sub-resource with application data. `CONSTRUCTION_PARTNER` has no access. Out-of-scope resources return `404`.
+- Creating an application converts its opportunity to `CONVERTED` in the same transaction; at most one non-terminal application exists per opportunity.
+- Optimistic concurrency: every response carries `ETag: "<version>"`. Every `PUT`/`PATCH` requires `If-Match` (`428` without it, `409 STALE_VERSION` when stale). Status transitions and withdrawals send `expected_version` in the body instead.
+- Application data can only change before `FILED` (`409 APPLICATION_NOT_EDITABLE`).
+- Bank rules: the evaluation applies the product's published rules plus its amount and term ranges as system blocking rules, and fails closed on missing data. Choosing a product stores an evaluation automatically.
+- `READY_TO_FILE` requires a product, a current eligible evaluation (re-evaluated automatically when stale), and approved documents. The document part fails closed until the document file module exists, so the transition returns `422 APPLICATION_NOT_READY` with every reason in `details`.
+- Seeded `APPLICATION` transitions cover the pre-filing flow, closing to `CANCELLED`, `OWN_FUNDS`, and `EXTERNAL_CREDIT_APPROVED` (with a required reason), and `WITHDRAWN` from every non-terminal status. Transitions from `FILED` onwards arrive with the filings module.
+- Domain events (`application_created`, `application_updated`, `application_assigned`, `application_status_changed`, `participant_added`, `participant_removed`) are sent after commit, ready for the activity, notification, and audit modules.
+
 Every response includes `X-Request-ID` (an incoming value is kept when it is safe). Errors share one format:
 
 ```json
@@ -295,11 +330,15 @@ backend/
 
 ## Current Status
 
-Build steps 1 to 4 are complete:
+Build steps 1 to 8 are complete:
 
 1. `identity` core: internal users, roles and permissions, sessions with rotating refresh tokens, password reset, and `/api/v1/auth/*`.
 2. `catalogs`: catalogs and items, workflow transitions, and the metadata endpoints.
 3. `partners`: construction partners, memberships, and projects with their approval flow.
 4. `identity` invitations and user administration: internal invitations, partner member invitations, `/users`, and `/roles`.
+5. `crm`: clients, addresses, and opportunities.
+6. `banking`: banks, products, and versioned policy rules with a declarative engine.
+7. `documents`: document types and requirements.
+8. `applications`: credit applications, participants, financial profiles, income sources, property, financing, bank rule evaluations, status transitions, withdrawals, history, available actions, and completeness.
 
-Remaining modules follow the documented build order, starting with the `crm` core (clients and opportunities).
+Remaining modules follow the documented build order, starting with buyer access (step 9).

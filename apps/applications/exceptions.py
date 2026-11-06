@@ -43,3 +43,15 @@ class BankProductRequired(ApiError):
     status_code = status.HTTP_422_UNPROCESSABLE_ENTITY
     error_code = "BANK_PRODUCT_REQUIRED"
     default_detail = "Elige un producto bancario antes de evaluar las reglas."
+
+
+class ApplicationNotReady(ApiError):
+    status_code = status.HTTP_422_UNPROCESSABLE_ENTITY
+    error_code = "APPLICATION_NOT_READY"
+    default_detail = "La solicitud todavía no cumple las condiciones para radicar."
+
+
+class FinancingModeMismatch(ApiError):
+    status_code = status.HTTP_422_UNPROCESSABLE_ENTITY
+    error_code = "FINANCING_MODE_MISMATCH"
+    default_detail = "La modalidad de financiación registrada no corresponde a este cierre."
