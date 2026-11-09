@@ -4,7 +4,7 @@
 
 Backend for an MVP that manages Colombian real-estate credit applications. It supports the internal operations backoffice and a buyer self-service portal: clients, opportunities, credit applications, documents, manual bank filings, and application tracking.
 
-The API is implemented as a modular monolith with Django REST Framework and PostgreSQL. Functional, data, and API specifications are available in the root [`docs`](../docs/) directory.
+The API is implemented as a modular monolith with Django REST Framework and PostgreSQL. Functional, data, and API specifications are available in [`docs/`](docs/), and the implementation specs with every design decision in [`specs/`](specs/).
 
 ## Technology Stack
 
@@ -53,7 +53,7 @@ flowchart LR
 | `reporting` | Dashboards, operational reports, and export jobs. | Reads authorized data from CRM, applications, filings, and documents. |
 | `audit` | Immutable technical audit events and request correlation. | Records sensitive actions performed across all modules. |
 
-The complete table ownership, dependencies, and build order are documented in [the complete ERD](../docs/DER_COMPLETO_MVP_CREDITO.md#15-distribución-de-tablas-por-módulo-y-orden-de-construcción).
+The complete table ownership, dependencies, and build order are documented in [the complete ERD](docs/DER_COMPLETO_MVP_CREDITO.md#15-distribución-de-tablas-por-módulo-y-orden-de-construcción).
 
 ## Quick Start
 
