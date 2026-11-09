@@ -32,8 +32,8 @@ Es el paso 9 del orden de construcción (DER_COMPLETO §15) y va después de `ap
 | 1 | Modelos, migraciones, semillas y configuración | Hecha | `58ea555` |
 | 2 | Emisión, listado y revocación de enlaces (interno) | Hecha | `d3e7da7` |
 | 3 | Consumo del enlace, sesión del comprador y lectura de su proceso | Hecha | `c7b5e11` |
-| 4 | Consentimientos y bloqueo de escrituras por consentimiento pendiente | Hecha | (pendiente de commit) |
-| 5 | Actor comprador en `applications`: datos personales, perfiles financieros, ingresos y confirmación | Pendiente | |
+| 4 | Consentimientos y bloqueo de escrituras por consentimiento pendiente | Hecha | `b6242c9` y `8f84165` |
+| 5 | Actor comprador en `applications`: datos personales, perfiles financieros, ingresos y confirmación | Hecha | (pendiente de commit) |
 | 6 | Inmueble, financiación, `eligible-bank-products`, desistimiento, README y documentación | Pendiente | |
 
 Al cerrar la Parte 1: 1013 tests en verde (25 nuevos), 98 % de cobertura total y el esquema OpenAPI sin avisos. Sin cubrir en código nuevo:
@@ -46,6 +46,8 @@ Al cerrar la Parte 2: 1041 tests en verde (28 nuevos), 98 % de cobertura total (
 Al cerrar la Parte 3: 1085 tests en verde (44 nuevos), 98 % de cobertura total (los módulos nuevos `buyer_sessions.py`, `buyer_authentication.py`, `buyer_portal*.py` al 100 %) y el esquema OpenAPI sin avisos.
 
 Al cerrar la Parte 4: 1113 tests en verde (28 nuevos), 98 % de cobertura total (`consents.py`, `consent_views.py` y lo modificado del portal al 100 %) y el esquema OpenAPI sin avisos.
+
+Al cerrar la Parte 5: 1136 tests en verde (23 nuevos), 98 % de cobertura total (`buyer_editing.py`, `buyer_profile_serializers.py` y `buyer_profile_views.py` al 100 %) y el esquema OpenAPI sin avisos. La suite interna de `applications` siguió verde con el refactor.
 
 ---
 
@@ -382,6 +384,37 @@ No hay ciclo: `applications 0001` a `0003` dependen de `identity` hasta la `0008
 - **Interno** (`GET /applications/{id}/consents`, `consents.read`): lista paginada, de la más reciente a la más antigua. Cada evidencia trae `consent_definition {id, code, version, title, content_hash}`, `client {id, full_name}`, `user`, `action`, `ip_address`, `user_agent_summary`, `buyer_session_id` y `created_at`. Fuera del alcance responde `404`; el broker y el partner reciben `403`.
 - **Tests.** Los helpers `consume` y `pending_token` y los fixtures `buyer_client` y `buyer_csrf_client` pasaron al `conftest.py` de `buyer_access`.
 - **mypy.** El campo `required` del DTO choca con `Field.required`. Lleva un `type: ignore[assignment]` justificado, igual que `label` en `CatalogItemRefSerializer`.
+
+### Parte 5
+- **Rutas** (forma fijada aquí; decisión 10):
+
+  | Método | Ruta |
+  | --- | --- |
+  | `GET`/`PATCH` | `/buyer/applications/{id}/profile` |
+  | `GET` | `/buyer/applications/{id}/participants` |
+  | `GET`/`PUT` | `/buyer/participants/{participant_id}/financial-profile` |
+  | `POST` | `/buyer/participants/{participant_id}/financial-profile/confirmation` |
+  | `GET`/`POST` | `/buyer/financial-profiles/{profile_id}/income-sources` |
+  | `PATCH`/`DELETE` | `/buyer/income-sources/{income_source_id}` |
+
+- **Archivos:**
+  - `buyer_editing.py` (servicios): `buyer_participants`, `buyer_financial_profiles`, `buyer_income_sources`, `buyer_client`, `client_addresses` y `update_buyer_profile`;
+  - `buyer_profile_serializers.py` y `buyer_profile_views.py` (`BuyerExpedienteView`).
+- **`Actor = User | BuyerSession`** en `applications/services.py`. Lo aceptan `put_financial_profile`, `confirm_financial_profile` y los tres servicios de ingresos. Las señales reciben la sesión como `actor`; hoy no tienen receptores.
+- **Querysets base nuevos:** `financial_profiles_queryset()` e `income_sources_queryset()`. Los `*_visible_to` internos los filtran por alcance y el portal, por la solicitud de la sesión.
+- **Alcance.** Participantes activos de la solicitud de la sesión, sus perfiles y sus fuentes. Un participante retirado o de otra solicitud responde `404`.
+- **Orden de los permisos** de `BuyerPortalView`: `IsBuyerSession`, `ApplicationNotClosed` (`409 APPLICATION_CLOSED` en escrituras con la solicitud terminada) y `ConsentsAccepted`. Así, una solicitud terminada no pide consentimientos que ya no se pueden aceptar.
+- **`data_confirmed_at`** (decisión 14):
+  - `confirm_financial_profile` exige `If-Match`, el perfil (`404` si falta) y la solicitud antes de `FILED`. Fija la fecha y aumenta la versión. Confirmar un perfil ya confirmado no cambia nada;
+  - la limpian un `PUT` del perfil con cambios reales y cualquier alta, edición real o baja de ingresos, venga del asesor o del comprador. Esto cambia el comportamiento interno, como pedía la decisión.
+- **Datos personales** (`PATCH /profile`):
+  - admite `email` (se normaliza en minúsculas), `phone` (E.164), `birth_date` (anterior a hoy) y `addresses`. Cualquier otro campo responde `400`;
+  - `addresses` reemplaza la lista completa, de máximo 10. Con `id` se actualiza, sin `id` se crea y la que no llega se elimina. Si ninguna viene como principal, la primera lo es. Un `id` ajeno o repetido, o dos principales: `400`;
+  - lleva `If-Match` con la versión de la solicitud. Un cambio real la aumenta, aunque el dato viva en el cliente, porque el comprador lo edita desde su expediente;
+  - el `GET` muestra el documento enmascarado (`••••••5908`): si el enlace se filtra, no expone el documento completo.
+- **Entradas reutilizadas.** `FinancialProfileInputSerializer` y los de ingresos internos (`BuyerIncomeSource*Serializer`). Los ingresos del comprador quitan `notes` (texto del asesor), que tampoco aparece en la salida.
+- **Salidas propias:** `BuyerProfileSerializer`, `BuyerParticipantSummarySerializer` (con `financial_profile_id` y `data_confirmed_at`), `BuyerFinancialProfileSerializer` (sin `created_at`) y `BuyerIncomeSourceSerializer` (sin `notes`).
+- **`ETag`.** Todas las respuestas de estas rutas lo llevan, leído después del cambio.
 
 ## Pendientes para pasos posteriores
 

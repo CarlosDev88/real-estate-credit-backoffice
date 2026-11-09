@@ -28,6 +28,7 @@ from apps.applications.models import CreditApplication
 from apps.identity import buyer_portal, buyer_sessions, consents
 from apps.identity.authentication import enforce_csrf
 from apps.identity.buyer_authentication import (
+    ApplicationNotClosed,
     BuyerSessionAuthentication,
     ConsentsAccepted,
     IsBuyerSession,
@@ -76,7 +77,7 @@ class BuyerPortalView(GenericAPIView):
     """Base de las vistas ``/buyer/*``: solo la sesión del comprador autentica."""
 
     authentication_classes = [BuyerSessionAuthentication]
-    permission_classes = [IsBuyerSession, ConsentsAccepted]
+    permission_classes = [IsBuyerSession, ApplicationNotClosed, ConsentsAccepted]
 
     @property
     def buyer_session(self) -> BuyerSession:

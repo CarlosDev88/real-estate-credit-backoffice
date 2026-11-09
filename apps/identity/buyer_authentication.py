@@ -15,6 +15,8 @@ from rest_framework.authentication import BaseAuthentication
 from rest_framework.permissions import SAFE_METHODS, BasePermission
 from rest_framework.request import Request
 
+from apps.applications.exceptions import ApplicationClosed
+from apps.applications.models import CreditApplication
 from apps.identity.authentication import enforce_csrf
 from apps.identity.buyer_sessions import find_active_session, touch_session
 from apps.identity.consents import ensure_consents_accepted
@@ -53,6 +55,25 @@ class IsBuyerSession(BasePermission):
 
     def has_permission(self, request: Request, view: Any) -> bool:
         return isinstance(request.auth, BuyerSession)
+
+
+class ApplicationNotClosed(BasePermission):
+    """Con la solicitud terminada, el portal es de solo lectura (decisión 5).
+
+    Las escrituras responden ``409 APPLICATION_CLOSED``. Va antes de
+    ``ConsentsAccepted``: no tiene sentido pedir consentimientos que ya no se pueden
+    aceptar.
+    """
+
+    def has_permission(self, request: Request, view: Any) -> bool:
+        if request.method in SAFE_METHODS:
+            return True
+        session = request.auth
+        if isinstance(session, BuyerSession):
+            application = CreditApplication.objects.only("status").get(pk=session.application_id)
+            if application.is_terminal:
+                raise ApplicationClosed()
+        return True
 
 
 class ConsentsAccepted(BasePermission):
