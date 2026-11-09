@@ -480,6 +480,7 @@ def test_status_history_is_newest_first(
         "reason": {"code": "OTHER", "label": "Otro motivo"},
         "comment": "",
         "actor": {"id": str(advisor_user.id), "name": advisor_user.get_full_name()},
+        "buyer_session_id": None,
         "application_version": 3,
         "created_at": latest["created_at"],
     }

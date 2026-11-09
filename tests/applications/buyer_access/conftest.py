@@ -13,7 +13,13 @@ from django.utils import timezone
 from rest_framework.test import APIClient
 
 from apps.applications.models import CreditApplication
-from apps.identity.models import BuyerAccessLink, BuyerSession
+from apps.identity.models import (
+    BuyerAccessLink,
+    BuyerSession,
+    ConsentAction,
+    ConsentDefinition,
+    ConsentRecord,
+)
 from apps.identity.tokens import generate_opaque_token, hash_token
 
 CONSUME_URL = "/api/v1/buyer-access/consume"
@@ -30,6 +36,21 @@ def pending_token(make_link: LinkFactory, **extra: Any) -> str:
 
 def consume(client: APIClient, token: str, **extra: Any) -> Any:
     return client.post(CONSUME_URL, {"token": token}, **extra)
+
+
+def if_match(application: CreditApplication) -> dict[str, str]:
+    """Cabecera con la versión vigente, para `headers=`."""
+    application.refresh_from_db()
+    return {"If-Match": f'"{application.version}"'}
+
+
+def version_of(application: CreditApplication) -> int:
+    application.refresh_from_db()
+    return application.version
+
+
+def set_status(application: CreditApplication, status: str) -> None:
+    CreditApplication.objects.filter(pk=application.pk).update(status=status)
 
 
 @pytest.fixture
@@ -75,3 +96,26 @@ def buyer_csrf_client(make_link: LinkFactory) -> APIClient:
     client = APIClient(enforce_csrf_checks=True)
     assert consume(client, pending_token(make_link)).status_code == 200
     return client
+
+
+@pytest.fixture
+def accept_consents(application: CreditApplication) -> Callable[[], None]:
+    """Acepta los dos consentimientos para el titular, como si lo hubiera hecho el portal."""
+
+    def _accept() -> None:
+        for definition in ConsentDefinition.objects.filter(version=1):
+            ConsentRecord.objects.create(
+                consent_definition=definition,
+                client=application.opportunity.client,
+                application=application,
+                action=ConsentAction.ACCEPTED,
+            )
+
+    return _accept
+
+
+@pytest.fixture
+def portal(buyer_client: APIClient, accept_consents: Callable[[], None]) -> APIClient:
+    """Comprador con sesión y consentimientos aceptados."""
+    accept_consents()
+    return buyer_client

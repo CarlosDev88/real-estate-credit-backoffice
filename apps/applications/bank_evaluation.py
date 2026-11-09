@@ -28,7 +28,7 @@ from apps.banking.models import BankProduct, RuleSeverity
 from apps.banking.rule_engine import Outcome
 from apps.banking.services import RuleResult, evaluate_rules
 from apps.catalogs.models import CatalogItem
-from apps.identity.models import User
+from apps.identity.models import BuyerSession, User
 
 SOURCE_RULE = "RULE"
 SOURCE_SYSTEM = "SYSTEM"
@@ -230,10 +230,11 @@ def is_current(evaluation: BankRuleEvaluation, application: CreditApplication) -
 # --------------------------------------------------------------------------------------
 
 
-def save_evaluation(actor: User, locked: CreditApplication) -> BankRuleEvaluation:
+def save_evaluation(actor: User | BuyerSession, locked: CreditApplication) -> BankRuleEvaluation:
     """Evalúa el producto elegido y guarda el resultado con la versión actual.
 
-    Llamar dentro de una transacción, con la solicitud bloqueada y con producto.
+    Llamar dentro de una transacción, con la solicitud bloqueada y con producto. Si el
+    actor es el comprador, ``evaluated_by`` queda vacío: el esquema solo admite usuarios.
     """
     product = locked.bank_product
     assert product is not None, "save_evaluation exige un producto elegido."
@@ -248,5 +249,5 @@ def save_evaluation(actor: User, locked: CreditApplication) -> BankRuleEvaluatio
         blocking_count=summary.blocking_count,
         warning_count=summary.warning_count,
         result_snapshot={"rules": rows, "context": context},
-        evaluated_by=actor,
+        evaluated_by=actor if isinstance(actor, User) else None,
     )

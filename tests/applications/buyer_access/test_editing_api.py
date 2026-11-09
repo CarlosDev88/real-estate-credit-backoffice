@@ -16,7 +16,7 @@ from apps.applications.models import (
 )
 from apps.catalogs.workflow import ApplicationStatus
 from apps.crm.models import Client, ClientAddress, Opportunity
-from apps.identity.models import ConsentAction, ConsentDefinition, ConsentRecord
+from tests.applications.buyer_access.conftest import if_match, set_status, version_of
 from tests.applications.conftest import catalog_item
 from tests.helpers import assert_error, csrf_token
 
@@ -55,21 +55,6 @@ def income_source_url(source: IncomeSource) -> str:
     return f"/api/v1/buyer/income-sources/{source.pk}"
 
 
-def if_match(application: CreditApplication) -> dict[str, str]:
-    """Cabecera con la versión vigente, para `headers=`."""
-    application.refresh_from_db()
-    return {"If-Match": f'"{application.version}"'}
-
-
-def version_of(application: CreditApplication) -> int:
-    application.refresh_from_db()
-    return application.version
-
-
-def set_status(application: CreditApplication, status: str) -> None:
-    CreditApplication.objects.filter(pk=application.pk).update(status=status)
-
-
 def make_profile(participant: ApplicationParticipant, **extra: Any) -> FinancialProfile:
     extra.setdefault("employment_profile_item", catalog_item("employment_profile", "EMPLOYEE"))
     extra.setdefault("monthly_income_cop", 5_000_000)
@@ -84,29 +69,6 @@ def make_source(profile: FinancialProfile, **extra: Any) -> IncomeSource:
 
 def address(**extra: Any) -> dict[str, Any]:
     return {"address_type_code": "RESIDENCE", "city_code": "11001", "line1": "Calle 1", **extra}
-
-
-@pytest.fixture
-def accept_consents(application: CreditApplication) -> Callable[[], None]:
-    """Acepta los dos consentimientos para el titular, como si lo hubiera hecho el portal."""
-
-    def _accept() -> None:
-        for definition in ConsentDefinition.objects.filter(version=1):
-            ConsentRecord.objects.create(
-                consent_definition=definition,
-                client=application.opportunity.client,
-                application=application,
-                action=ConsentAction.ACCEPTED,
-            )
-
-    return _accept
-
-
-@pytest.fixture
-def portal(buyer_client: APIClient, accept_consents: Callable[[], None]) -> APIClient:
-    """Comprador con sesión y consentimientos aceptados."""
-    accept_consents()
-    return buyer_client
 
 
 @pytest.fixture

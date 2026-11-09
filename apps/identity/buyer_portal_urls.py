@@ -1,5 +1,6 @@
 from django.urls import path
 
+from apps.identity import buyer_financing_views as financing_views
 from apps.identity import buyer_portal_views as views
 from apps.identity import buyer_profile_views as profile_views
 
@@ -49,5 +50,25 @@ urlpatterns = [
         "buyer/income-sources/<uuid:income_source_id>",
         profile_views.BuyerIncomeSourceDetailView.as_view(),
         name="income-source-detail",
+    ),
+    path(
+        "buyer/applications/<uuid:application_id>/property",
+        financing_views.BuyerPropertyView.as_view(),
+        name="property",
+    ),
+    path(
+        "buyer/applications/<uuid:application_id>/financing",
+        financing_views.BuyerFinancingView.as_view(),
+        name="financing",
+    ),
+    path(
+        "buyer/applications/<uuid:application_id>/eligible-bank-products",
+        financing_views.BuyerEligibleBankProductsView.as_view(),
+        name="eligible-bank-products",
+    ),
+    path(
+        "buyer/applications/<uuid:application_id>/withdrawals",
+        financing_views.BuyerWithdrawalView.as_view(),
+        name="withdrawals",
     ),
 ]

@@ -825,6 +825,10 @@ class StatusHistorySerializer(serializers.ModelSerializer):
     )
     reason = CatalogItemRefSerializer(source="reason_item", read_only=True, allow_null=True)
     actor = UserRefSerializer(source="actor_user", read_only=True, allow_null=True)
+    # El cambio lo hizo el comprador desde su portal (`actor` queda en `null`).
+    buyer_session_id = serializers.UUIDField(
+        source="actor_buyer_session_id", read_only=True, allow_null=True
+    )
 
     class Meta:
         model = ApplicationStatusHistory
@@ -836,6 +840,7 @@ class StatusHistorySerializer(serializers.ModelSerializer):
             "reason",
             "comment",
             "actor",
+            "buyer_session_id",
             "application_version",
             "created_at",
         ]

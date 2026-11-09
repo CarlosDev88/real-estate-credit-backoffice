@@ -33,8 +33,8 @@ Es el paso 9 del orden de construcción (DER_COMPLETO §15) y va después de `ap
 | 2 | Emisión, listado y revocación de enlaces (interno) | Hecha | `d3e7da7` |
 | 3 | Consumo del enlace, sesión del comprador y lectura de su proceso | Hecha | `c7b5e11` |
 | 4 | Consentimientos y bloqueo de escrituras por consentimiento pendiente | Hecha | `b6242c9` y `8f84165` |
-| 5 | Actor comprador en `applications`: datos personales, perfiles financieros, ingresos y confirmación | Hecha | (pendiente de commit) |
-| 6 | Inmueble, financiación, `eligible-bank-products`, desistimiento, README y documentación | Pendiente | |
+| 5 | Actor comprador en `applications`: datos personales, perfiles financieros, ingresos y confirmación | Hecha | `17a4221` |
+| 6 | Inmueble, financiación, `eligible-bank-products`, desistimiento, README y documentación | Hecha | (pendiente de commit) |
 
 Al cerrar la Parte 1: 1013 tests en verde (25 nuevos), 98 % de cobertura total y el esquema OpenAPI sin avisos. Sin cubrir en código nuevo:
 - los `__str__` de los modelos;
@@ -48,6 +48,8 @@ Al cerrar la Parte 3: 1085 tests en verde (44 nuevos), 98 % de cobertura total (
 Al cerrar la Parte 4: 1113 tests en verde (28 nuevos), 98 % de cobertura total (`consents.py`, `consent_views.py` y lo modificado del portal al 100 %) y el esquema OpenAPI sin avisos.
 
 Al cerrar la Parte 5: 1136 tests en verde (23 nuevos), 98 % de cobertura total (`buyer_editing.py`, `buyer_profile_serializers.py` y `buyer_profile_views.py` al 100 %) y el esquema OpenAPI sin avisos. La suite interna de `applications` siguió verde con el refactor.
+
+Al cerrar la Parte 6: 1160 tests en verde (24 nuevos), 98 % de cobertura total (`buyer_financing_serializers.py` y `buyer_financing_views.py` al 100 %) y el esquema OpenAPI sin avisos.
 
 ---
 
@@ -415,6 +417,31 @@ No hay ciclo: `applications 0001` a `0003` dependen de `identity` hasta la `0008
 - **Entradas reutilizadas.** `FinancialProfileInputSerializer` y los de ingresos internos (`BuyerIncomeSource*Serializer`). Los ingresos del comprador quitan `notes` (texto del asesor), que tampoco aparece en la salida.
 - **Salidas propias:** `BuyerProfileSerializer`, `BuyerParticipantSummarySerializer` (con `financial_profile_id` y `data_confirmed_at`), `BuyerFinancialProfileSerializer` (sin `created_at`) y `BuyerIncomeSourceSerializer` (sin `notes`).
 - **`ETag`.** Todas las respuestas de estas rutas lo llevan, leído después del cambio.
+
+### Parte 6
+- **Archivos:** `buyer_financing_serializers.py` y `buyer_financing_views.py` (inmueble, financiación, productos elegibles y desistimiento).
+- **`Actor`** también en `put_property`, `put_financing`, `withdraw_application`, `_apply_status_change`, `_notify_status_change` y `bank_evaluation.save_evaluation`:
+  - con el comprador, `evaluated_by` queda `None`;
+  - el historial guarda `actor_buyer_session` y deja `actor_user` en `None`.
+- **Historial interno.** `GET /applications/{id}/status-history` agrega `buyer_session_id`, para distinguir un cambio del comprador de uno sin actor.
+- **Inmueble del comprador:**
+  - `BuyerPropertyInputSerializer` quita `project_id` y `ownership_notes`, que conservan su valor: el proyecto lo asignan el asesor o la constructora, y las notas son texto del asesor;
+  - `put_property` compara solo los campos recibidos, así que un campo que no llega no se pisa. Al crear, el proyecto queda vacío y las notas en blanco;
+  - las mismas reglas por finalidad que el interno.
+- **Financiación del comprador.** Usa el mismo `FinancingInputSerializer` y `put_financing`. Elegir un producto distinto guarda la evaluación sin evaluador.
+- **`eligible-bank-products` del comprador:**
+  - campos `id`, `name`, `bank {id, name}`, los rangos de monto y plazo, y `eligible`;
+  - sin `code`, `product_type_code`, conteos ni detalle de las reglas;
+  - la lectura no exige consentimientos.
+- **Desistimiento del comprador:**
+  - `_withdraw_transition` toma la transición activa `<estado> → WITHDRAWN` sin rol ni permiso. Si está inactiva: `409 INVALID_STATE_TRANSITION`;
+  - entrada `WithdrawalSerializer` y respuesta `StatusChangeSerializer` (API §16.3), reutilizados;
+  - como es una escritura, exige los consentimientos aceptados (decisión 16). Después de `FILED` se admite; con la solicitud terminada, `409 APPLICATION_CLOSED`;
+  - la señal `application_status_changed` lleva la sesión como `actor`.
+- **Tests.** `accept_consents`, `portal`, `if_match`, `version_of` y `set_status` pasaron al `conftest.py` de `buyer_access`.
+- **Documentación:**
+  - README: sección "Buyer Access" y "Current Status" en el paso 9;
+  - API: §5.5 (errores nuevos), §6, §8 (reescrita con las rutas y reglas implementadas), §17, §18, §21.1, §25, §26 (límites de 5/h por IP y 3/h por emisor y solicitud) y §27.1.
 
 ## Pendientes para pasos posteriores
 

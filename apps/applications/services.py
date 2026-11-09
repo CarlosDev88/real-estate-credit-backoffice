@@ -881,7 +881,7 @@ def delete_income_source(actor: Actor, source: IncomeSource) -> None:
 
 
 def put_property(
-    actor: User,
+    actor: Actor,
     application: CreditApplication,
     *,
     expected_version: int,
@@ -890,8 +890,10 @@ def put_property(
     """Crea o reemplaza el inmueble. Devuelve ``True`` si lo creó.
 
     ``values`` trae los campos del modelo, con ``project`` ya resuelto (visible y
-    `ACTIVE`). Las reglas por finalidad se comprueban con la solicitud bloqueada, para
-    no decidir con una finalidad que otra petición acaba de cambiar.
+    `ACTIVE`). Un campo que no llega en ``values`` conserva su valor al reemplazar (el
+    comprador no envía ``project`` ni ``ownership_notes``). Las reglas por finalidad se
+    comprueban con la solicitud bloqueada, para no decidir con una finalidad que otra
+    petición acaba de cambiar.
     """
     with transaction.atomic():
         locked = lock_for_edit(application, expected_version)
@@ -957,7 +959,7 @@ def financing_errors(
 
 
 def put_financing(
-    actor: User,
+    actor: Actor,
     application: CreditApplication,
     *,
     expected_version: int,
@@ -1169,7 +1171,7 @@ def _ready_to_file_problems(actor: User, locked: CreditApplication) -> list[dict
 
 
 def _apply_status_change(
-    actor: User,
+    actor: Actor,
     locked: CreditApplication,
     transition: WorkflowTransition,
     *,
@@ -1205,14 +1207,15 @@ def _apply_status_change(
         transition=transition,
         reason_item=reason,
         comment=comment,
-        actor_user=actor,
+        actor_user=actor if isinstance(actor, User) else None,
+        actor_buyer_session=actor if isinstance(actor, BuyerSession) else None,
         application_version=locked.version,
     )
     return StatusChange(application=locked, previous_status=previous, transitioned_at=now)
 
 
 def _notify_status_change(
-    actor: User,
+    actor: Actor,
     change: StatusChange,
     transition: WorkflowTransition,
     reason: CatalogItem | None,
@@ -1283,8 +1286,34 @@ def transition_application(
     return change
 
 
+def _withdraw_transition(actor: Actor, from_status: str) -> WorkflowTransition:
+    """Transición activa `<estado> → WITHDRAWN`.
+
+    Un usuario interno necesita el rol o el permiso de la transición. Para el
+    comprador, la autorización es su sesión (decisión 15 de ``TAREA-buyer-access``).
+    """
+    if isinstance(actor, User):
+        return resolve_transition(
+            actor,
+            flow_type=FlowType.APPLICATION,
+            from_status=from_status,
+            to_status=ApplicationStatus.WITHDRAWN,
+        )
+    transition = WorkflowTransition.objects.filter(
+        flow_type=FlowType.APPLICATION,
+        from_status=from_status,
+        to_status=ApplicationStatus.WITHDRAWN,
+        is_active=True,
+    ).first()
+    if transition is None:
+        raise InvalidStateTransition(
+            f"No se puede pasar de {from_status} a {ApplicationStatus.WITHDRAWN}."
+        )
+    return transition
+
+
 def withdraw_application(
-    actor: User,
+    actor: Actor,
     application: CreditApplication,
     *,
     expected_version: int,
@@ -1293,16 +1322,12 @@ def withdraw_application(
 ) -> StatusChange:
     """Registra el desistimiento con una transición `WITHDRAW_<estado>`.
 
-    Se admite desde cualquier estado no terminal, también después de `FILED`.
+    Se admite desde cualquier estado no terminal, también después de `FILED`. Con el
+    comprador como actor, el historial guarda su sesión en ``actor_buyer_session``.
     """
     with transaction.atomic():
         locked = _lock_for_status_change(application, expected_version)
-        transition = resolve_transition(
-            actor,
-            flow_type=FlowType.APPLICATION,
-            from_status=locked.status,
-            to_status=ApplicationStatus.WITHDRAWN,
-        )
+        transition = _withdraw_transition(actor, locked.status)
         change = _apply_status_change(actor, locked, transition, reason=reason, comment=comment)
     _notify_status_change(actor, change, transition, reason, comment)
     return change
