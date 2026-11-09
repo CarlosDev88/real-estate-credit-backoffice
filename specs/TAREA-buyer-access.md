@@ -267,7 +267,7 @@ No hay ciclo: `applications 0001` a `0003` dependen de `identity` hasta la `0008
 - `GET .../eligible-bank-products`, con un DTO del portal: producto, banco y `eligible`, sin el detalle de las reglas.
 - `POST .../withdrawals` (decisión 15).
 - README, con la sección "Buyer access" y "Current Status" en el paso 9.
-- Documentación: API §5.5 (errores nuevos `MAGIC_LINK_INVALID`, `CONSENT_REQUIRED` y `CONSENT_NOT_EFFECTIVE`), §6, §8, §17, §18, §21.1, §25, §26 y §27.1.
+- Documentación: API §5.5 (errores nuevos `MAGIC_LINK_INVALID`, `CONSENT_REQUIRED`, `CONSENT_NOT_EFFECTIVE` y `CONSENT_NOT_ACCEPTED`), §6, §8, §17, §18, §21.1, §25, §26 y §27.1.
 
 ---
 
