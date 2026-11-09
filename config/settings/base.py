@@ -128,6 +128,7 @@ SPECTACULAR_SETTINGS = {
         # Requisitos documentales (`participant_role`) y participantes (`role`).
         "ParticipantRoleEnum": "apps.documents.models.ParticipantRole",
         "RuleOutcomeEnum": "apps.banking.rule_engine.Outcome",
+        "BuyerAccessLinkStatusEnum": "apps.identity.models.BuyerAccessLinkStatus",
     },
 }
 

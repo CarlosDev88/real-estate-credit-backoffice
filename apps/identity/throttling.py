@@ -78,3 +78,19 @@ class InvitationAcceptRateThrottle(PasswordResetConfirmRateThrottle):
     """Limita por IP los intentos de adivinar tokens de invitación."""
 
     scope = "invitation_accept"
+
+
+class BuyerAccessIssueRateThrottle(AuthRateThrottle):
+    """Emisión de enlaces del comprador: por emisor y solicitud (REQUERIMIENTOS §9.3).
+
+    Solo cuenta los ``POST``: listar los enlaces de la solicitud no consume el límite.
+    """
+
+    scope = "buyer_access_issue"
+
+    def get_cache_key(self, request: Request, view: Any) -> str | None:
+        user_id = getattr(request.user, "pk", None)
+        if request.method != "POST" or user_id is None:
+            return None
+        ident = f"{user_id}|{view.kwargs.get('application_id')}"
+        return self.cache_format % {"scope": self.scope, "ident": self._hashed(ident)}

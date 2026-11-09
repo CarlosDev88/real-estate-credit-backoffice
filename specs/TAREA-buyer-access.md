@@ -29,8 +29,8 @@ Es el paso 9 del orden de construcción (DER_COMPLETO §15) y va después de `ap
 
 | Parte | Contenido | Estado | Commit |
 | ---: | --- | --- | --- |
-| 1 | Modelos, migraciones, semillas y configuración | Hecha | (pendiente de commit) |
-| 2 | Emisión, listado y revocación de enlaces (interno) | Pendiente | |
+| 1 | Modelos, migraciones, semillas y configuración | Hecha | `58ea555` |
+| 2 | Emisión, listado y revocación de enlaces (interno) | Hecha | (pendiente de commit) |
 | 3 | Consumo del enlace, sesión del comprador y lectura de su proceso | Pendiente | |
 | 4 | Consentimientos y bloqueo de escrituras por consentimiento pendiente | Pendiente | |
 | 5 | Actor comprador en `applications`: datos personales, perfiles financieros, ingresos y confirmación | Pendiente | |
@@ -40,6 +40,8 @@ Al cerrar la Parte 1: 1013 tests en verde (25 nuevos), 98 % de cobertura total y
 - los `__str__` de los modelos;
 - `has_delete_permission` del admin;
 - el `unseed` de `identity 0010`.
+
+Al cerrar la Parte 2: 1041 tests en verde (28 nuevos), 98 % de cobertura total (`buyer_access.py`, `buyer_access_serializers.py`, `buyer_access_views.py` y `emails.py` al 100 %) y el esquema OpenAPI sin avisos.
 
 ---
 
@@ -161,8 +163,7 @@ Es el mismo de `TAREA-applications.md`: los checks se corren en un contenedor ef
     - **Interno.** `GET /applications/{id}/consents`, con el permiso `consents.read` (`ADMIN` y `ADVISOR`, este último dentro de su alcance). El broker no lo ve.
 17. **Estado público.** Por ahora es igual a `status`, con la etiqueta del catálogo `application_status`, y `next_action` es un texto fijo por estado.
 
-### Pregunta abierta
-- **P18. ¿Qué cuenta como "co-solicitante"?** Afecta a la decisión 11 (perfiles e ingresos que edita el comprador) y a la 16 (cuándo se exige `CO_APPLICANT_AUTHORIZATION`). Propuesta: los participantes activos con rol `CO_APPLICANT` o `SOLIDARY_DEBTOR`, es decir, todos los activos distintos del `PRIMARY`. ¿O solo `CO_APPLICANT`? Se necesita antes de la Parte 4.
+18. **Co-solicitantes.** Son todos los participantes activos que no son el titular, incluidos los deudores solidarios (`CO_APPLICANT` y `SOLIDARY_DEBTOR`). Esto define qué perfiles e ingresos edita el comprador (decisión 11) y cuándo se exige `CO_APPLICANT_AUTHORIZATION` (decisión 16).
 
 ---
 
@@ -287,6 +288,39 @@ No hay ciclo: `applications 0001` a `0003` dependen de `identity` hasta la `0008
   - `user.buyer_access_links_created`.
 - **Variables de entorno nuevas** (todas con valor por omisión): `BUYER_ACCESS_LINK_DEFAULT_HOURS`, `BUYER_ACCESS_LINK_MAX_HOURS`, `BUYER_SESSION_HOURS` y `BUYER_ACCESS_URL` (por omisión, `http://localhost:3000/acceso`).
 - **Tests.** Están en `tests/applications/buyer_access/` (`test_models.py` y `test_seed.py`). Su `conftest.py` agrega `make_link` y `make_session`, que crean filas directamente en la base.
+
+### Parte 2
+- **Archivos:**
+  - `apps/identity/buyer_access.py` (servicios), separado de `services.py` porque depende de `applications`;
+  - `buyer_access_serializers.py`, `buyer_access_views.py` y `buyer_access_urls.py`, incluidos en `config/urls.py`;
+  - tag `Buyer access`.
+- **Servicios:**
+  - `links_queryset()` y `links_visible_to(user)`, con el mismo alcance que `applications_visible_to`;
+  - `default_channel()` (`COPY_LINK`);
+  - `issue_access_link(actor, application, channel=, expires_in_hours=)` → `IssuedLink(link, url)`;
+  - `ensure_can_revoke` y `revoke_access_link`;
+  - constantes `CHANNEL_CATALOG`, `COPY_LINK` y `EMAIL`.
+- **Emisión:**
+  - bloquea la fila de la solicitud (`select_for_update`), para que dos emisiones simultáneas no dejen dos enlaces pendientes;
+  - revoca los `PENDING` en la misma transacción. Los vencidos quedan como `EXPIRED`;
+  - el titular se toma del participante `PRIMARY` activo;
+  - la entrada es estricta, así que un `client_id` responde `400` (campo no permitido);
+  - `expires_in_hours` acepta de 1 a `BUYER_ACCESS_LINK_MAX_HOURS`.
+  - Orden de las comprobaciones: alcance (`404`), cuerpo (`400`), solicitud terminada (`409 APPLICATION_CLOSED`) y canal `EMAIL` sin correo (`400` en `delivery_channel`).
+- **Respuesta.** Los mismos campos que el listado más `url`, que solo está en el `201`:
+  - `id`, `application_id`, `client_id` y `status`;
+  - `delivery_channel` `{code, label}` y `created_by` `{id, name}`;
+  - las fechas;
+  - `session`: `{id, created_at, expires_at, revoked_at, last_seen_at, is_active}` o `null`.
+- **Correo** (`emails.send_buyer_access_email`). Saludo con el nombre, el enlace, el aviso de uso único y las horas de vigencia. No lleva código de solicitud, documento ni datos financieros (REQUERIMIENTOS §9.2). Sale en `on_commit`.
+- **Logs.** Solo el id del enlace, el código de la solicitud, el actor y el canal. Un test verifica que ni el token ni su hash aparecen en los logs.
+- **Rate limit.** `BuyerAccessIssueRateThrottle` cuenta solo los `POST`, con clave hash(usuario + `application_id`). Se aplica después de los permisos, así que el partner recibe `403` y no `429`. Cuenta también los intentos fallidos.
+- **Revocación.**
+  - Un enlace fuera del alcance responde `404`.
+  - El broker (`scope.is_restricted`) que revoca un enlace emitido por otro recibe `403`, porque ese enlace sí aparece en su listado.
+  - Un enlace consumido conserva el estado `CONSUMED`, y lo que se revoca es su sesión.
+- **Listado.** `?status=` acepta `PENDING`, `CONSUMED`, `REVOKED` o `EXPIRED`; otro valor responde `400`. Orden `-created_at`, paginado (`items`).
+- **OpenAPI.** `BuyerAccessLinkStatusEnum` se agregó a `ENUM_NAME_OVERRIDES` para evitar la colisión de nombres de los campos `status`.
 
 ## Pendientes para pasos posteriores
 

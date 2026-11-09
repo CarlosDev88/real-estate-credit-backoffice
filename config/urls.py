@@ -31,6 +31,7 @@ api_v1_patterns = [
     path("", include("apps.banking.urls")),
     path("", include("apps.documents.urls")),
     path("", include("apps.applications.urls")),
+    path("", include("apps.identity.buyer_access_urls")),
 ]
 
 urlpatterns = [
