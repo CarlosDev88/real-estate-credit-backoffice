@@ -123,3 +123,26 @@ class MagicLinkRevoked(ApiError):
     status_code = status.HTTP_401_UNAUTHORIZED
     error_code = "MAGIC_LINK_REVOKED"
     default_detail = "El enlace fue revocado. Pide uno nuevo a tu asesor."
+
+
+# --- Consentimientos (decisión 16 de TAREA-buyer-access) ------------------------------
+
+
+class ConsentRequired(ApiError):
+    """Falta aceptar la versión vigente de un consentimiento obligatorio."""
+
+    status_code = status.HTTP_403_FORBIDDEN
+    error_code = "CONSENT_REQUIRED"
+    default_detail = "Antes de continuar, acepta los consentimientos pendientes."
+
+
+class ConsentNotEffective(ApiError):
+    status_code = status.HTTP_422_UNPROCESSABLE_ENTITY
+    error_code = "CONSENT_NOT_EFFECTIVE"
+    default_detail = "Esa versión del consentimiento no está vigente."
+
+
+class ConsentNotAccepted(ApiError):
+    status_code = status.HTTP_409_CONFLICT
+    error_code = "CONSENT_NOT_ACCEPTED"
+    default_detail = "No hay una aceptación vigente de ese consentimiento que retirar."

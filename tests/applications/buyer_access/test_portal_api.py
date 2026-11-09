@@ -26,34 +26,26 @@ from apps.identity import buyer_portal
 from apps.identity.cookies import buyer_session_cookie_name
 from apps.identity.models import BuyerAccessLink, BuyerSession
 from apps.identity.tokens import generate_opaque_token, hash_token
+from tests.applications.buyer_access.conftest import (
+    CONSUME_URL,
+    LinkFactory,
+    consume,
+    pending_token,
+)
 from tests.applications.conftest import application_url, catalog_item
 from tests.helpers import assert_error, cookie_was_cleared, csrf_token
 
 pytestmark = pytest.mark.django_db
 
-CONSUME_URL = "/api/v1/buyer-access/consume"
 SESSION_URL = "/api/v1/buyer/session"
 LOGOUT_URL = "/api/v1/buyer/session/logout"
 PROCESSES_URL = "/api/v1/buyer/processes"
 BUYER_APPLICATIONS_URL = "/api/v1/buyer/applications"
 
-LinkFactory = Callable[..., BuyerAccessLink]
-
 
 def buyer_application_url(application: CreditApplication | uuid.UUID) -> str:
     application_id = application if isinstance(application, uuid.UUID) else application.pk
     return f"{BUYER_APPLICATIONS_URL}/{application_id}"
-
-
-def pending_token(make_link: LinkFactory, **extra: Any) -> str:
-    """Crea un enlace pendiente y devuelve su token en claro."""
-    token = generate_opaque_token()
-    make_link(token_hash=hash_token(token), **extra)
-    return token
-
-
-def consume(client: APIClient, token: str, **extra: Any) -> Any:
-    return client.post(CONSUME_URL, {"token": token}, **extra)
 
 
 def session_token(client: APIClient) -> str:
@@ -76,22 +68,6 @@ def deactivate_primary(application: CreditApplication) -> None:
     ApplicationParticipant.objects.filter(
         application=application, role=ParticipantRole.PRIMARY
     ).update(is_active=False)
-
-
-@pytest.fixture
-def buyer_client(make_link: LinkFactory) -> APIClient:
-    """Navegador del comprador con la sesión ya abierta."""
-    client = APIClient()
-    assert consume(client, pending_token(make_link)).status_code == 200
-    return client
-
-
-@pytest.fixture
-def buyer_csrf_client(make_link: LinkFactory) -> APIClient:
-    """Igual que ``buyer_client``, pero sujeto a la validación CSRF."""
-    client = APIClient(enforce_csrf_checks=True)
-    assert consume(client, pending_token(make_link)).status_code == 200
-    return client
 
 
 @pytest.fixture
@@ -325,7 +301,8 @@ def test_session_returns_the_buyer_and_the_application(
 
     assert response.status_code == 200, response.content
     body = response.json()
-    assert set(body) == {"session", "buyer", "application"}
+    assert set(body) == {"session", "buyer", "application", "pending_consents"}
+    assert body["pending_consents"] == ["DATA_PROCESSING"]
     assert set(body["session"]) == {"id", "created_at", "expires_at"}
     assert body["session"]["id"] == str(session.pk)
     assert body["buyer"] == {"display_name": "Laura Gómez Vélez"}
@@ -412,13 +389,14 @@ def test_last_seen_is_written_at_most_once_a_minute(buyer_client: APIClient) -> 
 
 
 def test_buyer_writes_require_csrf(buyer_csrf_client: APIClient) -> None:
-    # Ninguna escritura del comprador existe aún con sesión: el `POST` a una ruta de
-    # lectura muestra que la autenticación exige CSRF antes de llegar a la vista.
+    # El `POST` a una ruta de lectura muestra que la autenticación exige CSRF antes
+    # de los permisos y de la vista.
     assert_error(buyer_csrf_client.post(SESSION_URL), 403, "CSRF_FAILED")
 
     response = buyer_csrf_client.post(SESSION_URL, HTTP_X_CSRFTOKEN=csrf_token(buyer_csrf_client))
 
-    assert_error(response, 405, "METHOD_NOT_ALLOWED")
+    # Con CSRF pasa al permiso de consentimientos (Parte 4).
+    assert_error(response, 403, "CONSENT_REQUIRED")
 
 
 def test_buyer_cookie_does_not_open_internal_endpoints(

@@ -20,8 +20,8 @@ from apps.applications.models import (
 from apps.applications.serializers import BankProductRefSerializer, NamedRefSerializer
 from apps.catalogs.serializers import CatalogItemRefSerializer
 from apps.catalogs.workflow import ApplicationStatus
-from apps.identity import buyer_portal
-from apps.identity.models import BuyerSession
+from apps.identity import buyer_portal, consents
+from apps.identity.models import BuyerSession, ConsentAction, ConsentDefinition, ConsentRecord
 from config.serializers import StrictSerializer
 
 # --- Consumo y sesión -------------------------------------------------------------------
@@ -67,6 +67,11 @@ class BuyerSessionResponseSerializer(serializers.Serializer):
     session = BuyerSessionInfoSerializer(source="*")
     buyer = BuyerRefSerializer(source="client")
     application = BuyerApplicationRefSerializer()
+    # Códigos de los consentimientos obligatorios que faltan; bloquean las escrituras.
+    pending_consents = serializers.SerializerMethodField()
+
+    def get_pending_consents(self, session: BuyerSession) -> list[str]:
+        return [definition.code for definition in consents.missing_consents(session)]
 
 
 # --- Proceso y solicitud ----------------------------------------------------------------
@@ -202,3 +207,47 @@ class BuyerApplicationDetailSerializer(BuyerProcessSerializer):
     @extend_schema_field(BuyerProgressSerializer)
     def get_progress(self, application: CreditApplication) -> dict[str, Any]:
         return dict(BuyerProgressSerializer(self._progress(application)).data)
+
+
+# --- Consentimientos --------------------------------------------------------------------
+
+
+class BuyerConsentSerializer(serializers.Serializer):
+    """Versión vigente de un consentimiento y su estado para el comprador."""
+
+    id = serializers.UUIDField(source="definition.pk")
+    code = serializers.CharField(source="definition.code")
+    version = serializers.IntegerField(source="definition.version")
+    title = serializers.CharField(source="definition.title")
+    body = serializers.CharField(source="definition.body")
+    content_hash = serializers.CharField(source="definition.content_hash")
+    effective_from = serializers.DateTimeField(source="definition.effective_from")
+    # El metaclass de DRF retira los campos declarados de la clase, así que no pisa
+    # `Field.required` en tiempo de ejecución; mypy no lo sabe.
+    required = serializers.BooleanField()  # type: ignore[assignment]
+    status = serializers.ChoiceField(choices=consents.ConsentStatus.choices)
+    accepted_at = serializers.DateTimeField(allow_null=True)
+
+
+class BuyerConsentListSerializer(serializers.Serializer):
+    items = BuyerConsentSerializer(many=True)
+    pending_required = serializers.ListField(child=serializers.CharField())
+
+
+class BuyerConsentActionSerializer(StrictSerializer):
+    consent_definition_id = serializers.PrimaryKeyRelatedField(
+        queryset=ConsentDefinition.objects.all()
+    )
+    action = serializers.ChoiceField(choices=ConsentAction.choices)
+
+
+class BuyerConsentRecordSerializer(serializers.ModelSerializer):
+    consent_definition_id = serializers.UUIDField(read_only=True)
+    code = serializers.CharField(source="consent_definition.code", read_only=True)
+    version = serializers.IntegerField(source="consent_definition.version", read_only=True)
+    action = serializers.ChoiceField(choices=ConsentAction.choices, read_only=True)
+
+    class Meta:
+        model = ConsentRecord
+        fields = ["id", "consent_definition_id", "code", "version", "action", "created_at"]
+        read_only_fields = fields

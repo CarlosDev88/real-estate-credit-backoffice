@@ -14,4 +14,9 @@ urlpatterns = [
         views.BuyerApplicationDetailView.as_view(),
         name="application-detail",
     ),
+    path(
+        "buyer/applications/<uuid:application_id>/consents",
+        views.BuyerConsentsView.as_view(),
+        name="consents",
+    ),
 ]

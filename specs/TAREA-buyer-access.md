@@ -31,8 +31,8 @@ Es el paso 9 del orden de construcción (DER_COMPLETO §15) y va después de `ap
 | ---: | --- | --- | --- |
 | 1 | Modelos, migraciones, semillas y configuración | Hecha | `58ea555` |
 | 2 | Emisión, listado y revocación de enlaces (interno) | Hecha | `d3e7da7` |
-| 3 | Consumo del enlace, sesión del comprador y lectura de su proceso | Hecha | (pendiente de commit) |
-| 4 | Consentimientos y bloqueo de escrituras por consentimiento pendiente | Pendiente | |
+| 3 | Consumo del enlace, sesión del comprador y lectura de su proceso | Hecha | `c7b5e11` |
+| 4 | Consentimientos y bloqueo de escrituras por consentimiento pendiente | Hecha | (pendiente de commit) |
 | 5 | Actor comprador en `applications`: datos personales, perfiles financieros, ingresos y confirmación | Pendiente | |
 | 6 | Inmueble, financiación, `eligible-bank-products`, desistimiento, README y documentación | Pendiente | |
 
@@ -44,6 +44,8 @@ Al cerrar la Parte 1: 1013 tests en verde (25 nuevos), 98 % de cobertura total y
 Al cerrar la Parte 2: 1041 tests en verde (28 nuevos), 98 % de cobertura total (`buyer_access.py`, `buyer_access_serializers.py`, `buyer_access_views.py` y `emails.py` al 100 %) y el esquema OpenAPI sin avisos.
 
 Al cerrar la Parte 3: 1085 tests en verde (44 nuevos), 98 % de cobertura total (los módulos nuevos `buyer_sessions.py`, `buyer_authentication.py`, `buyer_portal*.py` al 100 %) y el esquema OpenAPI sin avisos.
+
+Al cerrar la Parte 4: 1113 tests en verde (28 nuevos), 98 % de cobertura total (`consents.py`, `consent_views.py` y lo modificado del portal al 100 %) y el esquema OpenAPI sin avisos.
 
 ---
 
@@ -353,6 +355,33 @@ No hay ciclo: `applications 0001` a `0003` dependen de `identity` hasta la `0008
 - **Progreso del comprador.** Son los ítems de `completeness` sin `bank_evaluation`, que es interno, con su propio porcentaje. Por eso puede diferir del `/completeness` interno.
 - **Estado público.** `public_status_label` sale del catálogo `application_status` y, si falta el ítem, de la etiqueta del backend. `NEXT_ACTIONS` cubre todos los estados (hay un test que lo verifica).
 - **Concurrencia del consumo.** El test verifica que la consulta del enlace lleva `FOR UPDATE`. Así, el segundo consumo simultáneo espera al primero y recibe `MAGIC_LINK_CONSUMED`.
+
+### Parte 4
+- **Archivos:**
+  - `consents.py` (servicios): `effective_definitions`, `required_codes`, `has_co_applicants`, `consent_states`, `missing_consents`, `ensure_consents_accepted`, `record_consent` y `application_consent_records`; `ConsentStatus` (`PENDING`, `ACCEPTED`, `WITHDRAWN`);
+  - `consent_views.py` y `consent_urls.py`: el endpoint interno, con tag `Consents`;
+  - `buyer_authentication.ConsentsAccepted`: el permiso del bloqueo;
+  - `BuyerConsentsView` en `buyer_portal_views.py`.
+- **Vigencia.** Una definición rige si `effective_from <= now` y `retired_at` es nulo o futuro. De cada código se toma la versión mayor vigente: una versión futura no reemplaza a la actual hasta su fecha.
+- **Estado** para el cliente y la solicitud de la sesión: la última acción sobre esa versión exacta. Aceptar la v1 no cuenta para la v2, y el registro de otra solicitud tampoco cuenta.
+- **Acciones** (`POST /buyer/applications/{id}/consents`, `{consent_definition_id, action}`):
+  - repetir la última acción devuelve el registro existente con `200`; una fila nueva responde `201`;
+  - retirar sin ninguna acción previa: `409 CONSENT_NOT_ACCEPTED` (código nuevo);
+  - una versión futura, retirada o reemplazada: `422 CONSENT_NOT_EFFECTIVE`;
+  - una definición inexistente: `400` en `consent_definition_id`;
+  - con la solicitud terminada: `409 APPLICATION_CLOSED`. Después de `FILED` sí se permite;
+  - bloquea la fila de la sesión (`select_for_update`), así que dos aceptaciones simultáneas no dejan dos filas;
+  - el registro guarda cliente, solicitud, sesión, IP y agente. No toca la versión de la solicitud.
+- **Listado del comprador.** `{items, pending_required}`. Cada ítem trae `id`, `code`, `version`, `title`, `body`, `content_hash`, `effective_from`, `required`, `status` y `accepted_at`.
+- **Bloqueo.** `ConsentsAccepted` va en los permisos por omisión de `BuyerPortalView`, después de `IsBuyerSession`:
+  - solo actúa en métodos no seguros;
+  - responde `403 CONSENT_REQUIRED` con un `details` por consentimiento pendiente (`code` = código de la definición, `resource_id` = su id);
+  - `BuyerConsentsView` lo omite, y el logout es público;
+  - como CSRF se valida en la autenticación, una escritura sin token responde `403 CSRF_FAILED` antes que `CONSENT_REQUIRED`.
+- **`GET /buyer/session`** agrega `pending_consents`, la lista de códigos de los consentimientos que faltan.
+- **Interno** (`GET /applications/{id}/consents`, `consents.read`): lista paginada, de la más reciente a la más antigua. Cada evidencia trae `consent_definition {id, code, version, title, content_hash}`, `client {id, full_name}`, `user`, `action`, `ip_address`, `user_agent_summary`, `buyer_session_id` y `created_at`. Fuera del alcance responde `404`; el broker y el partner reciben `403`.
+- **Tests.** Los helpers `consume` y `pending_token` y los fixtures `buyer_client` y `buyer_csrf_client` pasaron al `conftest.py` de `buyer_access`.
+- **mypy.** El campo `required` del DTO choca con `Field.required`. Lleva un `type: ignore[assignment]` justificado, igual que `label` en `CatalogItemRefSerializer`.
 
 ## Pendientes para pasos posteriores
 

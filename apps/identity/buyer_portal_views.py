@@ -3,9 +3,12 @@
 - ``POST /buyer-access/consume`` (público)
 - ``GET /buyer/session`` y ``POST /buyer/session/logout``
 - ``GET /buyer/processes`` y ``GET /buyer/applications/{id}``
+- ``GET``/``POST /buyer/applications/{id}/consents``
 
 Las vistas ``/buyer/*`` solo aceptan la cookie del comprador. El ``application_id`` de
-la ruta debe ser el de la sesión; cualquier otro responde ``404``.
+la ruta debe ser el de la sesión; cualquier otro responde ``404``. Las escrituras
+responden ``403 CONSENT_REQUIRED`` mientras falte un consentimiento obligatorio, salvo
+la aceptación de consentimientos y el logout.
 """
 
 from typing import Any, cast
@@ -22,13 +25,20 @@ from rest_framework.views import APIView
 
 from apps.applications.concurrency import with_etag
 from apps.applications.models import CreditApplication
-from apps.identity import buyer_portal, buyer_sessions
+from apps.identity import buyer_portal, buyer_sessions, consents
 from apps.identity.authentication import enforce_csrf
-from apps.identity.buyer_authentication import BuyerSessionAuthentication, IsBuyerSession
+from apps.identity.buyer_authentication import (
+    BuyerSessionAuthentication,
+    ConsentsAccepted,
+    IsBuyerSession,
+)
 from apps.identity.buyer_portal_serializers import (
     BuyerAccessConsumeResponseSerializer,
     BuyerAccessConsumeSerializer,
     BuyerApplicationDetailSerializer,
+    BuyerConsentActionSerializer,
+    BuyerConsentListSerializer,
+    BuyerConsentRecordSerializer,
     BuyerProcessSerializer,
     BuyerSessionResponseSerializer,
 )
@@ -66,7 +76,7 @@ class BuyerPortalView(GenericAPIView):
     """Base de las vistas ``/buyer/*``: solo la sesión del comprador autentica."""
 
     authentication_classes = [BuyerSessionAuthentication]
-    permission_classes = [IsBuyerSession]
+    permission_classes = [IsBuyerSession, ConsentsAccepted]
 
     @property
     def buyer_session(self) -> BuyerSession:
@@ -75,6 +85,12 @@ class BuyerPortalView(GenericAPIView):
     def get_application(self, application_id: Any) -> CreditApplication:
         return get_object_or_404(
             buyer_portal.buyer_application_detail(self.buyer_session), pk=application_id
+        )
+
+    def ensure_session_application(self, application_id: Any) -> CreditApplication:
+        """``404`` si la ruta no es la solicitud de la sesión."""
+        return get_object_or_404(
+            buyer_portal.session_applications(self.buyer_session), pk=application_id
         )
 
     def finalize_response(
@@ -135,6 +151,11 @@ class BuyerSessionView(BuyerPortalView):
         tags=[BUYER_PORTAL_TAG],
         operation_id="buyer_session_retrieve",
         summary="Sesión del comprador, su nombre y la solicitud a la que da acceso",
+        description=(
+            "`pending_consents` lista los códigos de los consentimientos obligatorios "
+            "que faltan aceptar; mientras no esté vacía, las escrituras responden "
+            "`403 CONSENT_REQUIRED`."
+        ),
         responses={200: BuyerSessionResponseSerializer, **SESSION_ERRORS},
     )
     def get(self, request: Request) -> Response:
@@ -192,3 +213,63 @@ class BuyerApplicationDetailView(BuyerPortalView):
         application = self.get_application(application_id)
         response = Response(BuyerApplicationDetailSerializer(application).data)
         return with_etag(response, application.version)
+
+
+class BuyerConsentsView(BuyerPortalView):
+    # Aceptar consentimientos no puede exigir consentimientos aceptados.
+    permission_classes = [IsBuyerSession]
+
+    @extend_schema(
+        tags=[BUYER_PORTAL_TAG],
+        operation_id="buyer_consents_list",
+        summary="Consentimientos vigentes y su estado",
+        description=(
+            "La versión vigente de cada consentimiento, si es obligatorio para esta "
+            "solicitud y la última acción del comprador sobre esa versión. "
+            "`pending_required` son los obligatorios que faltan."
+        ),
+        responses={200: BuyerConsentListSerializer, **NOT_FOUND, **SESSION_ERRORS},
+    )
+    def get(self, request: Request, application_id: Any) -> Response:
+        self.ensure_session_application(application_id)
+        states = consents.consent_states(self.buyer_session)
+        body = {
+            "items": states,
+            "pending_required": [s.definition.code for s in states if s.is_missing],
+        }
+        return Response(BuyerConsentListSerializer(body).data)
+
+    @extend_schema(
+        tags=[BUYER_PORTAL_TAG],
+        operation_id="buyer_consents_create",
+        summary="Aceptar o retirar un consentimiento",
+        description=(
+            "Guarda la evidencia con la IP, el agente y la sesión. Repetir la última "
+            "acción sobre la misma versión devuelve el registro existente (`200`). "
+            "Retirar deja el consentimiento pendiente otra vez."
+        ),
+        request=BuyerConsentActionSerializer,
+        responses={
+            200: BuyerConsentRecordSerializer,
+            201: BuyerConsentRecordSerializer,
+            400: _error("VALIDATION_ERROR (también: definición inexistente)"),
+            409: _error("CONSENT_NOT_ACCEPTED o APPLICATION_CLOSED"),
+            422: _error("CONSENT_NOT_EFFECTIVE"),
+            **NOT_FOUND,
+            **SESSION_ERRORS,
+        },
+    )
+    def post(self, request: Request, application_id: Any) -> Response:
+        self.ensure_session_application(application_id)
+        serializer = BuyerConsentActionSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        recorded = consents.record_consent(
+            request=request,
+            session=self.buyer_session,
+            definition=serializer.validated_data["consent_definition_id"],
+            action=serializer.validated_data["action"],
+        )
+        return Response(
+            BuyerConsentRecordSerializer(recorded.record).data,
+            status=status.HTTP_201_CREATED if recorded.created else status.HTTP_200_OK,
+        )

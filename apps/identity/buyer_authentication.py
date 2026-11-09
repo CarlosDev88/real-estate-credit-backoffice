@@ -12,11 +12,12 @@ from typing import Any
 
 from django.contrib.auth.models import AnonymousUser
 from rest_framework.authentication import BaseAuthentication
-from rest_framework.permissions import BasePermission
+from rest_framework.permissions import SAFE_METHODS, BasePermission
 from rest_framework.request import Request
 
 from apps.identity.authentication import enforce_csrf
 from apps.identity.buyer_sessions import find_active_session, touch_session
+from apps.identity.consents import ensure_consents_accepted
 from apps.identity.cookies import buyer_session_cookie_name
 from apps.identity.exceptions import BuyerSessionExpired
 from apps.identity.models import BuyerSession
@@ -52,3 +53,19 @@ class IsBuyerSession(BasePermission):
 
     def has_permission(self, request: Request, view: Any) -> bool:
         return isinstance(request.auth, BuyerSession)
+
+
+class ConsentsAccepted(BasePermission):
+    """Bloquea las escrituras del portal mientras falte un consentimiento obligatorio.
+
+    Responde ``403 CONSENT_REQUIRED``. Las lecturas siguen permitidas, y las vistas de
+    consentimientos y el logout no usan este permiso. Va después de ``IsBuyerSession``.
+    """
+
+    def has_permission(self, request: Request, view: Any) -> bool:
+        if request.method in SAFE_METHODS:
+            return True
+        session = request.auth
+        if isinstance(session, BuyerSession):
+            ensure_consents_accepted(session)
+        return True
