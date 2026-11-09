@@ -4,6 +4,10 @@ from django.http import HttpRequest
 
 from apps.identity.models import (
     AuthSession,
+    BuyerAccessLink,
+    BuyerSession,
+    ConsentDefinition,
+    ConsentRecord,
     InternalInvitation,
     PasswordResetToken,
     Permission,
@@ -103,3 +107,44 @@ class InternalInvitationAdmin(ReadOnlyAdmin):
     list_filter = ["role"]
     search_fields = ["email"]
     exclude = ["token_hash"]
+
+
+class ImmutableAdmin(ReadOnlyAdmin):
+    """Evidencia del acceso del comprador y de los consentimientos: tampoco se borra."""
+
+    def has_delete_permission(self, request: HttpRequest, obj: object | None = None) -> bool:
+        return False
+
+
+@admin.register(BuyerAccessLink)
+class BuyerAccessLinkAdmin(ImmutableAdmin):
+    list_display = ["application", "client", "status", "created_by", "expires_at", "created_at"]
+    search_fields = ["application__code", "client__document_number"]
+    list_select_related = ["application", "client", "created_by"]
+    exclude = ["token_hash"]
+
+
+@admin.register(BuyerSession)
+class BuyerSessionAdmin(ImmutableAdmin):
+    list_display = ["application", "client", "created_at", "expires_at", "revoked_at"]
+    list_filter = ["revoked_at"]
+    search_fields = ["application__code", "client__document_number"]
+    list_select_related = ["application", "client"]
+    exclude = ["session_token_hash"]
+
+
+@admin.register(ConsentDefinition)
+class ConsentDefinitionAdmin(ImmutableAdmin):
+    """Las versiones nuevas se publican por migración, nunca desde aquí."""
+
+    list_display = ["code", "version", "title", "effective_from", "retired_at"]
+    list_filter = ["code"]
+    search_fields = ["code", "title"]
+
+
+@admin.register(ConsentRecord)
+class ConsentRecordAdmin(ImmutableAdmin):
+    list_display = ["consent_definition", "action", "client", "user", "application", "created_at"]
+    list_filter = ["action"]
+    search_fields = ["application__code", "client__document_number", "user__email"]
+    list_select_related = ["consent_definition", "client", "user", "application"]

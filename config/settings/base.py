@@ -181,6 +181,9 @@ AUTH_RATE_LIMITS = {
     "password_reset_confirm": "10/15m",
     "change_password": "5/15m",
     "invitation_accept": "10/15m",
+    # Acceso del comprador (API §8 y REQUERIMIENTOS §9.3).
+    "buyer_access_consume": "5/1h",
+    "buyer_access_issue": "3/1h",
 }
 
 # Página del frontend que recibe `?token=` para definir la nueva contraseña.
@@ -192,6 +195,15 @@ INVITATION_ACCEPT_URL = env(
     "INVITATION_ACCEPT_URL", default="http://localhost:3000/aceptar-invitacion"
 )
 DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="no-responder@localhost")
+
+# --- Acceso passwordless del comprador (API §8 y REQUERIMIENTOS §9.1) ------------------
+# Vencimiento del enlace mágico: `expires_in_hours` va de 1 al máximo.
+BUYER_ACCESS_LINK_DEFAULT_HOURS = env.int("BUYER_ACCESS_LINK_DEFAULT_HOURS", default=72)
+BUYER_ACCESS_LINK_MAX_HOURS = env.int("BUYER_ACCESS_LINK_MAX_HOURS", default=168)
+# Duración absoluta de la sesión del comprador; no se renueva con la actividad.
+BUYER_SESSION_LIFETIME = timedelta(hours=env.int("BUYER_SESSION_HOURS", default=24))
+# Página del portal de compradores que recibe `?token=` y lo consume.
+BUYER_ACCESS_URL = env("BUYER_ACCESS_URL", default="http://localhost:3000/acceso")
 
 # --- Metadatos para el frontend (sección 9) ------------------------------------------
 # Catálogos grandes que no viajan en /metadata/bootstrap; se piden con
