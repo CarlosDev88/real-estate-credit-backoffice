@@ -94,3 +94,9 @@ class BuyerAccessIssueRateThrottle(AuthRateThrottle):
             return None
         ident = f"{user_id}|{view.kwargs.get('application_id')}"
         return self.cache_format % {"scope": self.scope, "ident": self._hashed(ident)}
+
+
+class BuyerAccessConsumeRateThrottle(PasswordResetConfirmRateThrottle):
+    """Limita por IP los intentos de adivinar tokens de enlace del comprador."""
+
+    scope = "buyer_access_consume"

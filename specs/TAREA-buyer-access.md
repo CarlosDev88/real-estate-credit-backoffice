@@ -30,8 +30,8 @@ Es el paso 9 del orden de construcción (DER_COMPLETO §15) y va después de `ap
 | Parte | Contenido | Estado | Commit |
 | ---: | --- | --- | --- |
 | 1 | Modelos, migraciones, semillas y configuración | Hecha | `58ea555` |
-| 2 | Emisión, listado y revocación de enlaces (interno) | Hecha | (pendiente de commit) |
-| 3 | Consumo del enlace, sesión del comprador y lectura de su proceso | Pendiente | |
+| 2 | Emisión, listado y revocación de enlaces (interno) | Hecha | `d3e7da7` |
+| 3 | Consumo del enlace, sesión del comprador y lectura de su proceso | Hecha | (pendiente de commit) |
 | 4 | Consentimientos y bloqueo de escrituras por consentimiento pendiente | Pendiente | |
 | 5 | Actor comprador en `applications`: datos personales, perfiles financieros, ingresos y confirmación | Pendiente | |
 | 6 | Inmueble, financiación, `eligible-bank-products`, desistimiento, README y documentación | Pendiente | |
@@ -42,6 +42,8 @@ Al cerrar la Parte 1: 1013 tests en verde (25 nuevos), 98 % de cobertura total y
 - el `unseed` de `identity 0010`.
 
 Al cerrar la Parte 2: 1041 tests en verde (28 nuevos), 98 % de cobertura total (`buyer_access.py`, `buyer_access_serializers.py`, `buyer_access_views.py` y `emails.py` al 100 %) y el esquema OpenAPI sin avisos.
+
+Al cerrar la Parte 3: 1085 tests en verde (44 nuevos), 98 % de cobertura total (los módulos nuevos `buyer_sessions.py`, `buyer_authentication.py`, `buyer_portal*.py` al 100 %) y el esquema OpenAPI sin avisos.
 
 ---
 
@@ -321,6 +323,36 @@ No hay ciclo: `applications 0001` a `0003` dependen de `identity` hasta la `0008
   - Un enlace consumido conserva el estado `CONSUMED`, y lo que se revoca es su sesión.
 - **Listado.** `?status=` acepta `PENDING`, `CONSUMED`, `REVOKED` o `EXPIRED`; otro valor responde `400`. Orden `-created_at`, paginado (`items`).
 - **OpenAPI.** `BuyerAccessLinkStatusEnum` se agregó a `ENUM_NAME_OVERRIDES` para evitar la colisión de nombres de los campos `status`.
+
+### Parte 3
+- **Archivos:**
+  - `buyer_sessions.py` (servicios): `consume_access_link`, `find_active_session`, `touch_session`, `logout_buyer_session` e `is_active_primary`;
+  - `buyer_authentication.py`: `BuyerSessionAuthentication` e `IsBuyerSession`. Está separado de `authentication.py` porque depende de `applications`, y DRF importa `authentication.py` al cargar su configuración;
+  - `buyer_portal.py` (lecturas), `buyer_portal_serializers.py`, `buyer_portal_views.py` y `buyer_portal_urls.py`, con tag `Buyer portal`;
+  - `cookies.py`: `buyer_session_cookie_name()`, `set_buyer_session_cookie` y `clear_buyer_session_cookie`;
+  - `services._user_agent_summary` pasó a ser público (`user_agent_summary`).
+- **Consumo** (`POST /buyer-access/consume`, público y sin autenticación, así una cookie vencida no lo bloquea):
+  - el token debe cumplir `[A-Za-z0-9_-]{16,128}`; si no, `401 MAGIC_LINK_INVALID` sin consultar la base. Sin `token`, vacío o con campos de más: `400`;
+  - `select_for_update` sobre el enlace. Orden: inexistente (`INVALID`), `CONSUMED`, `REVOKED`, `EXPIRED`, y después solicitud terminada o cliente que ya no es `PRIMARY` activo (`INVALID`, sin consumir);
+  - abre la sesión con `last_seen_at = now`, la IP (`client_ip`) y el agente; revoca las otras sesiones abiertas del cliente en la solicitud;
+  - fija `__Host-buyer_session` (`HttpOnly`, `Secure`, `SameSite=Lax`, `Path=/`, 24 h) y rota el token CSRF;
+  - respuesta de API §8 (`buyer.display_name`, `application`, `session_expires_at`); `application` agrega `public_status_label`, `is_editable` e `is_closed`.
+  - Rate limit `BuyerAccessConsumeRateThrottle`: 5/h por IP, cuenta todos los intentos.
+- **Sesión** (`BuyerSessionAuthentication`):
+  - sin cookie: `401 NOT_AUTHENTICATED`;
+  - cookie mal formada o desconocida, sesión vencida o revocada, o cliente que dejó de ser `PRIMARY` activo: `401 SESSION_EXPIRED` (`BuyerSessionExpired`, con un mensaje para el comprador), y la respuesta borra la cookie;
+  - CSRF en las escrituras; `last_seen_at` se escribe como máximo una vez por minuto;
+  - revocar desde el backoffice el enlace consumido corta la sesión en la petición siguiente.
+- **Logout** (`POST /buyer/session/logout`): público con CSRF, como el logout interno. Revoca la sesión de la cookie si sigue abierta, borra la cookie y responde siempre `204`. No pasa por el bloqueo de consentimientos (Parte 4).
+- **Cabeceras.** Todas las respuestas `/buyer/*` y la del consumo llevan `Cache-Control: no-store`.
+- **DTO del portal:**
+  - `GET /buyer/session`: `session {id, created_at, expires_at}`, `buyer {display_name}` y `application {id, code, public_status, public_status_label, is_editable, is_closed}`;
+  - `GET /buyer/processes`: lista paginada con la única solicitud de la sesión, con `purpose`, `next_action`, `progress_percentage` y las fechas;
+  - `GET /buyer/applications/{id}`: lo anterior más `version` (también en `ETag`), `progress {percentage, items}`, `participants` activos (`id`, `role`, `full_name`, `contributes_income`), `property` y `financing`, o `null` si faltan;
+  - sin documento de identidad, notas, `ownership_notes`, asesor, origen ni evaluaciones.
+- **Progreso del comprador.** Son los ítems de `completeness` sin `bank_evaluation`, que es interno, con su propio porcentaje. Por eso puede diferir del `/completeness` interno.
+- **Estado público.** `public_status_label` sale del catálogo `application_status` y, si falta el ítem, de la etiqueta del backend. `NEXT_ACTIONS` cubre todos los estados (hay un test que lo verifica).
+- **Concurrencia del consumo.** El test verifica que la consulta del enlace lleva `FOR UPDATE`. Así, el segundo consumo simultáneo espera al primero y recibe `MAGIC_LINK_CONSUMED`.
 
 ## Pendientes para pasos posteriores
 

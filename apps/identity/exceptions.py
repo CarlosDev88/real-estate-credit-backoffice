@@ -87,3 +87,39 @@ class CannotModifyOwnAccount(ApiError):
     status_code = status.HTTP_409_CONFLICT
     error_code = "CANNOT_MODIFY_OWN_ACCOUNT"
     default_detail = "No puedes desactivarte ni quitarte el rol de administrador a ti mismo."
+
+
+# --- Acceso del comprador (API §8) ---------------------------------------------------
+
+
+class BuyerSessionExpired(exceptions.AuthenticationFailed):
+    """Sesión del comprador vencida, revocada o desconocida (``401``)."""
+
+    error_code = "SESSION_EXPIRED"
+    default_detail = "Tu acceso venció o fue cerrado. Pide un enlace nuevo a tu asesor."
+
+
+class MagicLinkInvalid(ApiError):
+    """Token desconocido o mal formado, o un enlace que ya no da acceso a la solicitud."""
+
+    status_code = status.HTTP_401_UNAUTHORIZED
+    error_code = "MAGIC_LINK_INVALID"
+    default_detail = "El enlace no es válido. Pide uno nuevo a tu asesor."
+
+
+class MagicLinkExpired(ApiError):
+    status_code = status.HTTP_401_UNAUTHORIZED
+    error_code = "MAGIC_LINK_EXPIRED"
+    default_detail = "El enlace venció. Pide uno nuevo a tu asesor."
+
+
+class MagicLinkConsumed(ApiError):
+    status_code = status.HTTP_401_UNAUTHORIZED
+    error_code = "MAGIC_LINK_CONSUMED"
+    default_detail = "El enlace ya se usó. Pide uno nuevo a tu asesor."
+
+
+class MagicLinkRevoked(ApiError):
+    status_code = status.HTTP_401_UNAUTHORIZED
+    error_code = "MAGIC_LINK_REVOKED"
+    default_detail = "El enlace fue revocado. Pide uno nuevo a tu asesor."

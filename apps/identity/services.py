@@ -97,7 +97,7 @@ def client_ip(request: HttpRequest) -> str | None:
     return remote_addr or None
 
 
-def _user_agent_summary(request: HttpRequest) -> str:
+def user_agent_summary(request: HttpRequest) -> str:
     return request.META.get("HTTP_USER_AGENT", "")[:USER_AGENT_MAX_LENGTH]
 
 
@@ -171,7 +171,7 @@ def _create_session(
         expires_at=expires_at,
         rotated_from=rotated_from,
         ip_address=client_ip(request),
-        user_agent_summary=_user_agent_summary(request),
+        user_agent_summary=user_agent_summary(request),
     )
     access_token, access_expires_at = issue_access_token(user_id=user.pk, session_id=session.pk)
     # El access token nunca debe sobrevivir a su sesión.

@@ -1,10 +1,10 @@
-"""Documenta en OpenAPI la autenticación por cookie del usuario interno."""
+"""Documenta en OpenAPI la autenticación por cookie del usuario interno y del comprador."""
 
 from typing import Any
 
 from drf_spectacular.extensions import OpenApiAuthenticationExtension
 
-from apps.identity.cookies import access_cookie_name
+from apps.identity.cookies import access_cookie_name, buyer_session_cookie_name
 
 
 class CookieJWTAuthenticationScheme(OpenApiAuthenticationExtension):
@@ -20,5 +20,22 @@ class CookieJWTAuthenticationScheme(OpenApiAuthenticationExtension):
                 "JWT de acceso emitido por `POST /api/v1/auth/login`. Las escrituras "
                 "también requieren la cabecera `X-CSRFToken` con el valor de la cookie "
                 "`app_csrf`."
+            ),
+        }
+
+
+class BuyerSessionAuthenticationScheme(OpenApiAuthenticationExtension):
+    target_class = "apps.identity.buyer_authentication.BuyerSessionAuthentication"
+    name = "buyerSession"
+
+    def get_security_definition(self, auto_schema: Any) -> dict[str, str]:
+        return {
+            "type": "apiKey",
+            "in": "cookie",
+            "name": buyer_session_cookie_name(),
+            "description": (
+                "Sesión temporal del comprador, abierta por `POST /api/v1/buyer-access/"
+                "consume`. Las escrituras también requieren la cabecera `X-CSRFToken` "
+                "con el valor de la cookie `app_csrf`."
             ),
         }
