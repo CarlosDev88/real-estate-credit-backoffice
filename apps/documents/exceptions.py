@@ -52,3 +52,37 @@ class StorageUnavailable(Exception):
 
 class ScannerUnavailable(Exception):
     """El antivirus no respondió o devolvió un error. El archivo sigue ``PENDING``."""
+
+
+class DocumentLocked(ApiError):
+    status_code = status.HTTP_409_CONFLICT
+    error_code = "DOCUMENT_LOCKED"
+    default_detail = "Este documento ya no se puede reemplazar en la etapa actual."
+
+
+class DocumentNotRejected(ApiError):
+    status_code = status.HTTP_409_CONFLICT
+    error_code = "DOCUMENT_NOT_REJECTED"
+    default_detail = (
+        "Después de la radicación solo se reemplazan los documentos observados por el banco."
+    )
+
+
+class DocumentQuotaExceeded(ApiError):
+    status_code = status.HTTP_409_CONFLICT
+    error_code = "DOCUMENT_QUOTA_EXCEEDED"
+    default_detail = "Se alcanzó el límite de archivos cargados para esta solicitud."
+
+
+class PayloadTooLarge(ApiError):
+    status_code = status.HTTP_413_REQUEST_ENTITY_TOO_LARGE
+    error_code = "PAYLOAD_TOO_LARGE"
+    default_detail = "La petición supera el tamaño máximo permitido."
+
+
+class UploadUnavailable(ApiError):
+    """El almacenamiento no respondió al guardar la carga (``503``): reintentar."""
+
+    status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+    error_code = "SERVICE_UNAVAILABLE"
+    default_detail = "No fue posible guardar el archivo en este momento. Intenta de nuevo."

@@ -22,7 +22,7 @@ from apps.applications.models import CreditApplication
 from apps.applications.services import applications_visible_to, lock_for_edit
 from apps.documents.models import ApplicationDocumentSlot, DocumentFile, DocumentReview
 from apps.documents.slots import SlotSync, sync_slots
-from apps.identity.models import User
+from apps.identity.models import BuyerSession, User
 
 logger = logging.getLogger(__name__)
 
@@ -103,3 +103,36 @@ def refresh_slots(actor: User, application: CreditApplication) -> SlotSync:
         result = sync_slots(locked)
     logger.info("Expediente de %s recalculado por %s", locked.code, actor.pk)
     return result
+
+
+# --------------------------------------------------------------------------------------
+# Portal del comprador
+# --------------------------------------------------------------------------------------
+
+
+def _buyer_reviews() -> Prefetch:
+    """Revisiones para mostrar el último rechazo al comprador, de la más reciente a la
+    primera."""
+    return Prefetch(
+        "reviews",
+        queryset=DocumentReview.objects.select_related("reason_item").order_by("-created_at"),
+    )
+
+
+def buyer_slot_queryset(session: BuyerSession) -> QuerySet[ApplicationDocumentSlot]:
+    """Slots vigentes de la solicitud de la sesión, con lo que muestra el portal."""
+    reviews = DocumentReview.objects.select_related("reason_item").order_by("-created_at")
+    return (
+        slots_queryset()
+        .filter(application_id=session.application_id, retired_at__isnull=True)
+        .prefetch_related(Prefetch("current_file__reviews", queryset=reviews))
+    )
+
+
+def buyer_versions(slot: ApplicationDocumentSlot) -> QuerySet[DocumentFile]:
+    return (
+        DocumentFile.objects.filter(slot=slot)
+        .select_related("file_object")
+        .prefetch_related(_buyer_reviews())
+        .order_by("-version_number")
+    )

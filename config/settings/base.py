@@ -188,6 +188,8 @@ AUTH_RATE_LIMITS = {
     # Acceso del comprador (API §8 y REQUERIMIENTOS §9.3).
     "buyer_access_consume": "5/1h",
     "buyer_access_issue": "3/1h",
+    # Cargas de documentos del comprador, por sesión y solicitud (decisión 12).
+    "buyer_document_upload": "60/1h",
 }
 
 # Página del frontend que recibe `?token=` para definir la nueva contraseña.
@@ -254,6 +256,14 @@ CLAMD_PORT = env.int("CLAMD_PORT", default=3310)
 CLAMD_TIMEOUT_SECONDS = env.int("CLAMD_TIMEOUT_SECONDS", default=30)
 # Permite el almacenamiento en memoria y el antivirus falso sin DEBUG; solo las pruebas.
 DOCUMENT_ALLOW_FAKE_SERVICES = False
+
+# Cargas del comprador (decisión 11): versiones por slot y bytes por solicitud, contando
+# todas las versiones guardadas. Al superarlos: `409 DOCUMENT_QUOTA_EXCEEDED`.
+DOCUMENT_UPLOAD_MAX_VERSIONS_PER_SLOT = env.int("DOCUMENT_UPLOAD_MAX_VERSIONS_PER_SLOT", default=20)
+DOCUMENT_UPLOAD_QUOTA_BYTES = env.int("DOCUMENT_UPLOAD_QUOTA_BYTES", default=200 * 1024 * 1024)
+# Cuerpo máximo de una carga: el archivo más grande (10 MB) y el margen del multipart.
+# Uno mayor se corta con `413` antes de leerlo.
+DOCUMENT_UPLOAD_MAX_REQUEST_BYTES = 10 * 1024 * 1024 + 512 * 1024
 
 LOGGING = {
     "version": 1,

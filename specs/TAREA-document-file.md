@@ -34,8 +34,8 @@ Paso 10 del orden de construcción (DER_COMPLETO §15), después del acceso del 
 | 1 | Modelos, migraciones, semillas, `holder_scope` en la API y DER | Hecha | `3d7c1ac` |
 | 2 | Infraestructura: almacenamiento, validación de archivos, antivirus y Celery | Hecha | `4e73503` |
 | 3 | Materialización y recálculo de slots; lectura interna del expediente | Hecha | (pendiente de commit) |
-| 4 | Portal del comprador: slots, carga, reemplazo y análisis asíncrono | **Siguiente** | |
-| 5 | Revisión, exoneración y descargas | Pendiente | |
+| 4 | Portal del comprador: slots, carga, reemplazo y análisis asíncrono | Hecha | (pendiente de commit) |
+| 5 | Revisión, exoneración y descargas | **Siguiente** | |
 | 6 | Guarda de `READY_TO_FILE`, completitud y progreso del comprador | Pendiente | |
 | 7 | Paquete ZIP asíncrono, README y documentación | Pendiente | |
 
@@ -44,6 +44,8 @@ Al cerrar la Parte 1: 1192 tests en verde (32 nuevos), 97,95 % de cobertura tota
 Al cerrar la Parte 2: 1262 tests en verde (70 nuevos), 98,03 % de cobertura total, `storage.py`, `scanning.py`, `file_validation.py` y los comandos al 100 %, y el esquema OpenAPI sin avisos. Además, verificado de punta a punta con SeaweedFS, ClamAV y Celery reales (ver "Decididas en la implementación", Parte 2).
 
 Al cerrar la Parte 3: 1311 tests en verde (49 nuevos), 98,09 % de cobertura total, `slots.py`, `dossier.py`, `dossier_serializers.py` y `dossier_views.py` al 100 %, y el esquema OpenAPI sin avisos.
+
+Al cerrar la Parte 4: 1361 tests en verde (50 nuevos), 98,16 % de cobertura total, `uploads.py`, `scans.py`, `tasks.py`, `buyer_views.py`, `buyer_serializers.py` y `requeue_pending_scans` al 100 %, y el esquema OpenAPI sin avisos. Además, verificado de punta a punta con SeaweedFS y clamd reales (ver "Decididas en la implementación", Parte 4).
 
 Sin cubrir, de antes de este paso: `admin.py` (los `has_*_permission` de `_ReadOnlyAdmin`), el `unseed` de `documents 0002` y cuatro ramas de `services.py` (líneas 87, 261, 288 y 386).
 
@@ -74,7 +76,8 @@ Sin cubrir, de antes de este paso: `admin.py` (los `has_*_permission` de `_ReadO
 
   `ruff format <rutas>` dentro del mismo contenedor formatea los archivos tocados (el volumen `.:/app` escribe en el host).
 - **El CI no tiene Redis, SeaweedFS ni ClamAV.** Los tests usan `config.settings.test`: `DOCUMENT_STORAGE_BACKEND=memory`, `DOCUMENT_SCANNER=fake`, `DOCUMENT_ALLOW_FAKE_SERVICES=True` y `CELERY_TASK_ALWAYS_EAGER=True`.
-- **Finales de línea.** El repo es LF, salvo estos archivos en CRLF: `config/settings/base.py`, `config/settings/test.py`, `docker-compose.yml`, `README.md` y `.env.example`. `docs/MODELO_DATOS_DER_MVP_CREDITO.md` tiene finales **mezclados** (86 líneas CRLF).
+- **Finales de línea.** El repo es mayoritariamente LF, pero **42 archivos versionados son CRLF**, no solo los obvios: `config/settings/base.py`, `config/settings/test.py`, `docker-compose.yml`, `README.md`, `.env.example`, `tests/conftest.py`, buena parte de `apps/identity/` (por ejemplo `throttling.py`, `permissions.py` y `authentication.py`) y archivos sueltos de `catalogs` y `crm`. `docs/MODELO_DATOS_DER_MVP_CREDITO.md` tiene finales **mezclados** (86 líneas CRLF). **Antes de tocar un archivo existente, mirarlo con `git ls-files --eol <archivo>`** (`i/crlf` = CRLF).
+  - En la Parte 4, un `read_text`/`write_bytes` de Python dejó `tests/conftest.py` en LF, y un `sed -i` con una línea agregada por heredoc dejó `apps/identity/throttling.py` en LF. Se restauraron con `sed -i 's/$/\r/'` sobre el archivo entero (solo si quedó sin ningún CR).
   - Los CRLF se editan con la herramienta de edición, que los conserva; nunca con `sed -i`.
   - En el archivo mezclado, la herramienta de edición lo deja todo en LF. Después de editarlo hay que restaurar los CR de las líneas no tocadas (en la Parte 1 se hizo con un script que alinea contra `git show HEAD:<archivo>`).
   - Con Python del host, escribir con `write_bytes` (o `newline="\n"`): `write_text` en Windows convierte LF a CRLF y el diff sale del archivo entero.
@@ -114,11 +117,20 @@ Sin cubrir, de antes de este paso: `admin.py` (los `has_*_permission` de `_ReadO
 - `apps/documents/dossier_views.py`: `DossierView` (`get_application`, `get_slot`), base para las vistas internas de la Parte 5.
 - Tests en `tests/applications/dossier/test_slots.py` (helpers `sync`, `requirement`, `set_profile`, `seeded_requirement`, `publish_version`) y `test_slots_api.py` (fixture `dossier`: Bancolombia, titular empleado y un documento de la solicitud; 8 slots).
 
-### Próximo paso: Parte 4
-- Agregar un fixture `autouse` en `tests/conftest.py` que limpie el `MemoryStorage` entre tests.
-- Rutas del comprador (decisión 2) sobre `BuyerPortalView`, con DTO propios a partir de `DocumentSlotSerializer` pero sin `internal_comment`, revisor ni `requirement_id`; los slots retirados responden `404`.
-- Carga, cuota, rate limit y tarea `scan_file_object` según el plan de la Parte 4. Variables nuevas (`DOCUMENT_UPLOAD_MAX_VERSIONS_PER_SLOT`, `DOCUMENT_UPLOAD_QUOTA_BYTES`): documentarlas en el README y pasarle al usuario las líneas para `.env.example` y `.env`.
-- La Parte 4 levanta SeaweedFS para la prueba de punta a punta: **confirmar antes con el usuario que agregó las variables de la Parte 2** (`DOCUMENT_STORAGE_ACCESS_KEY_ID` y `DOCUMENT_STORAGE_SECRET_ACCESS_KEY`).
+**De la Parte 4:**
+- `apps/documents/uploads.py`: `upload_document(session, slot, Upload(...))`, `upload_block(application, slot)` (el error que impediría cargar, o `None`; lo usa también `can_upload`), `slot_has_open_observation(slot)` (enganche del paso 11, hoy `False`), `buyer_slots(session)` y `UPLOADABLE_STATUSES`.
+- `apps/documents/scans.py`: `scan_document_file(file_object_id)` y `SECURITY_REJECTION_MESSAGE`. `apps/documents/tasks.py`: `scan_file_object` (reintentos con `scan_retry_delay`). Comando `requeue_pending_scans`.
+- `apps/documents/dossier.py`: `buyer_slot_queryset(session)` y `buyer_versions(slot)`.
+- `apps/documents/buyer_serializers.py`: `BuyerDocumentSlotSerializer` (necesita `context["application"]`), `BuyerDocumentFileSerializer`, `BuyerDocumentVersionSerializer` (`context["current_file_id"]`), `BuyerRejectionSerializer`, `version_rejection(version)` y `BuyerDocumentUploadSerializer`.
+- `apps/documents/buyer_views.py`: `BuyerDossierView` (`get_slot`, `slot_context`, `slot_response`), base para la descarga del comprador de la Parte 5.
+- Errores nuevos en `apps/documents/exceptions.py`: `DocumentLocked`, `DocumentNotRejected`, `DocumentQuotaExceeded`, `PayloadTooLarge` (`413`) y `UploadUnavailable` (`503 SERVICE_UNAVAILABLE`). Throttle `BuyerDocumentUploadRateThrottle` en `apps/identity/throttling.py`.
+- Tests: `tests/applications/dossier/test_buyer_dossier_api.py` (helpers `pdf`, `upload`, `memory`, `session_of`, `decide`) y `test_scans.py` (fixture `current_version` y `eager_retries`). `tests/conftest.py` limpia el `MemoryStorage` después de cada test. El `conftest.py` de `dossier` reexporta `portal`, `buyer_client`, `buyer_csrf_client` y `accept_consents`.
+
+### Próximo paso: Parte 5
+- `PATCH /document-slots/{id}/review` según las decisiones 7 y 8 y las acordadas 6 y 8, sobre `DossierView`: bloqueo del slot, `document_file_id` vigente (`409 DOCUMENT_NOT_CURRENT`), aprobar solo `CLEAN` (`409 FILE_NOT_CLEAN`), vigencia (`document_date` corregible, `422 DOCUMENT_EXPIRED`), rechazo con `reason_code` y `buyer_comment`, corrección de una decisión (fila nueva) y exoneración del grupo alternativo.
+- Al aprobar o rechazar, la versión deja `IN_REVIEW`; al exonerar, `waiver_reason_item`. Ninguna toca la versión de la solicitud.
+- Descargas (decisión 13): `GET /document-files/{id}`, `.../scan-status` y `.../download` (interno, `documents.download`) y `GET /buyer/document-files/{id}/download` (sobre `BuyerDossierView`), con rate limit de 60/h por usuario o sesión y la URL fuera de los logs. Variable nueva `DOCUMENT_DOWNLOAD_URL_SECONDS`: documentarla en el README y pasarle al usuario la línea para `.env.example` y `.env`.
+- El rechazo que ve el comprador ya sale de la última revisión (`version_rejection`): no hay que tocar los DTO del comprador.
 
 ---
 
@@ -421,9 +433,38 @@ No quedan. Las dos tandas y la precisión de SeaweedFS están en "Decisiones (ac
 - **`label` y mypy.** El campo `label` del serializer choca con el atributo `Field.label` de los stubs de DRF; lleva el mismo `type: ignore[assignment]` justificado que `CatalogItemRefSerializer`.
 - **Tests** (`tests/applications/dossier/`): `test_slots.py` (reglas de la sincronización y llamadas desde los servicios, con un espía sobre `services.sync_slots` para las ramas que no deben recalcular) y `test_slots_api.py` (matriz de permisos con admin, asesor asignado y no asignado, broker, partner y anónimo; lista, filtros, detalle, versiones y `refresh`).
 
+### Parte 4
+- **Archivos:** `apps/documents/uploads.py` (carga), `scans.py` (efecto del análisis), `tasks.py` (Celery), `buyer_serializers.py`, `buyer_views.py` y el comando `requeue_pending_scans`, con las cuatro rutas `/buyer/...` en `apps/documents/urls.py`. Las vistas del comprador viven en `documents` (no en `identity`), sobre `BuyerPortalView`.
+- **Orden de la carga:**
+  1. sin bloqueos: el slot (`404` si es de otra solicitud o está retirado), las reglas de carga, la validación del archivo (`inspect_upload` con `allowed_mime_types` y `max_size_bytes` **del tipo documental vigente**: el slot no copia formatos ni tamaño) y la cuota;
+  2. `put` en el almacenamiento, fuera de la transacción, para no retener bloqueos durante la red. Si falla: `503 SERVICE_UNAVAILABLE` (código nuevo);
+  3. transacción: bloquea la solicitud y el slot (decisión 22), repite reglas y cuota, crea `file_objects` (`PENDING`), la versión (`MAX(version_number) + 1`) y mueve `current_file`; el análisis se encola en `on_commit`;
+  4. si la transacción falla, se borra el objeto; si tampoco se puede borrar, queda un aviso en el log ("objeto huérfano").
+- **`413 PAYLOAD_TOO_LARGE`** (código nuevo). Se comprueba `Content-Length` en `initial()` de la vista, **antes de autenticar**: la validación CSRF de Django lee `request.POST`, y eso ya procesaría el multipart entero. Límite fijo `DOCUMENT_UPLOAD_MAX_REQUEST_BYTES` = 10 MB + 512 KB (sin variable de entorno). Sin `Content-Length` válido, decide el parser (`400`).
+- **Reglas de carga** (`upload_block`), en este orden: solicitud terminada `409 APPLICATION_CLOSED`; antes de `FILED`, `PENDING`/`UPLOADED`/`REJECTED` se cargan y `APPROVED`/`WAIVED` dan `409 DOCUMENT_LOCKED`; después de `FILED`, `REJECTED` con observación abierta se carga, `locked_at` sin observación da `DOCUMENT_LOCKED` y el resto `DOCUMENT_NOT_REJECTED`. `slot_has_open_observation` se llama por el módulo (`uploads.slot_has_open_observation`) para que los tests la sustituyan.
+- **Cuota:** cuenta todas las versiones guardadas, también las rechazadas o infectadas. `details[0].code` dice cuál se superó: `VERSIONS_PER_SLOT` o `APPLICATION_BYTES`.
+- **`document_date`** es opcional y no puede ser futura (`timezone.localdate()`). Si el slot tiene vigencia, `expires_at` se calcula ya en la carga (el asesor podrá corregir la fecha al aprobar, Parte 5). Un documento ya vencido se acepta en la carga: lo frena la aprobación (`422 DOCUMENT_EXPIRED`).
+- **Respuesta de la carga:** `201` con el slot del comprador (no la versión), releído después del commit.
+- **Límite de consumo:** `buyer_document_upload` = `60/1h` en `AUTH_RATE_LIMITS`, por sesión + solicitud, solo `POST`. DRF lo evalúa después de los permisos: un `403`/`409` por permiso no consume el límite; una validación fallida, sí.
+- **Análisis** (`scan_document_file`):
+  - relee el objeto del almacenamiento y compara el SHA-256: si no coincide, `INVALID`. Si coincide, `clamd` decide `CLEAN` o `INFECTED`;
+  - bloquea el slot y después el `file_object`; si ya no está `PENDING`, no hace nada (dos tareas para el mismo archivo);
+  - `CLEAN` solo mueve la versión de `UPLOADED` a `IN_REVIEW`; `INFECTED`/`INVALID` la rechazan y rechazan el slot **solo si sigue siendo la vigente** (una versión vieja que resulta infectada no toca el slot);
+  - el objeto infectado **no se borra** (queda como evidencia); la descarga lo frenará con `FILE_NOT_CLEAN` (Parte 5). El log lleva la firma detectada y los ids, nunca el nombre del archivo.
+- **Tarea `scan_file_object`:** 8 reintentos con espera de 30 s duplicada hasta un tope de 15 min (≈ 1 h 15 min en total). Al agotarlos devuelve `PENDING` sin lanzar error. Si el broker no responde al encolar (`kombu.exceptions.OperationalError`), la carga igual responde `201` y el archivo queda `PENDING`.
+- **`requeue_pending_scans`:** vuelve a encolar los archivos de versiones que siguen `PENDING` con más de 15 minutos (`--older-than-minutes`). Hay que programarlo (cron o similar) al desplegar.
+- **DTO del comprador:** ve todos los slots vigentes de la solicitud, también los de los co-solicitantes (es el único que carga). Lleva `label`, participante (`id`, `role`, `full_name`), tipo (`code`, `name`, `description`, `holder_scope`), formatos, tamaño máximo, `can_upload`, la versión vigente y `rejection` (`reason`, `buyer_comment`, `rejected_at`): el mensaje fijo de seguridad si lo rechazó el análisis, o la última revisión si es un rechazo del asesor. Sin `internal_comment`, revisor, requisito, SHA-256 ni estado técnico del análisis (`UPLOADED` ya significa "en análisis"). Las listas paginan.
+- **Tests:**
+  - con `CELERY_TASK_EAGER_PROPAGATES` un `Retry` se propaga en lugar de reaplicar la tarea. Los tests del reintento lo desactivan con `monkeypatch.setitem(celery_app.conf, "CELERY_TASK_EAGER_PROPAGATES", False)`: la app lee la clave **con el prefijo** de Django (`namespace="CELERY"`), la clave sin prefijo no tiene efecto;
+  - la carga concurrente usa `django_db(transaction=True, serialized_rollback=True)` con dos hilos y una barrera; `serialized_rollback` restaura los datos sembrados por las migraciones para los tests siguientes.
+- **Verificado de punta a punta** con SeaweedFS y `clamd` reales, sin tocar `.env`: carga de un PDF de 100 KB por el portal → objeto en SeaweedFS, `clamd` `CLEAN`, versión `IN_REVIEW`; EICAR guardado en SeaweedFS → `INFECTED` y slot `REJECTED`. Cómo se hizo:
+  - **no se usó el servicio `seaweedfs` del compose:** el volumen `mvp_credit_seaweedfs_data` existía (en la Parte 2 se había borrado), así que podía tener datos del usuario. Se levantó un contenedor aparte, `e2e-seaweedfs`, en `mvp_credit_network`, sin volumen ni puerto en el host y con credenciales temporales; `clamav` sí fue el del perfil `async`. Al terminar se borraron los dos contenedores; los volúmenes quedaron como estaban;
+  - el test temporal vive fuera del repositorio, montado en `/e2e` con su propio `conftest.py` que importa los fixtures del proyecto, y se corre con `python -m pytest -c /app/pytest.ini /e2e/...`. Con `-p tests.conftest` no funciona: los plugins se cargan antes de `django.setup()`.
+
 ## Pendientes para pasos posteriores
 
 1. **Paso 11.** Implementar `slot_has_open_observation`, fijar `locked_at` al radicar, exigir que la huella documental del paquete coincida con la actual (`dossier_fingerprint`, acordada 6) y la huella y firma de `IDENTITY_DOCUMENT`.
 2. **Paso 12.** Actividad de cargas, revisiones y descargas (RF-61), con la visible para el comprador.
 3. **Paso 13.** `Idempotency-Key` en `POST /document-package-jobs`; notificación al comprador de un rechazo; aviso al comprador cuando un documento aprobado esté por vencer (acordada 8).
 4. **Paso 14.** Auditoría de descargas.
+5. **Despliegue.** Programar `requeue_pending_scans` (cron o Celery beat) y decidir cuánto tiempo se conservan los objetos infectados (hoy no se borran).

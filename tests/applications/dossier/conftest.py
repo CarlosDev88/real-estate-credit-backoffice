@@ -20,9 +20,23 @@ from apps.documents.models import (
     FileObject,
 )
 from apps.identity.models import BuyerSession
-from tests.applications.buyer_access.conftest import make_link, make_session
+from tests.applications.buyer_access.conftest import (
+    accept_consents,
+    buyer_client,
+    buyer_csrf_client,
+    make_link,
+    make_session,
+    portal,
+)
 
-__all__ = ["make_link", "make_session"]
+__all__ = [
+    "accept_consents",
+    "buyer_client",
+    "buyer_csrf_client",
+    "make_link",
+    "make_session",
+    "portal",
+]
 
 SlotFactory = Callable[..., ApplicationDocumentSlot]
 FileObjectFactory = Callable[..., FileObject]

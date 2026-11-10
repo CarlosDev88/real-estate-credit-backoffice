@@ -180,6 +180,20 @@ docker compose --profile async logs -f worker
 
 `python manage.py init_document_storage` creates the bucket if it is missing; `storage-init` runs it on every start. On real S3 the bucket is provisioned by the infrastructure instead.
 
+### Buyer Uploads and Scanning
+
+Only the buyer uploads documents, from the portal (`POST /api/v1/buyer/document-slots/{slot_id}/uploads`, `multipart/form-data`). Each upload is a new version of the slot; previous versions are kept.
+
+- The real type is detected from the file signature (PDF, JPEG, PNG), must be allowed by the document type and match the extension. Executable or double extensions are rejected (`422 UNSUPPORTED_FILE_TYPE`), as are files over the type's size limit (`422 FILE_TOO_LARGE`). A request body over 10.5 MB is cut before being read (`413 PAYLOAD_TOO_LARGE`).
+- Quotas: versions per slot and bytes per application (`409 DOCUMENT_QUOTA_EXCEEDED`). Rate limit: 60 uploads per hour per buyer session.
+- After the database commit, the `scan_file_object` task scans the file: `CLEAN` leaves the version `IN_REVIEW` for the advisor; `INFECTED` (or an object that no longer matches its SHA-256) rejects it, and the buyer sees a fixed message. If storage or clamd fail, the task retries with growing delays (about 1 h 15 min in total) and the file stays `PENDING`.
+- Files still `PENDING` (retries exhausted or broker down at upload time) are queued again with `python manage.py requeue_pending_scans` (only files older than 15 minutes by default; `--older-than-minutes` changes it). Run it periodically, for example from cron.
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `DOCUMENT_UPLOAD_MAX_VERSIONS_PER_SLOT` | `20` | Uploaded versions allowed per document slot. |
+| `DOCUMENT_UPLOAD_QUOTA_BYTES` | `209715200` (200 MB) | Total bytes of all uploaded versions per application. |
+
 ## Internal Authentication
 
 Internal users (admin, advisors, brokers, and partner users) authenticate with email and password. The API never returns tokens in the body; it sets cookies:

@@ -1,6 +1,6 @@
 from django.urls import path
 
-from apps.documents import dossier_views, views
+from apps.documents import buyer_views, dossier_views, views
 
 app_name = "documents"
 
@@ -25,6 +25,27 @@ urlpatterns = [
         "document-slots/<uuid:slot_id>/versions",
         dossier_views.DocumentSlotVersionListView.as_view(),
         name="document-slot-version-list",
+    ),
+    # Expediente en el portal del comprador
+    path(
+        "buyer/applications/<uuid:application_id>/document-slots",
+        buyer_views.BuyerDocumentSlotListView.as_view(),
+        name="buyer-document-slot-list",
+    ),
+    path(
+        "buyer/document-slots/<uuid:slot_id>",
+        buyer_views.BuyerDocumentSlotDetailView.as_view(),
+        name="buyer-document-slot-detail",
+    ),
+    path(
+        "buyer/document-slots/<uuid:slot_id>/versions",
+        buyer_views.BuyerDocumentSlotVersionListView.as_view(),
+        name="buyer-document-slot-version-list",
+    ),
+    path(
+        "buyer/document-slots/<uuid:slot_id>/uploads",
+        buyer_views.BuyerDocumentUploadView.as_view(),
+        name="buyer-document-upload",
     ),
     # Tipos documentales (sección 23.4)
     path("document-types", views.DocumentTypeListView.as_view(), name="document-type-list"),
