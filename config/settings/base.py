@@ -217,6 +217,40 @@ CELERY_BROKER_URL = env("REDIS_URL", default="redis://redis:6379/0")
 CELERY_RESULT_BACKEND = CELERY_BROKER_URL
 CELERY_TASK_ACKS_LATE = True
 CELERY_TASK_TIME_LIMIT = 300
+# Las tareas solo reciben ids; nunca archivos ni datos personales.
+CELERY_TASK_SERIALIZER = "json"
+CELERY_ACCEPT_CONTENT = ["json"]
+CELERY_RESULT_SERIALIZER = "json"
+CELERY_TIMEZONE = "UTC"
+
+# --- Expediente documental (API §19, REQUERIMIENTOS §9) ------------------------------
+# Almacenamiento privado compatible con S3. En local es SeaweedFS (docker-compose); en
+# producción, S3 real: pasar de uno a otro es solo cambiar estas variables.
+# `s3` | `memory` (`memory` solo en desarrollo o pruebas).
+DOCUMENT_STORAGE_BACKEND = env("DOCUMENT_STORAGE_BACKEND", default="s3")
+DOCUMENT_STORAGE_BUCKET = env("DOCUMENT_STORAGE_BUCKET", default="mvp-credit-documents")
+DOCUMENT_STORAGE_REGION = env("DOCUMENT_STORAGE_REGION", default="us-east-1")
+# Vacío: el endpoint de AWS para la región.
+DOCUMENT_STORAGE_ENDPOINT_URL = env("DOCUMENT_STORAGE_ENDPOINT_URL", default="")
+# Host que ve el navegador para las URL prefirmadas. Vacío: el mismo endpoint. En local
+# difiere: el backend llega a `seaweedfs:8333` y el navegador, a `localhost:8333`.
+DOCUMENT_STORAGE_PUBLIC_ENDPOINT_URL = env("DOCUMENT_STORAGE_PUBLIC_ENDPOINT_URL", default="")
+# Vacías: la cadena de credenciales por omisión de boto3 (rol de IAM, perfil, etc.).
+DOCUMENT_STORAGE_ACCESS_KEY_ID = env("DOCUMENT_STORAGE_ACCESS_KEY_ID", default="")
+DOCUMENT_STORAGE_SECRET_ACCESS_KEY = env("DOCUMENT_STORAGE_SECRET_ACCESS_KEY", default="")
+# `auto` en S3 real; `path` en SeaweedFS.
+DOCUMENT_STORAGE_ADDRESSING_STYLE = env("DOCUMENT_STORAGE_ADDRESSING_STYLE", default="auto")
+# Cifrado del lado del servidor. `AES256` (SSE-S3) en S3 real; vacío en SeaweedFS, que
+# no lo implementa.
+DOCUMENT_STORAGE_SSE = env("DOCUMENT_STORAGE_SSE", default="AES256")
+
+# Antivirus. `clamd` | `fake` (`fake` solo en desarrollo o pruebas).
+DOCUMENT_SCANNER = env("DOCUMENT_SCANNER", default="clamd")
+CLAMD_HOST = env("CLAMD_HOST", default="clamav")
+CLAMD_PORT = env.int("CLAMD_PORT", default=3310)
+CLAMD_TIMEOUT_SECONDS = env.int("CLAMD_TIMEOUT_SECONDS", default=30)
+# Permite el almacenamiento en memoria y el antivirus falso sin DEBUG; solo las pruebas.
+DOCUMENT_ALLOW_FAKE_SERVICES = False
 
 LOGGING = {
     "version": 1,

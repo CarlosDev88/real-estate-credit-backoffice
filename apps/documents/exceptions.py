@@ -25,3 +25,30 @@ class DocumentTypeInactive(ApiError):
     status_code = status.HTTP_422_UNPROCESSABLE_ENTITY
     error_code = "DOCUMENT_TYPE_INACTIVE"
     default_detail = "El tipo documental está inactivo: actívalo antes de publicar el requisito."
+
+
+# --- Archivos del expediente (paso 10) ----------------------------------------------------
+
+
+class UnsupportedFileType(ApiError):
+    status_code = status.HTTP_422_UNPROCESSABLE_ENTITY
+    error_code = "UNSUPPORTED_FILE_TYPE"
+    default_detail = "El formato del archivo no está permitido para este documento."
+
+
+class FileTooLarge(ApiError):
+    status_code = status.HTTP_422_UNPROCESSABLE_ENTITY
+    error_code = "FILE_TOO_LARGE"
+    default_detail = "El archivo supera el tamaño máximo permitido para este documento."
+
+
+class StorageUnavailable(Exception):
+    """El almacenamiento de objetos no respondió o rechazó la operación.
+
+    No es un error de la API: quien lo captura decide si responde ``503`` o reintenta.
+    El mensaje nunca incluye la clave del objeto ni credenciales.
+    """
+
+
+class ScannerUnavailable(Exception):
+    """El antivirus no respondió o devolvió un error. El archivo sigue ``PENDING``."""

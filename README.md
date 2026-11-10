@@ -92,7 +92,11 @@ Default services:
 | --- | --- | --- |
 | Django backend | http://localhost:8000 | API and documentation. |
 | PostgreSQL | `localhost:5433` | Local development database. |
-| Redis | internal only | Shared cache used by authentication rate limits. |
+| Redis | internal only | Shared cache used by authentication rate limits, and the Celery broker. |
+| SeaweedFS (S3 API) | http://localhost:8333 | Private document storage, S3-compatible. |
+| `storage-init` | runs once | Creates the private bucket if it does not exist, then exits. |
+
+The `backend` service waits for `storage-init`. SeaweedFS needs `DOCUMENT_STORAGE_ACCESS_KEY_ID` and `DOCUMENT_STORAGE_SECRET_ACCESS_KEY` in `.env` and refuses to start without them (see [Document Storage and Antivirus](#document-storage-and-antivirus)).
 
 Useful endpoints:
 
@@ -130,11 +134,51 @@ docker compose exec -T backend pytest
 
 Tests use `config.settings.test` (forced through `--ds` in `pytest.ini`): in-memory cache, a fast password hasher, and an isolated test database.
 
-To start the Celery worker when asynchronous features are being built:
+Tests never use SeaweedFS, ClamAV, or Redis: `config.settings.test` uses an in-memory storage, a fake antivirus, and runs Celery tasks in-process (`CELERY_TASK_ALWAYS_EAGER`).
+
+## Document Storage and Antivirus
+
+Uploaded documents and generated packages live in a private S3-compatible bucket, with the `documents/` and `packages/` prefixes. Object keys never contain the original file name, and files are only downloaded through short-lived presigned URLs.
+
+- **Local:** SeaweedFS (`chrislusf/seaweedfs:3.85`, `weed server -s3`) in `docker-compose.yml`. MinIO was discarded because its community edition no longer publishes container images.
+- **Production:** real S3. Switching is only a matter of environment variables: point `DOCUMENT_STORAGE_ENDPOINT_URL` and `DOCUMENT_STORAGE_PUBLIC_ENDPOINT_URL` to empty values (AWS endpoint), set the bucket, region and credentials (or leave the keys empty to use an IAM role), `DOCUMENT_STORAGE_ADDRESSING_STYLE=auto`, and `DOCUMENT_STORAGE_SSE=AES256`.
+- **Encryption:** server-side encryption (SSE-S3) only applies on real S3. SeaweedFS does not implement it, so `DOCUMENT_STORAGE_SSE` stays empty locally and `file_objects.encryption_key_version` is `null`.
+- **Presigned URLs** are signed for the host the browser sees (`DOCUMENT_STORAGE_PUBLIC_ENDPOINT_URL`, `http://localhost:8333` locally), while the backend talks to `http://seaweedfs:8333` inside the Docker network.
+
+| Variable | Local value | Purpose |
+| --- | --- | --- |
+| `DOCUMENT_STORAGE_BACKEND` | `s3` | `s3`, or `memory` (only with `DEBUG` or in tests). |
+| `DOCUMENT_STORAGE_BUCKET` | `mvp-credit-documents` | Private bucket. |
+| `DOCUMENT_STORAGE_REGION` | `us-east-1` | Region used to sign requests. |
+| `DOCUMENT_STORAGE_ENDPOINT_URL` | `http://seaweedfs:8333` | Endpoint the backend and worker use. Empty on AWS. |
+| `DOCUMENT_STORAGE_PUBLIC_ENDPOINT_URL` | `http://localhost:8333` | Host in presigned URLs. Empty: same as above. |
+| `DOCUMENT_STORAGE_ACCESS_KEY_ID` / `DOCUMENT_STORAGE_SECRET_ACCESS_KEY` | local-only values | Also the single SeaweedFS identity; anonymous access is denied. |
+| `DOCUMENT_STORAGE_ADDRESSING_STYLE` | `path` | `auto` on AWS. |
+| `DOCUMENT_STORAGE_SSE` | empty | `AES256` on AWS. |
+| `DOCUMENT_SCANNER` | `clamd` | `clamd`, or `fake` (only with `DEBUG` or in tests). |
+| `CLAMD_HOST` / `CLAMD_PORT` / `CLAMD_TIMEOUT_SECONDS` | `clamav` / `3310` / `30` | clamd over TCP (`INSTREAM`). |
+
+The application refuses to start with `memory` storage or the `fake` scanner unless `DEBUG` is on or it runs the test settings.
+
+### Asynchronous Profile: Worker and Antivirus
+
+The Celery worker and ClamAV belong to the `async` profile. Uploads are scanned asynchronously: until ClamAV answers, files stay `PENDING` and can be neither approved nor downloaded. They never become `CLEAN` without a real scan.
 
 ```powershell
-docker compose --profile async up -d
+# Start everything, including the worker and ClamAV
+docker compose --profile async up -d --build
+
+# ClamAV downloads its signatures on first start; wait until it is "healthy" (several minutes)
+docker compose --profile async ps clamav
+
+# Check that the storage bucket and clamd answer
+docker compose exec -T backend python manage.py check_document_services
+
+# Worker logs
+docker compose --profile async logs -f worker
 ```
+
+`python manage.py init_document_storage` creates the bucket if it is missing; `storage-init` runs it on every start. On real S3 the bucket is provisioned by the infrastructure instead.
 
 ## Internal Authentication
 

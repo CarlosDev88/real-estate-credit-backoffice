@@ -23,3 +23,11 @@ AUTH_JWT_ISSUER = "mvp-credito-api"
 AUTH_JWT_AUDIENCE = "mvp-credito-backoffice"
 AUTH_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
+
+# Sin servicios externos: almacenamiento en memoria, antivirus falso (EICAR) y tareas de
+# Celery ejecutadas en el mismo proceso.
+DOCUMENT_ALLOW_FAKE_SERVICES = True
+DOCUMENT_STORAGE_BACKEND = "memory"
+DOCUMENT_SCANNER = "fake"
+CELERY_TASK_ALWAYS_EAGER = True
+CELERY_TASK_EAGER_PROPAGATES = True

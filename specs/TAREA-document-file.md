@@ -32,7 +32,7 @@ Paso 10 del orden de construcción (DER_COMPLETO §15), después del acceso del 
 | Parte | Contenido | Estado | Commit |
 | ---: | --- | --- | --- |
 | 1 | Modelos, migraciones, semillas, `holder_scope` en la API y DER | Hecha | (pendiente de commit) |
-| 2 | Infraestructura: almacenamiento, validación de archivos, antivirus y Celery | Pendiente | |
+| 2 | Infraestructura: almacenamiento, validación de archivos, antivirus y Celery | Hecha | (pendiente de commit) |
 | 3 | Materialización y recálculo de slots; lectura interna del expediente | Pendiente | |
 | 4 | Portal del comprador: slots, carga, reemplazo y análisis asíncrono | Pendiente | |
 | 5 | Revisión, exoneración y descargas | Pendiente | |
@@ -52,9 +52,9 @@ Paso 10 del orden de construcción (DER_COMPLETO §15), después del acceso del 
 - Las propuestas de commit van **sin `Co-Authored-By` ni firma**. Mensajes cortos, en inglés, con el estilo `feat(documents): ...`.
 
 ### Entorno local
-El mismo de `TAREA-applications.md`: los checks se corren en un contenedor efímero con una clave ficticia, sin leer ni editar `.env`. `config/settings/base.py` usa CRLF, así que se edita con la herramienta de edición, nunca con `sed -i`. El CI no tiene Redis, MinIO ni ClamAV: los tests no pueden depender de ellos.
+El mismo de `TAREA-applications.md`: los checks se corren en un contenedor efímero con una clave ficticia, sin leer ni editar `.env`. `config/settings/base.py` usa CRLF, así que se edita con la herramienta de edición, nunca con `sed -i`. El CI no tiene Redis, SeaweedFS ni ClamAV: los tests no pueden depender de ellos.
 
-Las variables nuevas se documentan en `.env.example` (con valores para MinIO local). El usuario las agrega a su `.env`: al cerrar la Parte 2 se le entregan las líneas exactas para copiar.
+Las variables nuevas están documentadas en el README ("Document Storage and Antivirus"). `.env.example` y `.env` están en la lista de rutas denegadas de esta sesión: no se leen ni se editan. El usuario agrega las líneas a los dos archivos.
 
 ### Lo que ya existe y se reutiliza
 - `apps/documents/constants.py`: `ALLOWED_MIME_TYPES` (PDF, JPEG, PNG) y `MAX_FILE_SIZE_BYTES` (10 MB).
@@ -181,9 +181,9 @@ No quedan. Las dos tandas están en "Decisiones (acordadas con el usuario)". Las
 - `apps/documents/storage.py`: interfaz, adaptador S3 y fake en memoria.
 - `apps/documents/file_validation.py`: firma de bytes, extensión, nombre y tamaño.
 - `apps/documents/scanning.py`: cliente `clamd` (`INSTREAM`) y escáner fake.
-- `docker-compose.yml`: `minio` (con creación del bucket privado al arrancar) y `clamav` en el perfil `async`, junto al `worker`. Sin tocar `.env`.
-- `.env.example`: las variables de la acordada 1, con valores de MinIO local; al cerrar la parte, las líneas para que el usuario las copie a su `.env`.
-- README: cómo levantar el perfil `async` (`docker compose --profile async up`) y cómo comprobar MinIO y ClamAV.
+- `docker-compose.yml`: `seaweedfs` y `storage-init` (creación del bucket privado al arrancar), y `clamav` en el perfil `async`, junto al `worker`. Sin tocar `.env`.
+- Variables de la acordada 1, con valores de SeaweedFS local: las líneas para que el usuario las copie a `.env.example` y a `.env`.
+- README: cómo levantar el perfil `async` (`docker compose --profile async up`) y cómo comprobar SeaweedFS y ClamAV.
 - Tests unitarios con dobles: socket fake para `clamd` y cliente `boto3` sustituido. Sin servicios reales en el CI.
 
 ### Parte 3. Slots: materialización, recálculo y lectura interna
@@ -216,7 +216,7 @@ No quedan. Las dos tandas están en "Decisiones (acordadas con el usuario)". Las
 - `POST /applications/{id}/document-package-jobs`, `GET /document-package-jobs/{id}` y `.../download` (decisiones 14 y 15).
 - Tarea `build_document_package`: empaqueta las versiones del `manifest` fijado en el `POST` (decisión 15), `RUNNING`, ZIP en streaming hacia el almacenamiento, `COMPLETED` o `FAILED` con `error_code`; reintentable.
 - Comando `expire_document_packages`.
-- README: sección "Document Dossier", servicios `minio`/`clamav`/`worker` y "Current Status" en el paso 10.
+- README: sección "Document Dossier", servicios `seaweedfs`/`clamav`/`worker` y "Current Status" en el paso 10.
 - Documentación: API §5.5, §6, §8, §16.3 (guarda), completitud, §19, §23.4 (`holder_scope` y `application_requirements` del preview, Parte 1), §25, §26 y §27.2; DER §7.10 y §8.2 y esquema SQL (si no se hicieron en la Parte 1); `TAREA-applications.md` y `TAREA-documents-config.md` marcan sus pendientes como hechos.
 
 ---
@@ -225,12 +225,14 @@ No quedan. Las dos tandas están en "Decisiones (acordadas con el usuario)". Las
 
 ### Tanda 1
 
-1. **Almacenamiento: S3 compatible, con MinIO en local.**
+1. **Almacenamiento: S3 compatible, con SeaweedFS en local** (era MinIO; ver la precisión del cierre de la lista).
    - Interfaz propia (`put`, `open`, `delete`, `presigned_url`) con un adaptador S3 sobre `django-storages`/`boto3` y un fake en memoria para tests y CI.
-   - MinIO en `docker-compose` para desarrollo.
+   - SeaweedFS en `docker-compose` para desarrollo.
    - Un bucket privado con prefijos `documents/` y `packages/`. `object_key` = `documents/<application_id>/<uuid>`, sin el nombre original. Cifrado SSE del proveedor (`encryption_key_version = "SSE-S3"`).
    - Descarga por URL prefirmada de 5 minutos (decisión 13).
-   - **Pasar a S3 real es solo cambiar variables de entorno**: endpoint, región, bucket, credenciales, estilo de direccionamiento y URL pública para las prefirmadas (en MinIO local, el host que ve el navegador no es el del contenedor). Se documentan en `.env.example` y se le entregan al usuario las líneas para su `.env`.
+   - **Pasar a S3 real es solo cambiar variables de entorno**: endpoint, región, bucket, credenciales, estilo de direccionamiento y URL pública para las prefirmadas (en local, el host que ve el navegador no es el del contenedor). Se le entregan al usuario las líneas para `.env.example` y `.env`.
+   - **Precisión de la Parte 2: MinIO se descartó.** Su edición comunitaria ya no publica imágenes (`minio/minio` y `quay.io/minio/minio` responden "repository does not exist"). El usuario eligió **SeaweedFS** (`chrislusf/seaweedfs:3.85`, `weed server -s3`), con el bucket creado por un servicio de inicialización. El adaptador S3 no cambia.
+   - **El cifrado SSE solo aplica en S3 real.** SeaweedFS no lo implementa: en local `DOCUMENT_STORAGE_SSE` va vacío y `encryption_key_version` queda nulo.
 2. **Antivirus: ClamAV, con Celery.**
    - `clamd` por TCP con `INSTREAM`, cliente propio sin dependencias, en un servicio `clamav` del perfil `async`.
    - `config/celery.py` nuevo; el análisis y el ZIP se encolan con `transaction.on_commit(task.delay)`. Tareas idempotentes: no hacen nada si el estado ya no es `PENDING`. Comando `requeue_pending_scans` para los que queden colgados. Tests con `CELERY_TASK_ALWAYS_EAGER`.
@@ -302,6 +304,42 @@ No quedan. Las dos tandas están en "Decisiones (acordadas con el usuario)". Las
   - están en `tests/applications/dossier/` (no en `tests/documents/`) para heredar la solicitud, el titular y los usuarios. Su `conftest.py` importa `make_link` y `make_session` de `buyer_access` y agrega `make_file_object`, `make_slot`, `buyer_session` y `make_document_file`;
   - `test_seed.py` cubre también `unseed` y que `seed` sea idempotente, llamando a las funciones de la migración con el registro de apps;
   - `tests/catalogs/test_workflow.py` creaba a mano un permiso de prueba `documents.review`, que ahora viene sembrado. Se renombró a `workflow_test.review`, porque ese test prueba el motor genérico.
+
+### Parte 2
+- **Archivos:**
+  - `config/celery.py` y su carga en `config/__init__.py` (`celery_app`). Serialización solo JSON: las tareas reciben ids, nunca archivos ni datos personales;
+  - `apps/documents/storage.py`: `ObjectStorage` (`put`, `open`, `delete`, `presigned_url`, `ensure_bucket` y `check`), `S3Storage`, `MemoryStorage`, `get_storage()` (una vez por proceso, con `lru_cache`), `new_document_key`, `new_package_key` y `attachment_disposition`;
+  - `apps/documents/file_validation.py`: `inspect_upload` → `InspectedFile(filename, mime_type, size_bytes, sha256)`, `sanitize_filename` y `detect_mime_type`;
+  - `apps/documents/scanning.py`: `ClamdScanner`, `FakeScanner`, `ScanResult`, `parse_clamd_reply` y `get_scanner()`;
+  - errores `UnsupportedFileType` y `FileTooLarge` (`422`), y `StorageUnavailable` y `ScannerUnavailable`, que no son errores de la API: quien los captura decide si responde `503` o reintenta;
+  - comandos `init_document_storage` (crea el bucket si no existe; lo usa `storage-init`) y `check_document_services` (comprueba almacenamiento y antivirus).
+- **`boto3` directo, no `django-storages`.** El acuerdo decía "django-storages/boto3". La interfaz propia necesita dos clientes (uno interno para leer y escribir, y otro que firma con el host que ve el navegador), `ResponseContentDisposition` en la URL prefirmada y errores propios. Con `boto3` directo eso es más corto y claro. `django-storages[s3]` sigue en `requirements.txt` porque trae `boto3`.
+- **Dos endpoints.** `DOCUMENT_STORAGE_ENDPOINT_URL` (el backend llega a `seaweedfs:8333`) y `DOCUMENT_STORAGE_PUBLIC_ENDPOINT_URL` (la URL prefirmada se firma para `localhost:8333`, que es lo que ve el navegador). En S3 real los dos van vacíos.
+- **`Content-Disposition`** de la descarga: `attachment`, con nombre ASCII de respaldo y `filename*` en UTF-8 (RFC 6266).
+- **Validación de archivos:**
+  - extensiones ejecutables o interpretables por el navegador (`exe`, `js`, `html`, `svg`, etc.) en cualquier parte del nombre: `422 UNSUPPORTED_FILE_TYPE` (`BLOCKED_EXTENSION`), antes de leer el contenido;
+  - doble extensión: una extensión conocida antes de la última (`foto.png.pdf`). Un punto cualquiera no basta (`certificado.v2.pdf` es válido);
+  - cada rechazo trae un `details[0].code` concreto: `BLOCKED_EXTENSION`, `UNKNOWN_CONTENT`, `TYPE_NOT_ALLOWED`, `EXTENSION_MISMATCH`, `DOUBLE_EXTENSION`, `DECLARED_TYPE_MISMATCH` o `FILE_TOO_LARGE`, siempre con `field = file`;
+  - el MIME declarado admite alias (`image/jpg`, `image/pjpeg`, `application/x-pdf`, `image/x-png`) y valores que no informan nada (vacío, `application/octet-stream`);
+  - el nombre conserva los espacios colapsados, pierde los caracteres de control y de formato (por ejemplo, el espacio de ancho cero) y se corta a 255 conservando la extensión.
+- **Antivirus:**
+  - el cliente lee la respuesta hasta el `\0` de los comandos con prefijo `z`. `stream: OK` → `CLEAN`; `stream: <firma> FOUND` → `INFECTED` con la firma; cualquier otra respuesta (incluido el límite de tamaño de clamd o una conexión cerrada sin respuesta) → `ScannerUnavailable`. El archivo sigue `PENDING`;
+  - el reintento con espera creciente es de la tarea de análisis (Parte 4).
+- **Falla al arrancar.** `DocumentsConfig.ready()` valida la configuración: `DOCUMENT_STORAGE_BACKEND=memory` o `DOCUMENT_SCANNER=fake` sin `DEBUG` ni `DOCUMENT_ALLOW_FAKE_SERVICES` (solo `config.settings.test` lo activa) lanzan `ImproperlyConfigured`. También un valor desconocido. Se hace en `ready()` y no en un *system check*, porque gunicorn y Celery no ejecutan los checks.
+- **Configuración** (`base.py`): `DOCUMENT_STORAGE_*`, `DOCUMENT_SCANNER`, `CLAMD_*` y `DOCUMENT_ALLOW_FAKE_SERVICES`. Por omisión, S3 con `AES256` y `clamd`: lo seguro es lo que no requiere variables. `test.py` usa `memory`, `fake` y `CELERY_TASK_ALWAYS_EAGER`.
+- **docker-compose:**
+  - `seaweedfs` y `storage-init` van en el perfil por omisión, no en `async` como decía el plan: la API guarda las cargas sin el worker. `backend` y `worker` esperan a que `storage-init` termine bien;
+  - SeaweedFS arranca con una sola identidad, cuyas credenciales salen del `.env`, y el acceso anónimo queda denegado (`403`). Sin credenciales, no arranca y lo explica en el log;
+  - healthcheck con `nc -z 127.0.0.1 8333`: dentro del contenedor, `localhost` resuelve a IPv6 y SeaweedFS solo escucha en IPv4;
+  - `clamav` (`clamav/clamav:1.4.3`, perfil `async`) guarda las firmas en el volumen `mvp_credit_clamav_data`. El `worker` no espera a que esté sano, porque la primera descarga tarda minutos y mientras tanto el análisis reintenta.
+- **Verificado de punta a punta** con el stack real y credenciales temporales (sin tocar `.env`):
+  - `storage-init` crea el bucket y la segunda vez dice que ya existía;
+  - carga, lectura y URL prefirmada descargada desde el host con `Content-Disposition` y `Content-Type` correctos;
+  - sin firma: `403`;
+  - `clamd` real: `PING`, un PDF de 300 KB limpio y EICAR `INFECTED`;
+  - el worker de Celery se conecta a Redis y queda listo;
+  - `check_document_services` en verde.
+- **Tests** (`tests/documents/`): `test_file_validation.py`, `test_storage.py` (cliente `boto3` sustituido con `MagicMock`; la URL prefirmada se firma con un cliente real, sin red), `test_scanning.py` (un `clamd` falso sobre TCP real en un hilo) y `test_services_commands.py`.
 
 ## Pendientes para pasos posteriores
 
