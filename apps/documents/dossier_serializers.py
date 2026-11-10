@@ -1,8 +1,14 @@
 """Respuestas internas del expediente documental (API §19). Nunca exponen
 ``object_key`` ni el bucket del archivo."""
 
-from rest_framework import serializers
+from datetime import date
+from typing import Any
 
+from django.utils import timezone
+from rest_framework import serializers
+from rest_framework.exceptions import ErrorDetail
+
+from apps.catalogs.fields import CatalogItemCodeField
 from apps.catalogs.serializers import CatalogItemRefSerializer
 from apps.crm.serializers import UserRefSerializer
 from apps.documents.models import (
@@ -10,8 +16,10 @@ from apps.documents.models import (
     DocumentFile,
     DocumentReview,
     FileObject,
+    ReviewDecision,
 )
 from apps.documents.serializers import DocumentTypeRefSerializer
+from config.serializers import StrictSerializer
 
 
 def slot_label(slot: ApplicationDocumentSlot) -> str:
@@ -176,3 +184,176 @@ class SlotRefreshSerializer(serializers.Serializer):
     revived = serializers.ListField(child=serializers.UUIDField())
     updated = serializers.ListField(child=serializers.UUIDField())
     slots = DocumentSlotSerializer(many=True)
+
+
+# --- Revisión (Parte 5) --------------------------------------------------------------------
+
+
+class SlotDecisionSerializer(serializers.ModelSerializer):
+    """Exoneración o reapertura del slot. ``decision_batch_id`` es el lote: los slots de
+    un grupo alternativo exonerados juntos lo comparten."""
+
+    reason = CatalogItemRefSerializer(source="reason_item", read_only=True, allow_null=True)
+    reviewer = UserRefSerializer(read_only=True)
+    document_file_id = serializers.UUIDField(read_only=True, allow_null=True)
+
+    class Meta:
+        model = DocumentReview
+        fields = [
+            "id",
+            "decision",
+            "reason",
+            "internal_comment",
+            "document_file_id",
+            "decision_batch_id",
+            "reviewer",
+            "created_at",
+        ]
+        read_only_fields = fields
+
+
+class DocumentSlotDetailSerializer(DocumentSlotSerializer):
+    """Detalle del slot con el historial de exoneraciones y reaperturas, de la más
+    reciente a la primera. Las aprobaciones y los rechazos van en cada versión."""
+
+    waiver_history = SlotDecisionSerializer(many=True, read_only=True)
+
+    class Meta(DocumentSlotSerializer.Meta):
+        fields = [*DocumentSlotSerializer.Meta.fields, "waiver_history"]
+        read_only_fields = fields
+
+
+def _comment_field(help_text: str) -> serializers.CharField:
+    return serializers.CharField(
+        required=False, allow_null=True, default=None, max_length=2000, help_text=help_text
+    )
+
+
+# Qué campos admite cada decisión y cuáles exige.
+_DECISION_FIELDS: dict[str, tuple[set[str], set[str]]] = {
+    ReviewDecision.APPROVED: (
+        {"document_file_id", "internal_comment", "document_date"},
+        {"document_file_id"},
+    ),
+    ReviewDecision.REJECTED: (
+        {"document_file_id", "reason_code", "buyer_comment", "internal_comment"},
+        {"document_file_id", "reason_code", "buyer_comment"},
+    ),
+    ReviewDecision.WAIVED: ({"reason_code", "internal_comment"}, {"reason_code"}),
+    ReviewDecision.REOPENED: ({"internal_comment"}, {"internal_comment"}),
+}
+_REASON_CATALOGS = {
+    ReviewDecision.REJECTED: "document_rejection_reason",
+    ReviewDecision.WAIVED: "document_waiver_reason",
+}
+_OPTIONAL_FIELDS = (
+    "document_file_id",
+    "reason_code",
+    "buyer_comment",
+    "internal_comment",
+    "document_date",
+)
+
+
+class DocumentSlotReviewSerializer(StrictSerializer):
+    decision = serializers.ChoiceField(choices=ReviewDecision.choices)
+    document_file_id = serializers.UUIDField(
+        required=False,
+        allow_null=True,
+        default=None,
+        help_text="Versión revisada: la vigente del slot. Solo en `APPROVED` y `REJECTED`.",
+    )
+    reason_code = serializers.CharField(
+        required=False,
+        allow_null=True,
+        default=None,
+        help_text=(
+            "Motivo: `document_rejection_reason` al rechazar y `document_waiver_reason` "
+            "al exonerar."
+        ),
+    )
+    buyer_comment = _comment_field("Lo que ve el comprador. Obligatorio al rechazar.")
+    internal_comment = _comment_field(
+        "Nota interna; nunca la ve el comprador. Obligatoria al reabrir."
+    )
+    document_date = serializers.DateField(
+        required=False,
+        allow_null=True,
+        default=None,
+        help_text=(
+            "Solo al aprobar: corrige la fecha de expedición o del periodo. Con ella se "
+            "recalcula el vencimiento."
+        ),
+    )
+
+    def validate_document_date(self, value: date | None) -> date | None:
+        if value is not None and value > timezone.localdate():
+            raise serializers.ValidationError("La fecha del documento no puede ser futura.")
+        return value
+
+    def validate(self, attrs: dict[str, Any]) -> dict[str, Any]:
+        decision = attrs["decision"]
+        allowed, required = _DECISION_FIELDS[decision]
+        errors: dict[str, Any] = {}
+        for field in _OPTIONAL_FIELDS:
+            present = attrs.get(field) is not None
+            if present and field not in allowed:
+                errors[field] = [
+                    ErrorDetail(f"No aplica a la decisión {decision}.", code="not_allowed")
+                ]
+            elif not present and field in required:
+                errors[field] = [
+                    ErrorDetail(f"Es obligatorio en la decisión {decision}.", code="required")
+                ]
+        if not errors and decision in _REASON_CATALOGS:
+            reason_field = CatalogItemCodeField(catalog_code=_REASON_CATALOGS[decision])
+            try:
+                attrs["reason_item"] = reason_field.to_internal_value(attrs["reason_code"])
+            except serializers.ValidationError as exc:
+                errors["reason_code"] = exc.detail
+        if errors:
+            raise serializers.ValidationError(errors)
+        attrs.pop("reason_code", None)
+        return attrs
+
+
+class DocumentSlotReviewResultSerializer(serializers.Serializer):
+    """Slots que cambiaron con la decisión: uno al aprobar o rechazar; los del grupo al
+    exonerar o reabrir."""
+
+    slots = DocumentSlotSerializer(many=True)
+
+
+class DocumentFileScanStatusSerializer(serializers.ModelSerializer):
+    """Validación técnica y antivirus de una versión."""
+
+    document_file_id = serializers.UUIDField(source="id", read_only=True)
+    scan_status = serializers.CharField(source="file_object.scan_status", read_only=True)
+    scanned_at = serializers.DateTimeField(
+        source="file_object.scanned_at", read_only=True, allow_null=True
+    )
+    detected_mime_type = serializers.CharField(
+        source="file_object.detected_mime_type", read_only=True
+    )
+    size_bytes = serializers.IntegerField(source="file_object.size_bytes", read_only=True)
+    sha256 = serializers.CharField(source="file_object.sha256", read_only=True)
+
+    class Meta:
+        model = DocumentFile
+        fields = [
+            "document_file_id",
+            "status",
+            "scan_status",
+            "scanned_at",
+            "detected_mime_type",
+            "size_bytes",
+            "sha256",
+        ]
+        read_only_fields = fields
+
+
+class DocumentDownloadSerializer(serializers.Serializer):
+    """URL prefirmada de corta duración. Es una credencial: no se guarda ni se comparte."""
+
+    url = serializers.CharField()
+    expires_at = serializers.DateTimeField()

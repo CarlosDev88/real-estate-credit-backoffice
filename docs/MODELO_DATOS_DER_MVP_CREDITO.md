@@ -973,22 +973,35 @@ UQ (`slot_id`, `version_number`). `CHECK`: `expires_at` es nulo o posterior a `d
 
 ### 8.4 `document_reviews`
 
-Decisiones de revisión sobre una versión concreta.
+Decisiones del asesor sobre un slot: aprobación y rechazo de una versión concreta y, desde el paso 10, exoneraciones y sus reaperturas.
 
 | Campo | Tipo | Nulo | Regla/uso |
 | --- | --- | --- | --- |
 | `id` | `UUID` | No | PK, `DEFAULT gen_random_uuid()`. |
 | `created_at` | `TIMESTAMPTZ` | No | Fecha y hora de creación del registro histórico. |
-| `document_file_id` | `UUID` | No | FK `document_files`, `RESTRICT`. |
+| `slot_id` | `UUID` | No | FK `application_document_slots`, `RESTRICT`. **Desvío del DER original (paso 10).** |
+| `document_file_id` | `UUID` | Sí | FK `document_files`, `RESTRICT`. Obligatorio en `APPROVED` y `REJECTED`; en `WAIVED` y `REOPENED` guarda la versión vigente del slot, si la hay. **Desvío del DER original (paso 10): era `NOT NULL`.** |
 | `reviewer_id` | `UUID` | No | FK `users`, `RESTRICT`. |
-| `decision` | `VARCHAR(20)` | No | `APPROVED` o `REJECTED`. |
-| `reason_item_id` | `UUID` | Sí | FK `catalog_items`, `RESTRICT`. |
+| `decision` | `VARCHAR(20)` | No | `APPROVED`, `REJECTED`, `WAIVED` o `REOPENED`. **Desvío del DER original (paso 10): solo admitía las dos primeras.** |
+| `reason_item_id` | `UUID` | Sí | FK `catalog_items`, `RESTRICT`: `document_rejection_reason` al rechazar, `document_waiver_reason` al exonerar. |
 | `buyer_comment` | `TEXT` | Sí | Explicación visible. |
-| `internal_comment` | `TEXT` | Sí | Nota privada. |
+| `internal_comment` | `TEXT` | Sí | Nota privada; obligatoria al reabrir. |
+| `decision_batch_id` | `UUID` | Sí | Lote de una exoneración o reapertura: los slots de un grupo alternativo exonerados juntos lo comparten. **Desvío del DER original (paso 10).** |
 
-Relación N:1 con versión y asesor. Separar la revisión permite conservar una corrección de decisión y saber exactamente qué versión fue aprobada; el estado del slot es solo el resumen actual.
+`CHECK`:
 
-Índice: (`document_file_id`, `created_at DESC`).
+- `ck_document_reviews_decision`: los cuatro valores de `decision`;
+- `ck_document_reviews_rejection`: `REJECTED` exige `reason_item_id` y `buyer_comment`;
+- `ck_document_reviews_file`: `APPROVED` y `REJECTED` exigen `document_file_id` y no llevan lote;
+- `ck_document_reviews_batch`: `WAIVED` y `REOPENED` exigen `decision_batch_id`;
+- `ck_document_reviews_waiver`: `WAIVED` exige `reason_item_id`;
+- `ck_document_reviews_reopen`: `REOPENED` exige `internal_comment` no vacío.
+
+Relación N:1 con slot, versión (opcional) y asesor. Separar la revisión permite conservar una corrección de decisión y saber exactamente qué versión fue aprobada o rechazada. Ninguna fila se edita: corregir, exonerar o reabrir crea otra.
+
+Desvío del DER original, acordado en el paso 10 (Parte 5): el esquema original solo guardaba aprobaciones y rechazos de una versión, y la exoneración vivía solo en el slot (`waiver_reason_item_id`), sin quién ni cuándo. Para poder deshacer una exoneración y saber quién exoneró y quién reabrió, la tabla guarda también esas decisiones del slot; `slot_id` se llenó desde la versión de las filas existentes antes de volverse `NOT NULL`. Reabrir toma el lote de la última exoneración del slot y reabre los slots cuya última revisión es esa exoneración.
+
+Índices: (`document_file_id`, `created_at DESC`), (`slot_id`, `created_at DESC`) y (`decision_batch_id`) donde no es nulo.
 
 ### 8.5 `document_package_jobs`
 

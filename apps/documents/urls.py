@@ -26,6 +26,26 @@ urlpatterns = [
         dossier_views.DocumentSlotVersionListView.as_view(),
         name="document-slot-version-list",
     ),
+    path(
+        "document-slots/<uuid:slot_id>/review",
+        dossier_views.DocumentSlotReviewView.as_view(),
+        name="document-slot-review",
+    ),
+    path(
+        "document-files/<uuid:file_id>",
+        dossier_views.DocumentFileDetailView.as_view(),
+        name="document-file-detail",
+    ),
+    path(
+        "document-files/<uuid:file_id>/scan-status",
+        dossier_views.DocumentFileScanStatusView.as_view(),
+        name="document-file-scan-status",
+    ),
+    path(
+        "document-files/<uuid:file_id>/download",
+        dossier_views.DocumentFileDownloadView.as_view(),
+        name="document-file-download",
+    ),
     # Expediente en el portal del comprador
     path(
         "buyer/applications/<uuid:application_id>/document-slots",
@@ -46,6 +66,11 @@ urlpatterns = [
         "buyer/document-slots/<uuid:slot_id>/uploads",
         buyer_views.BuyerDocumentUploadView.as_view(),
         name="buyer-document-upload",
+    ),
+    path(
+        "buyer/document-files/<uuid:file_id>/download",
+        buyer_views.BuyerDocumentFileDownloadView.as_view(),
+        name="buyer-document-file-download",
     ),
     # Tipos documentales (sección 23.4)
     path("document-types", views.DocumentTypeListView.as_view(), name="document-type-list"),

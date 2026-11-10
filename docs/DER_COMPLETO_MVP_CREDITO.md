@@ -488,7 +488,8 @@ erDiagram
     FILE_OBJECTS ||--o| DOCUMENT_FILES : almacena
     BUYER_SESSIONS ||--o{ DOCUMENT_FILES : carga
     DOCUMENT_FILES o|--o| APPLICATION_DOCUMENT_SLOTS : vigente
-    DOCUMENT_FILES ||--o{ DOCUMENT_REVIEWS : revisa
+    APPLICATION_DOCUMENT_SLOTS ||--o{ DOCUMENT_REVIEWS : decide
+    DOCUMENT_FILES o|--o{ DOCUMENT_REVIEWS : revisa
     USERS ||--o{ DOCUMENT_REVIEWS : decide
     CATALOG_ITEMS o|--o{ DOCUMENT_REVIEWS : motivo
     CREDIT_APPLICATIONS ||--o{ DOCUMENT_PACKAGE_JOBS : prepara
@@ -514,10 +515,12 @@ erDiagram
     }
     DOCUMENT_REVIEWS {
         uuid id PK
+        uuid slot_id FK
         uuid document_file_id FK
         uuid reviewer_id FK
         uuid reason_item_id FK
         varchar decision
+        uuid decision_batch_id
     }
     FILE_OBJECTS {
         uuid id PK
@@ -559,7 +562,7 @@ Hay cuatro conceptos distintos:
 1. `document_requirements`: plantilla general.
 2. `application_document_slots`: documento concreto esperado en una solicitud.
 3. `document_files`: cada versión cargada.
-4. `document_reviews`: decisiones sobre una versión.
+4. `document_reviews`: decisiones sobre un slot: aprobar o rechazar una versión, exonerar y reabrir (desvío del paso 10, ver MODELO §8.4).
 
 `file_objects` solo describe dónde está el archivo físico y su estado antivirus.
 

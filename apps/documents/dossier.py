@@ -21,6 +21,7 @@ from django.db.models.functions import Coalesce
 from apps.applications.models import CreditApplication
 from apps.applications.services import applications_visible_to, lock_for_edit
 from apps.documents.models import ApplicationDocumentSlot, DocumentFile, DocumentReview
+from apps.documents.models.review import FILE_DECISIONS, SLOT_DECISIONS
 from apps.documents.slots import SlotSync, sync_slots
 from apps.identity.models import BuyerSession, User
 
@@ -81,16 +82,46 @@ def application_slots(
     return slots if include_retired else slots.filter(retired_at__isnull=True)
 
 
+def _file_reviews() -> Prefetch:
+    """Aprobaciones y rechazos de la versión, de la más reciente a la primera. Las
+    exoneraciones y reaperturas son del slot (``waiver_history``)."""
+    reviews = (
+        DocumentReview.objects.filter(decision__in=FILE_DECISIONS)
+        .select_related("reviewer", "reason_item")
+        .order_by("-created_at")
+    )
+    return Prefetch("reviews", queryset=reviews)
+
+
 def slot_versions(slot: ApplicationDocumentSlot) -> QuerySet[DocumentFile]:
     """Versiones del slot, de la más reciente a la primera, con sus revisiones."""
-    reviews = DocumentReview.objects.select_related("reviewer", "reason_item").order_by(
-        "-created_at"
-    )
     return (
         DocumentFile.objects.filter(slot=slot)
         .select_related("file_object")
-        .prefetch_related(Prefetch("reviews", queryset=reviews))
+        .prefetch_related(_file_reviews())
         .order_by("-version_number")
+    )
+
+
+def slot_detail_queryset(user: User) -> QuerySet[ApplicationDocumentSlot]:
+    """Slots visibles con el historial de exoneraciones y reaperturas
+    (``waiver_history``), de la más reciente a la primera."""
+    history = (
+        DocumentReview.objects.filter(decision__in=SLOT_DECISIONS)
+        .select_related("reviewer", "reason_item")
+        .order_by("-created_at")
+    )
+    return slots_visible_to(user).prefetch_related(
+        Prefetch("reviews", queryset=history, to_attr="waiver_history")
+    )
+
+
+def files_visible_to(user: User) -> QuerySet[DocumentFile]:
+    """Versiones de las solicitudes visibles, también las de slots retirados."""
+    return (
+        DocumentFile.objects.filter(slot__application__in=applications_visible_to(user))
+        .select_related("file_object", "slot")
+        .prefetch_related(_file_reviews())
     )
 
 
@@ -113,19 +144,25 @@ def refresh_slots(actor: User, application: CreditApplication) -> SlotSync:
 def _buyer_reviews() -> Prefetch:
     """Revisiones para mostrar el último rechazo al comprador, de la más reciente a la
     primera."""
-    return Prefetch(
-        "reviews",
-        queryset=DocumentReview.objects.select_related("reason_item").order_by("-created_at"),
+    return Prefetch("reviews", queryset=_buyer_review_queryset())
+
+
+def _buyer_review_queryset() -> QuerySet[DocumentReview]:
+    """Solo aprobaciones y rechazos: las exoneraciones, reaperturas y sus notas son
+    internas."""
+    return (
+        DocumentReview.objects.filter(decision__in=FILE_DECISIONS)
+        .select_related("reason_item")
+        .order_by("-created_at")
     )
 
 
 def buyer_slot_queryset(session: BuyerSession) -> QuerySet[ApplicationDocumentSlot]:
     """Slots vigentes de la solicitud de la sesión, con lo que muestra el portal."""
-    reviews = DocumentReview.objects.select_related("reason_item").order_by("-created_at")
     return (
         slots_queryset()
         .filter(application_id=session.application_id, retired_at__isnull=True)
-        .prefetch_related(Prefetch("current_file__reviews", queryset=reviews))
+        .prefetch_related(Prefetch("current_file__reviews", queryset=_buyer_review_queryset()))
     )
 
 
@@ -136,3 +173,10 @@ def buyer_versions(slot: ApplicationDocumentSlot) -> QuerySet[DocumentFile]:
         .prefetch_related(_buyer_reviews())
         .order_by("-version_number")
     )
+
+
+def buyer_files(session: BuyerSession) -> QuerySet[DocumentFile]:
+    """Versiones de los slots vigentes de la solicitud de la sesión."""
+    return DocumentFile.objects.filter(
+        slot__application_id=session.application_id, slot__retired_at__isnull=True
+    ).select_related("file_object")

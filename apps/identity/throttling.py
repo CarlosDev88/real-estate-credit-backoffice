@@ -113,3 +113,21 @@ class BuyerDocumentUploadRateThrottle(AuthRateThrottle):
             return None
         ident = f"{session.pk}|{session.application_id}"
         return self.cache_format % {"scope": self.scope, "ident": self._hashed(ident)}
+
+
+class DocumentDownloadRateThrottle(AuthRateThrottle):
+    """Descargas de documentos: por usuario interno o por sesión del comprador
+    (decisión 12). Solo cuenta las descargas, no las demás lecturas."""
+
+    scope = "document_download"
+
+    def get_cache_key(self, request: Request, view: Any) -> str | None:
+        session = request.auth
+        if isinstance(session, BuyerSession):
+            ident = f"buyer_session|{session.pk}"
+        else:
+            user_id = getattr(request.user, "pk", None)
+            if user_id is None:
+                return None
+            ident = f"user|{user_id}"
+        return self.cache_format % {"scope": self.scope, "ident": self._hashed(ident)}

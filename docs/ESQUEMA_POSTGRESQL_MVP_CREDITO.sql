@@ -705,18 +705,39 @@ ALTER TABLE application_document_slots
     ON DELETE SET NULL
     DEFERRABLE INITIALLY DEFERRED;
 
+-- Desvío del DER original (paso 10, Parte 5): la tabla guarda también las exoneraciones
+-- (`WAIVED`) y sus reaperturas (`REOPENED`), que son decisiones del slot. `slot_id` es
+-- nuevo, `document_file_id` pasa a ser nulable y `decision_batch_id` agrupa las filas de
+-- una misma exoneración o reapertura.
 CREATE TABLE document_reviews (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    document_file_id UUID NOT NULL REFERENCES document_files(id) ON DELETE RESTRICT,
+    slot_id UUID NOT NULL REFERENCES application_document_slots(id) ON DELETE RESTRICT,
+    document_file_id UUID REFERENCES document_files(id) ON DELETE RESTRICT,
     reviewer_id UUID NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
     decision VARCHAR(20) NOT NULL,
     reason_item_id UUID REFERENCES catalog_items(id) ON DELETE RESTRICT,
     buyer_comment TEXT,
     internal_comment TEXT,
-    CONSTRAINT ck_document_reviews_decision CHECK (decision IN ('APPROVED', 'REJECTED')),
+    decision_batch_id UUID,
+    CONSTRAINT ck_document_reviews_decision CHECK (
+        decision IN ('APPROVED', 'REJECTED', 'WAIVED', 'REOPENED')
+    ),
     CONSTRAINT ck_document_reviews_rejection CHECK (
         decision <> 'REJECTED' OR (reason_item_id IS NOT NULL AND buyer_comment IS NOT NULL)
+    ),
+    CONSTRAINT ck_document_reviews_file CHECK (
+        decision NOT IN ('APPROVED', 'REJECTED')
+        OR (document_file_id IS NOT NULL AND decision_batch_id IS NULL)
+    ),
+    CONSTRAINT ck_document_reviews_batch CHECK (
+        decision NOT IN ('WAIVED', 'REOPENED') OR decision_batch_id IS NOT NULL
+    ),
+    CONSTRAINT ck_document_reviews_waiver CHECK (
+        decision <> 'WAIVED' OR reason_item_id IS NOT NULL
+    ),
+    CONSTRAINT ck_document_reviews_reopen CHECK (
+        decision <> 'REOPENED' OR (internal_comment IS NOT NULL AND internal_comment <> '')
     )
 );
 
@@ -1017,6 +1038,9 @@ CREATE UNIQUE INDEX uq_document_slots_active
     WHERE retired_at IS NULL;
 CREATE INDEX ix_document_files_versions ON document_files (slot_id, version_number DESC);
 CREATE INDEX ix_document_reviews_latest ON document_reviews (document_file_id, created_at DESC);
+-- Paso 10, Parte 5: historial del slot y lotes de exoneración.
+CREATE INDEX ix_document_reviews_slot ON document_reviews (slot_id, created_at DESC);
+CREATE INDEX ix_document_reviews_batch ON document_reviews (decision_batch_id) WHERE decision_batch_id IS NOT NULL;
 CREATE INDEX ix_document_package_jobs_application ON document_package_jobs (application_id, created_at DESC);
 CREATE INDEX ix_document_package_jobs_queue ON document_package_jobs (status, created_at) WHERE status IN ('PENDING', 'RUNNING');
 CREATE INDEX ix_filings_application ON filings (application_id, sequence_number DESC);

@@ -33,10 +33,10 @@ Paso 10 del orden de construcción (DER_COMPLETO §15), después del acceso del 
 | ---: | --- | --- | --- |
 | 1 | Modelos, migraciones, semillas, `holder_scope` en la API y DER | Hecha | `3d7c1ac` |
 | 2 | Infraestructura: almacenamiento, validación de archivos, antivirus y Celery | Hecha | `4e73503` |
-| 3 | Materialización y recálculo de slots; lectura interna del expediente | Hecha | (pendiente de commit) |
-| 4 | Portal del comprador: slots, carga, reemplazo y análisis asíncrono | Hecha | (pendiente de commit) |
-| 5 | Revisión, exoneración y descargas | **Siguiente** | |
-| 6 | Guarda de `READY_TO_FILE`, completitud y progreso del comprador | Pendiente | |
+| 3 | Materialización y recálculo de slots; lectura interna del expediente | Hecha | `a7d82ac` |
+| 4 | Portal del comprador: slots, carga, reemplazo y análisis asíncrono | Hecha | `8191f3d` |
+| 5 | Revisión, exoneración, reapertura, huella documental y descargas | Hecha | (pendiente de commit) |
+| 6 | Guarda de `READY_TO_FILE`, completitud y progreso del comprador | **Siguiente** | |
 | 7 | Paquete ZIP asíncrono, README y documentación | Pendiente | |
 
 Al cerrar la Parte 1: 1192 tests en verde (32 nuevos), 97,95 % de cobertura total, los modelos y la semilla nuevos al 100 % y el esquema OpenAPI sin avisos.
@@ -46,6 +46,8 @@ Al cerrar la Parte 2: 1262 tests en verde (70 nuevos), 98,03 % de cobertura tota
 Al cerrar la Parte 3: 1311 tests en verde (49 nuevos), 98,09 % de cobertura total, `slots.py`, `dossier.py`, `dossier_serializers.py` y `dossier_views.py` al 100 %, y el esquema OpenAPI sin avisos.
 
 Al cerrar la Parte 4: 1361 tests en verde (50 nuevos), 98,16 % de cobertura total, `uploads.py`, `scans.py`, `tasks.py`, `buyer_views.py`, `buyer_serializers.py` y `requeue_pending_scans` al 100 %, y el esquema OpenAPI sin avisos. Además, verificado de punta a punta con SeaweedFS y clamd reales (ver "Decididas en la implementación", Parte 4).
+
+Al cerrar la Parte 5: 1448 tests en verde (87 nuevos), 98,24 % de cobertura total, `reviews.py`, `downloads.py`, `fingerprint.py`, `dossier_views.py`, `dossier_serializers.py` y la migración `documents 0005` al 100 %, y el esquema OpenAPI sin avisos.
 
 Sin cubrir, de antes de este paso: `admin.py` (los `has_*_permission` de `_ReadOnlyAdmin`), el `unseed` de `documents 0002` y cuatro ramas de `services.py` (líneas 87, 261, 288 y 386).
 
@@ -126,11 +128,21 @@ Sin cubrir, de antes de este paso: `admin.py` (los `has_*_permission` de `_ReadO
 - Errores nuevos en `apps/documents/exceptions.py`: `DocumentLocked`, `DocumentNotRejected`, `DocumentQuotaExceeded`, `PayloadTooLarge` (`413`) y `UploadUnavailable` (`503 SERVICE_UNAVAILABLE`). Throttle `BuyerDocumentUploadRateThrottle` en `apps/identity/throttling.py`.
 - Tests: `tests/applications/dossier/test_buyer_dossier_api.py` (helpers `pdf`, `upload`, `memory`, `session_of`, `decide`) y `test_scans.py` (fixture `current_version` y `eager_retries`). `tests/conftest.py` limpia el `MemoryStorage` después de cada test. El `conftest.py` de `dossier` reexporta `portal`, `buyer_client`, `buyer_csrf_client` y `accept_consents`.
 
-### Próximo paso: Parte 5
-- `PATCH /document-slots/{id}/review` según las decisiones 7 y 8 y las acordadas 6 y 8, sobre `DossierView`: bloqueo del slot, `document_file_id` vigente (`409 DOCUMENT_NOT_CURRENT`), aprobar solo `CLEAN` (`409 FILE_NOT_CLEAN`), vigencia (`document_date` corregible, `422 DOCUMENT_EXPIRED`), rechazo con `reason_code` y `buyer_comment`, corrección de una decisión (fila nueva) y exoneración del grupo alternativo.
-- Al aprobar o rechazar, la versión deja `IN_REVIEW`; al exonerar, `waiver_reason_item`. Ninguna toca la versión de la solicitud.
-- Descargas (decisión 13): `GET /document-files/{id}`, `.../scan-status` y `.../download` (interno, `documents.download`) y `GET /buyer/document-files/{id}/download` (sobre `BuyerDossierView`), con rate limit de 60/h por usuario o sesión y la URL fuera de los logs. Variable nueva `DOCUMENT_DOWNLOAD_URL_SECONDS`: documentarla en el README y pasarle al usuario la línea para `.env.example` y `.env`.
-- El rechazo que ve el comprador ya sale de la última revisión (`version_rejection`): no hay que tocar los DTO del comprador.
+**De la Parte 5:**
+- `apps/documents/reviews.py`: `review_slot(actor, slot, Review(...))` → ids de los slots que cambiaron; `ReviewValidationError` (`400 VALIDATION_ERROR` con `resource_id`) y `restored_status(slot)` (estado al reabrir).
+- `apps/documents/fingerprint.py`: `dossier_fingerprint(application)` (decisión 23), adelantada de la Parte 6.
+- `apps/documents/downloads.py`: `download_link(version, requested_by=)` → `DownloadLink(url, expires_at)`.
+- `apps/documents/models/review.py`: `ReviewDecision` con `WAIVED` y `REOPENED`, `FILE_DECISIONS` y `SLOT_DECISIONS`. `DocumentReview.slot` (`slot.reviews`) y `decision_batch_id`; migración `documents 0005_review_slot_and_waivers`.
+- `apps/documents/dossier.py`: `slot_detail_queryset(user)` (`waiver_history`), `files_visible_to(user)` y `buyer_files(session)`. Las revisiones de las versiones, internas y del comprador, solo traen `APPROVED`/`REJECTED`.
+- Errores: `DocumentNotCurrent`, `FileNotClean`, `DocumentExpired` y `DownloadUnavailable` (`503 SERVICE_UNAVAILABLE`). Throttle `DocumentDownloadRateThrottle`. `uploads.expires_on(slot, document_date)` (antes `_expires_at`).
+- Tests: `tests/applications/dossier/test_reviews_api.py` (fixtures `with_version`, `group` y `no_waive_permission`; helpers `approve`, `reject`, `waive`, `reopen`) y `test_downloads_api.py` (`make_version`).
+
+### Próximo paso: Parte 6
+- **Primero, preguntarle al usuario** (lo dejó pendiente para esta parte): qué pasa con una solicitud en `READY_TO_FILE` cuando se reabre una exoneración o se rechaza un documento. O sigue en `READY_TO_FILE` y la guarda la frena al radicar, o vuelve sola a revisión documental.
+- `documents_verified` y los `details` de la decisión 21 en `_ready_to_file_problems`, con los slots bloqueados (acordada 6); se elimina `DOCUMENTS_NOT_VERIFIED_MESSAGE`.
+- Test pedido por el usuario: una solicitud en `READY_TO_FILE` a la que se le reabre un slot exonerado no pasa la guarda. `dossier_fingerprint` ya existe (Parte 5).
+- Vigencia: antes de `FILED`, un aprobado vencido no cuenta (`expires_at <= hoy`, la misma regla que la aprobación).
+- Completitud (acordada 7) y progreso del comprador.
 
 ---
 
@@ -173,7 +185,7 @@ Salen de los documentos o del precedente de los pasos anteriores. El usuario no 
    - `decision`: `APPROVED`, `REJECTED` o `WAIVED`;
    - `APPROVED` y `REJECTED` llevan `document_file_id` y solo valen sobre el archivo vigente del slot (acordada 6); aprobar exige análisis `CLEAN` (`409 FILE_NOT_CLEAN`) y la vigencia de la acordada 8, y rechazar exige `reason_code` y `buyer_comment` (el `CHECK` del esquema);
    - bloquea la fila del slot (`select_for_update`), sin `If-Match`: los documentos no tocan la versión de la solicitud;
-   - `WAIVED` exige `is_waivable`, `reason_code` del catálogo de exoneración y el permiso `documents.waive`; no crea fila en `document_reviews` (no hay versión), queda en el slot (`waiver_reason_item_id`);
+   - `WAIVED` exige `is_waivable`, `reason_code` del catálogo de exoneración y el permiso `documents.waive`; queda en el slot (`waiver_reason_item_id`). **Cambió en la Parte 5:** ahora también deja una fila en `document_reviews` (Tanda 3, decisión 26);
    - una revisión sobre una versión ya decidida es una corrección: fila nueva en `document_reviews`, nunca se edita la anterior;
    - `internal_comment` nunca sale hacia el comprador.
 9. **Catálogos nuevos** (propuesta editable, `is_manageable = true`):
@@ -263,14 +275,14 @@ No quedan. Las dos tandas y la precisión de SeaweedFS están en "Decisiones (ac
 - Tarea `scan_file_object`: `CLEAN` → versión `IN_REVIEW`; `INFECTED`/`INVALID` → versión y slot `REJECTED` (decisión 3).
 - Tests: otro expediente `404`, sin CSRF `403`, sin consentimiento `403 CONSENT_REQUIRED`, slot aprobado `409 DOCUMENT_LOCKED`, después de `FILED` con y sin observación, cuota, `429`, dos cargas simultáneas en el mismo slot (consecutivo único).
 
-### Parte 5. Revisión, exoneración y descargas
+### Parte 5. Revisión, exoneración y descargas (hecha)
 - `PATCH /document-slots/{id}/review` (decisiones 7 y 8) sobre un `document_file_id` concreto (acordada 6), con `document_date` corregible y la vigencia de la acordada 8.
 - `GET /document-files/{id}`, `.../scan-status` y `.../download` (interno), y `GET /buyer/document-files/{id}/download` (decisión 13).
 - Tests: aprobar sin `CLEAN`, aprobar un archivo que ya no es el vigente (`409 DOCUMENT_NOT_CURRENT`), aprobar sin `document_date` o vencido, rechazar sin comentario, exonerar no exonerable, exoneración del grupo, corrección de una decisión, descarga de un archivo infectado, la URL no aparece en logs.
 
 ### Parte 6. Guarda, completitud y progreso
 - `documents_verified` y los `details` de la decisión 21 en `_ready_to_file_problems`, evaluados dentro de la transacción de la transición con los slots bloqueados (acordada 6); se elimina `DOCUMENTS_NOT_VERIFIED_MESSAGE`.
-- `dossier_fingerprint` (decisión 23).
+- `dossier_fingerprint` (decisión 23): ya hecha en la Parte 5. Falta el test de la guarda con un slot reabierto (Tanda 3, decisión 28).
 - Lista sin obligatorios: `DOCUMENTS_NOT_CONFIGURED` (pendiente 2).
 - Vigencia de la acordada 8: antes de `FILED`, un aprobado vencido cuenta como no cumplido.
 - `/completeness` y progreso del comprador (`buyer_portal.py`) según la acordada 7.
@@ -340,6 +352,24 @@ No quedan. Las dos tandas y la precisión de SeaweedFS están en "Decisiones (ac
    - No se aprueba un documento ya vencido: `422 DOCUMENT_EXPIRED`.
    - Antes de `FILED`, un aprobado que venció cuenta como no cumplido en el checklist y en la completitud, y la guarda de `READY_TO_FILE` y el paquete fallan con `DOCUMENT_EXPIRED` en `details`.
    - Después de `FILED`, la vigencia no bloquea nada.
+
+### Tanda 3 (antes de la Parte 5)
+
+25. **Reabrir una exoneración: decisión `REOPENED`.** Sin ella, una exoneración por error sin archivo no tenía vuelta atrás (el comprador no carga en un slot `WAIVED` y aprobar o rechazar exigen un archivo vigente).
+    - Es una revisión nueva en `document_reviews`: no se borra ni se edita la exoneración. Queda quién exoneró, quién reabrió y cuándo.
+    - Permiso `documents.waive`, el mismo que exonerar. `internal_comment` obligatorio y no vacío (`400`); es interno y no sale en ningún DTO del comprador.
+    - El slot vuelve al estado de su archivo vigente (`PENDING` si no tiene). En un grupo, solo se reabren los slots que se exoneraron en esa misma decisión; los aprobados no se tocan.
+    - Con la solicitud `FILED` o cerrada: `409`, igual que las demás revisiones. Sobre un slot que no está `WAIVED`: `400 VALIDATION_ERROR` en `decision`.
+26. **Exoneraciones y reaperturas en `document_reviews`** (desvío del DER):
+    - `slot_id NOT NULL` con FK e índice, llenado desde `document_file.slot` en una migración de datos antes de volverlo obligatorio;
+    - `document_file_id` nulable. `CHECK`: `APPROVED` y `REJECTED` exigen `document_file_id`; `WAIVED` y `REOPENED` pueden ir sin archivo (si el slot tiene archivo vigente, se guarda);
+    - `decision` admite `APPROVED`, `REJECTED`, `WAIVED` y `REOPENED`;
+    - `decision_batch_id` (UUID) con índice. Toda exoneración lleva lote, aunque sea de un solo slot; un grupo comparte el lote. Reabrir toma el lote de la última exoneración del slot y reabre los slots cuya última revisión es `WAIVED` con ese lote. Las filas `REOPENED` llevan un lote nuevo propio;
+    - una fila por slot. DER, MODELO y SQL actualizados.
+27. **Exoneración de un grupo alternativo.**
+    - Solo pasan a `WAIVED` los slots no aprobados; los `APPROVED` conservan su estado y su archivo vigente. Si todos ya están aprobados: `400 VALIDATION_ERROR` (no hay nada que exonerar).
+    - `is_waivable` se valida solo en los slots que de verdad se exonerarían: un no exonerable ya aprobado no bloquea. Si alguno de los que se exonerarían no es exonerable: `400 VALIDATION_ERROR` en `decision`, sin exonerar nada (una transacción); el detalle dice qué slot y qué documento lo impiden.
+28. **Huella documental en la Parte 5.** `dossier_fingerprint` (decisión 23) se adelanta, con tests de que exonerar y reabrir la cambian. El test "reabrir en `READY_TO_FILE` y la guarda no deja radicar" va en la Parte 6, y el de radicar con un paquete de otra huella, en el paso 11. Queda para la Parte 6 preguntar si una solicitud en `READY_TO_FILE` sigue así cuando se reabre o rechaza un documento (y la guarda la frena al radicar) o vuelve sola a revisión documental.
 
 ## Decididas en la implementación
 
@@ -461,9 +491,41 @@ No quedan. Las dos tandas y la precisión de SeaweedFS están en "Decisiones (ac
   - **no se usó el servicio `seaweedfs` del compose:** el volumen `mvp_credit_seaweedfs_data` existía (en la Parte 2 se había borrado), así que podía tener datos del usuario. Se levantó un contenedor aparte, `e2e-seaweedfs`, en `mvp_credit_network`, sin volumen ni puerto en el host y con credenciales temporales; `clamav` sí fue el del perfil `async`. Al terminar se borraron los dos contenedores; los volúmenes quedaron como estaban;
   - el test temporal vive fuera del repositorio, montado en `/e2e` con su propio `conftest.py` que importa los fixtures del proyecto, y se corre con `python -m pytest -c /app/pytest.ini /e2e/...`. Con `-p tests.conftest` no funciona: los plugins se cargan antes de `django.setup()`.
 
+### Parte 5
+- **Archivos:** `apps/documents/reviews.py` (servicio de revisión), `fingerprint.py`, `downloads.py`, la migración `documents 0005_review_slot_and_waivers` y cinco rutas nuevas: `PATCH /document-slots/{id}/review`, `GET /document-files/{id}`, `.../scan-status`, `.../download` y `GET /buyer/document-files/{id}/download`.
+- **Petición de la revisión** (`StrictSerializer`): cada decisión admite y exige sus campos; uno que no aplica responde `400` `NOT_ALLOWED` y uno que falta, `REQUIRED`.
+
+  | `decision` | Exige | Admite además |
+  | --- | --- | --- |
+  | `APPROVED` | `document_file_id` | `internal_comment`, `document_date` |
+  | `REJECTED` | `document_file_id`, `reason_code`, `buyer_comment` | `internal_comment` |
+  | `WAIVED` | `reason_code` | `internal_comment` |
+  | `REOPENED` | `internal_comment` | — |
+
+  `reason_code` se busca en `document_rejection_reason` o en `document_waiver_reason` según la decisión (un código del otro catálogo: `400 NOT_FOUND`). `document_date` futura: `400`. Una exoneración no guarda `buyer_comment`: el comprador nunca ve exoneraciones.
+- **Respuesta:** `200 {"slots": [...]}` con los slots que cambiaron, en el orden de presentación. Al exonerar desde un slot aprobado del grupo, ese slot no aparece (no cambió).
+- **Reglas que no estaban escritas:**
+  - aprobar o rechazar el archivo de un slot `WAIVED`: `409 DOCUMENT_LOCKED` ("reabre la exoneración antes"). Si no, aprobar saltaría la reapertura y dejaría al resto del grupo exonerado;
+  - un slot retirado: `409 DOCUMENT_LOCKED` ("ya no aplica");
+  - un `document_file_id` que no es de este slot: `400` `NOT_A_VERSION`; uno del slot que ya no es el vigente: `409 DOCUMENT_NOT_CURRENT`;
+  - se puede rechazar una versión con el análisis todavía `PENDING`; si después sale `CLEAN`, sigue rechazada (el análisis solo mueve `UPLOADED` a `IN_REVIEW`);
+  - exonerar un slot ya exonerado (o un grupo donde todos están aprobados o exonerados): `400` `NOTHING_TO_WAIVE`;
+  - **vencido** = `expires_at <= hoy`: con 30 días de vigencia, el día 30 ya no se aprueba. Al aprobar, `expires_at` se recalcula con la fecha que manda el asesor o con la de la carga;
+  - después de `FILED` solo se aprueba o rechaza un slot con observación abierta (`slot_has_open_observation`, `False` hasta el paso 11); exonerar y reabrir siempre responden `409 APPLICATION_NOT_EDITABLE`. Con la solicitud terminada, `409 APPLICATION_CLOSED`;
+  - al reabrir, una versión `UPLOADED` o `IN_REVIEW` deja el slot `UPLOADED` (el slot no tiene estado `IN_REVIEW`).
+- **Bloqueos:** la revisión bloquea solo las filas de los slots afectados, ordenadas por id (`select_for_update(of=("self",))`), sin la solicitud (decisión 22). El grupo y el lote se leen antes y se vuelven a comprobar con los bloqueos.
+- **Historial:** `GET /document-slots/{id}` agrega `waiver_history` (exoneraciones y reaperturas con revisor, motivo, nota, versión y lote). Las `reviews` de cada versión, internas y del comprador, solo traen aprobaciones y rechazos; `version_rejection` también las filtra, así que el rechazo sigue visible para el comprador después de exonerar y reabrir.
+- **Descargas:**
+  - permisos: `documents.download` en la descarga interna y `documents.read` en metadatos y análisis. El comprador descarga cualquier versión de un slot vigente de su solicitud, sin consentimientos (es una lectura); un slot retirado le responde `404`, mientras que adentro sigue descargable;
+  - respuesta `{url, expires_at}` con `Cache-Control: no-store`. `DOCUMENT_DOWNLOAD_URL_SECONDS` (300 por omisión) es variable de entorno;
+  - si el almacenamiento no firma: `503 SERVICE_UNAVAILABLE` (`DownloadUnavailable`);
+  - el log dice qué versión se firmó y para quién (`user:<id>` o `buyer_session:<id>`), nunca la URL ni la clave del objeto. Un test lo verifica con `caplog`;
+  - límite `document_download` = `60/1h` en `AUTH_RATE_LIMITS`, por usuario o por sesión. Solo cuenta las descargas.
+- **Huella:** `dossier_fingerprint` usa `json.dumps` compacto de la lista ordenada por `slot_id`. Reabrir devuelve la huella anterior a la exoneración, porque el expediente queda igual.
+
 ## Pendientes para pasos posteriores
 
-1. **Paso 11.** Implementar `slot_has_open_observation`, fijar `locked_at` al radicar, exigir que la huella documental del paquete coincida con la actual (`dossier_fingerprint`, acordada 6) y la huella y firma de `IDENTITY_DOCUMENT`.
+1. **Paso 11.** Implementar `slot_has_open_observation`, fijar `locked_at` al radicar, exigir que la huella documental del paquete coincida con la actual (`dossier_fingerprint`, acordada 6) con su test (radicar con un paquete de otra huella, Tanda 3, decisión 28) y la huella y firma de `IDENTITY_DOCUMENT`.
 2. **Paso 12.** Actividad de cargas, revisiones y descargas (RF-61), con la visible para el comprador.
 3. **Paso 13.** `Idempotency-Key` en `POST /document-package-jobs`; notificación al comprador de un rechazo; aviso al comprador cuando un documento aprobado esté por vencer (acordada 8).
 4. **Paso 14.** Auditoría de descargas.

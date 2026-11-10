@@ -181,9 +181,16 @@ Las cookies de sesión usan `HttpOnly`, `Secure`, `SameSite=Lax` y `Path=/`. La 
 | `BANK_RULE_BLOCKED` | Regla bancaria bloqueante incumplida o sin datos para decidir. |
 | `BANK_PRODUCT_REQUIRED` | Evaluar reglas bancarias sin producto elegido (`422`). |
 | `FINANCING_MODE_MISMATCH` | Cierre `OWN_FUNDS` o `EXTERNAL_CREDIT_APPROVED` sin la modalidad de financiación correspondiente (`422`). |
-| `DOCUMENT_LOCKED` | Documento no modificable en la etapa actual. |
+| `DOCUMENT_LOCKED` | Documento no modificable en la etapa actual: carga sobre un slot aprobado o exonerado, revisión del archivo de un slot exonerado o de un slot retirado (`409`). |
 | `DOCUMENT_NOT_REJECTED` | Reemplazo posterior a radicación sin observación. |
-| `FILE_NOT_CLEAN` | Archivo sin análisis limpio. |
+| `DOCUMENT_NOT_CURRENT` | La revisión apunta a una versión que ya no es la vigente del slot (`409`). |
+| `DOCUMENT_EXPIRED` | Aprobación de un documento vencido (`422`). |
+| `DOCUMENT_QUOTA_EXCEEDED` | Cuota de cargas superada: versiones por slot o bytes por solicitud; `details[0].code` dice cuál (`409`). |
+| `FILE_NOT_CLEAN` | Archivo sin análisis limpio: no se aprueba ni se descarga (`409`). |
+| `UNSUPPORTED_FILE_TYPE` | Tipo real, extensión o MIME declarado no permitidos para el documento (`422`). |
+| `FILE_TOO_LARGE` | El archivo supera el tamaño máximo del tipo documental (`422`). |
+| `PAYLOAD_TOO_LARGE` | El cuerpo de la carga supera el límite global; se corta antes de leerlo (`413`). |
+| `SERVICE_UNAVAILABLE` | El almacenamiento de archivos no respondió al cargar o al firmar una descarga (`503`). |
 | `IDEMPOTENCY_CONFLICT` | Misma clave con cuerpo diferente. |
 | `DUPLICATE_CLIENT_DOCUMENT` | Documento de identidad ya registrado. |
 | `PROJECT_NOT_ACTIVE` | Proyecto borrador/archivado no asociable. |
@@ -1060,69 +1067,83 @@ Estas reglas validan preparación operativa; no aprueban ni rechazan el crédito
 
 El expediente se modela como una lista de requisitos (`document slots`). Cada slot representa un documento esperado y conserva todas sus versiones. Los archivos no se reemplazan físicamente ni se eliminan: una nueva carga crea una nueva versión.
 
-### 19.1 Lista de documentos y vigencia de requisitos
+### 19.1 Lista de documentos, revisión y descargas
 
 | Método | Ruta | Permiso | Descripción |
 | --- | --- | --- | --- |
-| `GET` | `/applications/{application_id}/document-slots` | `ADMIN`, asesor asignado o comprador | Lista de chequeo, estado, obligatoriedad y versión vigente. |
-| `POST` | `/applications/{application_id}/document-slots/refresh` | `ADMIN` o asesor asignado con `documents.manage_requirements` | Recalcula requisitos según banco, finalidad, participantes y perfil laboral. |
-| `GET` | `/document-slots/{slot_id}` | `ADMIN`, asesor asignado o comprador | Detalle del requisito. |
-| `GET` | `/document-slots/{slot_id}/versions` | `ADMIN`, asesor asignado o comprador | Historial de versiones del documento. |
-| `POST` | `/document-slots/{slot_id}/uploads` | Comprador del expediente | Carga una nueva versión con `multipart/form-data`. |
-| `PATCH` | `/document-slots/{slot_id}/review` | `ADMIN` o asesor asignado con `documents.review` | Aprueba, rechaza o exonera el requisito. |
-| `GET` | `/document-files/{file_id}` | `ADMIN`, asesor asignado o comprador | Metadatos de una versión, filtrados por rol. |
-| `GET` | `/document-files/{file_id}/download` | `ADMIN`, asesor asignado o comprador | Obtiene URL firmada de descarga con vigencia corta. |
-| `GET` | `/document-files/{file_id}/scan-status` | `ADMIN` o asesor asignado | Consulta validación antivirus y técnica. |
+| `GET` | `/applications/{application_id}/document-slots` | `documents.read`, asesor asignado | Lista de chequeo, estado, obligatoriedad y versión vigente. |
+| `POST` | `/applications/{application_id}/document-slots/refresh` | `documents.manage_requirements`, asesor asignado | Recalcula requisitos según banco, finalidad, participantes y perfil laboral. |
+| `GET` | `/document-slots/{slot_id}` | `documents.read`, asesor asignado | Detalle del slot con `waiver_history` (exoneraciones y reaperturas). |
+| `GET` | `/document-slots/{slot_id}/versions` | `documents.read`, asesor asignado | Historial de versiones con sus aprobaciones y rechazos. |
+| `PATCH` | `/document-slots/{slot_id}/review` | `documents.review`, asesor asignado; `WAIVED` y `REOPENED` exigen además `documents.waive` | Aprueba, rechaza, exonera o reabre. |
+| `GET` | `/document-files/{file_id}` | `documents.read`, asesor asignado | Metadatos de una versión. |
+| `GET` | `/document-files/{file_id}/scan-status` | `documents.read`, asesor asignado | Validación técnica y antivirus. |
+| `GET` | `/document-files/{file_id}/download` | `documents.download`, asesor asignado | URL firmada de descarga con vigencia corta. |
+| `GET` | `/buyer/applications/{application_id}/document-slots` | Comprador del expediente | Documentos que pide la solicitud, con formatos, tamaño máximo y rechazo vigente. |
+| `GET` | `/buyer/document-slots/{slot_id}` y `.../versions` | Comprador del expediente | Detalle y archivos cargados. |
+| `POST` | `/buyer/document-slots/{slot_id}/uploads` | Comprador del expediente | Carga una nueva versión con `multipart/form-data`. |
+| `GET` | `/buyer/document-files/{file_id}/download` | Comprador del expediente | URL firmada de descarga de un archivo propio. |
 
-Filtros de la lista: `status`, `participant_id`, `document_type_code`, `required=true|false`.
+> **Nota (paso 10).** El comprador no usa las rutas internas: tiene las suyas bajo `/buyer/...`, con DTO propios que nunca traen comentarios internos, revisor, requisito ni datos técnicos del análisis. Broker y partner reciben `403` en todo el expediente; el asesor fuera de su alcance, `404`.
 
-Estados de un slot: `MISSING`, `UPLOADED`, `IN_REVIEW`, `APPROVED`, `REJECTED`, `WAIVED`. Estados técnicos del archivo: `PENDING_SCAN`, `CLEAN`, `INFECTED`, `INVALID`.
+Filtros de la lista interna: `status`, `participant_id`, `document_type_code`, `required=true|false`, `include_retired=true|false`.
+
+Estados de un slot: `PENDING`, `UPLOADED`, `APPROVED`, `REJECTED`, `WAIVED`. Estados de una versión: `UPLOADED` (análisis en curso), `IN_REVIEW` (análisis limpio, espera al asesor), `APPROVED`, `REJECTED`. Estados técnicos del archivo: `PENDING`, `CLEAN`, `INFECTED`, `INVALID`.
 
 Carga de archivo:
 
 ```http
-POST /api/v1/document-slots/00e6.../uploads
+POST /api/v1/buyer/document-slots/00e6.../uploads
 Content-Type: multipart/form-data
 
 file=<archivo>
-client_filename=certificacion_laboral.pdf
+document_date=2026-08-20
 ```
 
-```json
-{
-  "data": {
-    "id": "uuid",
-    "slot_id": "uuid",
-    "version": 2,
-    "filename": "certificacion_laboral.pdf",
-    "mime_type": "application/pdf",
-    "size_bytes": 483220,
-    "scan_status": "PENDING_SCAN",
-    "slot_status": "UPLOADED",
-    "uploaded_at": "2026-08-24T16:00:00Z"
-  }
-}
-```
+Responde `201` con el slot del comprador. La versión queda `UPLOADED` hasta que termina el análisis.
 
-Revisión:
+Revisión: `PATCH /document-slots/{slot_id}/review`, sin `If-Match`. Cada decisión deja una fila nueva en `document_reviews` por slot afectado; corregir es decidir otra vez, nunca se edita la anterior. Responde `200 {"slots": [...]}` con los slots que cambiaron.
 
 ```json
 {
   "decision": "REJECTED",
+  "document_file_id": "uuid",
   "reason_code": "OUTDATED",
   "buyer_comment": "La certificación laboral debe tener menos de 30 días.",
   "internal_comment": "Fecha de expedición: 2 de junio."
 }
 ```
 
+| `decision` | Campos | Efecto |
+| --- | --- | --- |
+| `APPROVED` | `document_file_id` (obligatorio), `document_date` e `internal_comment` (opcionales) | La versión vigente y el slot quedan `APPROVED`. Exige análisis `CLEAN` (`409 FILE_NOT_CLEAN`). Si el slot tiene vigencia, exige `document_date` (la de la carga o la que se envía, que la corrige y recalcula `expires_at`); un documento vencido responde `422 DOCUMENT_EXPIRED`. |
+| `REJECTED` | `document_file_id`, `reason_code` (`document_rejection_reason`) y `buyer_comment` (obligatorios), `internal_comment` | La versión vigente y el slot quedan `REJECTED`. El comprador ve el motivo y `buyer_comment`. |
+| `WAIVED` | `reason_code` (`document_waiver_reason`, obligatorio), `internal_comment` | El slot queda `WAIVED` con el motivo. En un grupo alternativo se exoneran también los demás slots del grupo del mismo titular, salvo los aprobados (conservan su aprobación) y los ya exonerados; todos comparten `decision_batch_id`. Si alguno de los que se exonerarían no es exonerable, no se exonera ninguno. Las versiones no cambian. |
+| `REOPENED` | `internal_comment` (obligatorio, no vacío) | Deshace la última exoneración del slot y de los slots que se exoneraron con ella y siguen así. Cada uno vuelve al estado de su versión vigente (`PENDING` si no tiene, `UPLOADED` si espera análisis o revisión). |
+
+Errores de la revisión: `400 VALIDATION_ERROR` (campo que no aplica a la decisión o que falta, `document_date` futura o faltante; en `details[].code`, `NOT_A_VERSION`, `NOT_WAIVABLE`, `NOTHING_TO_WAIVE` o `NOT_WAIVED`, con el slot en `resource_id`), `403 PERMISSION_DENIED` (sin `documents.waive`), `409 DOCUMENT_NOT_CURRENT`, `409 FILE_NOT_CLEAN`, `409 DOCUMENT_LOCKED` (slot retirado, o archivo de un slot exonerado: primero se reabre), `409 APPLICATION_NOT_EDITABLE` (desde `FILED`), `409 APPLICATION_CLOSED` y `422 DOCUMENT_EXPIRED`.
+
+Descarga:
+
+```json
+{
+  "url": "https://...",
+  "expires_at": "2026-08-24T16:05:00Z"
+}
+```
+
+La URL es prefirmada, dura `DOCUMENT_DOWNLOAD_URL_SECONDS` (300 por omisión), lleva `Content-Disposition: attachment` con el nombre de la versión y el `Content-Type` detectado, y la respuesta va con `Cache-Control: no-store`. Límite: 60 descargas por hora por usuario o por sesión del comprador. Errores: `409 FILE_NOT_CLEAN`, `429 RATE_LIMITED` y `503 SERVICE_UNAVAILABLE`.
+
 Reglas:
 
-- `APPROVED` exige una versión `CLEAN`; `WAIVED` exige motivo y permiso específico.
-- Un archivo `INFECTED` o `INVALID` no puede descargarse ni aprobarse.
+- `APPROVED` exige una versión `CLEAN`; `WAIVED` y `REOPENED` exigen motivo y el permiso `documents.waive`.
+- Un archivo `PENDING`, `INFECTED` o `INVALID` no puede descargarse ni aprobarse.
 - El comprador puede cargar documentos mientras la solicitud no esté radicada.
 - Broker y partner solo reciben avance/resumen del expediente; no pueden cargar, listar versiones ni descargar archivos.
-- Después de `FILED`, solo puede cargar una nueva versión en un slot `REJECTED` por observación.
-- La respuesta nunca expone la clave real del almacenamiento; la descarga usa URL firmada y auditada.
+- Después de `FILED`, solo puede cargar una nueva versión en un slot `REJECTED` por observación, y el asesor solo aprueba o rechaza esas versiones; exonerar y reabrir quedan cerrados.
+- Las revisiones, exoneraciones y reaperturas no cambian la versión de la solicitud (`If-Match` no aplica). La huella del expediente sí cambia y la usan el paquete y la radicación.
+- `internal_comment` nunca llega al comprador.
+- La respuesta nunca expone la clave real del almacenamiento; la descarga usa URL firmada y la URL no se registra en los logs.
 - Cambiar banco, producto, finalidad, participantes o perfil laboral vuelve a evaluar los requisitos sin borrar el historial.
 
 ### 19.2 Paquete para radicación

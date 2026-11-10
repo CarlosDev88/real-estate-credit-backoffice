@@ -96,9 +96,9 @@ class DocumentFileAdmin(_ReadOnlyAdmin):
 
 @admin.register(DocumentReview)
 class DocumentReviewAdmin(_ReadOnlyAdmin):
-    list_display = ["document_file", "decision", "reason_item", "reviewer", "created_at"]
+    list_display = ["slot", "document_file", "decision", "reason_item", "reviewer", "created_at"]
     list_filter = ["decision"]
-    list_select_related = ["document_file", "reason_item", "reviewer"]
+    list_select_related = ["slot", "document_file", "reason_item", "reviewer"]
 
 
 @admin.register(DocumentPackageJob)

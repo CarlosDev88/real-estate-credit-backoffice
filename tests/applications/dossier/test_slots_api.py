@@ -285,12 +285,14 @@ def test_versions_list_every_upload_with_its_reviews(
         status="REJECTED",
     )
     DocumentReview.objects.create(
+        slot=first.slot,
         document_file=first,
         reviewer=advisor_user,
         decision=ReviewDecision.APPROVED,
     )
     later = timezone.now() + timedelta(seconds=1)
     correction = DocumentReview.objects.create(
+        slot=first.slot,
         document_file=first,
         reviewer=advisor_user,
         decision=ReviewDecision.REJECTED,

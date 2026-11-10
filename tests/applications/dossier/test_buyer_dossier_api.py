@@ -551,6 +551,7 @@ def test_an_advisor_rejection_shows_reason_and_comment_but_never_the_internal_no
         file_object=make_file_object(scan_status=ScanStatus.CLEAN, scanned_at=timezone.now()),
     )
     DocumentReview.objects.create(
+        slot=version.slot,
         document_file=version,
         reviewer=advisor_user,
         decision=ReviewDecision.REJECTED,
@@ -586,7 +587,10 @@ def test_a_rejection_corrected_to_approved_is_no_longer_shown(
 ) -> None:
     version = make_document_file(slot=slot, status=DocumentFileStatus.REJECTED)
     DocumentReview.objects.create(
-        document_file=version, reviewer=advisor_user, decision=ReviewDecision.APPROVED
+        slot=version.slot,
+        document_file=version,
+        reviewer=advisor_user,
+        decision=ReviewDecision.APPROVED,
     )
 
     row = portal.get(slot_url(slot, "/versions")).json()["items"][0]

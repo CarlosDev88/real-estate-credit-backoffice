@@ -86,3 +86,34 @@ class UploadUnavailable(ApiError):
     status_code = status.HTTP_503_SERVICE_UNAVAILABLE
     error_code = "SERVICE_UNAVAILABLE"
     default_detail = "No fue posible guardar el archivo en este momento. Intenta de nuevo."
+
+
+class DownloadUnavailable(ApiError):
+    """El almacenamiento no pudo firmar la URL de descarga (``503``): reintentar."""
+
+    status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+    error_code = "SERVICE_UNAVAILABLE"
+    default_detail = "No fue posible preparar la descarga en este momento. Intenta de nuevo."
+
+
+# --- Revisión (Parte 5) --------------------------------------------------------------------
+
+
+class DocumentNotCurrent(ApiError):
+    status_code = status.HTTP_409_CONFLICT
+    error_code = "DOCUMENT_NOT_CURRENT"
+    default_detail = (
+        "El archivo ya no es la versión vigente del documento: revisa la versión más reciente."
+    )
+
+
+class FileNotClean(ApiError):
+    status_code = status.HTTP_409_CONFLICT
+    error_code = "FILE_NOT_CLEAN"
+    default_detail = "El archivo no tiene un análisis de seguridad limpio."
+
+
+class DocumentExpired(ApiError):
+    status_code = status.HTTP_422_UNPROCESSABLE_ENTITY
+    error_code = "DOCUMENT_EXPIRED"
+    default_detail = "El documento está vencido: pide al comprador uno más reciente."

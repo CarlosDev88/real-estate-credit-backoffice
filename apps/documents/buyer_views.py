@@ -3,6 +3,7 @@
 - ``GET /buyer/applications/{id}/document-slots``
 - ``GET /buyer/document-slots/{slot_id}`` y ``.../versions``
 - ``POST /buyer/document-slots/{slot_id}/uploads`` (``multipart/form-data``)
+- ``GET /buyer/document-files/{file_id}/download``
 
 Solo la cookie del comprador autentica. Un slot de otra solicitud o retirado responde
 ``404``. La carga exige CSRF y los consentimientos, y responde ``409
@@ -21,12 +22,14 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 
 from apps.applications.models import CreditApplication
-from apps.documents import dossier, uploads
+from apps.documents import dossier, downloads, uploads
 from apps.documents.buyer_serializers import (
     BuyerDocumentSlotSerializer,
     BuyerDocumentUploadSerializer,
     BuyerDocumentVersionSerializer,
 )
+from apps.documents.dossier_serializers import DocumentDownloadSerializer
+from apps.documents.dossier_views import DOWNLOAD_DESCRIPTION, no_store
 from apps.documents.exceptions import PayloadTooLarge
 from apps.documents.models import ApplicationDocumentSlot
 from apps.identity.buyer_portal_views import (
@@ -35,7 +38,10 @@ from apps.identity.buyer_portal_views import (
     SESSION_ERRORS,
     BuyerPortalView,
 )
-from apps.identity.throttling import BuyerDocumentUploadRateThrottle
+from apps.identity.throttling import (
+    BuyerDocumentUploadRateThrottle,
+    DocumentDownloadRateThrottle,
+)
 from config.serializers import ErrorSerializer
 
 
@@ -176,3 +182,30 @@ class BuyerDocumentUploadView(BuyerDossierView):
             ),
         )
         return self.slot_response(slot_id, status=status.HTTP_201_CREATED)
+
+
+class BuyerDocumentFileDownloadView(BuyerDossierView):
+    throttle_classes = [DocumentDownloadRateThrottle]
+
+    @extend_schema(
+        tags=[BUYER_PORTAL_TAG],
+        operation_id="buyer_document_files_download",
+        summary="Descargar un archivo cargado",
+        description=(
+            "Cualquier versión de un documento vigente de la solicitud de la sesión. "
+            + DOWNLOAD_DESCRIPTION
+        ),
+        responses={
+            200: DocumentDownloadSerializer,
+            409: _error("FILE_NOT_CLEAN"),
+            429: _error("RATE_LIMITED"),
+            503: _error("SERVICE_UNAVAILABLE (almacenamiento no disponible)"),
+            **READ_ERRORS,
+        },
+    )
+    def get(self, request: Request, file_id: Any) -> Response:
+        version = get_object_or_404(dossier.buyer_files(self.buyer_session), pk=file_id)
+        link = downloads.download_link(
+            version, requested_by=f"buyer_session:{self.buyer_session.pk}"
+        )
+        return no_store(Response(DocumentDownloadSerializer(link).data))

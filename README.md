@@ -194,6 +194,21 @@ Only the buyer uploads documents, from the portal (`POST /api/v1/buyer/document-
 | `DOCUMENT_UPLOAD_MAX_VERSIONS_PER_SLOT` | `20` | Uploaded versions allowed per document slot. |
 | `DOCUMENT_UPLOAD_QUOTA_BYTES` | `209715200` (200 MB) | Total bytes of all uploaded versions per application. |
 
+### Review and Downloads
+
+Advisors (and admins) review each slot with `PATCH /api/v1/document-slots/{slot_id}/review`. No `If-Match`: documents never change the application version. Every decision adds an immutable row to `document_reviews`; correcting a decision is deciding again.
+
+- `APPROVED` / `REJECTED` act on `document_file_id`, which must be the slot's current version (`409 DOCUMENT_NOT_CURRENT`). Approving needs a `CLEAN` scan (`409 FILE_NOT_CLEAN`) and, when the slot has a validity period, a `document_date` (the buyer's or a corrected one); an expired document is not approved (`422 DOCUMENT_EXPIRED`). Rejecting needs `reason_code` and `buyer_comment`.
+- `WAIVED` (needs `documents.waive`) waives the slot with a `document_waiver_reason`. In an alternative group it also waives the holder's other slots of the group, except the approved ones; if any slot that would be waived is not waivable, nothing is waived.
+- `REOPENED` (needs `documents.waive` and an `internal_comment`) undoes the last waiver of the slot and of the slots waived with it; each returns to the status of its current version (`PENDING` without one).
+- Only before `FILED` (`409 APPLICATION_NOT_EDITABLE`). `internal_comment` never reaches the buyer.
+
+Downloads return a short-lived pre-signed URL: `GET /api/v1/document-files/{file_id}/download` (internal, `documents.download`) and `GET /api/v1/buyer/document-files/{file_id}/download` (buyer). Only `CLEAN` files (`409 FILE_NOT_CLEAN`); 60 downloads per hour per user or buyer session. The URL is never logged.
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `DOCUMENT_DOWNLOAD_URL_SECONDS` | `300` | Lifetime of the pre-signed download URL. |
+
 ## Internal Authentication
 
 Internal users (admin, advisors, brokers, and partner users) authenticate with email and password. The API never returns tokens in the body; it sets cookies:

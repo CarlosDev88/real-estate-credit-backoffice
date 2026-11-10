@@ -190,6 +190,8 @@ AUTH_RATE_LIMITS = {
     "buyer_access_issue": "3/1h",
     # Cargas de documentos del comprador, por sesión y solicitud (decisión 12).
     "buyer_document_upload": "60/1h",
+    # Descargas de documentos, por usuario interno o sesión del comprador (decisión 12).
+    "document_download": "60/1h",
 }
 
 # Página del frontend que recibe `?token=` para definir la nueva contraseña.
@@ -264,6 +266,8 @@ DOCUMENT_UPLOAD_QUOTA_BYTES = env.int("DOCUMENT_UPLOAD_QUOTA_BYTES", default=200
 # Cuerpo máximo de una carga: el archivo más grande (10 MB) y el margen del multipart.
 # Uno mayor se corta con `413` antes de leerlo.
 DOCUMENT_UPLOAD_MAX_REQUEST_BYTES = 10 * 1024 * 1024 + 512 * 1024
+# Vigencia de la URL prefirmada de descarga (decisión 13).
+DOCUMENT_DOWNLOAD_URL_SECONDS = env.int("DOCUMENT_DOWNLOAD_URL_SECONDS", default=300)
 
 LOGGING = {
     "version": 1,

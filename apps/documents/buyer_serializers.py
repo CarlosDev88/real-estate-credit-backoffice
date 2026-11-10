@@ -22,6 +22,7 @@ from apps.documents.models import (
     ScanStatus,
     SlotStatus,
 )
+from apps.documents.models.review import FILE_DECISIONS
 from apps.documents.scans import SECURITY_REJECTION_MESSAGE
 from apps.documents.uploads import upload_block
 from config.serializers import StrictSerializer
@@ -48,7 +49,10 @@ def version_rejection(version: DocumentFile | None) -> dict[str, Any] | None:
             "buyer_comment": SECURITY_REJECTION_MESSAGE,
             "rejected_at": file_object.scanned_at,
         }
-    latest = next(iter(version.reviews.all()), None)
+    # Las exoneraciones y reaperturas son internas: solo cuentan aprobar y rechazar.
+    latest = next(
+        (review for review in version.reviews.all() if review.decision in FILE_DECISIONS), None
+    )
     if latest is None or latest.decision != ReviewDecision.REJECTED:
         return None
     return {

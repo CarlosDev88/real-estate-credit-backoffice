@@ -1,28 +1,35 @@
 """Endpoints internos del expediente documental (API §19): lista, detalle y versiones
-de los slots, y recálculo manual. Las rutas del comprador van bajo ``/buyer/...``
-(Parte 4)."""
+de los slots, recálculo manual, revisión y metadatos, análisis y descarga de las
+versiones. Las rutas del comprador van bajo ``/buyer/...``."""
 
 from typing import Any, cast
 
 from django.shortcuts import get_object_or_404
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, extend_schema
-from rest_framework.exceptions import ValidationError
+from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.generics import GenericAPIView
 from rest_framework.request import Request
 from rest_framework.response import Response
 
 from apps.applications.models import CreditApplication
 from apps.applications.services import applications_visible_to
-from apps.documents import dossier
+from apps.documents import dossier, downloads, reviews
 from apps.documents.dossier_serializers import (
+    DocumentDownloadSerializer,
+    DocumentFileScanStatusSerializer,
     DocumentFileSerializer,
+    DocumentSlotDetailSerializer,
+    DocumentSlotReviewResultSerializer,
+    DocumentSlotReviewSerializer,
     DocumentSlotSerializer,
     SlotRefreshSerializer,
 )
-from apps.documents.models import ApplicationDocumentSlot, SlotStatus
+from apps.documents.models import ApplicationDocumentSlot, DocumentFile, SlotStatus
+from apps.documents.models.review import SLOT_DECISIONS
 from apps.identity.models import User
-from apps.identity.permissions import HasPermissionCode
+from apps.identity.permissions import HasPermissionCode, get_request_permission_codes
+from apps.identity.throttling import DocumentDownloadRateThrottle
 from config.filters import parse_bool_param, parse_uuid_param
 from config.serializers import ErrorSerializer
 
@@ -30,6 +37,9 @@ DOSSIER_TAG = "Document dossier"
 
 READ = "documents.read"
 MANAGE_REQUIREMENTS = "documents.manage_requirements"
+REVIEW = "documents.review"
+WAIVE = "documents.waive"
+DOWNLOAD = "documents.download"
 
 
 def _error(description: str) -> OpenApiResponse:
@@ -56,6 +66,9 @@ class DossierView(GenericAPIView):
 
     def get_slot(self, slot_id: Any) -> ApplicationDocumentSlot:
         return get_object_or_404(dossier.slots_visible_to(self.actor), pk=slot_id)
+
+    def get_file(self, file_id: Any) -> DocumentFile:
+        return get_object_or_404(dossier.files_visible_to(self.actor), pk=file_id)
 
 
 def _status_param(request: Request) -> str | None:
@@ -163,11 +176,16 @@ class DocumentSlotDetailView(DossierView):
         tags=[DOSSIER_TAG],
         operation_id="document_slots_retrieve",
         summary="Detalle de un slot",
-        description="Incluye los slots retirados.",
-        responses={200: DocumentSlotSerializer, **NOT_FOUND, **COMMON_ERRORS},
+        description=(
+            "Incluye los slots retirados. `waiver_history` trae las exoneraciones y "
+            "reaperturas, de la más reciente a la primera, con quién las hizo; las "
+            "aprobaciones y los rechazos van en cada versión."
+        ),
+        responses={200: DocumentSlotDetailSerializer, **NOT_FOUND, **COMMON_ERRORS},
     )
     def get(self, request: Request, slot_id: Any) -> Response:
-        return Response(DocumentSlotSerializer(self.get_slot(slot_id)).data)
+        slot = get_object_or_404(dossier.slot_detail_queryset(self.actor), pk=slot_id)
+        return Response(DocumentSlotDetailSerializer(slot).data)
 
 
 class DocumentSlotVersionListView(DossierView):
@@ -190,3 +208,135 @@ class DocumentSlotVersionListView(DossierView):
         return self.get_paginated_response(
             DocumentFileSerializer(page, many=True, context=context).data
         )
+
+
+class DocumentSlotReviewView(DossierView):
+    required_permissions = {"PATCH": REVIEW}
+
+    @extend_schema(
+        tags=[DOSSIER_TAG],
+        operation_id="document_slots_review",
+        summary="Revisar, exonerar o reabrir un documento",
+        description=(
+            "Cada decisión deja una fila nueva en el historial por slot afectado; corregir "
+            "es decidir otra vez, nunca se edita la anterior. No exige `If-Match` ni "
+            "cambia la versión de la solicitud. Solo antes de `FILED`.\n\n"
+            "- `APPROVED`: sobre `document_file_id`, la versión vigente, con análisis "
+            "`CLEAN`. Si el documento tiene vigencia exige `document_date` (la del "
+            "comprador o la que se envía aquí, que la corrige) y no se aprueba vencido.\n"
+            "- `REJECTED`: sobre la versión vigente, con `reason_code` de "
+            "`document_rejection_reason` y `buyer_comment`, que ve el comprador.\n"
+            "- `WAIVED` (`documents.waive`): `reason_code` de `document_waiver_reason`. En "
+            "un grupo alternativo exonera también los demás slots del grupo del mismo "
+            "titular, salvo los aprobados, que conservan su aprobación; si alguno de los "
+            "que se exonerarían no es exonerable, no se exonera ninguno.\n"
+            "- `REOPENED` (`documents.waive`): deshace la última exoneración del slot y "
+            "de los que se exoneraron con ella; cada uno vuelve al estado de su versión "
+            "vigente (`PENDING` si no tiene). Exige `internal_comment`.\n\n"
+            "`internal_comment` nunca llega al comprador. Responde los slots que "
+            "cambiaron."
+        ),
+        request=DocumentSlotReviewSerializer,
+        responses={
+            200: DocumentSlotReviewResultSerializer,
+            400: _error(
+                "VALIDATION_ERROR: campos de la decisión, `document_date` faltante o "
+                "futura, `NOT_A_VERSION`, `NOT_WAIVABLE`, `NOTHING_TO_WAIVE` o "
+                "`NOT_WAIVED` en `details[].code`, con el slot en `resource_id`"
+            ),
+            401: COMMON_ERRORS[401],
+            403: _error("PERMISSION_DENIED (también sin `documents.waive`) o CSRF_FAILED"),
+            409: _error(
+                "DOCUMENT_NOT_CURRENT, FILE_NOT_CLEAN, DOCUMENT_LOCKED, "
+                "APPLICATION_NOT_EDITABLE o APPLICATION_CLOSED"
+            ),
+            422: _error("DOCUMENT_EXPIRED"),
+            **NOT_FOUND,
+        },
+    )
+    def patch(self, request: Request, slot_id: Any) -> Response:
+        slot = self.get_slot(slot_id)
+        serializer = DocumentSlotReviewSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        if data["decision"] in SLOT_DECISIONS and WAIVE not in get_request_permission_codes(
+            request
+        ):
+            raise PermissionDenied("No tienes permiso para exonerar documentos.")
+        changed = reviews.review_slot(self.actor, slot, reviews.Review(**data))
+        slots = dossier.slots_queryset().filter(pk__in=changed)
+        return Response(DocumentSlotReviewResultSerializer({"slots": slots}).data)
+
+
+class DocumentFileDetailView(DossierView):
+    required_permissions = {"GET": READ}
+
+    @extend_schema(
+        tags=[DOSSIER_TAG],
+        operation_id="document_files_retrieve",
+        summary="Metadatos de una versión",
+        description=(
+            "Archivo, análisis y aprobaciones o rechazos de la versión, incluido el "
+            "comentario interno. Nunca la clave del almacenamiento."
+        ),
+        responses={200: DocumentFileSerializer, **NOT_FOUND, **COMMON_ERRORS},
+    )
+    def get(self, request: Request, file_id: Any) -> Response:
+        version = self.get_file(file_id)
+        context = {"current_file_id": version.slot.current_file_id}
+        return Response(DocumentFileSerializer(version, context=context).data)
+
+
+class DocumentFileScanStatusView(DossierView):
+    required_permissions = {"GET": READ}
+
+    @extend_schema(
+        tags=[DOSSIER_TAG],
+        operation_id="document_files_scan_status",
+        summary="Análisis de seguridad de una versión",
+        description=(
+            "`PENDING` mientras corre el análisis; `CLEAN`, `INFECTED` (antivirus) o "
+            "`INVALID` (el objeto guardado no coincide con su huella) al terminar."
+        ),
+        responses={200: DocumentFileScanStatusSerializer, **NOT_FOUND, **COMMON_ERRORS},
+    )
+    def get(self, request: Request, file_id: Any) -> Response:
+        return Response(DocumentFileScanStatusSerializer(self.get_file(file_id)).data)
+
+
+DOWNLOAD_DESCRIPTION = (
+    "URL prefirmada de corta duración (`DOCUMENT_DOWNLOAD_URL_SECONDS`, 5 minutos por "
+    "omisión) con `Content-Disposition: attachment` y el tipo detectado. Solo archivos "
+    "con análisis `CLEAN`. Límite: 60 descargas por hora. La URL no se guarda ni va a "
+    "los logs."
+)
+
+
+def no_store(response: Response) -> Response:
+    # La URL es una credencial temporal: ninguna caché intermedia la guarda.
+    response["Cache-Control"] = "no-store"
+    return response
+
+
+class DocumentFileDownloadView(DossierView):
+    required_permissions = {"GET": DOWNLOAD}
+    throttle_classes = [DocumentDownloadRateThrottle]
+
+    @extend_schema(
+        tags=[DOSSIER_TAG],
+        operation_id="document_files_download",
+        summary="Descargar una versión",
+        description=DOWNLOAD_DESCRIPTION,
+        responses={
+            200: DocumentDownloadSerializer,
+            409: _error("FILE_NOT_CLEAN"),
+            429: _error("RATE_LIMITED"),
+            503: _error("SERVICE_UNAVAILABLE (almacenamiento no disponible)"),
+            **NOT_FOUND,
+            **COMMON_ERRORS,
+        },
+    )
+    def get(self, request: Request, file_id: Any) -> Response:
+        version = self.get_file(file_id)
+        link = downloads.download_link(version, requested_by=f"user:{self.actor.pk}")
+        return no_store(Response(DocumentDownloadSerializer(link).data))

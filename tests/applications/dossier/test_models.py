@@ -1,10 +1,13 @@
 """Restricciones de PostgreSQL del expediente documental (DER §8 y sus desvíos)."""
 
+import importlib
+import uuid
 from collections.abc import Callable
 from datetime import date, timedelta
 from typing import Any
 
 import pytest
+from django.apps import apps
 from django.db import IntegrityError, connection, transaction
 from django.utils import timezone
 
@@ -32,6 +35,8 @@ from tests.applications.dossier.conftest import (
 )
 
 pytestmark = pytest.mark.django_db
+
+review_migration = importlib.import_module("apps.documents.migrations.0005_review_slot_and_waivers")
 
 
 def assert_violates(constraint: str, create: Callable[[], Any]) -> None:
@@ -263,7 +268,9 @@ def test_rejection_needs_a_reason_and_a_buyer_comment(
     reason = catalog_item("document_rejection_reason", "ILLEGIBLE")
 
     def review(**extra: Any) -> DocumentReview:
-        return DocumentReview.objects.create(document_file=version, reviewer=advisor_user, **extra)
+        return DocumentReview.objects.create(
+            slot=version.slot, document_file=version, reviewer=advisor_user, **extra
+        )
 
     assert_violates(
         "ck_document_reviews_rejection",
@@ -273,7 +280,7 @@ def test_rejection_needs_a_reason_and_a_buyer_comment(
         "ck_document_reviews_rejection",
         lambda: review(decision=ReviewDecision.REJECTED, reason_item=reason),
     )
-    assert_violates("ck_document_reviews_decision", lambda: review(decision="WAIVED"))
+    assert_violates("ck_document_reviews_decision", lambda: review(decision="PENDING"))
 
     review(decision=ReviewDecision.APPROVED)
     review(
@@ -341,7 +348,10 @@ def test_str_representations(
 ) -> None:
     version = make_document_file()
     review = DocumentReview.objects.create(
-        document_file=version, reviewer=advisor_user, decision=ReviewDecision.APPROVED
+        slot=version.slot,
+        document_file=version,
+        reviewer=advisor_user,
+        decision=ReviewDecision.APPROVED,
     )
     job = DocumentPackageJob.objects.create(
         application=application, requested_by=advisor_user, application_version=1
@@ -353,3 +363,81 @@ def test_str_representations(
     assert str(job).endswith("(PENDING)")
     assert isinstance(ApplicationDocumentSlot.objects.first(), ApplicationDocumentSlot)
     assert FileObject.objects.count() == DocumentFile.objects.count() == 1
+
+
+# --- document_reviews: exoneraciones y reaperturas (Parte 5) -----------------------------
+
+
+def test_slot_decisions_need_a_batch_and_file_decisions_a_file(
+    make_slot: SlotFactory, make_document_file: DocumentFileFactory, advisor_user: User
+) -> None:
+    slot = make_slot(is_waivable=True)
+    version = make_document_file(slot=slot)
+    reason = catalog_item("document_waiver_reason", "OTHER")
+
+    def review(**extra: Any) -> DocumentReview:
+        return DocumentReview.objects.create(slot=slot, reviewer=advisor_user, **extra)
+
+    assert_violates("ck_document_reviews_file", lambda: review(decision=ReviewDecision.APPROVED))
+    assert_violates(
+        "ck_document_reviews_file",
+        lambda: review(
+            decision=ReviewDecision.APPROVED, document_file=version, decision_batch_id=uuid.uuid4()
+        ),
+    )
+    assert_violates(
+        "ck_document_reviews_batch",
+        lambda: review(decision=ReviewDecision.WAIVED, reason_item=reason),
+    )
+    assert_violates(
+        "ck_document_reviews_waiver",
+        lambda: review(decision=ReviewDecision.WAIVED, decision_batch_id=uuid.uuid4()),
+    )
+
+    def reopening(comment: str | None) -> Callable[[], DocumentReview]:
+        return lambda: review(
+            decision=ReviewDecision.REOPENED,
+            decision_batch_id=uuid.uuid4(),
+            internal_comment=comment,
+        )
+
+    assert_violates("ck_document_reviews_reopen", reopening(None))
+    assert_violates("ck_document_reviews_reopen", reopening(""))
+    assert_violates(
+        "ck_document_reviews_decision",
+        lambda: review(decision="PENDING", document_file=version),
+    )
+
+    waived = review(
+        decision=ReviewDecision.WAIVED, reason_item=reason, decision_batch_id=uuid.uuid4()
+    )
+    reopened = review(
+        decision=ReviewDecision.REOPENED, decision_batch_id=uuid.uuid4(), internal_comment="Error."
+    )
+    assert waived.document_file_id is None
+    assert str(reopened).endswith(": REOPENED")
+
+
+def test_reverting_the_migration_drops_waivers_and_reopenings(
+    make_slot: SlotFactory, make_document_file: DocumentFileFactory, advisor_user: User
+) -> None:
+    slot = make_slot(is_waivable=True)
+    approval = DocumentReview.objects.create(
+        slot=slot,
+        document_file=make_document_file(slot=slot),
+        reviewer=advisor_user,
+        decision=ReviewDecision.APPROVED,
+    )
+    DocumentReview.objects.create(
+        slot=slot,
+        reviewer=advisor_user,
+        decision=ReviewDecision.WAIVED,
+        reason_item=catalog_item("document_waiver_reason", "OTHER"),
+        decision_batch_id=uuid.uuid4(),
+    )
+
+    review_migration.drop_slot_decisions(apps, connection.schema_editor())
+    # Las revisiones ya tienen slot: llenarlo otra vez no cambia nada.
+    review_migration.fill_review_slots(apps, connection.schema_editor())
+
+    assert list(DocumentReview.objects.values_list("pk", "slot_id")) == [(approval.pk, slot.pk)]

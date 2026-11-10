@@ -132,7 +132,8 @@ def _ensure_quota(slot: ApplicationDocumentSlot, size_bytes: int) -> None:
         )
 
 
-def _expires_at(slot: ApplicationDocumentSlot, document_date: date | None) -> date | None:
+def expires_on(slot: ApplicationDocumentSlot, document_date: date | None) -> date | None:
+    """Vencimiento de un documento del slot: ``document_date + validity_days``."""
     if document_date is None or slot.validity_days is None:
         return None
     return document_date + timedelta(days=slot.validity_days)
@@ -184,7 +185,7 @@ def _save_version(
             uploaded_by_buyer_session=session,
             client_filename=inspected.filename,
             document_date=upload.document_date,
-            expires_at=_expires_at(slot, upload.document_date),
+            expires_at=expires_on(slot, upload.document_date),
         )
         slot.current_file = version
         slot.status = SlotStatus.UPLOADED
