@@ -852,7 +852,10 @@ Tipos de soporte que puede solicitar el sistema.
 | `max_size_bytes` | `BIGINT` | No | Límite. |
 | `default_validity_days` | `SMALLINT` | Sí | Vigencia sugerida. |
 | `is_repeatable` | `BOOLEAN` | No | Varias versiones/periodos. |
+| `holder_scope` | `VARCHAR(20)` | No | `PARTICIPANT` (por omisión) o `APPLICATION`. **Desvío del DER original (paso 10).** |
 | `is_active` | `BOOLEAN` | No | Estado. |
+
+`holder_scope` dice a quién pertenece el documento. Un tipo `PARTICIPANT` se pide a cada participante al que aplica el requisito; uno `APPLICATION` (inmueble, legalización, carta de aprobación externa) se pide una sola vez por solicitud, con `participant_id` nulo en el slot. Un requisito de un tipo `APPLICATION` no lleva rol ni perfil laboral, y el tipo no cambia de titular mientras tenga requisitos activos o en borrador.
 
 Relación 1:N con requisitos documentales: el mismo tipo, por ejemplo identificación, puede ser exigido por diferentes productos y perfiles sin duplicar su definición técnica.
 
@@ -930,15 +933,22 @@ Lista concreta de documentos esperados en una solicitud.
 | `minimum_files` | `SMALLINT` | No | Snapshot. |
 | `alternative_group_code` | `VARCHAR(50)` | Sí | Snapshot. |
 | `validity_days` | `SMALLINT` | Sí | Snapshot. |
+| `slot_index` | `SMALLINT` | No | 1..`minimum_files`: posición del archivo dentro del requisito. **Desvío del DER original (paso 10).** |
 | `status` | `VARCHAR(20)` | No | `PENDING`, `UPLOADED`, `APPROVED`, `REJECTED`, `WAIVED`. |
 | `sort_order` | `INTEGER` | No | Portal. |
 | `waiver_reason_item_id` | `UUID` | Sí | FK `catalog_items`, `RESTRICT`. |
 | `current_file_id` | `UUID` | Sí | FK diferible `document_files`, `SET NULL`; versión vigente. |
 | `locked_at` | `TIMESTAMPTZ` | Sí | Bloqueo posterior a radicación. |
+| `retired_at` | `TIMESTAMPTZ` | Sí | El slot dejó de aplicar al recalcular la lista. **Desvío del DER original (paso 10).** |
 
 Relación N:1 con solicitud porque un expediente necesita muchos documentos; N:1 opcional con participante porque algunos soportes pertenecen a una persona específica; N:1 con requisito para conocer el origen. Los valores principales se copian como snapshot para que una plantilla futura no cambie el pasado.
 
-Índices: (`application_id`, `status`, `is_required`), (`participant_id`, `document_type_id`), UQ funcional según tipo/participante/periodo definido por negocio.
+Desvíos del DER original, acordados en el paso 10:
+
+- **Un slot por archivo.** Un requisito con `minimum_files = n` (por ejemplo, tres desprendibles de nómina) crea n slots con `slot_index` de 1 a n, que se cargan y revisan por separado ("Desprendible de nómina 2 de 3"). Cada slot conserva el `minimum_files` del requisito como snapshot. `CHECK (slot_index > 0 AND slot_index <= minimum_files)`.
+- **Retiro sin borrado.** Cuando cambian el producto, la finalidad, los participantes o el perfil laboral, la lista se recalcula. El slot que deja de aplicar se retira con `retired_at`, conserva sus versiones y revive si el requisito vuelve a aplicar. Los slots retirados no cuentan para radicar ni para la completitud.
+
+Índices: (`application_id`, `status`, `is_required`) y el parcial de pendientes, ambos limitados a `retired_at IS NULL`. La UQ funcional que el DER original dejaba abierta es `uq_document_slots_active`: (`application_id`, `participant_id`, `document_type_id`, `slot_index`) `NULLS NOT DISTINCT` `WHERE retired_at IS NULL`.
 
 ### 8.3 `document_files`
 
@@ -957,7 +967,7 @@ Versiones cargadas para un slot.
 | `expires_at` | `DATE` | Sí | Vigencia calculada. |
 | `status` | `VARCHAR(20)` | No | `UPLOADED`, `IN_REVIEW`, `APPROVED`, `REJECTED`. |
 
-UQ (`slot_id`, `version_number`). Relaciones: N:1 con slot porque cada reemplazo es una nueva versión; 1:1 con objeto físico; N:1 con sesión de comprador para demostrar quién cargó el archivo. Nunca se sobrescribe la fila anterior.
+UQ (`slot_id`, `version_number`). `CHECK`: `expires_at` es nulo o posterior a `document_date` (paso 10). Relaciones: N:1 con slot porque cada reemplazo es una nueva versión; 1:1 con objeto físico; N:1 con sesión de comprador para demostrar quién cargó el archivo. Nunca se sobrescribe la fila anterior.
 
 Índice: (`slot_id`, `version_number DESC`).
 

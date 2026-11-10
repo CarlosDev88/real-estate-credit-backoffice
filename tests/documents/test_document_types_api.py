@@ -232,3 +232,54 @@ def test_deactivate_and_activate_emit_events(
         (False, "Sin anexo"),
         (True, ""),
     ]
+
+
+# --- Titular del documento (holder_scope) -----------------------------------------------
+
+
+def test_holder_scope_defaults_to_participant_and_can_be_application(
+    admin_client: APIClient,
+) -> None:
+    default = create(admin_client)
+    assert default.status_code == 201, default.content
+    assert default.json()["holder_scope"] == "PARTICIPANT"
+
+    photos = create(admin_client, code="PROPERTY_PHOTOS_2", holder_scope="APPLICATION")
+    assert photos.status_code == 201, photos.content
+    assert photos.json()["holder_scope"] == "APPLICATION"
+
+    body = assert_error(
+        create(admin_client, code="OTHER", holder_scope="BANK"), 400, "VALIDATION_ERROR"
+    )
+    assert body["details"][0]["field"] == "holder_scope"
+
+
+def test_holder_scope_cannot_change_while_the_type_has_live_requirements(
+    admin_client: APIClient,
+) -> None:
+    identity = seeded_type("IDENTITY_DOCUMENT")
+
+    response = admin_client.patch(
+        type_url(identity), {"holder_scope": "APPLICATION"}, format="json"
+    )
+
+    body = assert_error(response, 400, "VALIDATION_ERROR")
+    assert body["details"][0]["field"] == "holder_scope"
+    identity.refresh_from_db()
+    assert identity.holder_scope == "PARTICIPANT"
+
+    # Repetir el valor actual no es un cambio.
+    same = admin_client.patch(type_url(identity), {"holder_scope": "PARTICIPANT"}, format="json")
+    assert same.status_code == 200, same.content
+
+
+def test_holder_scope_changes_when_no_requirement_is_live(admin_client: APIClient) -> None:
+    identity = seeded_type("IDENTITY_DOCUMENT")
+    DocumentRequirement.objects.filter(document_type=identity).update(status="INACTIVE")
+
+    response = admin_client.patch(
+        type_url(identity), {"holder_scope": "APPLICATION"}, format="json"
+    )
+
+    assert response.status_code == 200, response.content
+    assert response.json()["holder_scope"] == "APPLICATION"

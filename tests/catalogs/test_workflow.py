@@ -188,8 +188,11 @@ def test_transitions_require_permission(advisor_client: APIClient) -> None:
 
 @pytest.fixture
 def published_transition(admin_client: APIClient) -> WorkflowTransition:
-    Permission.objects.create(code="documents.review", module="documents", name="Revisar")
-    body = create(admin_client, required_permission="documents.review", roles=["ADVISOR"]).json()
+    # Código de prueba: el motor es genérico y no depende de los permisos sembrados.
+    Permission.objects.create(code="workflow_test.review", module="workflow_test", name="Revisar")
+    body = create(
+        admin_client, required_permission="workflow_test.review", roles=["ADVISOR"]
+    ).json()
     admin_client.post(f"{transition_url(body['id'])}/activate")
     return WorkflowTransition.objects.get(pk=body["id"])
 
@@ -206,14 +209,14 @@ def test_available_transitions_require_role_and_permission(
     published_transition: WorkflowTransition, make_user: Callable[..., User]
 ) -> None:
     with_permission = make_user(
-        email="con@example.com", role_code="ADVISOR", permissions=["documents.review"]
+        email="con@example.com", role_code="ADVISOR", permissions=["workflow_test.review"]
     )
     assert _available(with_permission) == ["MARK_READY_TO_FILE"]
 
     broker = make_user(
         email="broker@example.com",
         role_code="INDEPENDENT_BROKER",
-        permissions=["documents.review"],
+        permissions=["workflow_test.review"],
     )
     assert _available(broker) == []
 

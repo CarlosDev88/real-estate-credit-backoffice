@@ -491,3 +491,39 @@ def test_scope_with_a_catalog_value_is_independent_from_the_null_scope(
         status="ACTIVE", employment_profile_item=catalog_item("employment_profile", "EMPLOYEE")
     )
     assert other.version == 1
+
+
+# --- Documentos de la solicitud (holder_scope = APPLICATION) ------------------------------
+
+
+def test_application_document_requirement_cannot_depend_on_the_participant(
+    admin_client: APIClient,
+) -> None:
+    budget = seeded_type("REMODELING_BUDGET")
+
+    response = create(
+        admin_client, budget, participant_role="PRIMARY", employment_profile_code="EMPLOYEE"
+    )
+
+    body = assert_error(response, 400, "VALIDATION_ERROR")
+    assert {detail["field"] for detail in body["details"]} == {
+        "participant_role",
+        "employment_profile_code",
+    }
+    ok = create(admin_client, budget, purpose_code="HOME_IMPROVEMENT")
+    assert ok.status_code == 201, ok.content
+
+
+def test_new_version_is_rejected_if_the_type_became_an_application_document(
+    admin_client: APIClient,
+) -> None:
+    payroll = seeded_type("PAYROLL_SLIP")
+    inactive = DocumentRequirement.objects.get(document_type=payroll)
+    DocumentRequirement.objects.filter(document_type=payroll).update(status="INACTIVE")
+    DocumentType.objects.filter(pk=payroll.pk).update(holder_scope="APPLICATION")
+
+    response = patch(admin_client, inactive, minimum_files=2)
+
+    body = assert_error(response, 400, "VALIDATION_ERROR")
+    assert body["details"][0]["field"] == "employment_profile_code"
+    assert versions(inactive) == [(1, "INACTIVE")]
