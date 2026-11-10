@@ -129,6 +129,9 @@ SPECTACULAR_SETTINGS = {
         "ParticipantRoleEnum": "apps.documents.models.ParticipantRole",
         "RuleOutcomeEnum": "apps.banking.rule_engine.Outcome",
         "BuyerAccessLinkStatusEnum": "apps.identity.models.BuyerAccessLinkStatus",
+        # Expediente documental: estado del slot y de cada versión cargada.
+        "DocumentSlotStatusEnum": "apps.documents.models.SlotStatus",
+        "DocumentFileStatusEnum": "apps.documents.models.DocumentFileStatus",
     },
 }
 

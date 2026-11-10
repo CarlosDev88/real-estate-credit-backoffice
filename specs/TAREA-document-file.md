@@ -31,13 +31,21 @@ Paso 10 del orden de construcción (DER_COMPLETO §15), después del acceso del 
 
 | Parte | Contenido | Estado | Commit |
 | ---: | --- | --- | --- |
-| 1 | Modelos, migraciones, semillas, `holder_scope` en la API y DER | Hecha | (pendiente de commit) |
-| 2 | Infraestructura: almacenamiento, validación de archivos, antivirus y Celery | Hecha | (pendiente de commit) |
-| 3 | Materialización y recálculo de slots; lectura interna del expediente | Pendiente | |
-| 4 | Portal del comprador: slots, carga, reemplazo y análisis asíncrono | Pendiente | |
+| 1 | Modelos, migraciones, semillas, `holder_scope` en la API y DER | Hecha | `3d7c1ac` |
+| 2 | Infraestructura: almacenamiento, validación de archivos, antivirus y Celery | Hecha | `4e73503` |
+| 3 | Materialización y recálculo de slots; lectura interna del expediente | Hecha | (pendiente de commit) |
+| 4 | Portal del comprador: slots, carga, reemplazo y análisis asíncrono | **Siguiente** | |
 | 5 | Revisión, exoneración y descargas | Pendiente | |
 | 6 | Guarda de `READY_TO_FILE`, completitud y progreso del comprador | Pendiente | |
 | 7 | Paquete ZIP asíncrono, README y documentación | Pendiente | |
+
+Al cerrar la Parte 1: 1192 tests en verde (32 nuevos), 97,95 % de cobertura total, los modelos y la semilla nuevos al 100 % y el esquema OpenAPI sin avisos.
+
+Al cerrar la Parte 2: 1262 tests en verde (70 nuevos), 98,03 % de cobertura total, `storage.py`, `scanning.py`, `file_validation.py` y los comandos al 100 %, y el esquema OpenAPI sin avisos. Además, verificado de punta a punta con SeaweedFS, ClamAV y Celery reales (ver "Decididas en la implementación", Parte 2).
+
+Al cerrar la Parte 3: 1311 tests en verde (49 nuevos), 98,09 % de cobertura total, `slots.py`, `dossier.py`, `dossier_serializers.py` y `dossier_views.py` al 100 %, y el esquema OpenAPI sin avisos.
+
+Sin cubrir, de antes de este paso: `admin.py` (los `has_*_permission` de `_ReadOnlyAdmin`), el `unseed` de `documents 0002` y cuatro ramas de `services.py` (líneas 87, 261, 288 y 386).
 
 ---
 
@@ -52,27 +60,71 @@ Paso 10 del orden de construcción (DER_COMPLETO §15), después del acceso del 
 - Las propuestas de commit van **sin `Co-Authored-By` ni firma**. Mensajes cortos, en inglés, con el estilo `feat(documents): ...`.
 
 ### Entorno local
-El mismo de `TAREA-applications.md`: los checks se corren en un contenedor efímero con una clave ficticia, sin leer ni editar `.env`. `config/settings/base.py` usa CRLF, así que se edita con la herramienta de edición, nunca con `sed -i`. El CI no tiene Redis, SeaweedFS ni ClamAV: los tests no pueden depender de ellos.
+- **No hay entorno Python local.** Todo corre en Docker; si `docker` responde "failed to connect to the docker API", hay que abrir Docker Desktop (`C:\Program Files\Docker\Docker\Docker Desktop.exe`) y esperar a que `docker info` conteste.
+- **`.env` y `.env.example` están en la lista de rutas denegadas**: no se leen ni se editan (ni con `cat` ni con la herramienta de lectura). Las variables nuevas se documentan en el README y se le pasan al usuario las líneas para que las copie a los dos archivos. La de la Parte 2 ya se le entregó; **al empezar, confirmar con el usuario que las agregó**, porque sin `DOCUMENT_STORAGE_ACCESS_KEY_ID` y `DOCUMENT_STORAGE_SECRET_ACCESS_KEY` SeaweedFS no arranca y `backend` tampoco (espera a `storage-init`).
+- **Checks** en un contenedor efímero con clave ficticia y `--no-deps` (no levanta SeaweedFS ni `storage-init`). PostgreSQL sí tiene que estar arriba (`docker compose up -d postgres`):
 
-Las variables nuevas están documentadas en el README ("Document Storage and Antivirus"). `.env.example` y `.env` están en la lista de rutas denegadas de esta sesión: no se leen ni se editan. El usuario agrega las líneas a los dos archivos.
+  ```bash
+  docker compose run --rm --no-deps -e AUTH_JWT_SIGNING_KEY=local-dev-only-not-a-secret backend sh -c '
+    ruff check . && ruff format --check . && mypy . &&
+    python manage.py makemigrations --check --dry-run &&
+    python manage.py spectacular --validate --fail-on-warn --file /tmp/s.yml &&
+    pytest --cov=apps --cov-report=term-missing --cov-fail-under=95 -q -p no:cacheprovider'
+  ```
+
+  `ruff format <rutas>` dentro del mismo contenedor formatea los archivos tocados (el volumen `.:/app` escribe en el host).
+- **El CI no tiene Redis, SeaweedFS ni ClamAV.** Los tests usan `config.settings.test`: `DOCUMENT_STORAGE_BACKEND=memory`, `DOCUMENT_SCANNER=fake`, `DOCUMENT_ALLOW_FAKE_SERVICES=True` y `CELERY_TASK_ALWAYS_EAGER=True`.
+- **Finales de línea.** El repo es LF, salvo estos archivos en CRLF: `config/settings/base.py`, `config/settings/test.py`, `docker-compose.yml`, `README.md` y `.env.example`. `docs/MODELO_DATOS_DER_MVP_CREDITO.md` tiene finales **mezclados** (86 líneas CRLF).
+  - Los CRLF se editan con la herramienta de edición, que los conserva; nunca con `sed -i`.
+  - En el archivo mezclado, la herramienta de edición lo deja todo en LF. Después de editarlo hay que restaurar los CR de las líneas no tocadas (en la Parte 1 se hizo con un script que alinea contra `git show HEAD:<archivo>`).
+  - Con Python del host, escribir con `write_bytes` (o `newline="\n"`): `write_text` en Windows convierte LF a CRLF y el diff sale del archivo entero.
+  - Comprobación rápida: `tr -cd '\r' < archivo | wc -c` frente a `git show HEAD:archivo | tr -cd '\r' | wc -c`.
+- **Shell.** Un heredoc de bash con Python que lleva comillas o barras invertidas puede fallar al interpretarse: escribir el script en el *scratchpad* y correrlo con `python -I`. En `docker run -v` con rutas de Windows, anteponer `MSYS_NO_PATHCONV=1`.
+- **Prueba de punta a punta** (sin tocar `.env`): exportar credenciales temporales en el shell (`DOCUMENT_STORAGE_ACCESS_KEY_ID`, `DOCUMENT_STORAGE_SECRET_ACCESS_KEY`), `docker compose --profile async up -d clamav seaweedfs` y correr comandos con `docker compose run --rm --no-deps -e ...` pasando los `DOCUMENT_STORAGE_*` de SeaweedFS (`ENDPOINT_URL=http://seaweedfs:8333`, `PUBLIC_ENDPOINT_URL=http://localhost:8333`, `ADDRESSING_STYLE=path`, `SSE=` vacío) y `DOCUMENT_SCANNER=clamd`. Al terminar: `docker compose --profile async stop seaweedfs clamav`, `rm -f` de los dos y `docker volume rm mvp_credit_seaweedfs_data`. El volumen `mvp_credit_clamav_data` se conserva: guarda las firmas y evita bajarlas otra vez (varios minutos).
 
 ### Lo que ya existe y se reutiliza
+**De pasos anteriores:**
 - `apps/documents/constants.py`: `ALLOWED_MIME_TYPES` (PDF, JPEG, PNG) y `MAX_FILE_SIZE_BYTES` (10 MB).
-- `apps/documents/services.py`: `applicable_requirements`, `requirement_applies_to`, `ParticipantCase` y `preview_checklist`, punto de partida de la materialización.
-- `apps/documents/models`: `DocumentType`, `DocumentRequirement`, `ParticipantRole`, `RequirementStatus`.
-- `apps/applications/services.py`: `documents_verified(application)` (hoy `False`, punto de enganche), `_ready_to_file_problems`, `completeness` → `Completeness`, `lock_for_edit`, `bump_version`, `applications_visible_to`, `Actor = User | BuyerSession` y `DOCUMENTS_NOT_VERIFIED_MESSAGE` (se elimina).
-- `apps/applications/signals.py`: se envían **después del commit**; por eso la sincronización de slots no se cuelga de ellos (ver decisión 6).
+- `apps/documents/services.py`: `applicable_requirements`, `requirement_applies_to`, `ParticipantCase`, `preview_checklist` (devuelve `ChecklistPreview`) e `is_application_document`, punto de partida de la materialización.
+- `apps/applications/services.py`: `documents_verified(application)` (hoy `False`, punto de enganche), `_ready_to_file_problems`, `completeness` → `Completeness`, `lock_for_edit`, `bump_version`, `applications_visible_to`, `Actor = User | BuyerSession` y `DOCUMENTS_NOT_VERIFIED_MESSAGE` (se elimina en la Parte 6).
+- `apps/applications/signals.py`: se envían **después del commit**; por eso la sincronización de slots no se cuelga de ellos (decisión 6).
 - `apps/applications/concurrency.py`: `expected_version`, `ensure_version` y `with_etag`.
 - `apps/identity/buyer_authentication.py`: `BuyerSessionAuthentication`, `IsBuyerSession`, `ApplicationNotClosed` y `ConsentsAccepted`; `buyer_portal_views.BuyerPortalView` como base de las vistas del comprador.
 - `apps/identity/throttling.py`: patrón de `AuthRateThrottle` sobre Redis, con tasas en `AUTH_RATE_LIMITS`.
 - `apps/identity/buyer_portal.py`: progreso del comprador = ítems de `completeness` sin `bank_evaluation`.
-- `requirements.txt` ya trae `celery[redis]` y `django-storages[s3]`; `docker-compose.yml` ya declara el servicio `worker` (perfil `async`), pero **no existe `config/celery.py`**: el worker de hoy no arranca.
+
+**De la Parte 1 (`3d7c1ac`):**
+- Modelos en `apps/documents/models/`: `FileObject`/`ScanStatus`, `ApplicationDocumentSlot`/`SlotStatus`, `DocumentFile`/`DocumentFileStatus`, `DocumentReview`/`ReviewDecision`, `DocumentPackageJob`/`PackageJobStatus` y `HolderScope` (en `DocumentType`).
+- Relaciones inversas: `application.document_slots`, `participant.document_slots`, `document_type.slots`, `requirement.slots`, `slot.files`, `file_object.document_file`, `document_file.reviews`, `application.document_package_jobs`, `file_object.package_job`, `user.document_reviews`, `user.document_package_jobs` y `buyer_session.document_files`. `slot.current_file` no tiene relación inversa (`related_name="+"`).
+- Migraciones `documents 0003_dossier` y `0004_seed_dossier` (permisos, catálogos `document_rejection_reason` y `document_waiver_reason`, y `holder_scope`).
+- Fixtures en `tests/applications/dossier/conftest.py`: `make_file_object`, `make_slot` (titular de `application`, cédula por omisión), `buyer_session`, `make_document_file`, y `make_link`/`make_session` reexportados de `buyer_access`. Tipos `SlotFactory`, `FileObjectFactory` y `DocumentFileFactory`.
+
+**De la Parte 2 (`4e73503`):**
+- `apps/documents/storage.py`: `get_storage()` → `ObjectStorage` (`put`, `open`, `delete`, `presigned_url`, `ensure_bucket`, `check`, `provider`, `bucket`, `encryption_key_version`), `new_document_key(application_id)`, `new_package_key(application_id)` y `attachment_disposition`. En tests, `get_storage()` devuelve un `MemoryStorage` compartido por el proceso (`.objects`, `.clear()`); `get_storage.cache_clear()` lo reinicia.
+- `apps/documents/file_validation.py`: `inspect_upload(stream, filename=, declared_mime_type=, allowed_mime_types=, max_size_bytes=)` → `InspectedFile`. Deja el flujo al inicio.
+- `apps/documents/scanning.py`: `get_scanner()` → `Scanner` (`scan(stream) -> ScanResult`, `ping()`, `name`). `EICAR` es la firma de prueba para los tests.
+- `apps/documents/exceptions.py`: `UnsupportedFileType`, `FileTooLarge`, `StorageUnavailable` y `ScannerUnavailable`.
+- Comandos `init_document_storage` y `check_document_services`.
+- `config/celery.py` (`celery_app` en `config/__init__.py`): las tareas de las Partes 4 y 7 se declaran con `@shared_task` en `apps/documents/tasks.py` y `autodiscover_tasks` las encuentra.
+
+**De la Parte 3:**
+- `apps/documents/slots.py`: `sync_slots(locked) -> SlotSync` (`created`, `retired`, `revived`, `updated`, `changed`), `desired_slots`, `merge_requirements` y `SNAPSHOT_FIELDS`. Ya lo llaman los servicios de `applications` (ver "Decididas en la implementación", Parte 3).
+- `apps/documents/dossier.py`: `slots_queryset()` (con `set_size` anotado y el orden de presentación), `slots_visible_to(user)`, `application_slots(application, include_retired=)`, `slot_versions(slot)` y `refresh_slots(actor, application)`.
+- `apps/documents/dossier_serializers.py`: `slot_label`, `DocumentSlotSerializer`, `DocumentFileSerializer` (con `reviews` e `internal_comment`: solo para uso interno), `FileMetadataSerializer` y `SlotRefreshSerializer`.
+- `apps/documents/dossier_views.py`: `DossierView` (`get_application`, `get_slot`), base para las vistas internas de la Parte 5.
+- Tests en `tests/applications/dossier/test_slots.py` (helpers `sync`, `requirement`, `set_profile`, `seeded_requirement`, `publish_version`) y `test_slots_api.py` (fixture `dossier`: Bancolombia, titular empleado y un documento de la solicitud; 8 slots).
+
+### Próximo paso: Parte 4
+- Agregar un fixture `autouse` en `tests/conftest.py` que limpie el `MemoryStorage` entre tests.
+- Rutas del comprador (decisión 2) sobre `BuyerPortalView`, con DTO propios a partir de `DocumentSlotSerializer` pero sin `internal_comment`, revisor ni `requirement_id`; los slots retirados responden `404`.
+- Carga, cuota, rate limit y tarea `scan_file_object` según el plan de la Parte 4. Variables nuevas (`DOCUMENT_UPLOAD_MAX_VERSIONS_PER_SLOT`, `DOCUMENT_UPLOAD_QUOTA_BYTES`): documentarlas en el README y pasarle al usuario las líneas para `.env.example` y `.env`.
+- La Parte 4 levanta SeaweedFS para la prueba de punta a punta: **confirmar antes con el usuario que agregó las variables de la Parte 2** (`DOCUMENT_STORAGE_ACCESS_KEY_ID` y `DOCUMENT_STORAGE_SECRET_ACCESS_KEY`).
 
 ---
 
-## Decisiones propuestas por defecto (vetables)
+## Decisiones por defecto (confirmadas)
 
-Las tomo siguiendo los documentos o el precedente de los pasos anteriores. Si alguna no te sirve, dímelo antes de la Parte 1.
+Salen de los documentos o del precedente de los pasos anteriores. El usuario no vetó las 1 a 13, confirmó explícitamente las 14 a 24 antes de la Parte 1 y ajustó la 12 (60 cargas por hora).
 
 1. **Solo el comprador carga** (esquema, REQUERIMIENTOS §4.4 y §13.4). El asesor revisa, exonera y descarga, pero no carga.
 2. **Rutas del comprador bajo `/buyer/...`** con DTO propios (precedente de `TAREA-buyer-access.md`, decisión 10). API §19 lista al comprador en las rutas internas: se corrige.
@@ -159,13 +211,13 @@ Las tomo siguiendo los documentos o el precedente de los pasos anteriores. Si al
 
 ## Preguntas abiertas
 
-No quedan. Las dos tandas están en "Decisiones (acordadas con el usuario)". Las ambigüedades nuevas que surjan al programar se consultan antes de la parte correspondiente.
+No quedan. Las dos tandas y la precisión de SeaweedFS están en "Decisiones (acordadas con el usuario)". Las ambigüedades nuevas que surjan al programar se consultan antes de la parte correspondiente.
 
 ---
 
 ## Plan de las partes
 
-### Parte 1. Modelos, migraciones, semillas y configuración
+### Parte 1. Modelos, migraciones, semillas y configuración (hecha)
 - Modelos fieles al esquema en `apps/documents/models/` (`file_object.py`, `slot.py`, `document_file.py`, `review.py`, `package_job.py`), con los `CHECK`, UQ e índices del esquema (`ix_file_objects_scan_queue`, `ix_document_slots_*`, `ix_document_files_versions`, `ix_document_reviews_latest`, `ix_document_package_jobs_*`). Los nombres se acortan a 30 caracteres si hace falta, como `ix_doc_requirements_active`.
 - `current_file_id`: FK diferible (`DEFERRABLE INITIALLY DEFERRED`, `SET NULL`) con la operación de migración que corresponda.
 - Columnas fuera del DER: `application_document_slots.slot_index` (acordada 3), `document_types.holder_scope` (acordada 4) y `application_document_slots.retired_at` (acordada 5). `documents 0003` agrega `holder_scope` con `PARTICIPANT` por omisión y lo siembra.
@@ -176,12 +228,12 @@ No quedan. Las dos tandas están en "Decisiones (acordadas con el usuario)". Las
 - Admin de solo lectura sin `object_key`.
 - Tests de restricciones y semillas en `tests/applications/dossier/`.
 
-### Parte 2. Infraestructura
+### Parte 2. Infraestructura (hecha)
 - `config/celery.py` y su carga en `config/__init__.py`.
 - `apps/documents/storage.py`: interfaz, adaptador S3 y fake en memoria.
 - `apps/documents/file_validation.py`: firma de bytes, extensión, nombre y tamaño.
 - `apps/documents/scanning.py`: cliente `clamd` (`INSTREAM`) y escáner fake.
-- `docker-compose.yml`: `seaweedfs` y `storage-init` (creación del bucket privado al arrancar), y `clamav` en el perfil `async`, junto al `worker`. Sin tocar `.env`.
+- `docker-compose.yml`: `seaweedfs` y `storage-init` (creación del bucket privado al arrancar) en el perfil por omisión, y `clamav` en el perfil `async`, junto al `worker`. Sin tocar `.env`.
 - Variables de la acordada 1, con valores de SeaweedFS local: las líneas para que el usuario las copie a `.env.example` y a `.env`.
 - README: cómo levantar el perfil `async` (`docker compose --profile async up`) y cómo comprobar SeaweedFS y ClamAV.
 - Tests unitarios con dobles: socket fake para `clamd` y cliente `boto3` sustituido. Sin servicios reales en el CI.
@@ -226,7 +278,7 @@ No quedan. Las dos tandas están en "Decisiones (acordadas con el usuario)". Las
 ### Tanda 1
 
 1. **Almacenamiento: S3 compatible, con SeaweedFS en local** (era MinIO; ver la precisión del cierre de la lista).
-   - Interfaz propia (`put`, `open`, `delete`, `presigned_url`) con un adaptador S3 sobre `django-storages`/`boto3` y un fake en memoria para tests y CI.
+   - Interfaz propia (`put`, `open`, `delete`, `presigned_url`) con un adaptador S3 y un fake en memoria para tests y CI. El adaptador usa `boto3` directo (ver "Decididas en la implementación", Parte 2).
    - SeaweedFS en `docker-compose` para desarrollo.
    - Un bucket privado con prefijos `documents/` y `packages/`. `object_key` = `documents/<application_id>/<uuid>`, sin el nombre original. Cifrado SSE del proveedor (`encryption_key_version = "SSE-S3"`).
    - Descarga por URL prefirmada de 5 minutos (decisión 13).
@@ -247,7 +299,7 @@ No quedan. Las dos tandas están en "Decisiones (acordadas con el usuario)". Las
 4. **Titular del documento: `document_types.holder_scope`.**
    - `PARTICIPANT` | `APPLICATION`, `PARTICIPANT` por omisión, editable por el admin (`PATCH /document-types/{id}`).
    - Un requisito de un tipo `APPLICATION` crea slots con `participant_id` nulo, una sola vez por solicitud.
-   - Semilla `APPLICATION`: `PROPERTY_ANALYSIS_DOCUMENTS`, `PROPERTY_OWNERSHIP_DOCUMENT`, `REMODELING_BUDGET`, `TITLE_STUDY_DOCUMENTS`, `DEED_SIGNATURE_DOCUMENTS` y `REGISTRATION_DOCUMENTS` (inmueble y legalización), más `EXTERNAL_APPROVAL_LETTER` (decisión 19, vetable).
+   - Semilla `APPLICATION`: `PROPERTY_ANALYSIS_DOCUMENTS`, `PROPERTY_OWNERSHIP_DOCUMENT`, `REMODELING_BUDGET`, `TITLE_STUDY_DOCUMENTS`, `DEED_SIGNATURE_DOCUMENTS` y `REGISTRATION_DOCUMENTS` (inmueble y legalización), más `EXTERNAL_APPROVAL_LETTER` (decisión 19).
    - **Desvío del DER**: se actualizan §7.10 y el esquema SQL.
 
 ### Tanda 2
@@ -340,6 +392,34 @@ No quedan. Las dos tandas están en "Decisiones (acordadas con el usuario)". Las
   - el worker de Celery se conecta a Redis y queda listo;
   - `check_document_services` en verde.
 - **Tests** (`tests/documents/`): `test_file_validation.py`, `test_storage.py` (cliente `boto3` sustituido con `MagicMock`; la URL prefirmada se firma con un cliente real, sin red), `test_scanning.py` (un `clamd` falso sobre TCP real en un hilo) y `test_services_commands.py`.
+
+### Parte 3
+- **Archivos:** `apps/documents/slots.py` (sincronización), `dossier.py` (lectura y `refresh`), `dossier_serializers.py` y `dossier_views.py`, con las cuatro rutas en `apps/documents/urls.py`. `dossier.py` va aparte de `slots.py` porque usa `applications.services` (alcance y `lock_for_edit`), que a su vez importa `sync_slots`: así no hay importación circular.
+- **Cuándo se llama `sync_slots`** (siempre dentro de la transacción, después de `bump_version`):
+  - `create_application`: siempre, sobre la solicitud recién creada (sin bloquearla: nadie más la ve todavía);
+  - `update_application`: siempre que haya un cambio real (producto o finalidad);
+  - `put_financing`: solo si cambia el producto (pasar a `OWN_FUNDS` o `EXTERNAL_CREDIT` lo limpia y retira el checklist del banco);
+  - `put_property`: al crear el inmueble o si cambia `condition_item`;
+  - `add_participant` y `remove_participant`: siempre; `update_participant`: solo si cambia el rol;
+  - `put_financial_profile`: al crear el perfil o si cambia `employment_profile_item`.
+  Si el cambio falla (por ejemplo, `409 STALE_VERSION`), la transacción revierte también los slots.
+- **Configuración que deja de aplicar.** El recálculo usa lo publicado en ese momento: un requisito desactivado o vencido, o un tipo inactivo, deja de aplicar y su slot se retira en el siguiente recálculo (no en el momento de desactivarlo). Es la lectura directa de la acordada 5 ("un slot que deja de aplicar se retira"); los slots retirados conservan su historial.
+- **Sin historial** = slot `PENDING` y sin versiones. Un slot exonerado (`WAIVED`) cuenta como con historial y conserva su snapshot: si no, el requisito nuevo podría dejarlo no exonerable y romper `ck_document_slots_waiver`.
+- **Tipo repetido (decisión 17).** El más estricto se elige por: obligatorio, mayor `minimum_files`, con vigencia antes que sin ella, menor vigencia, no exonerable y, para desempatar, menor `sort_order` e id. El slot toma su `requirement_id`, `requirement_version` y `sort_order`. `alternative_group_code`: el del más estricto solo si todos los requisitos del tipo están en un grupo; uno fuera de grupo exige el documento por sí mismo.
+- **Vigencia del snapshot:** `effective_validity_days` (la del requisito o, si está vacía, la sugerida por el tipo).
+- **Revivir.** Si hay varios retirados en la misma posición (titular, tipo e índice), revive el que tiene historial y, si no, el retirado más reciente. Uno sin historial toma el requisito vigente al revivir.
+- **Bloqueos.** `sync_slots` bloquea los slots de la solicitud (`select_for_update`, ordenados por id) después de la solicitud (decisión 22). Escribe primero los retiros y después los revividos, actualizados (`bulk_update`) y nuevos (`bulk_create`), para no chocar con `uq_document_slots_active`.
+- **Etiqueta.** "Nombre n de m", donde m son los slots vigentes del mismo juego (subconsulta `set_size`, que compara el participante con `COALESCE` para incluir los de la solicitud); con m = 1, solo el nombre. Un slot retirado usa su `minimum_files`. Así, si `minimum_files` sube de 2 a 3, los slots con historial (snapshot 2) y el nuevo se muestran "1 de 3", "2 de 3" y "3 de 3".
+- **Lectura interna:**
+  - `GET /applications/{id}/document-slots` pagina como el resto de listas y filtra por `status`, `participant_id`, `document_type_code`, `required` e `include_retired` (agregado, igual que `include_inactive` en participantes). Orden: los documentos de la solicitud primero, después cada participante en el orden en que entró, y dentro de cada uno `sort_order`, código del tipo y `slot_index`;
+  - el slot trae el tipo con `holder_scope`, `allowed_mime_types` y `max_size_bytes`, el participante (`id`, `role`, `client_id`, `full_name`, `is_active`), el resumen de la versión vigente con su `scan_status`, `waiver_reason`, `is_retired` y `retired_at`;
+  - `GET /document-slots/{id}` incluye los retirados; `.../versions` pagina, de la más reciente a la primera, con `is_current`, los metadatos del archivo (nunca `object_key` ni el bucket) y todas sus revisiones, incluido `internal_comment`;
+  - sin `ETag`: los documentos no tocan la versión de la solicitud (acordada 6).
+- **`POST .../document-slots/refresh`**: `documents.manage_requirements`, sin cuerpo ni `If-Match`, `409 APPLICATION_NOT_EDITABLE` desde `FILED`. Responde `200` con `created`, `retired`, `revived` y `updated` (ids) y `slots`, la lista vigente completa sin paginar.
+- **Permisos:** `HasPermissionCode` resuelve el `403` de broker y partner antes de buscar la solicitud; el asesor no asignado recibe `404`.
+- **Esquema OpenAPI:** `DocumentSlotStatusEnum` y `DocumentFileStatusEnum` en `ENUM_NAME_OVERRIDES`, porque los dos `status` nuevos chocaban de nombre.
+- **`label` y mypy.** El campo `label` del serializer choca con el atributo `Field.label` de los stubs de DRF; lleva el mismo `type: ignore[assignment]` justificado que `CatalogItemRefSerializer`.
+- **Tests** (`tests/applications/dossier/`): `test_slots.py` (reglas de la sincronización y llamadas desde los servicios, con un espía sobre `services.sync_slots` para las ramas que no deben recalcular) y `test_slots_api.py` (matriz de permisos con admin, asesor asignado y no asignado, broker, partner y anónimo; lista, filtros, detalle, versiones y `refresh`).
 
 ## Pendientes para pasos posteriores
 

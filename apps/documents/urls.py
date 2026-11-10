@@ -1,10 +1,31 @@
 from django.urls import path
 
-from apps.documents import views
+from apps.documents import dossier_views, views
 
 app_name = "documents"
 
 urlpatterns = [
+    # Expediente documental (sección 19)
+    path(
+        "applications/<uuid:application_id>/document-slots",
+        dossier_views.ApplicationDocumentSlotListView.as_view(),
+        name="application-document-slot-list",
+    ),
+    path(
+        "applications/<uuid:application_id>/document-slots/refresh",
+        dossier_views.ApplicationDocumentSlotRefreshView.as_view(),
+        name="application-document-slot-refresh",
+    ),
+    path(
+        "document-slots/<uuid:slot_id>",
+        dossier_views.DocumentSlotDetailView.as_view(),
+        name="document-slot-detail",
+    ),
+    path(
+        "document-slots/<uuid:slot_id>/versions",
+        dossier_views.DocumentSlotVersionListView.as_view(),
+        name="document-slot-version-list",
+    ),
     # Tipos documentales (sección 23.4)
     path("document-types", views.DocumentTypeListView.as_view(), name="document-type-list"),
     path(

@@ -87,6 +87,7 @@ from apps.crm.services import (
     get_scope,
     opportunities_visible_to,
 )
+from apps.documents.slots import sync_slots
 from apps.identity.models import BuyerSession, User
 from apps.partners.models import Project
 from apps.partners.services import ensure_project_accepts_opportunities, projects_visible_to
@@ -394,6 +395,8 @@ def create_application(
                 actor_user=actor,
                 application_version=application.version,
             )
+            # La solicitud nueva aún no es visible para nadie más: no hace falta bloquearla.
+            sync_slots(application)
     except IntegrityError as exc:
         # Respaldo ante una carrera: la restricción admite una sola solicitud en curso.
         if OPEN_APPLICATION_CONSTRAINT in str(exc):
@@ -499,6 +502,7 @@ def update_application(
         bump_version(locked, changed)
         if "bank_product" in changed and product is not None:
             save_evaluation(actor, locked)
+        sync_slots(locked)
 
     application_updated.send(
         sender=CreditApplication, application=locked, fields=sorted(changed), actor=actor
@@ -668,6 +672,7 @@ def add_participant(
             participant.is_active = True
             participant.save(update_fields=[*values, "is_active", "updated_at"])
         bump_version(locked)
+        sync_slots(locked)
 
     logger.info("Participante %s agregado a %s por %s", participant.pk, locked.code, actor.pk)
     participant_added.send(
@@ -707,6 +712,8 @@ def update_participant(
         _ensure_income_share(current.contributes_income, current.income_share_cop)
         current.save(update_fields=[*changed, "updated_at"])
         bump_version(locked)
+        if "role" in changed:
+            sync_slots(locked)
 
     application_updated.send(
         sender=CreditApplication, application=locked, fields=["participants"], actor=actor
@@ -726,6 +733,7 @@ def remove_participant(actor: User, participant: ApplicationParticipant) -> None
         current.is_active = False
         current.save(update_fields=["is_active", "updated_at"])
         bump_version(locked)
+        sync_slots(locked)
 
     logger.info("Participante %s retirado de %s por %s", current.pk, locked.code, actor.pk)
     participant_removed.send(
@@ -759,17 +767,22 @@ def put_financial_profile(
         current = _current_participant(participant.pk)
         profile = FinancialProfile.objects.filter(participant=current).first()
         created = profile is None
+        # El perfil laboral decide los documentos de ingresos (API §17.2).
+        profile_changed = created
         if profile is None:
             FinancialProfile.objects.create(participant=current, **values)
         else:
             changed = _changed(profile, values)
             if not changed:
                 return False
+            profile_changed = "employment_profile_item" in changed
             for field in changed:
                 setattr(profile, field, values[field])
             profile.data_confirmed_at = None
             profile.save(update_fields=[*changed, "data_confirmed_at", "updated_at"])
         bump_version(locked)
+        if profile_changed:
+            sync_slots(locked)
 
     application_updated.send(
         sender=CreditApplication, application=locked, fields=["financial_profile"], actor=actor
@@ -902,16 +915,21 @@ def put_property(
             raise ValidationError(errors)
         prop = Property.objects.filter(application=locked).first()
         created = prop is None
+        # La condición del inmueble decide parte de la lista documental.
+        condition_changed = created
         if prop is None:
             Property.objects.create(application=locked, **values)
         else:
             changed = _changed(prop, values)
             if not changed:
                 return False
+            condition_changed = "condition_item" in changed
             for field in changed:
                 setattr(prop, field, values[field])
             prop.save(update_fields=[*changed, "updated_at"])
         bump_version(locked)
+        if condition_changed:
+            sync_slots(locked)
 
     application_updated.send(
         sender=CreditApplication, application=locked, fields=["property"], actor=actor
@@ -1002,6 +1020,8 @@ def put_financing(
         bump_version(locked, ["bank_product"] if product_changed else [])
         if product_changed and product is not None:
             save_evaluation(actor, locked)
+        if product_changed:
+            sync_slots(locked)
 
     application_updated.send(
         sender=CreditApplication, application=locked, fields=sorted(fields), actor=actor
