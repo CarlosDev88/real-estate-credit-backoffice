@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Umbral · Iniciar sesión</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/*__TOKENS_CSS__*/
+/*__BASE_CSS__*/
+
+.auth { position: relative; min-height: 100vh; display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); }
+
+/* panel de marca */
+.brand-panel {
+  position: relative; overflow: hidden;
+  background: var(--um-bg-sidebar); color: var(--um-text-on-sidebar);
+  padding: var(--um-space-10) var(--um-space-12);
+  display: flex; flex-direction: column;
+}
+.brand-panel .logo { color: #fff; font-size: var(--um-text-xl); }
+.brand-panel .pitch { margin-top: auto; max-width: 440px; position: relative; z-index: 1; }
+.brand-panel h1 { color: #fff; font-size: var(--um-text-4xl); line-height: var(--um-leading-4xl); letter-spacing: -0.02em; margin: 0 0 var(--um-space-4); font-weight: var(--um-weight-semibold); }
+.brand-panel p { margin: 0 0 var(--um-space-8); font-size: var(--um-text-lg); line-height: var(--um-leading-lg); opacity: 0.85; }
+.points { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--um-space-3); }
+.points li { display: flex; gap: var(--um-space-3); align-items: flex-start; font-size: var(--um-text-md); }
+.points svg { flex: none; width: 18px; height: 18px; margin-top: 2px; color: var(--um-color-teal-300); }
+.brand-panel footer { margin-top: var(--um-space-10); font-size: var(--um-text-xs); opacity: 0.6; position: relative; z-index: 1; }
+.arches { position: absolute; right: -80px; top: 40px; width: 420px; height: 420px; opacity: 0.18; pointer-events: none; }
+
+/* formulario */
+.form-side { position: relative; display: grid; place-items: center; padding: var(--um-space-16) var(--um-space-4) var(--um-space-8); background: var(--um-bg-canvas); }
+.form-tools { position: absolute; top: var(--um-space-4); right: var(--um-space-4); z-index: 2; }
+.form-card { width: 100%; max-width: 400px; }
+.form-card h2 { font-size: var(--um-text-3xl); line-height: var(--um-leading-3xl); margin: 0 0 var(--um-space-2); letter-spacing: -0.01em; font-weight: var(--um-weight-semibold); }
+.form-card .sub { margin: 0 0 var(--um-space-8); color: var(--um-text-secondary); }
+.form-card form { display: grid; gap: var(--um-space-5); }
+.label-row { display: flex; justify-content: space-between; align-items: baseline; }
+.label-row a { font-size: var(--um-text-sm); }
+.remember { display: flex; align-items: center; gap: var(--um-space-2); font-size: var(--um-text-sm); color: var(--um-text-secondary); cursor: pointer; }
+.divider { height: 1px; background: var(--um-border-default); margin: var(--um-space-8) 0 var(--um-space-6); }
+.buyer-note { display: flex; gap: var(--um-space-3); padding: var(--um-space-4); border-radius: var(--um-radius-lg); background: var(--um-bg-surface); border: 1px solid var(--um-border-default); font-size: var(--um-text-sm); color: var(--um-text-secondary); }
+.buyer-note svg { flex: none; width: 20px; height: 20px; color: var(--um-accent-default); margin-top: 1px; }
+.buyer-note b { color: var(--um-text-primary); display: block; margin-bottom: 2px; }
+.legal { margin-top: var(--um-space-6); font-size: var(--um-text-xs); color: var(--um-text-tertiary); text-align: center; }
+.demo-states { margin-top: var(--um-space-8); padding-top: var(--um-space-4); border-top: 1px dashed var(--um-border-strong); }
+.demo-states .tertiary { display: block; margin-bottom: var(--um-space-2); }
+#errorAlert { display: none; }
+#errorAlert.show { display: flex; }
+.btn[aria-busy="true"] { opacity: 0.8; pointer-events: none; }
+.spinner { width: 16px; height: 16px; border-radius: 50%; border: 2px solid currentColor; border-right-color: transparent; animation: spin 0.8s linear infinite; display: none; }
+.btn[aria-busy="true"] .spinner { display: inline-block; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .spinner { animation: none; } }
+
+@media (max-width: 900px) {
+  .auth { grid-template-columns: 1fr; }
+  .brand-panel { padding: var(--um-space-6) var(--um-space-4); }
+  .brand-panel .pitch { margin-top: var(--um-space-6); }
+  .brand-panel h1 { font-size: var(--um-text-2xl); line-height: var(--um-leading-2xl); }
+  .brand-panel p { margin-bottom: 0; font-size: var(--um-text-md); }
+  .points, .brand-panel footer, .arches { display: none; }
+  .form-side { place-items: start center; padding-top: var(--um-space-6); }
+  .form-tools { top: var(--um-space-4); right: var(--um-space-3); }
+  .form-tools .btn { color: var(--um-text-on-sidebar); }
+  .form-tools .btn:hover { background: rgba(255,255,255,0.1); }
+}
+</style>
+</head>
+<body>
+<div class="auth">
+  <div class="form-tools"><!--__THEME_BUTTON__--></div>
+  <!-- Panel de marca -->
+  <section class="brand-panel" aria-label="Umbral">
+    <div class="logo">
+      <svg width="30" height="30" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="7" fill="#ffffff1f"/><path d="M10 25V15a6 6 0 0 1 12 0v10" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/><path d="M7 25.5h18" stroke="var(--um-color-teal-300)" stroke-width="2.6" stroke-linecap="round"/></svg>
+      Umbral
+    </div>
+
+    <svg class="arches" viewBox="0 0 400 400" aria-hidden="true" fill="none" stroke="#fff" stroke-width="2">
+      <path d="M80 380V200a120 120 0 0 1 240 0v180"/>
+      <path d="M120 380V210a80 80 0 0 1 160 0v170"/>
+      <path d="M160 380V220a40 40 0 0 1 80 0v160"/>
+      <path d="M40 382h320"/>
+    </svg>
+
+    <div class="pitch">
+      <h1>Del primer contacto a la llave de la casa.</h1>
+      <p>Gestiona clientes, solicitudes de crédito, documentos y radicaciones en un solo lugar.</p>
+      <ul class="points">
+        <li><svg viewBox="0 0 20 20" fill="currentColor"><path d="M10 1a9 9 0 1 0 0 18 9 9 0 0 0 0-18Zm-1.2 13L4.5 9.7l1.4-1.4 2.9 2.9 5.3-5.3 1.4 1.4-6.7 6.7Z"/></svg>Reglas de cada banco evaluadas antes de radicar.</li>
+        <li><svg viewBox="0 0 20 20" fill="currentColor"><path d="M10 1a9 9 0 1 0 0 18 9 9 0 0 0 0-18Zm-1.2 13L4.5 9.7l1.4-1.4 2.9 2.9 5.3-5.3 1.4 1.4-6.7 6.7Z"/></svg>Checklist de documentos que se arma solo según el banco y el perfil.</li>
+        <li><svg viewBox="0 0 20 20" fill="currentColor"><path d="M10 1a9 9 0 1 0 0 18 9 9 0 0 0 0-18Zm-1.2 13L4.5 9.7l1.4-1.4 2.9 2.9 5.3-5.3 1.4 1.4-6.7 6.7Z"/></svg>El comprador carga sus documentos desde el celular, sin crear cuenta.</li>
+      </ul>
+    </div>
+
+    <footer>Bancolombia · Fondo Nacional del Ahorro · Banco de Bogotá</footer>
+  </section>
+
+  <!-- Formulario -->
+  <main class="form-side">
+    <div class="form-card">
+      <h2>Iniciar sesión</h2>
+      <p class="sub">Acceso para asesores, brokers y constructoras aliadas.</p>
+
+      <form id="loginForm" novalidate>
+        <div class="alert tone-danger" id="errorAlert" role="alert">
+          <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M10 1a9 9 0 1 0 0 18 9 9 0 0 0 0-18Zm-1 4h2v6H9V5Zm0 8h2v2H9v-2Z"/></svg>
+          <div><b>Correo o contraseña incorrectos</b><p>Revisa tus datos. Tras 5 intentos fallidos el acceso se bloquea 15 minutos.</p></div>
+        </div>
+
+        <div class="field">
+          <label for="email">Correo</label>
+          <div class="input-wrap">
+            <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M2 4h16v12H2V4Zm2 2v.5l6 4 6-4V6H4Zm12 2.9-6 4-6-4V14h12V8.9Z"/></svg>
+            <input class="input input-lg" id="email" type="email" autocomplete="username" placeholder="nombre@empresa.com" value="paula.rincon@umbral.co">
+          </div>
+        </div>
+
+        <div class="field">
+          <div class="label-row"><label for="password">Contraseña</label><a href="#">¿La olvidaste?</a></div>
+          <div class="input-wrap">
+            <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M6 8V6a4 4 0 1 1 8 0v2h1a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1h1Zm2 0h4V6a2 2 0 1 0-4 0v2Zm1 3v3h2v-3H9Z"/></svg>
+            <input class="input input-lg has-suffix" id="password" type="password" autocomplete="current-password" value="contrasena-demo">
+            <button class="btn btn-ghost btn-icon btn-sm suffix" id="togglePwd" type="button" aria-label="Mostrar contraseña" aria-pressed="false">
+              <svg viewBox="0 0 20 20" fill="currentColor"><path d="M10 4C5 4 1.7 8.1 1 10c.7 1.9 4 6 9 6s8.3-4.1 9-6c-.7-1.9-4-6-9-6Zm0 10a4 4 0 1 1 0-8 4 4 0 0 1 0 8Zm0-2a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <label class="remember"><input type="checkbox" class="checkbox" checked> Mantener la sesión en este equipo</label>
+
+        <button class="btn btn-primary btn-lg btn-block" id="submitBtn" type="submit"><span class="spinner" aria-hidden="true"></span><span>Ingresar</span></button>
+      </form>
+
+      <div class="divider"></div>
+
+      <div class="buyer-note">
+        <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M10 2 2 8v10h5v-6h6v6h5V8l-8-6Z"/></svg>
+        <div><b>¿Estás comprando vivienda?</b>No necesitas cuenta. Entra con el enlace que te envió tu asesor o broker por correo o WhatsApp.</div>
+      </div>
+
+      <p class="legal">Al ingresar aceptas el tratamiento de datos según la política de privacidad.</p>
+
+      <div class="demo-states">
+        <span class="tertiary">Estados de referencia (solo en esta maqueta)</span>
+        <div class="row">
+          <button class="btn btn-default btn-sm" type="button" id="demoError">Ver error</button>
+          <button class="btn btn-default btn-sm" type="button" id="demoLoading">Ver cargando</button>
+          <button class="btn btn-default btn-sm" type="button" id="demoReset">Restablecer</button>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+
+<script>
+(function () {
+  var pwd = document.getElementById("password");
+  var tgl = document.getElementById("togglePwd");
+  tgl.addEventListener("click", function () {
+    var show = pwd.type === "password";
+    pwd.type = show ? "text" : "password";
+    tgl.setAttribute("aria-pressed", String(show));
+    tgl.setAttribute("aria-label", show ? "Ocultar contraseña" : "Mostrar contraseña");
+  });
+  var alertEl = document.getElementById("errorAlert");
+  var submit = document.getElementById("submitBtn");
+  function reset() { alertEl.classList.remove("show"); submit.removeAttribute("aria-busy"); submit.lastElementChild.textContent = "Ingresar"; }
+  document.getElementById("loginForm").addEventListener("submit", function (e) { e.preventDefault(); submit.setAttribute("aria-busy", "true"); submit.lastElementChild.textContent = "Ingresando…"; setTimeout(function () { reset(); alertEl.classList.add("show"); }, 1200); });
+  document.getElementById("demoError").addEventListener("click", function () { reset(); alertEl.classList.add("show"); });
+  document.getElementById("demoLoading").addEventListener("click", function () { reset(); submit.setAttribute("aria-busy", "true"); submit.lastElementChild.textContent = "Ingresando…"; });
+  document.getElementById("demoReset").addEventListener("click", reset);
+
+})();
+</script>
+<script>
+/*__SHELL_JS__*/
+</script>
+</body>
+</html>

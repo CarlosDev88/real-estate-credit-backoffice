@@ -1,0 +1,734 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Umbral · Design System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* Generado por design/scripts/build-tokens.mjs desde design/tokens/tokens.json. No editar a mano. */
+
+:root {
+  --um-color-white: #FFFFFF;
+  --um-color-blue-50: #EEF4FB;
+  --um-color-blue-100: #D6E4F5;
+  --um-color-blue-200: #ADC8EA;
+  --um-color-blue-300: #7FA7DB;
+  --um-color-blue-400: #4F82C8;
+  --um-color-blue-500: #2A63B0;
+  --um-color-blue-600: #1F4E91;
+  --um-color-blue-700: #193F75;
+  --um-color-blue-800: #14325C;
+  --um-color-blue-900: #0F2544;
+  --um-color-blue-950: #0B1A30;
+  --um-color-teal-50: #E8F7F5;
+  --um-color-teal-100: #C6ECE7;
+  --um-color-teal-300: #6FCBBF;
+  --um-color-teal-400: #3DB3A4;
+  --um-color-teal-500: #1F9E8F;
+  --um-color-teal-600: #167A6E;
+  --um-color-teal-700: #115F56;
+  --um-color-teal-900: #0A2E2A;
+  --um-color-neutral-0: #FFFFFF;
+  --um-color-neutral-25: #FAFBFC;
+  --um-color-neutral-50: #F4F6F8;
+  --um-color-neutral-100: #E9EDF1;
+  --um-color-neutral-200: #D5DCE3;
+  --um-color-neutral-300: #B6C1CC;
+  --um-color-neutral-400: #8B98A6;
+  --um-color-neutral-500: #66727F;
+  --um-color-neutral-600: #4B5561;
+  --um-color-neutral-700: #343C46;
+  --um-color-neutral-750: #2C343E;
+  --um-color-neutral-800: #222831;
+  --um-color-neutral-850: #1B2129;
+  --um-color-neutral-900: #151A21;
+  --um-color-neutral-950: #0D1117;
+  --um-color-green-50: #E8F6EE;
+  --um-color-green-200: #A9DEC2;
+  --um-color-green-400: #4CC38A;
+  --um-color-green-600: #1E8E5A;
+  --um-color-green-700: #17714A;
+  --um-color-green-900: #0F2A1E;
+  --um-color-amber-50: #FDF4E3;
+  --um-color-amber-200: #F2D49C;
+  --um-color-amber-400: #E0A84A;
+  --um-color-amber-600: #B7791F;
+  --um-color-amber-700: #8A5A12;
+  --um-color-amber-900: #2E2210;
+  --um-color-red-50: #FCECEB;
+  --um-color-red-200: #F2B8B5;
+  --um-color-red-400: #EF6B64;
+  --um-color-red-600: #C2413B;
+  --um-color-red-700: #9E2F2A;
+  --um-color-red-900: #331716;
+  --um-font-sans: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --um-font-mono: 'JetBrains Mono', 'Cascadia Code', ui-monospace, monospace;
+  --um-text-xs: 12px;
+  --um-text-sm: 13px;
+  --um-text-md: 14px;
+  --um-text-lg: 16px;
+  --um-text-xl: 18px;
+  --um-text-2xl: 20px;
+  --um-text-3xl: 24px;
+  --um-text-4xl: 30px;
+  --um-leading-xs: 16px;
+  --um-leading-sm: 18px;
+  --um-leading-md: 22px;
+  --um-leading-lg: 24px;
+  --um-leading-xl: 26px;
+  --um-leading-2xl: 28px;
+  --um-leading-3xl: 32px;
+  --um-leading-4xl: 38px;
+  --um-weight-regular: 400;
+  --um-weight-medium: 500;
+  --um-weight-semibold: 600;
+  --um-weight-bold: 700;
+  --um-space-0: 0px;
+  --um-space-1: 4px;
+  --um-space-2: 8px;
+  --um-space-3: 12px;
+  --um-space-4: 16px;
+  --um-space-5: 20px;
+  --um-space-6: 24px;
+  --um-space-8: 32px;
+  --um-space-10: 40px;
+  --um-space-12: 48px;
+  --um-space-16: 64px;
+  --um-radius-sm: 4px;
+  --um-radius-md: 6px;
+  --um-radius-lg: 8px;
+  --um-radius-xl: 12px;
+  --um-radius-full: 9999px;
+  --um-control-height-sm: 28px;
+  --um-control-height: 32px;
+  --um-control-height-lg: 40px;
+}
+
+:root,
+[data-theme="light"] {
+  color-scheme: light;
+  --um-bg-canvas: #F4F6F8;
+  --um-bg-surface: #FFFFFF;
+  --um-bg-subtle: #FAFBFC;
+  --um-bg-muted: #E9EDF1;
+  --um-bg-sidebar: #0F2544;
+  --um-bg-overlay: rgba(13, 17, 23, 0.45);
+  --um-border-default: #D5DCE3;
+  --um-border-strong: #B6C1CC;
+  --um-text-primary: #151A21;
+  --um-text-secondary: #4B5561;
+  --um-text-tertiary: #66727F;
+  --um-text-disabled: #8B98A6;
+  --um-text-inverse: #FFFFFF;
+  --um-text-link: #1F4E91;
+  --um-text-on-sidebar: #D6E4F5;
+  --um-brand-primary: #1F4E91;
+  --um-brand-primary-hover: #193F75;
+  --um-brand-primary-active: #14325C;
+  --um-brand-subtle: #EEF4FB;
+  --um-brand-on-primary: #FFFFFF;
+  --um-accent-default: #167A6E;
+  --um-accent-subtle: #E8F7F5;
+  --um-focus-ring: #4F82C8;
+  --um-tone-neutral-fg: #343C46;
+  --um-tone-neutral-bg: #E9EDF1;
+  --um-tone-neutral-border: #D5DCE3;
+  --um-tone-info-fg: #193F75;
+  --um-tone-info-bg: #EEF4FB;
+  --um-tone-info-border: #ADC8EA;
+  --um-tone-accent-fg: #115F56;
+  --um-tone-accent-bg: #E8F7F5;
+  --um-tone-accent-border: #6FCBBF;
+  --um-tone-success-fg: #17714A;
+  --um-tone-success-bg: #E8F6EE;
+  --um-tone-success-border: #A9DEC2;
+  --um-tone-warning-fg: #8A5A12;
+  --um-tone-warning-bg: #FDF4E3;
+  --um-tone-warning-border: #F2D49C;
+  --um-tone-danger-fg: #9E2F2A;
+  --um-tone-danger-bg: #FCECEB;
+  --um-tone-danger-border: #F2B8B5;
+  --um-shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.06);
+  --um-shadow-md: 0 2px 8px rgba(16, 24, 40, 0.08);
+  --um-shadow-lg: 0 12px 32px rgba(16, 24, 40, 0.14);
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+  --um-bg-canvas: #0D1117;
+  --um-bg-surface: #151A21;
+  --um-bg-subtle: #1B2129;
+  --um-bg-muted: #222831;
+  --um-bg-sidebar: #0B1A30;
+  --um-bg-overlay: rgba(0, 0, 0, 0.6);
+  --um-border-default: #2C343E;
+  --um-border-strong: #343C46;
+  --um-text-primary: #E6EAEE;
+  --um-text-secondary: #A8B3BF;
+  --um-text-tertiary: #8B98A6;
+  --um-text-disabled: #66727F;
+  --um-text-inverse: #0D1117;
+  --um-text-link: #7FA7DB;
+  --um-text-on-sidebar: #D6E4F5;
+  --um-brand-primary: #5B8DD6;
+  --um-brand-primary-hover: #7FA7DB;
+  --um-brand-primary-active: #ADC8EA;
+  --um-brand-subtle: #13243A;
+  --um-brand-on-primary: #0D1117;
+  --um-accent-default: #3DB3A4;
+  --um-accent-subtle: #0A2E2A;
+  --um-focus-ring: #7FA7DB;
+  --um-tone-neutral-fg: #C3CCD5;
+  --um-tone-neutral-bg: #222831;
+  --um-tone-neutral-border: #343C46;
+  --um-tone-info-fg: #7FA7DB;
+  --um-tone-info-bg: #13243A;
+  --um-tone-info-border: #14325C;
+  --um-tone-accent-fg: #6FCBBF;
+  --um-tone-accent-bg: #0A2E2A;
+  --um-tone-accent-border: #115F56;
+  --um-tone-success-fg: #4CC38A;
+  --um-tone-success-bg: #0F2A1E;
+  --um-tone-success-border: #1D4A33;
+  --um-tone-warning-fg: #E0A84A;
+  --um-tone-warning-bg: #2E2210;
+  --um-tone-warning-border: #5A4317;
+  --um-tone-danger-fg: #EF6B64;
+  --um-tone-danger-bg: #331716;
+  --um-tone-danger-border: #5E2522;
+  --um-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --um-shadow-md: 0 2px 8px rgba(0, 0, 0, 0.45);
+  --um-shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.55);
+}
+
+
+/* ---------- base de la vista previa (no forma parte de los tokens) ---------- */
+*, *::before, *::after { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--um-bg-canvas);
+  color: var(--um-text-primary);
+  font-family: var(--um-font-sans);
+  font-size: var(--um-text-md);
+  line-height: var(--um-leading-md);
+  -webkit-font-smoothing: antialiased;
+}
+.num { font-variant-numeric: tabular-nums; }
+.mono { font-family: var(--um-font-mono); font-size: var(--um-text-sm); }
+a { color: var(--um-text-link); }
+.wrap { max-width: 1180px; margin: 0 auto; padding: var(--um-space-8) var(--um-space-4) var(--um-space-16); }
+.topbar {
+  position: sticky; top: 0; z-index: 10;
+  background: var(--um-bg-surface); border-bottom: 1px solid var(--um-border-default);
+}
+.topbar-inner { max-width: 1180px; margin: 0 auto; padding: var(--um-space-3) var(--um-space-4); display: flex; align-items: center; gap: var(--um-space-3); }
+.brand { display: flex; align-items: center; gap: var(--um-space-2); font-weight: var(--um-weight-semibold); font-size: var(--um-text-xl); letter-spacing: -0.01em; }
+.brand small { font-weight: var(--um-weight-regular); color: var(--um-text-tertiary); font-size: var(--um-text-sm); margin-left: var(--um-space-1); }
+.spacer { flex: 1; }
+h1 { font-size: var(--um-text-4xl); line-height: var(--um-leading-4xl); margin: 0 0 var(--um-space-2); letter-spacing: -0.02em; }
+h2 { font-size: var(--um-text-2xl); line-height: var(--um-leading-2xl); margin: var(--um-space-12) 0 var(--um-space-1); letter-spacing: -0.01em; }
+h3 { font-size: var(--um-text-lg); line-height: var(--um-leading-lg); margin: var(--um-space-6) 0 var(--um-space-3); }
+.lead { color: var(--um-text-secondary); font-size: var(--um-text-lg); line-height: var(--um-leading-lg); max-width: 70ch; margin: 0; }
+.hint { color: var(--um-text-secondary); margin: 0 0 var(--um-space-4); max-width: 80ch; }
+.grid { display: grid; gap: var(--um-space-4); }
+.g-auto { grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); }
+.g-2 { grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); }
+.card {
+  background: var(--um-bg-surface); border: 1px solid var(--um-border-default);
+  border-radius: var(--um-radius-lg); box-shadow: var(--um-shadow-sm); padding: var(--um-space-5);
+}
+.card h4 { margin: 0 0 var(--um-space-1); font-size: var(--um-text-lg); }
+.muted { color: var(--um-text-secondary); }
+.tertiary { color: var(--um-text-tertiary); font-size: var(--um-text-sm); }
+.row { display: flex; flex-wrap: wrap; gap: var(--um-space-2); align-items: center; }
+
+/* ---------- swatches ---------- */
+.swatch { border: 1px solid var(--um-border-default); border-radius: var(--um-radius-lg); overflow: hidden; background: var(--um-bg-surface); }
+.swatch .chip { height: 56px; border-bottom: 1px solid var(--um-border-default); }
+.swatch .meta { padding: var(--um-space-2) var(--um-space-3); }
+.swatch .meta b { display: block; font-size: var(--um-text-sm); font-weight: var(--um-weight-medium); }
+.swatch .meta code { font-family: var(--um-font-mono); font-size: var(--um-text-xs); color: var(--um-text-tertiary); }
+.ramp { display: grid; grid-template-columns: repeat(11, 1fr); border-radius: var(--um-radius-md); overflow: hidden; border: 1px solid var(--um-border-default); }
+.ramp div { height: 40px; }
+.ramp-label { display: flex; justify-content: space-between; font-size: var(--um-text-xs); color: var(--um-text-tertiary); margin: var(--um-space-1) 0 var(--um-space-4); }
+
+/* ---------- componentes ---------- */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--um-space-2);
+  height: var(--um-control-height); padding: 0 var(--um-space-4);
+  border-radius: var(--um-radius-md); border: 1px solid transparent;
+  font: inherit; font-weight: var(--um-weight-medium); cursor: pointer; white-space: nowrap;
+}
+.btn:focus-visible, .input:focus-visible, .select:focus-visible { outline: 2px solid var(--um-focus-ring); outline-offset: 2px; }
+.btn-primary { background: var(--um-brand-primary); color: var(--um-brand-on-primary); }
+.btn-primary:hover { background: var(--um-brand-primary-hover); }
+.btn-default { background: var(--um-bg-surface); color: var(--um-text-primary); border-color: var(--um-border-strong); }
+.btn-default:hover { border-color: var(--um-brand-primary); color: var(--um-text-link); }
+.btn-text { background: transparent; color: var(--um-text-link); }
+.btn-text:hover { background: var(--um-brand-subtle); }
+.btn-danger { background: var(--um-bg-surface); color: var(--um-tone-danger-fg); border-color: var(--um-tone-danger-border); }
+.btn-danger:hover { background: var(--um-tone-danger-bg); }
+.btn-sm { height: var(--um-control-height-sm); padding: 0 var(--um-space-3); font-size: var(--um-text-sm); }
+.btn-lg { height: var(--um-control-height-lg); padding: 0 var(--um-space-5); }
+.btn[disabled] { background: var(--um-bg-muted); color: var(--um-text-disabled); border-color: var(--um-border-default); cursor: not-allowed; }
+
+.field { display: grid; gap: var(--um-space-1); }
+.field label { font-size: var(--um-text-sm); font-weight: var(--um-weight-medium); }
+.field .help { font-size: var(--um-text-xs); color: var(--um-text-tertiary); }
+.field .err { font-size: var(--um-text-xs); color: var(--um-tone-danger-fg); }
+.input, .select {
+  height: var(--um-control-height); width: 100%;
+  padding: 0 var(--um-space-3); border-radius: var(--um-radius-md);
+  border: 1px solid var(--um-border-strong); background: var(--um-bg-surface); color: var(--um-text-primary); font: inherit;
+}
+.input::placeholder { color: var(--um-text-tertiary); }
+.input.invalid { border-color: var(--um-tone-danger-fg); }
+.input-affix { position: relative; }
+.input-affix span { position: absolute; left: var(--um-space-3); top: 50%; transform: translateY(-50%); color: var(--um-text-tertiary); font-size: var(--um-text-sm); }
+.input-affix .input { padding-left: 52px; text-align: right; font-variant-numeric: tabular-nums; }
+
+.badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  height: 22px; padding: 0 var(--um-space-2); border-radius: var(--um-radius-full);
+  font-size: var(--um-text-xs); font-weight: var(--um-weight-medium); white-space: nowrap; border: 1px solid;
+}
+.badge::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.tone-neutral { color: var(--um-tone-neutral-fg); background: var(--um-tone-neutral-bg); border-color: var(--um-tone-neutral-border); }
+.tone-info { color: var(--um-tone-info-fg); background: var(--um-tone-info-bg); border-color: var(--um-tone-info-border); }
+.tone-accent { color: var(--um-tone-accent-fg); background: var(--um-tone-accent-bg); border-color: var(--um-tone-accent-border); }
+.tone-success { color: var(--um-tone-success-fg); background: var(--um-tone-success-bg); border-color: var(--um-tone-success-border); }
+.tone-warning { color: var(--um-tone-warning-fg); background: var(--um-tone-warning-bg); border-color: var(--um-tone-warning-border); }
+.tone-danger { color: var(--um-tone-danger-fg); background: var(--um-tone-danger-bg); border-color: var(--um-tone-danger-border); }
+
+.alert { display: flex; gap: var(--um-space-3); padding: var(--um-space-3) var(--um-space-4); border-radius: var(--um-radius-md); border: 1px solid; }
+.alert b { display: block; margin-bottom: 2px; }
+.alert p { margin: 0; color: var(--um-text-primary); font-size: var(--um-text-sm); }
+.alert .icon { flex: none; width: 20px; height: 20px; }
+
+/* tabla densa */
+.table-wrap { overflow-x: auto; border: 1px solid var(--um-border-default); border-radius: var(--um-radius-lg); background: var(--um-bg-surface); }
+.toolbar { display: flex; flex-wrap: wrap; gap: var(--um-space-2); padding: var(--um-space-3); border-bottom: 1px solid var(--um-border-default); }
+.toolbar .input, .toolbar .select { width: auto; min-width: 160px; }
+table { width: 100%; border-collapse: collapse; min-width: 680px; }
+th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--um-border-default); white-space: nowrap; }
+th { background: var(--um-bg-subtle); color: var(--um-text-secondary); font-size: var(--um-text-xs); font-weight: var(--um-weight-semibold); text-transform: uppercase; letter-spacing: 0.04em; }
+th.sorted::after { content: " ↓"; color: var(--um-text-link); }
+td.right, th.right { text-align: right; }
+tbody tr:hover { background: var(--um-brand-subtle); }
+tbody tr:last-child td { border-bottom: 0; }
+.table-foot { display: flex; justify-content: space-between; align-items: center; padding: var(--um-space-2) var(--um-space-3); border-top: 1px solid var(--um-border-default); color: var(--um-text-secondary); font-size: var(--um-text-sm); }
+.person b { display: block; font-weight: var(--um-weight-medium); }
+.person span { font-size: var(--um-text-xs); color: var(--um-text-tertiary); }
+
+/* progreso de completitud */
+.progress { height: 8px; border-radius: var(--um-radius-full); background: var(--um-bg-muted); overflow: hidden; }
+.progress > div { height: 100%; border-radius: inherit; background: var(--um-brand-primary); }
+.progress.accent > div { background: var(--um-accent-default); }
+.kpi { font-size: var(--um-text-3xl); line-height: var(--um-leading-3xl); font-weight: var(--um-weight-semibold); letter-spacing: -0.01em; }
+
+/* slot de documento */
+.slot { display: grid; grid-template-columns: auto 1fr auto; gap: var(--um-space-3); align-items: center; padding: var(--um-space-3) var(--um-space-4); border: 1px solid var(--um-border-default); border-radius: var(--um-radius-lg); background: var(--um-bg-surface); }
+.slot + .slot { margin-top: var(--um-space-2); }
+.slot .file { width: 36px; height: 36px; border-radius: var(--um-radius-md); display: grid; place-items: center; background: var(--um-bg-muted); color: var(--um-text-secondary); }
+.slot .title { font-weight: var(--um-weight-medium); }
+.slot .sub { font-size: var(--um-text-xs); color: var(--um-text-tertiary); }
+.slot .note { grid-column: 2 / 4; font-size: var(--um-text-sm); padding: var(--um-space-2) var(--um-space-3); border-radius: var(--um-radius-md); }
+.slot.dashed { border-style: dashed; border-color: var(--um-border-strong); background: var(--um-bg-subtle); }
+
+/* app shell */
+.shell { display: grid; grid-template-columns: 220px 1fr; min-height: 360px; border: 1px solid var(--um-border-default); border-radius: var(--um-radius-lg); overflow: hidden; background: var(--um-bg-canvas); }
+.side { background: var(--um-bg-sidebar); color: var(--um-text-on-sidebar); padding: var(--um-space-4) var(--um-space-3); display: flex; flex-direction: column; gap: 2px; }
+.side .brand { color: #fff; font-size: var(--um-text-lg); padding: 0 var(--um-space-2) var(--um-space-4); }
+.side a { color: inherit; text-decoration: none; padding: 7px var(--um-space-3); border-radius: var(--um-radius-md); font-size: var(--um-text-sm); }
+.side a.active { background: rgba(255,255,255,0.12); color: #fff; font-weight: var(--um-weight-medium); }
+.side a:hover { background: rgba(255,255,255,0.08); }
+.side .group { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; opacity: 0.6; padding: var(--um-space-4) var(--um-space-3) var(--um-space-1); }
+.main { padding: var(--um-space-5); display: grid; gap: var(--um-space-4); align-content: start; }
+.page-head { display: flex; flex-wrap: wrap; gap: var(--um-space-3); align-items: end; }
+.page-head h4 { margin: 0; font-size: var(--um-text-2xl); line-height: var(--um-leading-2xl); }
+
+.type-row { display: grid; grid-template-columns: 140px 1fr; gap: var(--um-space-4); align-items: baseline; padding: var(--um-space-3) 0; border-bottom: 1px solid var(--um-border-default); }
+.type-row code { font-family: var(--um-font-mono); font-size: var(--um-text-xs); color: var(--um-text-tertiary); }
+.scale { display: flex; flex-wrap: wrap; gap: var(--um-space-6); align-items: end; }
+.scale div { display: grid; gap: var(--um-space-1); justify-items: center; font-size: var(--um-text-xs); color: var(--um-text-tertiary); }
+.scale i { display: block; background: var(--um-brand-primary); border-radius: 2px; }
+.elev { height: 72px; display: grid; place-items: center; background: var(--um-bg-surface); border-radius: var(--um-radius-lg); border: 1px solid var(--um-border-default); font-size: var(--um-text-sm); color: var(--um-text-secondary); }
+
+.btn-ghost { background: transparent; color: var(--um-text-secondary); }
+.btn-ghost:hover { background: var(--um-bg-muted); color: var(--um-text-primary); }
+.btn-icon { width: var(--um-control-height); padding: 0; }
+.btn-icon.btn-sm { width: var(--um-control-height-sm); }
+.btn svg { width: 16px; height: 16px; }
+.toast-demo { display: grid; gap: var(--um-space-3); grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); }
+.toast-demo .toast { animation: none; }
+/* ---------- toasts (compartido) ---------- */
+.toasts { position: fixed; z-index: 80; top: 72px; right: var(--um-space-4); display: grid; gap: var(--um-space-2); width: min(380px, calc(100vw - 32px)); pointer-events: none; }
+.toast { pointer-events: auto; display: grid; grid-template-columns: auto 1fr auto; gap: var(--um-space-3); align-items: start; padding: var(--um-space-3) var(--um-space-3) var(--um-space-3) var(--um-space-4); background: var(--um-bg-surface); color: var(--um-text-primary); border: 1px solid var(--um-border-default); border-left: 4px solid var(--tone); border-radius: var(--um-radius-lg); box-shadow: var(--um-shadow-lg); position: relative; overflow: hidden; animation: toast-in 0.2s ease-out; }
+.toast.leaving { animation: toast-out 0.18s ease-in forwards; }
+.toast .t-ico { width: 20px; height: 20px; color: var(--tone); margin-top: 1px; }
+.toast b { display: block; font-size: var(--um-text-md); line-height: var(--um-leading-md); }
+.toast p { margin: 2px 0 0; font-size: var(--um-text-sm); line-height: var(--um-leading-sm); color: var(--um-text-secondary); }
+.toast .t-actions { display: flex; gap: var(--um-space-2); margin-top: var(--um-space-2); }
+.toast .t-close { margin: -4px -4px 0 0; }
+.toast .t-timer { position: absolute; left: 0; bottom: 0; height: 2px; background: var(--tone); opacity: 0.5; width: 100%; transform-origin: left; }
+.toast.success { --tone: var(--um-tone-success-fg); }
+.toast.danger { --tone: var(--um-tone-danger-fg); }
+.toast.warning { --tone: var(--um-tone-warning-fg); }
+.toast.info { --tone: var(--um-tone-info-fg); }
+@keyframes toast-in { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
+@keyframes toast-out { to { opacity: 0; transform: translateX(16px); } }
+@keyframes toast-timer { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+@media (max-width: 720px) { .toasts { top: auto; bottom: calc(84px + env(safe-area-inset-bottom)); right: 16px; left: 16px; width: auto; } @keyframes toast-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } } }
+@media (prefers-reduced-motion: reduce) { .toast, .toast.leaving { animation: none; } .toast .t-timer { display: none; } }
+
+
+@media (max-width: 720px) {
+  .shell { grid-template-columns: 1fr; }
+  .side { display: none; }
+  .type-row { grid-template-columns: 1fr; gap: var(--um-space-1); }
+  h1 { font-size: var(--um-text-3xl); line-height: var(--um-leading-3xl); }
+}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">
+      <svg width="28" height="28" viewBox="0 0 32 32" aria-hidden="true">
+        <rect width="32" height="32" rx="7" fill="var(--um-brand-primary)"/>
+        <path d="M10 25V15a6 6 0 0 1 12 0v10" fill="none" stroke="var(--um-brand-on-primary)" stroke-width="2.6" stroke-linecap="round"/>
+        <path d="M7 25.5h18" stroke="var(--um-accent-default)" stroke-width="2.6" stroke-linecap="round"/>
+      </svg>
+      Umbral <small>Design System v0.1</small>
+    </div>
+    <div class="spacer"></div>
+    <button class="btn btn-default btn-sm" id="themeToggle" type="button" aria-label="Cambiar tema">Tema: claro</button>
+  </div>
+</header>
+
+<main class="wrap">
+  <h1>Umbral</h1>
+  <p class="lead">Backoffice y portal del comprador para gestionar créditos de vivienda en Colombia. Este documento muestra los tokens y componentes base. Los valores salen de <code class="mono">design/tokens/tokens.json</code> y se generan con <code class="mono">build-tokens.mjs</code>.</p>
+
+  <!-- ===================== COLOR ===================== -->
+  <h2>Color</h2>
+  <p class="hint">Azul de confianza como color de marca, teal como acento para lo que avanza bien ("lista para radicar") y neutros fríos para que las tablas densas descansen. Los componentes usan siempre tokens semánticos, nunca las paletas directamente.</p>
+
+  <h3>Paletas base</h3>
+  <div class="ramp" aria-label="Azul">
+    <div style="background:var(--um-color-blue-50)"></div><div style="background:var(--um-color-blue-100)"></div><div style="background:var(--um-color-blue-200)"></div><div style="background:var(--um-color-blue-300)"></div><div style="background:var(--um-color-blue-400)"></div><div style="background:var(--um-color-blue-500)"></div><div style="background:var(--um-color-blue-600)"></div><div style="background:var(--um-color-blue-700)"></div><div style="background:var(--um-color-blue-800)"></div><div style="background:var(--um-color-blue-900)"></div><div style="background:var(--um-color-blue-950)"></div>
+  </div>
+  <div class="ramp-label"><span>blue 50</span><span>blue 950</span></div>
+  <div class="ramp" aria-label="Neutros">
+    <div style="background:var(--um-color-neutral-25)"></div><div style="background:var(--um-color-neutral-50)"></div><div style="background:var(--um-color-neutral-100)"></div><div style="background:var(--um-color-neutral-200)"></div><div style="background:var(--um-color-neutral-300)"></div><div style="background:var(--um-color-neutral-400)"></div><div style="background:var(--um-color-neutral-500)"></div><div style="background:var(--um-color-neutral-600)"></div><div style="background:var(--um-color-neutral-700)"></div><div style="background:var(--um-color-neutral-850)"></div><div style="background:var(--um-color-neutral-950)"></div>
+  </div>
+  <div class="ramp-label"><span>neutral 25</span><span>neutral 950</span></div>
+
+  <h3>Tokens semánticos</h3>
+  <div class="grid g-auto">
+    <div class="swatch"><div class="chip" style="background:var(--um-bg-canvas)"></div><div class="meta"><b>Fondo de página</b><code>bg.canvas</code></div></div>
+    <div class="swatch"><div class="chip" style="background:var(--um-bg-surface)"></div><div class="meta"><b>Superficie</b><code>bg.surface</code></div></div>
+    <div class="swatch"><div class="chip" style="background:var(--um-bg-muted)"></div><div class="meta"><b>Atenuado</b><code>bg.muted</code></div></div>
+    <div class="swatch"><div class="chip" style="background:var(--um-bg-sidebar)"></div><div class="meta"><b>Barra lateral</b><code>bg.sidebar</code></div></div>
+    <div class="swatch"><div class="chip" style="background:var(--um-brand-primary)"></div><div class="meta"><b>Marca</b><code>brand.primary</code></div></div>
+    <div class="swatch"><div class="chip" style="background:var(--um-brand-subtle)"></div><div class="meta"><b>Marca suave</b><code>brand.subtle</code></div></div>
+    <div class="swatch"><div class="chip" style="background:var(--um-accent-default)"></div><div class="meta"><b>Acento</b><code>accent.default</code></div></div>
+    <div class="swatch"><div class="chip" style="background:var(--um-text-primary)"></div><div class="meta"><b>Texto principal</b><code>text.primary</code></div></div>
+    <div class="swatch"><div class="chip" style="background:var(--um-text-secondary)"></div><div class="meta"><b>Texto secundario</b><code>text.secondary</code></div></div>
+    <div class="swatch"><div class="chip" style="background:var(--um-border-default)"></div><div class="meta"><b>Borde</b><code>border.default</code></div></div>
+  </div>
+
+  <h3>Tonos de estado</h3>
+  <p class="hint">Seis tonos cubren todos los estados del producto. Un código de estado nuevo que el backend agregue sin tono asignado se muestra en neutral, así que la interfaz nunca se rompe.</p>
+  <div class="row">
+    <span class="badge tone-neutral">Neutral</span>
+    <span class="badge tone-info">Info</span>
+    <span class="badge tone-accent">Acento</span>
+    <span class="badge tone-success">Éxito</span>
+    <span class="badge tone-warning">Atención</span>
+    <span class="badge tone-danger">Riesgo</span>
+  </div>
+
+  <h3>Estados de la solicitud</h3>
+  <div class="row">
+    <span class="badge tone-neutral">Borrador</span>
+    <span class="badge tone-warning">Esperando datos del comprador</span>
+    <span class="badge tone-warning">Esperando documentos</span>
+    <span class="badge tone-info">Revisión documental</span>
+    <span class="badge tone-accent">Lista para radicar</span>
+    <span class="badge tone-info">Radicada</span>
+    <span class="badge tone-info">Análisis de crédito</span>
+    <span class="badge tone-success">Aprobada</span>
+    <span class="badge tone-success">Desembolsada</span>
+    <span class="badge tone-danger">Rechazada</span>
+    <span class="badge tone-neutral">Desistida</span>
+  </div>
+
+  <h3>Estados de documento</h3>
+  <div class="row">
+    <span class="badge tone-neutral">Pendiente</span>
+    <span class="badge tone-info">Cargado</span>
+    <span class="badge tone-success">Aprobado</span>
+    <span class="badge tone-danger">Rechazado</span>
+    <span class="badge tone-accent">Exonerado</span>
+    <span class="badge tone-warning">Analizando archivo</span>
+  </div>
+
+  <!-- ===================== TIPOGRAFÍA ===================== -->
+  <h2>Tipografía</h2>
+  <p class="hint">Inter para toda la interfaz, con cifras tabulares en montos y porcentajes para que las columnas alineen. JetBrains Mono para códigos como <span class="mono">SOL-000184</span>. El tamaño base es 14 px: el backoffice es una herramienta densa que se usa muchas horas.</p>
+  <div class="card">
+    <div class="type-row"><code>4xl · 30/38 · 600</code><div style="font-size:var(--um-text-4xl);line-height:var(--um-leading-4xl);font-weight:600;letter-spacing:-0.02em">Créditos en curso</div></div>
+    <div class="type-row"><code>2xl · 20/28 · 600</code><div style="font-size:var(--um-text-2xl);line-height:var(--um-leading-2xl);font-weight:600">Solicitud SOL-000184</div></div>
+    <div class="type-row"><code>lg · 16/24 · 600</code><div style="font-size:var(--um-text-lg);line-height:var(--um-leading-lg);font-weight:600">Financiación</div></div>
+    <div class="type-row"><code>md · 14/22 · 400</code><div>El comprador cargó 6 de 9 documentos obligatorios.</div></div>
+    <div class="type-row"><code>sm · 13/18 · 500</code><div style="font-size:var(--um-text-sm);font-weight:500">Monto solicitado</div></div>
+    <div class="type-row"><code>xs · 12/16 · 400</code><div class="tertiary">Actualizado hace 3 minutos por Paula Rincón</div></div>
+    <div class="type-row"><code>montos · tabular</code><div class="num" style="font-size:var(--um-text-xl);font-weight:600">$ 294.000.000 COP</div></div>
+  </div>
+
+  <!-- ===================== ESPACIADO ===================== -->
+  <h2>Espaciado, radios y elevación</h2>
+  <p class="hint">Escala de 4 px. Radio de 6 px en controles y 8 px en tarjetas. Las sombras son sutiles: la jerarquía la dan los bordes y el fondo.</p>
+  <div class="grid g-2">
+    <div class="card">
+      <h4>Espaciado</h4>
+      <div class="scale" style="margin-top:var(--um-space-4)">
+        <div><i style="width:4px;height:4px"></i>1 · 4</div>
+        <div><i style="width:8px;height:8px"></i>2 · 8</div>
+        <div><i style="width:12px;height:12px"></i>3 · 12</div>
+        <div><i style="width:16px;height:16px"></i>4 · 16</div>
+        <div><i style="width:24px;height:24px"></i>6 · 24</div>
+        <div><i style="width:32px;height:32px"></i>8 · 32</div>
+        <div><i style="width:48px;height:48px"></i>12 · 48</div>
+      </div>
+    </div>
+    <div class="card">
+      <h4>Elevación</h4>
+      <div class="grid" style="grid-template-columns:repeat(3,1fr);margin-top:var(--um-space-4)">
+        <div class="elev" style="box-shadow:var(--um-shadow-sm)">sm</div>
+        <div class="elev" style="box-shadow:var(--um-shadow-md)">md</div>
+        <div class="elev" style="box-shadow:var(--um-shadow-lg)">lg</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== COMPONENTES ===================== -->
+  <h2>Componentes base</h2>
+  <p class="hint">Referencia visual para configurar Ant Design. En código se usan los componentes de Ant Design con el tema de <code class="mono">antd-theme.ts</code>; aquí se dibujan a mano solo para mostrar el resultado esperado.</p>
+
+  <h3>Botones</h3>
+  <div class="row">
+    <button class="btn btn-primary" type="button">Marcar lista para radicar</button>
+    <button class="btn btn-default" type="button">Evaluar reglas</button>
+    <button class="btn btn-text" type="button">Ver historial</button>
+    <button class="btn btn-danger" type="button">Rechazar documento</button>
+    <button class="btn btn-primary" type="button" disabled>Generar paquete</button>
+  </div>
+  <div class="row" style="margin-top:var(--um-space-3)">
+    <button class="btn btn-primary btn-sm" type="button">Pequeño</button>
+    <button class="btn btn-primary" type="button">Normal</button>
+    <button class="btn btn-primary btn-lg" type="button">Grande (portal)</button>
+  </div>
+
+  <h3>Campos</h3>
+  <div class="grid g-2">
+    <div class="card grid">
+      <div class="field"><label for="f1">Valor del inmueble</label><div class="input-affix"><span>COP</span><input id="f1" class="input" value="420.000.000"></div><span class="help">Valor comercial según la promesa de compraventa.</span></div>
+      <div class="field"><label for="f2">Plazo</label><select id="f2" class="select"><option>240 meses (20 años)</option></select></div>
+    </div>
+    <div class="card grid">
+      <div class="field"><label for="f3">Monto solicitado</label><div class="input-affix"><span>COP</span><input id="f3" class="input invalid" value="360.000.000" aria-invalid="true"></div><span class="err">Supera el 70 % del valor del inmueble configurado por el banco.</span></div>
+      <div class="field"><label for="f4">Correo del comprador</label><input id="f4" class="input" placeholder="nombre@correo.com"></div>
+    </div>
+  </div>
+
+  <h3>Alertas</h3>
+  <div class="grid">
+    <div class="alert tone-warning"><svg class="icon" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M10 2 1 18h18L10 2Zm-1 6h2v5H9V8Zm0 6h2v2H9v-2Z"/></svg><div><b>Faltan datos para evaluar la regla</b><p>Agrega el valor del inmueble para calcular el porcentaje de financiación.</p></div></div>
+    <div class="alert tone-danger"><svg class="icon" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M10 1a9 9 0 1 0 0 18 9 9 0 0 0 0-18Zm-1 4h2v6H9V5Zm0 8h2v2H9v-2Z"/></svg><div><b>Bancolombia bloquea esta solicitud</b><p>El monto solicitado supera el 70 % del valor del inmueble.</p></div></div>
+    <div class="alert tone-accent"><svg class="icon" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M10 1a9 9 0 1 0 0 18 9 9 0 0 0 0-18Zm-1.2 13L4.5 9.7l1.4-1.4 2.9 2.9 5.3-5.3 1.4 1.4-6.7 6.7Z"/></svg><div><b>Expediente completo</b><p>Todos los documentos obligatorios están aprobados. Puedes marcar la solicitud como lista para radicar.</p></div></div>
+  </div>
+
+  <h3>Notificaciones (toasts)</h3>
+  <p class="hint">Confirman una acción o avisan de un error sin bloquear la pantalla. Aparecen arriba a la derecha en web y abajo en móvil, sobre la navegación. Éxito e información se cierran solos a los 5 segundos (se pausan al pasar el mouse); los errores se quedan hasta que el usuario los cierra. Máximo 3 a la vez. Usa una alerta en la página, no un toast, cuando el mensaje debe quedarse visible junto a lo que hay que corregir.</p>
+  <div class="toast-demo">
+    <div class="toast success" role="presentation"><svg class="t-ico" viewBox="0 0 20 20" fill="currentColor"><path d="M10 1a9 9 0 1 0 0 18 9 9 0 0 0 0-18Zm-1.2 13L4.5 9.7l1.4-1.4 2.9 2.9 5.3-5.3 1.4 1.4-6.7 6.7Z"/></svg><div><b>Documento subido</b><p>Certificado laboral: tu asesora lo revisará pronto.</p><div class="t-actions"><button class="btn btn-default btn-sm" type="button">Ver</button></div></div><button class="btn btn-ghost btn-icon btn-sm t-close" type="button" aria-label="Cerrar aviso"><svg viewBox="0 0 20 20" fill="currentColor"><path d="m5.4 4 4.6 4.6L14.6 4 16 5.4 11.4 10l4.6 4.6-1.4 1.4-4.6-4.6L5.4 16 4 14.6 8.6 10 4 5.4 5.4 4Z"/></svg></button></div>
+    <div class="toast danger" role="presentation"><svg class="t-ico" viewBox="0 0 20 20" fill="currentColor"><path d="M10 1a9 9 0 1 0 0 18 9 9 0 0 0 0-18Zm-1 4h2v6H9V5Zm0 8h2v2H9v-2Z"/></svg><div><b>No pudimos subir el documento</b><p>Parece que no tienes conexión. Tu archivo no se guardó.</p><div class="t-actions"><button class="btn btn-default btn-sm" type="button">Reintentar</button></div></div><button class="btn btn-ghost btn-icon btn-sm t-close" type="button" aria-label="Cerrar aviso"><svg viewBox="0 0 20 20" fill="currentColor"><path d="m5.4 4 4.6 4.6L14.6 4 16 5.4 11.4 10l4.6 4.6-1.4 1.4-4.6-4.6L5.4 16 4 14.6 8.6 10 4 5.4 5.4 4Z"/></svg></button></div>
+    <div class="toast warning" role="presentation"><svg class="t-ico" viewBox="0 0 20 20" fill="currentColor"><path d="M10 2 1 18h18L10 2Zm-1 6h2v5H9V8Zm0 6h2v2H9v-2Z"/></svg><div><b>Desprendible de nómina 2 de 3 rechazado</b><p>Le avisamos al comprador para que lo reemplace.</p></div><button class="btn btn-ghost btn-icon btn-sm t-close" type="button" aria-label="Cerrar aviso"><svg viewBox="0 0 20 20" fill="currentColor"><path d="m5.4 4 4.6 4.6L14.6 4 16 5.4 11.4 10l4.6 4.6-1.4 1.4-4.6-4.6L5.4 16 4 14.6 8.6 10 4 5.4 5.4 4Z"/></svg></button></div>
+    <div class="toast info" role="presentation"><svg class="t-ico" viewBox="0 0 20 20" fill="currentColor"><path d="M10 1a9 9 0 1 0 0 18 9 9 0 0 0 0-18Zm-1 4h2v2H9V5Zm0 4h2v6H9V9Z"/></svg><div><b>Enlace enviado</b><p>Sofía Herrera recibió el enlace de acceso por correo.</p></div><button class="btn btn-ghost btn-icon btn-sm t-close" type="button" aria-label="Cerrar aviso"><svg viewBox="0 0 20 20" fill="currentColor"><path d="m5.4 4 4.6 4.6L14.6 4 16 5.4 11.4 10l4.6 4.6-1.4 1.4-4.6-4.6L5.4 16 4 14.6 8.6 10 4 5.4 5.4 4Z"/></svg></button></div>
+  </div>
+  <div class="row" style="margin-top:var(--um-space-4)">
+    <span class="tertiary">Probar en vivo:</span>
+    <button class="btn btn-default btn-sm" type="button" data-toast="success">Éxito</button>
+    <button class="btn btn-default btn-sm" type="button" data-toast="danger">Error</button>
+    <button class="btn btn-default btn-sm" type="button" data-toast="warning">Atención</button>
+    <button class="btn btn-default btn-sm" type="button" data-toast="info">Información</button>
+  </div>
+
+  <!-- ===================== PATRONES ===================== -->
+  <h2>Patrones de pantalla</h2>
+
+  <h3>Listado de solicitudes (backoffice)</h3>
+  <div class="shell">
+    <nav class="side" aria-label="Navegación">
+      <div class="brand">
+        <svg width="24" height="24" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="7" fill="#ffffff22"/><path d="M10 25V15a6 6 0 0 1 12 0v10" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/><path d="M7 25.5h18" stroke="var(--um-color-teal-300)" stroke-width="2.6" stroke-linecap="round"/></svg>
+        Umbral
+      </div>
+      <a href="#">Dashboard</a>
+      <a href="#">Mi día</a>
+      <div class="group">Comercial</div>
+      <a href="#">Clientes</a>
+      <a href="#" class="active">Solicitudes</a>
+      <a href="#">Radicaciones</a>
+      <div class="group">Configuración</div>
+      <a href="#">Bancos y productos</a>
+      <a href="#">Requisitos documentales</a>
+    </nav>
+    <div class="main">
+      <div class="page-head">
+        <div><div class="tertiary">Comercial</div><h4>Solicitudes</h4></div>
+        <div class="spacer"></div>
+        <button class="btn btn-default" type="button">Exportar CSV</button>
+        <button class="btn btn-primary" type="button">Nueva solicitud</button>
+      </div>
+      <div class="table-wrap">
+        <div class="toolbar">
+          <input class="input" placeholder="Buscar por código o cliente" aria-label="Buscar">
+          <select class="select" aria-label="Estado"><option>Todos los estados</option></select>
+          <select class="select" aria-label="Banco"><option>Todos los bancos</option></select>
+          <select class="select" aria-label="Asesor"><option>Mis solicitudes</option></select>
+        </div>
+        <table>
+          <thead><tr><th>Código</th><th>Titular</th><th>Banco / producto</th><th class="right">Monto solicitado</th><th>Estado</th><th class="sorted">Actualizada</th></tr></thead>
+          <tbody>
+            <tr><td class="mono">SOL-000184</td><td class="person"><b>Laura Gómez</b><span>+ 1 co-solicitante</span></td><td>Bancolombia · Hipotecario</td><td class="right num">$ 294.000.000</td><td><span class="badge tone-accent">Lista para radicar</span></td><td class="tertiary">Hace 12 min</td></tr>
+            <tr><td class="mono">SOL-000183</td><td class="person"><b>Andrés Moreno</b><span>Titular</span></td><td>FNA · Hipotecario</td><td class="right num">$ 180.500.000</td><td><span class="badge tone-warning">Esperando documentos</span></td><td class="tertiary">Hace 1 h</td></tr>
+            <tr><td class="mono">SOL-000181</td><td class="person"><b>Diana Castro</b><span>+ 1 deudor solidario</span></td><td>Banco de Bogotá · Vivienda</td><td class="right num">$ 412.000.000</td><td><span class="badge tone-info">Revisión documental</span></td><td class="tertiary">Ayer</td></tr>
+            <tr><td class="mono">SOL-000176</td><td class="person"><b>Julián Pardo</b><span>Titular</span></td><td>Bancolombia · Hipotecario</td><td class="right num">$ 255.000.000</td><td><span class="badge tone-success">Aprobada</span></td><td class="tertiary">8 nov</td></tr>
+            <tr><td class="mono">SOL-000170</td><td class="person"><b>Camila Ruiz</b><span>Titular</span></td><td class="tertiary">Sin banco</td><td class="right num tertiary">—</td><td><span class="badge tone-neutral">Borrador</span></td><td class="tertiary">5 nov</td></tr>
+          </tbody>
+        </table>
+        <div class="table-foot"><span>5 de 48 solicitudes</span><div class="row"><button class="btn btn-default btn-sm" type="button">Anterior</button><button class="btn btn-default btn-sm" type="button">Siguiente</button></div></div>
+      </div>
+    </div>
+  </div>
+
+  <h3>Completitud y documentos (expediente)</h3>
+  <div class="grid g-2">
+    <div class="card">
+      <div class="tertiary">Completitud del expediente</div>
+      <div class="kpi num">68 %</div>
+      <div class="progress" style="margin:var(--um-space-3) 0 var(--um-space-4)"><div style="width:68%"></div></div>
+      <div class="grid" style="grid-template-columns:1fr 1fr">
+        <div><div class="tertiary">Datos</div><div class="num" style="font-weight:600">100 %</div><div class="progress accent" style="margin-top:6px"><div style="width:100%"></div></div></div>
+        <div><div class="tertiary">Documentos</div><div class="num" style="font-weight:600">6 de 17 · 36 %</div><div class="progress" style="margin-top:6px"><div style="width:36%"></div></div></div>
+      </div>
+    </div>
+    <div>
+      <div class="slot">
+        <div class="file"><svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M5 2h7l4 4v12H5V2Zm7 1.5V7h3.5L12 3.5Z"/></svg></div>
+        <div><div class="title">Cédula del titular</div><div class="sub">cedula-laura.pdf · 1,2 MB</div></div>
+        <span class="badge tone-success">Aprobado</span>
+      </div>
+      <div class="slot">
+        <div class="file"><svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M5 2h7l4 4v12H5V2Zm7 1.5V7h3.5L12 3.5Z"/></svg></div>
+        <div><div class="title">Desprendible de nómina 2 de 3</div><div class="sub">nomina-septiembre.jpg · 840 KB</div></div>
+        <span class="badge tone-danger">Rechazado</span>
+        <div class="note tone-danger">Ilegible: la foto está borrosa. Sube una imagen nítida o el PDF.</div>
+      </div>
+      <div class="slot">
+        <div class="file"><svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M5 2h7l4 4v12H5V2Zm7 1.5V7h3.5L12 3.5Z"/></svg></div>
+        <div><div class="title">Certificado laboral</div><div class="sub">Vence el 2 dic · máximo 30 días</div></div>
+        <span class="badge tone-info">Cargado</span>
+      </div>
+      <div class="slot dashed">
+        <div class="file"><svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M9 3h2v6h6v2h-6v6H9v-6H3V9h6V3Z"/></svg></div>
+        <div><div class="title">Extracto bancario 1 de 3</div><div class="sub">PDF, JPG o PNG · hasta 10 MB</div></div>
+        <button class="btn btn-default btn-sm" type="button">Subir archivo</button>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+  (function () {
+    var btn = document.getElementById("themeToggle");
+    var current = "light";
+    try { current = localStorage.getItem("um-theme") === "dark" ? "dark" : "light"; } catch (e) {}
+    function apply(mode) {
+      document.documentElement.setAttribute("data-theme", mode);
+      btn.textContent = mode === "dark" ? "Tema: oscuro" : "Tema: claro";
+    }
+    apply(current);
+    btn.addEventListener("click", function () {
+      current = current === "dark" ? "light" : "dark";
+      try { localStorage.setItem("um-theme", current); } catch (e) {}
+      apply(current);
+    });
+  })();
+</script>
+<script>
+// ---------- toasts ----------
+// UmToast.show({ tone: "success" | "danger" | "warning" | "info", title, message, action: { label, onClick }, duration })
+// Éxito e información se cierran solos (5 s); los errores se quedan hasta que el usuario los cierra.
+// Se pausan al pasar el mouse o al enfocar. Máximo 3 visibles: el más antiguo se va primero.
+(function () {
+  var host = document.createElement("div");
+  host.className = "toasts";
+  host.setAttribute("aria-live", "polite");
+  host.setAttribute("aria-relevant", "additions");
+  document.body.appendChild(host);
+  var icons = {
+    success: '<path d="M10 1a9 9 0 1 0 0 18 9 9 0 0 0 0-18Zm-1.2 13L4.5 9.7l1.4-1.4 2.9 2.9 5.3-5.3 1.4 1.4-6.7 6.7Z"/>',
+    danger: '<path d="M10 1a9 9 0 1 0 0 18 9 9 0 0 0 0-18Zm-1 4h2v6H9V5Zm0 8h2v2H9v-2Z"/>',
+    warning: '<path d="M10 2 1 18h18L10 2Zm-1 6h2v5H9V8Zm0 6h2v2H9v-2Z"/>',
+    info: '<path d="M10 1a9 9 0 1 0 0 18 9 9 0 0 0 0-18Zm-1 4h2v2H9V5Zm0 4h2v6H9V9Z"/>'
+  };
+  function remove(t) { if (!t.isConnected || t.classList.contains("leaving")) return; t.classList.add("leaving"); setTimeout(function () { t.remove(); }, 180); }
+  window.UmToast = {
+    show: function (o) {
+      var tone = o.tone || "info";
+      var duration = o.duration != null ? o.duration : (tone === "danger" ? 0 : 5000);
+      var t = document.createElement("div");
+      t.className = "toast " + tone;
+      t.setAttribute("role", tone === "danger" ? "alert" : "status");
+      t.innerHTML = '<svg class="t-ico" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">' + icons[tone] + "</svg>" +
+        "<div><b></b>" + (o.message ? "<p></p>" : "") + (o.action ? '<div class="t-actions"><button class="btn btn-default btn-sm" type="button"></button></div>' : "") + "</div>" +
+        '<button class="btn btn-ghost btn-icon btn-sm t-close" type="button" aria-label="Cerrar aviso"><svg viewBox="0 0 20 20" fill="currentColor"><path d="m5.4 4 4.6 4.6L14.6 4 16 5.4 11.4 10l4.6 4.6-1.4 1.4-4.6-4.6L5.4 16 4 14.6 8.6 10 4 5.4 5.4 4Z"/></svg></button>' +
+        (duration ? '<span class="t-timer" style="animation: toast-timer ' + duration + 'ms linear forwards"></span>' : "");
+      t.querySelector("b").textContent = o.title;
+      if (o.message) t.querySelector("p").textContent = o.message;
+      if (o.action) { var a = t.querySelector(".t-actions button"); a.textContent = o.action.label; a.addEventListener("click", function () { o.action.onClick && o.action.onClick(); remove(t); }); }
+      t.querySelector(".t-close").addEventListener("click", function () { remove(t); });
+      host.appendChild(t);
+      while (host.children.length > 3) remove(host.firstElementChild);
+      if (duration) {
+        var left = duration, started = Date.now(), timer = setTimeout(function () { remove(t); }, left), bar = t.querySelector(".t-timer");
+        var pause = function () { clearTimeout(timer); left -= Date.now() - started; if (bar) bar.style.animationPlayState = "paused"; };
+        var resume = function () { started = Date.now(); timer = setTimeout(function () { remove(t); }, left); if (bar) bar.style.animationPlayState = "running"; };
+        t.addEventListener("mouseenter", pause); t.addEventListener("mouseleave", resume);
+        t.addEventListener("focusin", pause); t.addEventListener("focusout", resume);
+      }
+      return t;
+    }
+  };
+})();
+
+document.querySelectorAll("[data-toast]").forEach(function (b) {
+  var demo = {
+    success: { title: "Documento subido", message: "Certificado laboral: tu asesora lo revisará pronto.", action: { label: "Ver" } },
+    danger: { title: "No pudimos subir el documento", message: "Parece que no tienes conexión. Tu archivo no se guardó.", action: { label: "Reintentar" } },
+    warning: { title: "Documento rechazado", message: "Le avisamos al comprador para que lo reemplace." },
+    info: { title: "Enlace enviado", message: "El comprador recibió el enlace de acceso por correo." }
+  }[b.dataset.toast];
+  b.addEventListener("click", function () { demo.tone = b.dataset.toast; UmToast.show(demo); });
+});
+</script>
+</body>
+</html>

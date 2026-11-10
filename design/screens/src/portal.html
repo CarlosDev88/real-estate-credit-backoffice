@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Umbral · Tu solicitud</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/*__TOKENS_CSS__*/
+/*__BASE_CSS__*/
+
+/* El portal es móvil primero: una sola columna de 480 px como máximo, centrada en pantallas grandes. */
+body { font-size: var(--um-text-lg); line-height: var(--um-leading-lg); }
+.shell { max-width: 480px; margin: 0 auto; min-height: 100vh; background: var(--um-bg-canvas); padding-bottom: calc(76px + env(safe-area-inset-bottom)); }
+@media (min-width: 520px) { body { background: var(--um-bg-muted); } .shell { border-left: 1px solid var(--um-border-default); border-right: 1px solid var(--um-border-default); } }
+
+.top { position: sticky; top: 0; z-index: 10; display: flex; align-items: center; gap: var(--um-space-2); padding: var(--um-space-3) var(--um-space-4); background: var(--um-bg-surface); border-bottom: 1px solid var(--um-border-default); }
+.top .logo { font-size: var(--um-text-lg); }
+.top .avatar { width: 34px; height: 34px; background: var(--um-brand-subtle); color: var(--um-text-link); }
+
+.page { padding: var(--um-space-5) var(--um-space-4); display: grid; gap: var(--um-space-5); }
+.hello h1 { margin: 0; font-size: var(--um-text-3xl); line-height: var(--um-leading-3xl); letter-spacing: -0.01em; font-weight: var(--um-weight-semibold); }
+.hello p { margin: 4px 0 0; color: var(--um-text-secondary); font-size: var(--um-text-md); }
+.hello .mono { color: var(--um-text-tertiary); }
+
+.card { background: var(--um-bg-surface); border: 1px solid var(--um-border-default); border-radius: var(--um-radius-xl); box-shadow: var(--um-shadow-sm); padding: var(--um-space-5) var(--um-space-4); }
+.card h2 { margin: 0 0 var(--um-space-1); font-size: var(--um-text-xl); line-height: var(--um-leading-xl); font-weight: var(--um-weight-semibold); }
+.card .lead { margin: 0; color: var(--um-text-secondary); font-size: var(--um-text-md); }
+
+.status-card { background: linear-gradient(160deg, var(--um-brand-primary), var(--um-brand-primary-active)); color: var(--um-brand-on-primary); border: 0; }
+.status-card .eyebrow { font-size: var(--um-text-xs); text-transform: uppercase; letter-spacing: 0.06em; opacity: 0.85; font-weight: var(--um-weight-semibold); }
+.status-card h2 { color: inherit; margin-top: 6px; }
+.status-card .lead { color: inherit; opacity: 0.9; }
+.ring-row { display: flex; align-items: center; gap: var(--um-space-4); margin-top: var(--um-space-4); }
+.ring { width: 64px; height: 64px; flex: none; }
+.ring .bg { stroke: rgba(255,255,255,0.25); }
+.ring .fg { stroke: var(--um-color-teal-300); transition: stroke-dashoffset 0.4s; }
+.ring text { fill: currentColor; font-size: 15px; font-weight: 700; font-family: var(--um-font-sans); }
+.ring-row p { margin: 0; font-size: var(--um-text-md); line-height: var(--um-leading-md); }
+
+.vsteps { list-style: none; margin: var(--um-space-4) 0 0; padding: 0; display: grid; gap: 0; }
+.vsteps li { display: grid; grid-template-columns: 22px 1fr; gap: var(--um-space-3); position: relative; padding-bottom: var(--um-space-3); font-size: var(--um-text-md); }
+.vsteps li:last-child { padding-bottom: 0; }
+.vsteps li::after { content: ""; position: absolute; left: 10px; top: 24px; bottom: 2px; width: 2px; background: rgba(255,255,255,0.25); }
+.vsteps li:last-child::after { display: none; }
+.vsteps .d { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; border: 2px solid rgba(255,255,255,0.45); }
+.vsteps .done .d { background: var(--um-color-teal-300); border-color: var(--um-color-teal-300); color: var(--um-color-blue-900); }
+.vsteps .done .d svg { width: 12px; height: 12px; }
+.vsteps .now .d { border-color: #fff; }
+.vsteps .now .d::after { content: ""; width: 8px; height: 8px; border-radius: 50%; background: #fff; }
+.vsteps .todo { opacity: 0.7; }
+.vsteps small { display: block; font-size: var(--um-text-xs); opacity: 0.85; }
+
+.section-h { display: flex; align-items: baseline; gap: var(--um-space-2); margin: 0 0 var(--um-space-3); }
+.section-h h2 { margin: 0; font-size: var(--um-text-xl); font-weight: var(--um-weight-semibold); }
+.todo-list { display: grid; gap: var(--um-space-3); }
+.todo-item { background: var(--um-bg-surface); border: 1px solid var(--um-border-default); border-radius: var(--um-radius-xl); padding: var(--um-space-4); display: grid; gap: var(--um-space-3); }
+.todo-item.danger { border-color: var(--um-tone-danger-border); }
+.todo-item .t { display: flex; gap: var(--um-space-3); align-items: flex-start; }
+.todo-item .ico { width: 40px; height: 40px; border-radius: var(--um-radius-lg); display: grid; place-items: center; flex: none; }
+.todo-item .ico svg { width: 20px; height: 20px; }
+.todo-item b { display: block; font-size: var(--um-text-md); line-height: var(--um-leading-md); }
+.todo-item span.who { font-size: var(--um-text-sm); color: var(--um-text-tertiary); }
+.todo-item .msg { font-size: var(--um-text-sm); line-height: var(--um-leading-sm); padding: var(--um-space-2) var(--um-space-3); border-radius: var(--um-radius-md); margin: 0; }
+.todo-item .btn { width: 100%; }
+.see-all { justify-self: center; }
+
+.list { background: var(--um-bg-surface); border: 1px solid var(--um-border-default); border-radius: var(--um-radius-xl); overflow: hidden; }
+.list a { display: flex; align-items: center; gap: var(--um-space-3); padding: var(--um-space-4); color: inherit; text-decoration: none; border-bottom: 1px solid var(--um-border-default); min-height: 64px; }
+.list a:last-child { border-bottom: 0; }
+.list a:hover { background: var(--um-bg-subtle); }
+.list .li-ico { width: 36px; height: 36px; border-radius: var(--um-radius-md); background: var(--um-bg-muted); color: var(--um-text-secondary); display: grid; place-items: center; flex: none; }
+.list .li-ico svg { width: 18px; height: 18px; }
+.list b { display: block; font-size: var(--um-text-md); font-weight: var(--um-weight-medium); }
+.list small { display: block; font-size: var(--um-text-sm); color: var(--um-text-tertiary); }
+.list .chev { margin-left: auto; color: var(--um-text-tertiary); display: flex; align-items: center; gap: var(--um-space-2); }
+.list .chev svg { width: 18px; height: 18px; }
+.check { color: var(--um-tone-success-fg); }
+
+.advisor { display: flex; align-items: center; gap: var(--um-space-3); }
+.advisor .avatar { width: 48px; height: 48px; font-size: var(--um-text-md); background: var(--um-accent-subtle); color: var(--um-tone-accent-fg); }
+.advisor b { display: block; }
+.advisor span { font-size: var(--um-text-sm); color: var(--um-text-tertiary); }
+.contact { display: grid; grid-template-columns: 1fr 1fr; gap: var(--um-space-2); margin-top: var(--um-space-4); }
+
+.legal { text-align: center; font-size: var(--um-text-sm); color: var(--um-text-tertiary); display: grid; gap: var(--um-space-2); padding-bottom: var(--um-space-4); }
+.legal a { color: var(--um-tone-danger-fg); }
+
+/* navegación inferior */
+.tabbar { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 480px; z-index: 20; display: grid; grid-template-columns: repeat(3, 1fr); background: var(--um-bg-surface); border-top: 1px solid var(--um-border-default); padding-bottom: env(safe-area-inset-bottom); }
+.tabbar a { display: grid; justify-items: center; gap: 2px; padding: 10px 0 8px; font-size: 12px; color: var(--um-text-tertiary); text-decoration: none; position: relative; }
+.tabbar a svg { width: 22px; height: 22px; }
+.tabbar a[aria-current="page"] { color: var(--um-text-link); font-weight: var(--um-weight-semibold); }
+.tabbar .badge-n { position: absolute; top: 6px; left: calc(50% + 6px); min-width: 18px; height: 18px; border-radius: 9px; background: var(--um-tone-danger-fg); color: #fff; font-size: 11px; display: grid; place-items: center; padding: 0 5px; font-weight: 600; }
+
+/* hoja inferior de carga */
+.sheet-scrim { position: fixed; inset: 0; background: var(--um-bg-overlay); z-index: 40; display: none; }
+.sheet-scrim.show { display: block; }
+.sheet { position: fixed; left: 50%; bottom: 0; width: 100%; max-width: 480px; z-index: 41; background: var(--um-bg-surface); border-radius: var(--um-radius-xl) var(--um-radius-xl) 0 0; box-shadow: var(--um-shadow-lg); transform: translate(-50%, 100%); visibility: hidden; transition: transform 0.22s ease, visibility 0s linear 0.22s; padding: var(--um-space-2) var(--um-space-4) calc(var(--um-space-5) + env(safe-area-inset-bottom)); display: grid; gap: var(--um-space-4); }
+.sheet.open { visibility: visible; transition-delay: 0s; transform: translate(-50%, 0); }
+.grab { width: 40px; height: 4px; border-radius: 2px; background: var(--um-border-strong); justify-self: center; margin: 4px 0; }
+.sheet h2 { margin: 0; font-size: var(--um-text-xl); font-weight: var(--um-weight-semibold); }
+.sheet .who { color: var(--um-text-tertiary); font-size: var(--um-text-sm); }
+.req { list-style: none; margin: 0; padding: var(--um-space-3); border-radius: var(--um-radius-lg); background: var(--um-bg-subtle); display: grid; gap: 6px; font-size: var(--um-text-sm); }
+.req li { display: flex; gap: var(--um-space-2); align-items: flex-start; }
+.req svg { width: 16px; height: 16px; flex: none; margin-top: 2px; color: var(--um-text-tertiary); }
+.big-actions { display: grid; grid-template-columns: 1fr 1fr; gap: var(--um-space-3); }
+.big-actions button { height: 88px; border-radius: var(--um-radius-lg); display: grid; place-items: center; align-content: center; gap: 6px; font-weight: var(--um-weight-medium); font-size: var(--um-text-md); cursor: pointer; }
+.big-actions svg { width: 26px; height: 26px; }
+.big-actions .primary { background: var(--um-brand-primary); color: var(--um-brand-on-primary); border: 0; }
+.big-actions .secondary { background: var(--um-bg-surface); color: var(--um-text-primary); border: 1px solid var(--um-border-strong); }
+.upload-state { display: none; gap: var(--um-space-2); }
+.upload-state.show { display: grid; }
+.upload-state .bar { height: 8px; border-radius: 4px; background: var(--um-bg-muted); overflow: hidden; }
+.upload-state .bar i { display: block; height: 100%; width: 0; background: var(--um-brand-primary); transition: width 0.25s; }
+.upload-state p { margin: 0; font-size: var(--um-text-sm); color: var(--um-text-secondary); display: flex; align-items: center; gap: var(--um-space-2); }
+.upload-state .done { color: var(--um-tone-success-fg); font-weight: var(--um-weight-medium); }
+@media (prefers-reduced-motion: reduce) { .sheet { transition: none; } }
+</style>
+</head>
+<body>
+<div class="shell">
+  <header class="top">
+    <span class="logo">
+      <svg width="28" height="28" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="7" fill="var(--um-brand-primary)"/><path d="M10 25V15a6 6 0 0 1 12 0v10" fill="none" stroke="var(--um-brand-on-primary)" stroke-width="2.6" stroke-linecap="round"/><path d="M7 25.5h18" stroke="var(--um-accent-default)" stroke-width="2.6" stroke-linecap="round"/></svg>
+      Umbral
+    </span>
+    <span class="spacer"></span>
+    <!--__THEME_BUTTON__-->
+    <span class="avatar" aria-label="Sofía Herrera">SH</span>
+  </header>
+
+  <main class="page">
+    <div class="hello">
+      <h1>Hola, Sofía</h1>
+      <p>Tu crédito de vivienda con Banco de Bogotá · <span class="mono">SOL-000182</span></p>
+    </div>
+
+    <!-- estado -->
+    <section class="card status-card" aria-labelledby="stTitle">
+      <div class="eyebrow">Estado de tu solicitud</div>
+      <h2 id="stTitle">Estamos revisando tus documentos</h2>
+      <p class="lead">Tu asesora revisa lo que subiste. Si algo falta o hay que corregirlo, te avisamos aquí y por correo.</p>
+      <div class="ring-row">
+        <svg class="ring" viewBox="0 0 64 64" role="img" aria-label="Avance 81 %">
+          <circle class="bg" cx="32" cy="32" r="27" fill="none" stroke-width="7"/>
+          <circle class="fg" cx="32" cy="32" r="27" fill="none" stroke-width="7" stroke-linecap="round" stroke-dasharray="169.6" stroke-dashoffset="32.2" transform="rotate(-90 32 32)"/>
+          <text x="32" y="37" text-anchor="middle">81%</text>
+        </svg>
+        <p>Te faltan <b>3 documentos</b> para completar tu expediente.</p>
+      </div>
+      <ol class="vsteps" aria-label="Etapas">
+        <li class="done"><span class="d"><svg viewBox="0 0 20 20" fill="currentColor"><path d="M8 13.2 4.8 10l-1.4 1.4L8 16l9-9-1.4-1.4L8 13.2Z"/></svg></span><div>Tus datos<small>Completos y confirmados</small></div></li>
+        <li class="now" aria-current="step"><span class="d"></span><div>Documentos<small>10 de 16 aprobados</small></div></li>
+        <li class="todo"><span class="d"></span><div>Radicación en el banco</div></li>
+        <li class="todo"><span class="d"></span><div>Respuesta del banco</div></li>
+      </ol>
+    </section>
+
+    <!-- pendientes -->
+    <section aria-labelledby="todoTitle">
+      <div class="section-h"><h2 id="todoTitle">Lo que necesitamos de ti</h2><span class="tertiary">3</span></div>
+      <div class="todo-list">
+        <article class="todo-item danger">
+          <div class="t">
+            <span class="ico tone-danger"><svg viewBox="0 0 20 20" fill="currentColor"><path d="M10 1a9 9 0 1 0 0 18 9 9 0 0 0 0-18Zm-1 4h2v6H9V5Zm0 8h2v2H9v-2Z"/></svg></span>
+            <div><b>Desprendible de nómina 2 de 3</b><span class="who">Sofía Herrera · agosto</span></div>
+          </div>
+          <p class="msg tone-danger">La foto está borrosa. Sube una imagen nítida o el PDF.</p>
+          <button class="btn btn-primary btn-lg" type="button" data-upload="Desprendible de nómina 2 de 3|Sofía Herrera|">Reemplazar documento</button>
+        </article>
+        <article class="todo-item">
+          <div class="t">
+            <span class="ico tone-warning"><svg viewBox="0 0 20 20" fill="currentColor"><path d="M9 3h2v6h6v2h-6v6H9v-6H3V9h6V3Z"/></svg></span>
+            <div><b>Extracto bancario 2 de 3</b><span class="who">Sofía Herrera · últimos 3 meses</span></div>
+          </div>
+          <button class="btn btn-default btn-lg" type="button" data-upload="Extracto bancario 2 de 3|Sofía Herrera|">Subir documento</button>
+        </article>
+        <article class="todo-item">
+          <div class="t">
+            <span class="ico tone-warning"><svg viewBox="0 0 20 20" fill="currentColor"><path d="M9 3h2v6h6v2h-6v6H9v-6H3V9h6V3Z"/></svg></span>
+            <div><b>Extracto bancario 1 de 3</b><span class="who">Daniel Mejía · co-solicitante</span></div>
+          </div>
+          <button class="btn btn-default btn-lg" type="button" data-upload="Extracto bancario 1 de 3|Daniel Mejía|">Subir documento</button>
+        </article>
+        <a class="btn btn-text see-all" href="portal-documentos.html">Ver todos mis documentos</a>
+      </div>
+    </section>
+
+    <!-- secciones -->
+    <section aria-labelledby="secTitle">
+      <div class="section-h"><h2 id="secTitle">Tu solicitud</h2></div>
+      <nav class="list" aria-label="Secciones de tu solicitud">
+        <a href="#"><span class="li-ico"><svg viewBox="0 0 20 20" fill="currentColor"><path d="M10 10a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm-7 8a7 7 0 0 1 14 0H3Z"/></svg></span><div><b>Tus datos personales</b><small>Confirmados</small></div><span class="chev"><svg class="check" viewBox="0 0 20 20" fill="currentColor"><path d="M10 1a9 9 0 1 0 0 18 9 9 0 0 0 0-18Zm-1.2 13L4.5 9.7l1.4-1.4 2.9 2.9 5.3-5.3 1.4 1.4-6.7 6.7Z"/></svg><svg viewBox="0 0 20 20" fill="currentColor"><path d="m7.4 4 6 6-6 6L6 14.6l4.6-4.6L6 5.4 7.4 4Z"/></svg></span></a>
+        <a href="#"><span class="li-ico"><svg viewBox="0 0 20 20" fill="currentColor"><path d="M3 5h14v10H3V5Zm2 2v6h10V7H5Zm5 1a2 2 0 1 1 0 4 2 2 0 0 1 0-4Z"/></svg></span><div><b>Ingresos y gastos</b><small>$ 7.800.000 al mes</small></div><span class="chev"><svg class="check" viewBox="0 0 20 20" fill="currentColor"><path d="M10 1a9 9 0 1 0 0 18 9 9 0 0 0 0-18Zm-1.2 13L4.5 9.7l1.4-1.4 2.9 2.9 5.3-5.3 1.4 1.4-6.7 6.7Z"/></svg><svg viewBox="0 0 20 20" fill="currentColor"><path d="m7.4 4 6 6-6 6L6 14.6l4.6-4.6L6 5.4 7.4 4Z"/></svg></span></a>
+        <a href="#"><span class="li-ico"><svg viewBox="0 0 20 20" fill="currentColor"><path d="M7 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm6 1a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5ZM1 16a6 6 0 0 1 12 0H1Zm13 0a7 7 0 0 0-2-5 5 5 0 0 1 7 5h-5Z"/></svg></span><div><b>Segundo solicitante</b><small>Daniel Mejía</small></div><span class="chev"><svg class="check" viewBox="0 0 20 20" fill="currentColor"><path d="M10 1a9 9 0 1 0 0 18 9 9 0 0 0 0-18Zm-1.2 13L4.5 9.7l1.4-1.4 2.9 2.9 5.3-5.3 1.4 1.4-6.7 6.7Z"/></svg><svg viewBox="0 0 20 20" fill="currentColor"><path d="m7.4 4 6 6-6 6L6 14.6l4.6-4.6L6 5.4 7.4 4Z"/></svg></span></a>
+        <a href="#"><span class="li-ico"><svg viewBox="0 0 20 20" fill="currentColor"><path d="M10 2 2 8v10h5v-6h6v6h5V8l-8-6Z"/></svg></span><div><b>El inmueble</b><small>Torres del Parque · Apto 1204</small></div><span class="chev"><svg class="check" viewBox="0 0 20 20" fill="currentColor"><path d="M10 1a9 9 0 1 0 0 18 9 9 0 0 0 0-18Zm-1.2 13L4.5 9.7l1.4-1.4 2.9 2.9 5.3-5.3 1.4 1.4-6.7 6.7Z"/></svg><svg viewBox="0 0 20 20" fill="currentColor"><path d="m7.4 4 6 6-6 6L6 14.6l4.6-4.6L6 5.4 7.4 4Z"/></svg></span></a>
+        <a href="#"><span class="li-ico"><svg viewBox="0 0 20 20" fill="currentColor"><path d="M10 2 2 6v2h16V6l-8-4ZM4 9v6H3v2h14v-2h-1V9h-2v6h-2V9H9v6H7V9H4Z"/></svg></span><div><b>Financiación</b><small>Banco de Bogotá · $ 365.000.000 a 20 años</small></div><span class="chev"><svg class="check" viewBox="0 0 20 20" fill="currentColor"><path d="M10 1a9 9 0 1 0 0 18 9 9 0 0 0 0-18Zm-1.2 13L4.5 9.7l1.4-1.4 2.9 2.9 5.3-5.3 1.4 1.4-6.7 6.7Z"/></svg><svg viewBox="0 0 20 20" fill="currentColor"><path d="m7.4 4 6 6-6 6L6 14.6l4.6-4.6L6 5.4 7.4 4Z"/></svg></span></a>
+        <a href="portal-documentos.html"><span class="li-ico"><svg viewBox="0 0 20 20" fill="currentColor"><path d="M5 2h7l4 4v12H5V2Zm2 7v2h7V9H7Zm0 4v2h7v-2H7Z"/></svg></span><div><b>Documentos</b><small>10 de 16 aprobados</small></div><span class="chev"><span class="badge tone-warning">3 pendientes</span><svg viewBox="0 0 20 20" fill="currentColor"><path d="m7.4 4 6 6-6 6L6 14.6l4.6-4.6L6 5.4 7.4 4Z"/></svg></span></a>
+      </nav>
+    </section>
+
+    <!-- asesora -->
+    <section class="card" aria-labelledby="advTitle">
+      <div class="advisor">
+        <span class="avatar">PR</span>
+        <div><b id="advTitle">Paula Rincón</b><span>Tu asesora de crédito</span></div>
+      </div>
+      <div class="contact">
+        <a class="btn btn-default btn-lg" href="#"><svg viewBox="0 0 20 20" fill="currentColor"><path d="M10 2a8 8 0 0 0-6.9 12L2 18l4.1-1.1A8 8 0 1 0 10 2Zm3.6 10.9c-.2.4-.9.8-1.3.9-.3 0-.7.1-2.3-.6-1.9-.8-3.1-2.8-3.2-2.9-.1-.1-.8-1-.8-2s.5-1.4.7-1.6c.2-.2.4-.2.5-.2h.4c.1 0 .3 0 .4.4l.6 1.4c.1.1.1.3 0 .4l-.3.4-.3.3c-.1.1-.2.2-.1.4.1.2.5.9 1.1 1.4.8.7 1.4.9 1.6 1 .2.1.3.1.4-.1l.6-.7c.1-.2.3-.2.5-.1l1.3.6c.2.1.3.2.4.2.1.1.1.5-.2.9Z"/></svg>WhatsApp</a>
+        <a class="btn btn-default btn-lg" href="#"><svg viewBox="0 0 20 20" fill="currentColor"><path d="M2 4h16v12H2V4Zm2 2v.5l6 4 6-4V6H4Zm12 2.9-6 4-6-4V14h12V8.9Z"/></svg>Correo</a>
+      </div>
+    </section>
+
+    <footer class="legal">
+      <span>Tu acceso vence en 21 horas. Si se vence, pide un enlace nuevo a tu asesora.</span>
+      <span><a href="#">Ya no quiero continuar con la solicitud</a></span>
+    </footer>
+  </main>
+
+  <nav class="tabbar" aria-label="Navegación del portal">
+    <a href="#" aria-current="page"><svg viewBox="0 0 20 20" fill="currentColor"><path d="M10 2 2 8v10h5v-6h6v6h5V8l-8-6Z"/></svg>Inicio</a>
+    <a href="portal-documentos.html"><svg viewBox="0 0 20 20" fill="currentColor"><path d="M5 2h7l4 4v12H5V2Zm2 7v2h7V9H7Zm0 4v2h7v-2H7Z"/></svg>Documentos<span class="badge-n">3</span></a>
+    <a href="#"><svg viewBox="0 0 20 20" fill="currentColor"><path d="M10 2a5 5 0 0 0-5 5v3l-2 3v1h14v-1l-2-3V7a5 5 0 0 0-5-5Zm-2 14a2 2 0 0 0 4 0H8Z"/></svg>Avisos</a>
+  </nav>
+</div>
+
+<!-- hoja de carga -->
+<div class="sheet-scrim" id="sheetScrim"></div>
+<section class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle" aria-hidden="true">
+  <div class="grab" aria-hidden="true"></div>
+  <div>
+    <h2 id="sheetTitle">Desprendible de nómina 2 de 3</h2>
+    <div class="who" id="sheetWho">Sofía Herrera</div>
+  </div>
+  <ul class="req">
+    <li><svg viewBox="0 0 20 20" fill="currentColor"><path d="M5 2h7l4 4v12H5V2Zm7 1.5V7h3.5L12 3.5Z"/></svg>PDF, JPG o PNG, de hasta 10 MB.</li>
+    <li><svg viewBox="0 0 20 20" fill="currentColor"><path d="M10 1a9 9 0 1 0 0 18 9 9 0 0 0 0-18Zm1 4v5.4l3.3 2-1 1.7L9 11.5V5h2Z"/></svg>Debe ser de los últimos 3 meses.</li>
+    <li><svg viewBox="0 0 20 20" fill="currentColor"><path d="M10 2a6 6 0 0 0-6 6c0 4.5 6 10 6 10s6-5.5 6-10a6 6 0 0 0-6-6Zm0 8a2 2 0 1 1 0-4 2 2 0 0 1 0 4Z"/></svg>Si tomas una foto, hazlo con buena luz y que se lean todos los datos.</li>
+  </ul>
+  <div class="big-actions" id="bigActions">
+    <button class="primary" type="button" data-go><svg viewBox="0 0 24 24" fill="currentColor"><path d="M9 3 7.2 5H4a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-3.2L15 3H9Zm3 5a4.5 4.5 0 1 1 0 9 4.5 4.5 0 0 1 0-9Z"/></svg>Tomar foto</button>
+    <button class="secondary" type="button" data-go><svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 2h8l6 6v14H6V2Zm7 1.5V9h5.5L13 3.5ZM11 12v3H8v2h3v3h2v-3h3v-2h-3v-3h-2Z"/></svg>Elegir archivo</button>
+  </div>
+  <div class="upload-state" id="uploadState" aria-live="polite">
+    <div class="bar"><i id="upBar"></i></div>
+    <p id="upText">Subiendo nomina-agosto.pdf…</p>
+  </div>
+  <button class="btn btn-ghost btn-lg" type="button" id="sheetClose">Cancelar</button>
+</section>
+
+<script>
+(function () {
+  var sheet = document.getElementById("sheet"), scrim = document.getElementById("sheetScrim");
+  var state = document.getElementById("uploadState"), bar = document.getElementById("upBar"), txt = document.getElementById("upText");
+  var actions = document.getElementById("bigActions"), closeBtn = document.getElementById("sheetClose"), last = null, timer = null;
+  function open(spec, from) {
+    var p = spec.split("|");
+    document.getElementById("sheetTitle").textContent = p[0];
+    document.getElementById("sheetWho").textContent = p[1];
+    state.classList.remove("show"); actions.style.display = ""; bar.style.width = "0"; closeBtn.textContent = "Cancelar";
+    last = from; sheet.classList.add("open"); scrim.classList.add("show"); sheet.setAttribute("aria-hidden", "false");
+    actions.querySelector("button").focus();
+  }
+  function close() { clearInterval(timer); sheet.classList.remove("open"); scrim.classList.remove("show"); sheet.setAttribute("aria-hidden", "true"); if (last) last.focus(); }
+  document.querySelectorAll("[data-upload]").forEach(function (b) { b.addEventListener("click", function () { open(b.dataset.upload, b); }); });
+  scrim.addEventListener("click", close); closeBtn.addEventListener("click", close);
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape" && sheet.classList.contains("open")) close(); });
+  // Simulación: subida -> análisis antivirus -> cargado (en la app real el estado llega del backend).
+  actions.querySelectorAll("[data-go]").forEach(function (b) {
+    b.addEventListener("click", function () {
+      actions.style.display = "none"; state.classList.add("show");
+      var pct = 0; txt.className = ""; txt.textContent = "Subiendo documento…";
+      timer = setInterval(function () {
+        pct += 20; bar.style.width = Math.min(pct, 100) + "%";
+        if (pct === 100) txt.textContent = "Revisando que el archivo sea seguro…";
+        if (pct >= 140) { clearInterval(timer); close(); UmToast.show({ tone: "success", title: "Documento subido", message: document.getElementById("sheetTitle").textContent + ": tu asesora lo revisará pronto." }); }
+      }, 350);
+    });
+  });
+})();
+</script>
+<script>
+/*__SHELL_JS__*/
+</script>
+</body>
+</html>

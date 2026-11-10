@@ -1,0 +1,23 @@
+<div class="viewer" id="viewer" role="dialog" aria-modal="true" aria-labelledby="viewerName" aria-hidden="true">
+  <div class="viewer-bar">
+    <button class="btn btn-ghost btn-icon" type="button" data-vclose aria-label="Cerrar visor"><svg viewBox="0 0 20 20" fill="currentColor"><path d="m5.4 4 4.6 4.6L14.6 4 16 5.4 11.4 10l4.6 4.6-1.4 1.4-4.6-4.6L5.4 16 4 14.6 8.6 10 4 5.4 5.4 4Z"/></svg></button>
+    <div class="viewer-title"><b id="viewerName">documento.pdf</b><span id="viewerMeta">PDF · 1 página</span></div>
+    <span class="spacer"></span>
+    <div class="viewer-group hide-sm" aria-label="Páginas">
+      <button class="btn btn-ghost btn-icon btn-sm" type="button" data-vprev aria-label="Página anterior"><svg viewBox="0 0 20 20" fill="currentColor"><path d="m12.6 4 1.4 1.4L9.4 10l4.6 4.6-1.4 1.4-6-6 6-6Z"/></svg></button>
+      <output id="viewerPage">1 / 1</output>
+      <button class="btn btn-ghost btn-icon btn-sm" type="button" data-vnext aria-label="Página siguiente"><svg viewBox="0 0 20 20" fill="currentColor"><path d="m7.4 4 6 6-6 6L6 14.6l4.6-4.6L6 5.4 7.4 4Z"/></svg></button>
+    </div>
+    <div class="viewer-group" aria-label="Zoom">
+      <button class="btn btn-ghost btn-icon btn-sm" type="button" data-vzoom="-1" aria-label="Alejar"><svg viewBox="0 0 20 20" fill="currentColor"><path d="M4 9h12v2H4V9Z"/></svg></button>
+      <button class="btn btn-ghost btn-sm" type="button" data-vfit title="Ajustar al ancho"><output id="viewerZoom">100 %</output></button>
+      <button class="btn btn-ghost btn-icon btn-sm" type="button" data-vzoom="1" aria-label="Acercar"><svg viewBox="0 0 20 20" fill="currentColor"><path d="M9 4h2v5h5v2h-5v5H9v-5H4V9h5V4Z"/></svg></button>
+    </div>
+    <div class="viewer-group">
+      <button class="btn btn-ghost btn-icon btn-sm" type="button" data-vrotate aria-label="Girar"><svg viewBox="0 0 20 20" fill="currentColor"><path d="M10 3a7 7 0 1 1-6.6 9.3l1.9-.6A5 5 0 1 0 10 5v3L5.5 4.5 10 1v2Z"/></svg></button>
+      <a class="btn btn-ghost btn-icon btn-sm" href="#" data-vdownload aria-label="Descargar"><svg viewBox="0 0 20 20" fill="currentColor"><path d="M9 3h2v8l3-3 1.4 1.4L10 14.8 4.6 9.4 6 8l3 3V3ZM3 15h14v2H3v-2Z"/></svg></a>
+    </div>
+  </div>
+  <div class="viewer-stage" id="viewerStage" tabindex="-1"></div>
+  <div class="viewer-note" id="viewerNote">Descarga con enlace firmado que vence en 5 minutos.</div>
+</div>
