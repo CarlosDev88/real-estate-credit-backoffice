@@ -299,6 +299,38 @@ Every response includes `X-Request-ID` (an incoming value is kept when it is saf
 {"code": "INVALID_CREDENTIALS", "message": "...", "details": [], "request_id": "..."}
 ```
 
+## Buyer Access
+
+Buyers have no account or password (API §8). An advisor, admin, or the originating broker issues a single-use magic link for the application's primary participant; consuming it opens a temporary buyer session.
+
+| Method | Route | Access |
+| --- | --- | --- |
+| `GET`, `POST` | `/applications/{id}/buyer-access-links` | `buyer_access.read`, `buyer_access.create` (`ADMIN`, `ADVISOR`, `INDEPENDENT_BROKER` within scope). 3 per issuer + application per hour. |
+| `DELETE` | `/buyer-access-links/{id}` | `buyer_access.revoke`. A broker only revokes links it issued. |
+| `GET` | `/applications/{id}/consents` | `consents.read` (`ADMIN`, `ADVISOR`). Consent evidence. |
+| `POST` | `/buyer-access/consume` | Public, 5 attempts per IP per hour. `{token}`; sets the buyer cookie and rotates CSRF. |
+| `GET` | `/buyer/session`, `/buyer/processes`, `/buyer/applications/{id}` | Buyer session. |
+| `POST` | `/buyer/session/logout` | Public with CSRF; always `204`. |
+| `GET`, `POST` | `/buyer/applications/{id}/consents` | Buyer session. `{consent_definition_id, action}`. |
+| `GET`, `PATCH` | `/buyer/applications/{id}/profile` | Buyer session. Contact data and addresses of the primary participant. |
+| `GET` | `/buyer/applications/{id}/participants` | Buyer session. |
+| `GET`, `PUT` | `/buyer/participants/{id}/financial-profile` | Buyer session. |
+| `POST` | `/buyer/participants/{id}/financial-profile/confirmation` | Buyer session. Sets `data_confirmed_at`. |
+| `GET`, `POST` | `/buyer/financial-profiles/{id}/income-sources` | Buyer session. |
+| `PATCH`, `DELETE` | `/buyer/income-sources/{id}` | Buyer session. |
+| `GET`, `PUT` | `/buyer/applications/{id}/property`, `/buyer/applications/{id}/financing` | Buyer session. |
+| `GET` | `/buyer/applications/{id}/eligible-bank-products` | Buyer session. `eligible` only, no rule detail. |
+| `POST` | `/buyer/applications/{id}/withdrawals` | Buyer session. `{reason_code, comment, expected_version}`. |
+
+- Tokens: 256-bit random, only their SHA-256 hash is stored, and they never appear in lists or logs. The link URL is returned only in the `201` (and sent by email with the `EMAIL` channel).
+- Link lifetime: 1 to 168 hours, 72 by default (`BUYER_ACCESS_LINK_DEFAULT_HOURS`, `BUYER_ACCESS_LINK_MAX_HOURS`). Issuing a link revokes the pending ones; consuming a link closes the buyer's other sessions on that application. The link page is `BUYER_ACCESS_URL`.
+- Consume errors (`401`): `MAGIC_LINK_INVALID`, `MAGIC_LINK_EXPIRED`, `MAGIC_LINK_CONSUMED`, `MAGIC_LINK_REVOKED`.
+- Buyer session: cookie `__Host-buyer_session`, 24 absolute hours (`BUYER_SESSION_HOURS`), no refresh. It only opens `/buyer/*`, and internal cookies never open `/buyer/*`. A revoked or expired session, or a client that is no longer the active primary participant, returns `401 SESSION_EXPIRED`. Writes require `X-CSRFToken`.
+- Every `/buyer/*` route only accepts resources of the session's application (`404` otherwise). Responses carry `ETag` and `Cache-Control: no-store`; `PUT`/`PATCH` require `If-Match`.
+- Consents: `DATA_PROCESSING` is always required, and `CO_APPLICANT_AUTHORIZATION` when the application has active co-applicants or solidary debtors. While one is pending, buyer writes return `403 CONSENT_REQUIRED`. New versions are published by migration; the seeded texts are provisional and pending legal review.
+- Buyers edit their contact data, the financial profiles and income of every active participant, the property, and the financing before `FILED` (`409 APPLICATION_NOT_EDITABLE` after). Once the application is closed, the portal is read-only (`409 APPLICATION_CLOSED`). Any real change to a profile or its income clears `data_confirmed_at`.
+- A buyer withdrawal is recorded in the status history with `actor_buyer_session` instead of a user.
+
 ## Initial Structure
 
 ```text
@@ -330,7 +362,7 @@ backend/
 
 ## Current Status
 
-Build steps 1 to 8 are complete:
+Build steps 1 to 9 are complete:
 
 1. `identity` core: internal users, roles and permissions, sessions with rotating refresh tokens, password reset, and `/api/v1/auth/*`.
 2. `catalogs`: catalogs and items, workflow transitions, and the metadata endpoints.
@@ -340,5 +372,6 @@ Build steps 1 to 8 are complete:
 6. `banking`: banks, products, and versioned policy rules with a declarative engine.
 7. `documents`: document types and requirements.
 8. `applications`: credit applications, participants, financial profiles, income sources, property, financing, bank rule evaluations, status transitions, withdrawals, history, available actions, and completeness.
+9. `identity` buyer access: magic links, buyer sessions, consents, and the buyer portal endpoints.
 
-Remaining modules follow the documented build order, starting with buyer access (step 9).
+Remaining modules follow the documented build order, starting with document files (step 10).

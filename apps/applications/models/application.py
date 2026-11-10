@@ -207,8 +207,9 @@ class ApplicationAssignment(models.Model):
 class ApplicationStatusHistory(models.Model):
     """Historial inmutable de cambios de estado.
 
-    ``actor_buyer_session`` (DER §6.8) se agrega en el paso 9, cuando exista
-    ``buyer_sessions``.
+    El actor es un usuario interno (``actor_user``) o la sesión del comprador
+    (``actor_buyer_session``), nunca los dos. Ninguno en el registro de un cambio que
+    hizo el sistema o de un actor ya borrado.
     """
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -245,6 +246,13 @@ class ApplicationStatusHistory(models.Model):
         blank=True,
         related_name="+",
     )
+    actor_buyer_session = models.ForeignKey(
+        "identity.BuyerSession",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="+",
+    )
     application_version = models.IntegerField()
 
     class Meta:
@@ -267,6 +275,10 @@ class ApplicationStatusHistory(models.Model):
             models.CheckConstraint(
                 condition=Q(application_version__gt=0),
                 name="ck_application_status_version",
+            ),
+            models.CheckConstraint(
+                condition=Q(actor_user__isnull=True) | Q(actor_buyer_session__isnull=True),
+                name="ck_application_status_actor",
             ),
         ]
         indexes = [

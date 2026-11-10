@@ -165,13 +165,17 @@ Las cookies de sesión usan `HttpOnly`, `Secure`, `SameSite=Lax` y `Path=/`. La 
 | `MAGIC_LINK_EXPIRED` | Enlace mágico vencido. |
 | `MAGIC_LINK_CONSUMED` | Enlace ya utilizado. |
 | `MAGIC_LINK_REVOKED` | Enlace revocado. |
+| `MAGIC_LINK_INVALID` | Token desconocido o mal formado, o enlace que ya no da acceso porque la solicitud terminó o el cliente dejó de ser el titular (`401`). |
 | `OUT_OF_SCOPE` | Actor fuera del alcance del recurso. |
 | `STALE_VERSION` | `If-Match` (o `expected_version`) no coincide con la versión actual. |
 | `PRECONDITION_REQUIRED` | Falta `If-Match` en un `PUT`/`PATCH` que lo exige (`428`). |
 | `INVALID_STATE_TRANSITION` | Transición no permitida. |
 | `APPLICATION_ALREADY_OPEN` | La oportunidad ya tiene una solicitud en curso (`409`). |
 | `APPLICATION_NOT_EDITABLE` | Los datos del expediente solo se editan antes de `FILED` (`409`). |
-| `APPLICATION_CLOSED` | La solicitud ya terminó: no admite transiciones, desistimiento ni reasignación (`409`). |
+| `APPLICATION_CLOSED` | La solicitud ya terminó: no admite transiciones, desistimiento, reasignación, enlaces nuevos ni escrituras del portal del comprador (`409`). |
+| `CONSENT_REQUIRED` | Falta aceptar la versión vigente de un consentimiento obligatorio: bloquea las escrituras del portal del comprador (`403`); `details` trae uno por consentimiento. |
+| `CONSENT_NOT_EFFECTIVE` | La versión del consentimiento no está vigente: futura, retirada o reemplazada (`422`). |
+| `CONSENT_NOT_ACCEPTED` | Retiro de un consentimiento que nunca se aceptó (`409`). |
 | `PARTICIPANT_INACTIVE` | Edición de un participante retirado; hay que agregarlo de nuevo (`409`). |
 | `APPLICATION_NOT_READY` | No cumple `READY_TO_FILE` (`422`); `details` trae `BANK_PRODUCT_REQUIRED`, `BANK_RULE_BLOCKED` y `DOCUMENTS_NOT_VERIFIED` según el caso. |
 | `BANK_RULE_BLOCKED` | Regla bancaria bloqueante incumplida o sin datos para decidir. |
@@ -206,8 +210,9 @@ Concurrencia de la solicitud de crédito:
 - Todo `PUT`/`PATCH` que modifica el expediente exige `If-Match`, que acepta `"3"`, `3` o `W/"3"`. Sin la cabecera: `428 PRECONDITION_REQUIRED`.
 - Los `POST` que crean subrecursos y los `DELETE` no exigen `If-Match`, pero aumentan la versión.
 - `POST /status-transitions` y `POST /withdrawals` llevan `expected_version` en el cuerpo en lugar de `If-Match`.
+- El portal del comprador sigue las mismas reglas (sección 8). La confirmación del perfil financiero también exige `If-Match`.
 
-**Estado de implementación.** `Idempotency-Key` se exigirá cuando exista `idempotency_keys` (notificaciones). Mientras tanto, la creación de solicitudes se protege con la restricción de una sola solicitud no terminal por oportunidad (`409 APPLICATION_ALREADY_OPEN`) y las transiciones con `expected_version`.
+**Estado de implementación.** `Idempotency-Key` se exigirá cuando exista `idempotency_keys` (notificaciones). Mientras tanto, la creación de solicitudes se protege con la restricción de una sola solicitud no terminal por oportunidad (`409 APPLICATION_ALREADY_OPEN`) y las transiciones con `expected_version`. En la creación de enlaces mágicos, un reintento crea otro enlace y revoca el anterior; el límite de 3 por hora acota el abuso.
 
 ## 7. Autenticación interna
 
@@ -274,18 +279,20 @@ La respuesta es la fuente de verdad para ocultar funciones del panel. Next.js no
 
 ## 8. Acceso passwordless del comprador
 
+El comprador no tiene cuenta ni contraseña. Un actor interno genera un enlace mágico de un solo uso para el titular (`PRIMARY`) de la solicitud; al consumirlo, el comprador abre una sesión temporal ligada a esa persona y a esa solicitud.
+
 | Método | Ruta | Actor | Entrada | Respuesta |
 | --- | --- | --- | --- | --- |
-| `POST` | `/applications/{application_id}/buyer-access-links` | `ADMIN`, `ADVISOR`, broker dentro de alcance | Canal y vencimiento opcional | Enlace creado y fecha de vencimiento. |
-| `GET` | `/applications/{application_id}/buyer-access-links` | `ADMIN`, `ADVISOR`, broker dentro de alcance | Estado opcional | Historial sin token. |
-| `DELETE` | `/buyer-access-links/{link_id}` | `ADMIN`, `ADVISOR`, emisor dentro de alcance | — | `204`; revoca enlace. |
+| `POST` | `/applications/{application_id}/buyer-access-links` | `buyer_access.create`: `ADMIN`, `ADVISOR` asignado y broker originador | Canal y vencimiento opcionales | Enlace creado, con `url`. |
+| `GET` | `/applications/{application_id}/buyer-access-links` | `buyer_access.read`, mismo alcance | `status` opcional | Historial sin token. |
+| `DELETE` | `/buyer-access-links/{link_id}` | `buyer_access.revoke`; el broker solo los que emitió | — | `204`; corta el acceso que dio el enlace. |
 | `POST` | `/buyer-access/consume` | `PUBLIC` | Token mágico | Cookie de comprador y resumen público. |
-| `GET` | `/buyer/session` | `BUYER` | — | Sesión, cliente y expediente permitido. |
-| `POST` | `/buyer/session/logout` | `BUYER` | — | `204`; revoca sesión temporal. |
+| `GET` | `/buyer/session` | `BUYER` | — | Sesión, cliente, solicitud permitida y consentimientos pendientes. |
+| `POST` | `/buyer/session/logout` | `BUYER` | — | `204`; revoca la sesión temporal. |
 
 ### `POST /applications/{application_id}/buyer-access-links`
 
-Requiere `Idempotency-Key`. Crear un nuevo enlace revoca los enlaces pendientes anteriores de la misma solicitud.
+Crear un enlace revoca los enlaces pendientes anteriores de la misma solicitud; las sesiones abiertas siguen vivas. Se emite en cualquier estado no terminal, también después de `FILED`; con la solicitud terminada responde `409 APPLICATION_CLOSED`. Límite: 3 por hora por emisor y solicitud. `Idempotency-Key` queda pendiente (sección 6).
 
 ```json
 {
@@ -294,19 +301,30 @@ Requiere `Idempotency-Key`. Crear un nuevo enlace revoca los enlaces pendientes 
 }
 ```
 
+- `delivery_channel`: catálogo `buyer_access_channel` (`COPY_LINK` por omisión, o `EMAIL`). Con `EMAIL`, el enlace también se envía al correo del titular; sin correo registrado, `400`.
+- `expires_in_hours`: de 1 a 168; 72 por omisión.
+- El destinatario siempre es el titular activo: la entrada no acepta `client_id`.
+
 Respuesta `201`:
 
 ```json
 {
   "id": "uuid",
   "application_id": "uuid",
-  "url": "https://compradores.example.com/acceso?token=token-de-un-solo-uso",
+  "client_id": "uuid",
+  "status": "PENDING",
+  "delivery_channel": { "code": "COPY_LINK", "label": "Copiar enlace" },
+  "created_by": { "id": "uuid", "name": "Andrea García" },
+  "created_at": "2026-08-24T23:00:00Z",
   "expires_at": "2026-08-27T23:00:00Z",
-  "status": "PENDING"
+  "consumed_at": null,
+  "revoked_at": null,
+  "session": null,
+  "url": "https://compradores.example.com/acceso?token=token-de-un-solo-uso"
 }
 ```
 
-El campo `url` solo se devuelve en la creación. Nunca aparece en listados, logs ni auditoría.
+El campo `url` solo se devuelve en la creación. Nunca aparece en listados, logs ni auditoría. El estado (`PENDING`, `CONSUMED`, `REVOKED` o `EXPIRED`) se deriva de las fechas. Revocar un enlace consumido revoca la sesión que abrió; revocar uno ya revocado o vencido responde `204` sin cambios.
 
 ### `POST /buyer-access/consume`
 
@@ -326,27 +344,52 @@ Respuesta `200`:
   "application": {
     "id": "uuid",
     "code": "SOL-250184",
-    "public_status": "DOCUMENTS_REVIEW"
+    "public_status": "DOCUMENTS_REVIEW",
+    "public_status_label": "Documentos en revisión",
+    "is_editable": true,
+    "is_closed": false
   },
   "session_expires_at": "2026-08-25T14:00:00Z"
 }
 ```
 
+- Fija la cookie `__Host-buyer_session` (24 horas absolutas, sin renovación) y rota el token CSRF.
+- Cierra las otras sesiones del comprador en la misma solicitud.
+- Errores `401`: `MAGIC_LINK_EXPIRED`, `MAGIC_LINK_CONSUMED`, `MAGIC_LINK_REVOKED` y `MAGIC_LINK_INVALID`. Este último también cubre un enlace vigente cuya solicitud terminó o cuyo cliente dejó de ser el titular; ese enlace no se consume.
+
 El frontend elimina el token de la URL inmediatamente después del consumo.
 
 ### Portal del comprador durante la sesión temporal
 
-Estos endpoints usan DTO exclusivos del portal. Aunque internamente consulten los mismos agregados, nunca reutilizan el serializer administrativo ni aceptan un `client_id` como autorización.
+Estos endpoints usan DTO exclusivos del portal. Aunque internamente consulten los mismos agregados, nunca reutilizan el serializer administrativo de salida ni aceptan un `client_id` como autorización. Solo los autentica la cookie del comprador: el JWT interno no los abre, y la cookie del comprador no abre ningún endpoint interno.
 
-| Método | Ruta | Actor | Descripción |
-| --- | --- | --- | --- |
-| `GET` | `/buyer/processes` | `BUYER` | Devuelve únicamente el proceso asociado a la sesión vigente. |
-| `GET` | `/buyer/applications/{application_id}` | `BUYER` | Estado público, progreso, siguiente acción y datos editables. |
-| `PATCH` | `/buyer/applications/{application_id}/profile` | `BUYER` | Actualiza datos personales permitidos antes de radicar. |
-| `PATCH` | `/buyer/applications/{application_id}/financial-profile` | `BUYER` | Actualiza ocupación, ingresos, gastos, activos y pasivos permitidos. |
-| `POST` | `/buyer/applications/{application_id}/withdrawals` | `BUYER` | Registra desistimiento con motivo y cierra el flujo. |
+| Método | Ruta | Descripción |
+| --- | --- | --- |
+| `GET` | `/buyer/processes` | Devuelve únicamente el proceso asociado a la sesión vigente. |
+| `GET` | `/buyer/applications/{application_id}` | Estado público, siguiente acción, progreso, participantes, inmueble y financiación. |
+| `GET`, `POST` | `/buyer/applications/{application_id}/consents` | Consentimientos vigentes y su estado; acepta o retira una versión. |
+| `GET`, `PATCH` | `/buyer/applications/{application_id}/profile` | Datos del titular: `email`, `phone`, `birth_date` y direcciones. |
+| `GET` | `/buyer/applications/{application_id}/participants` | Titular y co-solicitantes activos, incluidos los deudores solidarios. |
+| `GET`, `PUT` | `/buyer/participants/{participant_id}/financial-profile` | Perfil financiero de un participante. |
+| `POST` | `/buyer/participants/{participant_id}/financial-profile/confirmation` | El comprador confirma el perfil (`data_confirmed_at`). |
+| `GET`, `POST` | `/buyer/financial-profiles/{profile_id}/income-sources` | Fuentes de ingreso. |
+| `PATCH`, `DELETE` | `/buyer/income-sources/{income_source_id}` | Edita o elimina una fuente. |
+| `GET`, `PUT` | `/buyer/applications/{application_id}/property` | Inmueble; el proyecto y las notas del asesor conservan su valor. |
+| `GET`, `PUT` | `/buyer/applications/{application_id}/financing` | Financiación y producto elegido. |
+| `GET` | `/buyer/applications/{application_id}/eligible-bank-products` | Productos de la finalidad con `eligible`, sin el detalle de las reglas. |
+| `POST` | `/buyer/applications/{application_id}/withdrawals` | Desistimiento con motivo (`application_withdrawal_reason`) y `expected_version`. |
 
-El `application_id` de la ruta debe coincidir con el de la sesión. Un ID válido de otro expediente responde `404`. Tras `FILED`, los endpoints `PATCH` retornan `409 DOCUMENT_LOCKED`; solo permanece habilitada la carga de slots expresamente observados.
+Reglas del portal:
+
+- El `application_id` de la ruta debe coincidir con el de la sesión, y los participantes, perfiles y fuentes deben ser de esa solicitud. Un ID válido de otro expediente responde `404`.
+- La sesión vencida o revocada, o la de un cliente que dejó de ser el titular activo, responde `401 SESSION_EXPIRED`. Las escrituras exigen `X-CSRFToken`.
+- Las respuestas del expediente llevan `ETag`, y los `PUT`/`PATCH` exigen `If-Match` (sección 6). Todas las respuestas llevan `Cache-Control: no-store`.
+- Mientras falte aceptar un consentimiento obligatorio (sección 21.1), las escrituras responden `403 CONSENT_REQUIRED`. Las lecturas, la aceptación de consentimientos y el logout siguen permitidos.
+- Tras `FILED`, las ediciones responden `409 APPLICATION_NOT_EDITABLE`; el desistimiento sigue disponible. La carga de slots observados llega con el módulo de documentos.
+- Con la solicitud terminada, la sesión sigue viva para consultar y toda escritura responde `409 APPLICATION_CLOSED`.
+- Todo cambio real del perfil financiero o de sus ingresos, del asesor o del comprador, limpia `data_confirmed_at`.
+- El documento de identidad del titular se muestra enmascarado. El comprador no ve notas internas, el asesor, ni el detalle de las evaluaciones bancarias.
+- El desistimiento del comprador queda en el historial con `actor_buyer_session_id` en lugar de un usuario. Elegir un producto guarda su evaluación sin evaluador interno.
 
 ## 9. Metadatos públicos para el frontend
 
@@ -827,8 +870,8 @@ Las transiciones de `FILED` en adelante llegan con la radicación (§20).
 
 | Método | Ruta | Permiso | Descripción |
 | --- | --- | --- | --- |
-| `GET` | `/applications/{application_id}/participants` | `applications.read` o comprador del expediente | Lista solicitante principal y adicionales. |
-| `POST` | `/applications/{application_id}/participants` | `applications.update` o comprador antes de `FILED` | Agrega co-solicitante/deudor. |
+| `GET` | `/applications/{application_id}/participants` | `applications.read` | Lista solicitante principal y adicionales. |
+| `POST` | `/applications/{application_id}/participants` | `applications.update`, antes de `FILED` | Agrega co-solicitante/deudor. |
 | `GET` | `/application-participants/{participant_id}` | Actor con alcance | Detalle permitido. |
 | `PATCH` | `/application-participants/{participant_id}` | Actor con alcance, antes de `FILED` | Actualiza datos. |
 | `DELETE` | `/application-participants/{participant_id}` | `applications.update`, antes de `FILED` | Retira participante no principal. |
@@ -867,6 +910,8 @@ Reglas:
 | `POST` | `/financial-profiles/{profile_id}/income-sources` | Actor editable | Agrega fuente. |
 | `PATCH` | `/income-sources/{income_source_id}` | Actor editable | Actualiza fuente. |
 | `DELETE` | `/income-sources/{income_source_id}` | Actor editable | Retira fuente. |
+
+El comprador edita los perfiles y los ingresos de los participantes activos desde `/buyer/...` (sección 8); agregar o retirar participantes es solo interno. `data_confirmed_at` lo fija la confirmación del comprador y lo limpia cualquier cambio real del perfil o de sus ingresos.
 
 `PUT /application-participants/{participant_id}/financial-profile`:
 
@@ -929,8 +974,8 @@ Reglas por finalidad:
 | --- | --- | --- | --- |
 | `GET` | `/applications/{application_id}/financing` | Actor con alcance | Preferencia actual. |
 | `PUT` | `/applications/{application_id}/financing` | Actor editable antes de `FILED` | Selecciona banco/producto y valores. |
-| `GET` | `/applications/{application_id}/eligible-bank-products` | `applications.read` (no broker) o comprador | Productos disponibles para la finalidad, con evaluación no guardada. |
-| `POST` | `/applications/{application_id}/bank-rule-evaluations` | `applications.update` (no broker) o comprador | Evalúa reglas sin cambiar estado. |
+| `GET` | `/applications/{application_id}/eligible-bank-products` | `applications.read` (no broker) | Productos disponibles para la finalidad, con evaluación no guardada. El comprador usa `/buyer/applications/{application_id}/eligible-bank-products`. |
+| `POST` | `/applications/{application_id}/bank-rule-evaluations` | `applications.update` (no broker) | Evalúa reglas sin cambiar estado. Cuando el comprador elige un producto, la evaluación se guarda sola. |
 | `GET` | `/applications/{application_id}/bank-rule-evaluations/latest` | `applications.read` (no broker) | Último resultado. |
 
 `PUT /applications/{application_id}/financing`:
@@ -1213,10 +1258,18 @@ Cada respuesta es inmutable. Una corrección se registra como una nueva respuest
 | `GET` | `/applications/{application_id}/activity` | Actor con alcance o comprador | Línea de tiempo filtrada según actor. |
 | `GET` | `/applications/{application_id}/notes` | Actor interno con alcance | Notas internas paginadas. |
 | `POST` | `/applications/{application_id}/notes` | `applications.add_note` | Agrega nota interna. |
-| `GET` | `/applications/{application_id}/consents` | Actor con alcance | Evidencias de tratamientos y declaraciones. |
-| `POST` | `/buyer/applications/{application_id}/consents` | Comprador | Acepta una versión vigente del consentimiento. |
+| `GET` | `/applications/{application_id}/consents` | `consents.read` (`ADMIN`, `ADVISOR` asignado) | Evidencias de tratamientos y declaraciones. |
+| `GET` | `/buyer/applications/{application_id}/consents` | Comprador | Versiones vigentes, si son obligatorias y su estado. |
+| `POST` | `/buyer/applications/{application_id}/consents` | Comprador | Acepta o retira una versión vigente del consentimiento. |
 
 El comprador nunca recibe notas internas, comentarios de evaluación, identidades técnicas ni eventos de auditoría. Un consentimiento guarda tipo, versión del texto, fecha, IP, agente de usuario y huella de la sesión.
+
+Consentimientos:
+
+- `DATA_PROCESSING` (tratamiento de datos del titular) es siempre obligatorio. `CO_APPLICANT_AUTHORIZATION` (el titular declara tener la autorización de los co-solicitantes) lo es si la solicitud tiene co-solicitantes o deudores solidarios activos.
+- Rige la versión mayor de cada código con `effective_from` cumplido y sin retirar. Las versiones nuevas se publican por migración; no hay CRUD REST de definiciones. El texto sembrado es provisional, pendiente de validación legal.
+- `POST` recibe `{consent_definition_id, action}` con `ACCEPTED` o `WITHDRAWN`. Repetir la última acción devuelve el registro existente (`200`); una versión no vigente responde `422 CONSENT_NOT_EFFECTIVE`; retirar lo que nunca se aceptó responde `409 CONSENT_NOT_ACCEPTED`. Retirar agrega una fila y deja el consentimiento pendiente.
+- Aceptar una versión anterior no cuenta para la nueva.
 
 ### 21.2 Notificaciones del comprador
 
@@ -1525,6 +1578,8 @@ La auditoría es de solo lectura desde la API. Registra autenticación, enlaces 
 | Dashboard y reportes | Todo | Propio/asignado | Propio | Propio/proyectos | No |
 | Usuarios y roles | Todo | No | No | Miembros propios limitados | No |
 | Clientes/oportunidades | Todo | Asignados | Propios | Propios/proyectos | Su expediente |
+| Enlaces del comprador | Todo | Asignadas | Originadas (revoca los propios) | No | No |
+| Consentimientos | Evidencias | Evidencias de asignadas | No | No | Acepta o retira los suyos |
 | Proyectos | Todo | Lectura relacionada | Lectura relacionada | CRUD propio | Lectura del asociado |
 | Solicitudes | Todo | Asignadas | Originadas | Originadas | Su solicitud |
 | Expediente | Todo | Revisar/descargar asignadas | Solo resumen, sin archivos | Solo resumen, sin archivos | Cargar/ver permitido |
@@ -1535,7 +1590,7 @@ La auditoría es de solo lectura desde la API. Registra autenticación, enlaces 
 
 La matriz es orientativa; la autorización real combina permiso, rol, pertenencia al partner, originador, asesor asignado y recurso solicitado. Nunca se autoriza únicamente porque el ID del recurso sea válido.
 
-En bancos y reglas, la configuración (`/banks`, `/bank-products`, `/bank-policy-rules`) solo la consultan `ADMIN` y `ADVISOR` (sección 23.2). La "lectura pública aplicable" de broker, partner y comprador se entregará por solicitud en `GET /applications/{application_id}/eligible-bank-products`, pendiente del paso 8.
+En bancos y reglas, la configuración (`/banks`, `/bank-products`, `/bank-policy-rules`) solo la consultan `ADMIN` y `ADVISOR` (sección 23.2). El comprador consulta las opciones aplicables a su solicitud en `GET /buyer/applications/{application_id}/eligible-bank-products`, solo con `eligible`. El broker y el partner no reciben las evaluaciones del expediente.
 
 ## 26. Límites de consumo
 
@@ -1543,8 +1598,8 @@ En bancos y reglas, la configuración (`/banks`, `/bank-products`, `/bank-policy
 | --- | --- | --- |
 | Login interno | 5 intentos / 15 min | IP + correo normalizado |
 | Solicitud de recuperación | 3 / hora | IP + correo |
-| Consumo de enlace mágico | 5 intentos / 15 min | IP + token hash |
-| Creación/reenvío de enlace mágico | 5 / hora por solicitud | Usuario + solicitud |
+| Consumo de enlace mágico | 5 intentos / hora | IP |
+| Creación/reenvío de enlace mágico | 3 / hora | Usuario + solicitud |
 | Carga de documentos | 30 / hora | Sesión + solicitud |
 | Descarga de archivos/paquetes | 60 / hora | Usuario/sesión |
 | Escrituras generales | 120 / min | Usuario |
@@ -1565,6 +1620,8 @@ Al superar el límite se retorna `429 RATE_LIMITED` y `Retry-After`. Los número
 6. Comparte la URL fuera de la plataforma por el canal acordado.
 7. El comprador abre la URL y el frontend consume `POST /buyer-access/consume`.
 8. Consulta `GET /buyer/session` y continúa sin cuenta ni contraseña.
+9. Si `pending_consents` no está vacío, lee `GET /buyer/applications/{id}/consents` y acepta cada uno con `POST`; hasta entonces, las escrituras responden `403 CONSENT_REQUIRED`.
+10. Completa sus datos, perfiles, ingresos, inmueble y financiación con `If-Match`, y confirma cada perfil con `POST .../financial-profile/confirmation`.
 
 ### 27.2 Autogestión documental
 

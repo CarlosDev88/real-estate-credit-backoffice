@@ -1,4 +1,4 @@
-"""Cookies de sesión interna (sección 4.1 de la especificación).
+"""Cookies de sesión interna y del comprador (sección 4.1 de la especificación).
 
 Con ``AUTH_COOKIE_SECURE`` activo, los nombres llevan el prefijo ``__Host-``, que el
 navegador solo acepta con ``Secure``, ``Path=/`` y sin ``Domain``. En desarrollo local
@@ -17,6 +17,7 @@ SameSite = Literal["Lax", "Strict", "None"]
 
 ACCESS_COOKIE_BASE_NAME = "app_access"
 REFRESH_COOKIE_BASE_NAME = "app_refresh"
+BUYER_SESSION_COOKIE_BASE_NAME = "buyer_session"
 
 
 def _cookie_name(base_name: str) -> str:
@@ -29,6 +30,10 @@ def access_cookie_name() -> str:
 
 def refresh_cookie_name() -> str:
     return _cookie_name(REFRESH_COOKIE_BASE_NAME)
+
+
+def buyer_session_cookie_name() -> str:
+    return _cookie_name(BUYER_SESSION_COOKIE_BASE_NAME)
 
 
 def _samesite() -> SameSite:
@@ -63,3 +68,11 @@ def set_session_cookies(
 def clear_session_cookies(response: HttpResponse) -> None:
     for name in (access_cookie_name(), refresh_cookie_name()):
         response.delete_cookie(name, path="/", samesite=_samesite())
+
+
+def set_buyer_session_cookie(response: HttpResponse, *, token: str, expires_at: datetime) -> None:
+    _set_cookie(response, buyer_session_cookie_name(), token, expires_at)
+
+
+def clear_buyer_session_cookie(response: HttpResponse) -> None:
+    response.delete_cookie(buyer_session_cookie_name(), path="/", samesite=_samesite())

@@ -620,7 +620,8 @@ class FinancialProfileView(ExpedienteView):
         summary="Crear o reemplazar el perfil financiero",
         description=(
             "Reemplazo completo: lo que no llega vuelve a su valor por omisión. "
-            "`data_confirmed_at` lo fija el comprador (paso 9). Responde `201` si lo creó. "
+            "`data_confirmed_at` lo fija el comprador al confirmar, y un cambio real lo "
+            "limpia. Responde `201` si lo creó. "
             f"{ETAG_NOTE}"
         ),
         parameters=[IF_MATCH],

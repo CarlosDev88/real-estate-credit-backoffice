@@ -274,7 +274,7 @@ Aplicada en la Parte 6 (`docs/API_REST_MVP_CREDITO.md`): §5.4, §5.5, §6, §9,
 
 ## Pendientes para pasos posteriores
 
-1. **Paso 9 (acceso del comprador).**
+1. **Paso 9 (acceso del comprador).** **Hecho** en `feat/buyer-access` (ver `TAREA-buyer-access.md`): la columna y su `CHECK` (Parte 1), el comprador en las cuatro operaciones (Partes 5 y 6), y un cambio real del perfil o de sus ingresos limpia `data_confirmed_at` (decisión 14).
    - Agregar `application_status_history.actor_buyer_session_id`, con FK a `buyer_sessions` (`SET NULL`) y el `CHECK (num_nonnulls(actor_user_id, actor_buyer_session_id) <= 1)` del esquema.
    - Habilitar al comprador en el desistimiento, la edición previa a `FILED`, la confirmación del perfil (`data_confirmed_at`) y `eligible-bank-products`.
    - Decidir si un `PUT` del perfil financiero con cambios reales limpia `data_confirmed_at`. Hoy no lo toca.

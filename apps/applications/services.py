@@ -26,7 +26,7 @@ from django.db import IntegrityError, transaction
 from django.db.models import Prefetch, Q, QuerySet, Sum
 from django.db.models.functions import Coalesce
 from django.utils import timezone
-from rest_framework.exceptions import ValidationError
+from rest_framework.exceptions import NotFound, ValidationError
 
 from apps.applications.bank_evaluation import (
     EvaluationSummary,
@@ -87,11 +87,15 @@ from apps.crm.services import (
     get_scope,
     opportunities_visible_to,
 )
-from apps.identity.models import User
+from apps.identity.models import BuyerSession, User
 from apps.partners.models import Project
 from apps.partners.services import ensure_project_accepts_opportunities, projects_visible_to
 
 logger = logging.getLogger(__name__)
+
+# Quién hace un cambio del expediente: un usuario interno o la sesión del comprador
+# (paso 9). Los servicios que usa el portal del comprador aceptan los dos.
+Actor = User | BuyerSession
 
 OPEN_APPLICATION_CONSTRAINT = "uq_credit_applications_open_opportunity"
 
@@ -570,23 +574,29 @@ def participants_visible_to(user: User) -> QuerySet[ApplicationParticipant]:
     return participants_queryset().filter(application__in=applications_visible_to(user))
 
 
+def financial_profiles_queryset() -> QuerySet[FinancialProfile]:
+    return FinancialProfile.objects.select_related(
+        "participant",
+        "employment_profile_item",
+        "contract_type_item",
+        "funds_origin_item",
+    ).annotate(income_sources_total_cop=Coalesce(Sum("income_sources__monthly_amount_cop"), 0))
+
+
 def financial_profiles_visible_to(user: User) -> QuerySet[FinancialProfile]:
-    return (
-        FinancialProfile.objects.select_related(
-            "participant",
-            "employment_profile_item",
-            "contract_type_item",
-            "funds_origin_item",
-        )
-        .annotate(income_sources_total_cop=Coalesce(Sum("income_sources__monthly_amount_cop"), 0))
-        .filter(participant__application__in=applications_visible_to(user))
+    return financial_profiles_queryset().filter(
+        participant__application__in=applications_visible_to(user)
     )
 
 
+def income_sources_queryset() -> QuerySet[IncomeSource]:
+    return IncomeSource.objects.select_related("financial_profile__participant", "source_type_item")
+
+
 def income_sources_visible_to(user: User) -> QuerySet[IncomeSource]:
-    return IncomeSource.objects.select_related(
-        "financial_profile__participant", "source_type_item"
-    ).filter(financial_profile__participant__application__in=applications_visible_to(user))
+    return income_sources_queryset().filter(
+        financial_profile__participant__application__in=applications_visible_to(user)
+    )
 
 
 def _current_participant(
@@ -723,8 +733,15 @@ def remove_participant(actor: User, participant: ApplicationParticipant) -> None
     )
 
 
+def _clear_data_confirmation(profile_id: uuid.UUID) -> None:
+    """Un cambio real del perfil o de sus ingresos invalida la confirmación del comprador."""
+    FinancialProfile.objects.filter(pk=profile_id, data_confirmed_at__isnull=False).update(
+        data_confirmed_at=None, updated_at=timezone.now()
+    )
+
+
 def put_financial_profile(
-    actor: User,
+    actor: Actor,
     participant: ApplicationParticipant,
     *,
     expected_version: int,
@@ -733,8 +750,9 @@ def put_financial_profile(
     """Crea o reemplaza el perfil financiero. Devuelve ``True`` si lo creó.
 
     ``values`` trae todos los campos editables: lo que el cliente no envió llega con su
-    valor por omisión. ``data_confirmed_at`` no se toca: lo confirma el comprador
-    (paso 9). Reemplazar con los mismos datos no aumenta la versión.
+    valor por omisión. ``values`` nunca trae ``data_confirmed_at``: lo fija la
+    confirmación del comprador, y un cambio real lo limpia. Reemplazar con los mismos
+    datos no aumenta la versión.
     """
     with transaction.atomic():
         locked = lock_for_edit(participant.application_id, expected_version)
@@ -749,13 +767,39 @@ def put_financial_profile(
                 return False
             for field in changed:
                 setattr(profile, field, values[field])
-            profile.save(update_fields=[*changed, "updated_at"])
+            profile.data_confirmed_at = None
+            profile.save(update_fields=[*changed, "data_confirmed_at", "updated_at"])
         bump_version(locked)
 
     application_updated.send(
         sender=CreditApplication, application=locked, fields=["financial_profile"], actor=actor
     )
     return created
+
+
+def confirm_financial_profile(
+    actor: Actor, participant: ApplicationParticipant, *, expected_version: int
+) -> FinancialProfile:
+    """El comprador confirma el perfil (``data_confirmed_at = now``) y aumenta la versión.
+
+    Sin perfil responde ``404``. Confirmar un perfil ya confirmado no cambia nada.
+    """
+    with transaction.atomic():
+        locked = lock_for_edit(participant.application_id, expected_version)
+        current = _current_participant(participant.pk)
+        profile = FinancialProfile.objects.select_for_update().filter(participant=current).first()
+        if profile is None:
+            raise NotFound("El participante todavía no tiene perfil financiero.")
+        if profile.data_confirmed_at is not None:
+            return profile
+        profile.data_confirmed_at = timezone.now()
+        profile.save(update_fields=["data_confirmed_at", "updated_at"])
+        bump_version(locked)
+
+    application_updated.send(
+        sender=CreditApplication, application=locked, fields=["financial_profile"], actor=actor
+    )
+    return profile
 
 
 def _unmark_other_primary_sources(profile_id: uuid.UUID, keep: uuid.UUID | None) -> None:
@@ -766,14 +810,14 @@ def _unmark_other_primary_sources(profile_id: uuid.UUID, keep: uuid.UUID | None)
     sources.update(is_primary=False, updated_at=timezone.now())
 
 
-def _income_sources_changed(locked: CreditApplication, actor: User) -> None:
+def _income_sources_changed(locked: CreditApplication, actor: Actor) -> None:
     application_updated.send(
         sender=CreditApplication, application=locked, fields=["income_sources"], actor=actor
     )
 
 
 def add_income_source(
-    actor: User, profile: FinancialProfile, values: dict[str, Any]
+    actor: Actor, profile: FinancialProfile, values: dict[str, Any]
 ) -> IncomeSource:
     with transaction.atomic():
         locked = lock_for_edit(profile.participant.application_id, None)
@@ -781,6 +825,7 @@ def add_income_source(
         if values.get("is_primary"):
             _unmark_other_primary_sources(profile.pk, keep=None)
         source = IncomeSource.objects.create(financial_profile=profile, **values)
+        _clear_data_confirmation(profile.pk)
         bump_version(locked)
 
     _income_sources_changed(locked, actor)
@@ -788,7 +833,7 @@ def add_income_source(
 
 
 def update_income_source(
-    actor: User,
+    actor: Actor,
     source: IncomeSource,
     *,
     expected_version: int,
@@ -808,18 +853,20 @@ def update_income_source(
         for field in changed:
             setattr(current, field, changes[field])
         current.save(update_fields=[*changed, "updated_at"])
+        _clear_data_confirmation(current.financial_profile_id)
         bump_version(locked)
 
     _income_sources_changed(locked, actor)
     return current
 
 
-def delete_income_source(actor: User, source: IncomeSource) -> None:
+def delete_income_source(actor: Actor, source: IncomeSource) -> None:
     participant = source.financial_profile.participant
     with transaction.atomic():
         locked = lock_for_edit(participant.application_id, None)
         _current_participant(participant.pk)
         IncomeSource.objects.filter(pk=source.pk).delete()
+        _clear_data_confirmation(source.financial_profile_id)
         bump_version(locked)
 
     _income_sources_changed(locked, actor)
@@ -834,7 +881,7 @@ def delete_income_source(actor: User, source: IncomeSource) -> None:
 
 
 def put_property(
-    actor: User,
+    actor: Actor,
     application: CreditApplication,
     *,
     expected_version: int,
@@ -843,8 +890,10 @@ def put_property(
     """Crea o reemplaza el inmueble. Devuelve ``True`` si lo creó.
 
     ``values`` trae los campos del modelo, con ``project`` ya resuelto (visible y
-    `ACTIVE`). Las reglas por finalidad se comprueban con la solicitud bloqueada, para
-    no decidir con una finalidad que otra petición acaba de cambiar.
+    `ACTIVE`). Un campo que no llega en ``values`` conserva su valor al reemplazar (el
+    comprador no envía ``project`` ni ``ownership_notes``). Las reglas por finalidad se
+    comprueban con la solicitud bloqueada, para no decidir con una finalidad que otra
+    petición acaba de cambiar.
     """
     with transaction.atomic():
         locked = lock_for_edit(application, expected_version)
@@ -910,7 +959,7 @@ def financing_errors(
 
 
 def put_financing(
-    actor: User,
+    actor: Actor,
     application: CreditApplication,
     *,
     expected_version: int,
@@ -1122,7 +1171,7 @@ def _ready_to_file_problems(actor: User, locked: CreditApplication) -> list[dict
 
 
 def _apply_status_change(
-    actor: User,
+    actor: Actor,
     locked: CreditApplication,
     transition: WorkflowTransition,
     *,
@@ -1158,14 +1207,15 @@ def _apply_status_change(
         transition=transition,
         reason_item=reason,
         comment=comment,
-        actor_user=actor,
+        actor_user=actor if isinstance(actor, User) else None,
+        actor_buyer_session=actor if isinstance(actor, BuyerSession) else None,
         application_version=locked.version,
     )
     return StatusChange(application=locked, previous_status=previous, transitioned_at=now)
 
 
 def _notify_status_change(
-    actor: User,
+    actor: Actor,
     change: StatusChange,
     transition: WorkflowTransition,
     reason: CatalogItem | None,
@@ -1236,8 +1286,34 @@ def transition_application(
     return change
 
 
+def _withdraw_transition(actor: Actor, from_status: str) -> WorkflowTransition:
+    """Transición activa `<estado> → WITHDRAWN`.
+
+    Un usuario interno necesita el rol o el permiso de la transición. Para el
+    comprador, la autorización es su sesión (decisión 15 de ``TAREA-buyer-access``).
+    """
+    if isinstance(actor, User):
+        return resolve_transition(
+            actor,
+            flow_type=FlowType.APPLICATION,
+            from_status=from_status,
+            to_status=ApplicationStatus.WITHDRAWN,
+        )
+    transition = WorkflowTransition.objects.filter(
+        flow_type=FlowType.APPLICATION,
+        from_status=from_status,
+        to_status=ApplicationStatus.WITHDRAWN,
+        is_active=True,
+    ).first()
+    if transition is None:
+        raise InvalidStateTransition(
+            f"No se puede pasar de {from_status} a {ApplicationStatus.WITHDRAWN}."
+        )
+    return transition
+
+
 def withdraw_application(
-    actor: User,
+    actor: Actor,
     application: CreditApplication,
     *,
     expected_version: int,
@@ -1246,16 +1322,12 @@ def withdraw_application(
 ) -> StatusChange:
     """Registra el desistimiento con una transición `WITHDRAW_<estado>`.
 
-    Se admite desde cualquier estado no terminal, también después de `FILED`.
+    Se admite desde cualquier estado no terminal, también después de `FILED`. Con el
+    comprador como actor, el historial guarda su sesión en ``actor_buyer_session``.
     """
     with transaction.atomic():
         locked = _lock_for_status_change(application, expected_version)
-        transition = resolve_transition(
-            actor,
-            flow_type=FlowType.APPLICATION,
-            from_status=locked.status,
-            to_status=ApplicationStatus.WITHDRAWN,
-        )
+        transition = _withdraw_transition(actor, locked.status)
         change = _apply_status_change(actor, locked, transition, reason=reason, comment=comment)
     _notify_status_change(actor, change, transition, reason, comment)
     return change
