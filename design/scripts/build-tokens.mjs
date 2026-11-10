@@ -4,7 +4,7 @@
 // Sin dependencias: solo Node 18+.
 // Falla (exit 1) si una referencia no existe o si un par de contraste no cumple WCAG.
 
-import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdirSync, readdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -106,13 +106,6 @@ ${semanticVars("light")}
 [data-theme="dark"] {
   color-scheme: dark;
 ${semanticVars("dark")}
-}
-
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    color-scheme: dark;
-${semanticVars("dark").replace(/^ {2}/gm, "    ")}
-  }
 }
 `;
 
@@ -237,9 +230,35 @@ writeFileSync(
     .join("\n")}\n`,
 );
 
+// Pantallas de referencia: screens/src/*.html -> screens/*.html, con tokens y estilos base incrustados.
+const screensSrc = join(root, "screens", "src");
+const baseCss = readFileSync(join(screensSrc, "_base.css"), "utf8");
+const shellJs = readFileSync(join(screensSrc, "_shell.js"), "utf8");
+const themeBtn = readFileSync(join(screensSrc, "_theme-button.html"), "utf8").trim();
+const sidebar = readFileSync(join(screensSrc, "_sidebar.html"), "utf8").trim();
+const viewerHtml = readFileSync(join(screensSrc, "_viewer.html"), "utf8").trim();
+const viewerJs = readFileSync(join(screensSrc, "_viewer.js"), "utf8");
+for (const file of readdirSync(screensSrc).filter((f) => f.endsWith(".html") && !f.startsWith("_"))) {
+  const html = readFileSync(join(screensSrc, file), "utf8")
+    .replace("/*__TOKENS_CSS__*/", tokensCss)
+    .replace("/*__BASE_CSS__*/", baseCss)
+    .replace("/*__SHELL_JS__*/", shellJs)
+    .replaceAll("<!--__THEME_BUTTON__-->", themeBtn)
+    .replace("<!--__SIDEBAR__-->", sidebar)
+    .replace("<!--__VIEWER__-->", viewerHtml)
+    .replace("/*__VIEWER_JS__*/", viewerJs);
+  writeFileSync(join(root, "screens", file), html);
+}
+
 // La vista previa incrusta tokens.css para abrirse sola en el navegador.
+// La vista previa reutiliza los toasts de las pantallas (CSS y JS) para no duplicarlos.
+const toastCss = baseCss.slice(baseCss.indexOf("/* ---------- toasts"));
+const toastJs = shellJs.slice(shellJs.indexOf("// ---------- toasts"));
 const tpl = readFileSync(join(root, "preview", "template.html"), "utf8");
-writeFileSync(join(root, "preview", "index.html"), tpl.replace("/*__TOKENS_CSS__*/", tokensCss));
+writeFileSync(
+  join(root, "preview", "index.html"),
+  tpl.replace("/*__TOKENS_CSS__*/", tokensCss).replace("/*__TOAST_CSS__*/", toastCss).replace("/*__TOAST_JS__*/", toastJs),
+);
 
 const worst = report.reduce((a, b) => (a.ratio / a.min < b.ratio / b.min ? a : b));
 console.log(`OK: ${report.length} pares de contraste cumplen. El más justo: ${worst.mode} ${worst.fg} / ${worst.bg} = ${worst.ratio} (mín. ${worst.min}).`);

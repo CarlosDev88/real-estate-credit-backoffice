@@ -2,7 +2,19 @@
 
 Design system del backoffice y del portal del comprador. **Umbral** es el nombre de trabajo del producto: el umbral es la puerta de la casa nueva.
 
-Vista previa: abre `design/preview/index.html` en el navegador. Tiene un botón para cambiar entre tema claro, oscuro y el del sistema.
+Vista previa: abre `design/preview/index.html` en el navegador. Tiene un botón para cambiar entre tema claro y oscuro.
+
+Pantallas de referencia (mockups aprobados): `design/screens/*.html`. Se abren directo en el navegador y funcionan sin servidor.
+
+| Mockup | Ruta en Next.js | Qué cubre |
+| --- | --- | --- |
+| `login.html` | `/login` | Login interno, errores y bloqueo por intentos. |
+| `solicitudes.html` | `/solicitudes` | Pestañas por estado, búsqueda, filtros (banco, tipo de crédito, finalidad, asesor), chips, selección masiva, tabla ordenable y tarjetas en móvil. |
+| `solicitud.html` | `/solicitudes/[id]` | Espacio de trabajo: resumen, completitud, reglas del banco, participantes, documentos con revisión, visor y toasts. |
+| `portal.html` | `/portal` | Inicio del comprador en móvil: estado, siguiente paso y progreso. |
+| `portal-documentos.html` | `/portal/documentos` | Documentos del comprador (web y móvil): carga, reemplazo, versiones, rechazo con motivo y visor. |
+
+Los mockups son referencia visual y de comportamiento. Los datos y las listas que muestran son de ejemplo: en la app real todo llega de la API.
 
 ## Principios
 
@@ -18,15 +30,17 @@ Vista previa: abre `design/preview/index.html` en el navegador. Tiene un botón 
 | --- | --- | --- |
 | `tokens/tokens.json` | Fuente única: paletas, tokens semánticos claro/oscuro, tipografía, espaciado, radios, tonos de estado y pares de contraste a verificar. | **Sí** |
 | `scripts/build-tokens.mjs` | Genera todo lo de `generated/` y la vista previa. Node 18+, sin dependencias. | Sí |
-| `generated/tokens.css` | Variables CSS `--um-*`, con tema claro, oscuro (`[data-theme="dark"]`) y el del sistema. | No |
+| `generated/tokens.css` | Variables CSS `--um-*`, con tema claro (por defecto) y oscuro (`[data-theme="dark"]`). | No |
 | `generated/tailwind-theme.css` | Tema de Tailwind v4 (`@theme inline`) que apunta a las variables. | No |
 | `generated/antd-theme.ts` | `lightTheme` y `darkTheme` para el `ConfigProvider` de Ant Design. | No |
 | `generated/status-tones.ts` | Tono por código de estado y `toneFor(kind, code)`. | No |
 | `generated/contrast-report.md` | Resultado de la verificación de contraste. | No |
 | `preview/template.html` | Plantilla de la vista previa. | Sí |
 | `preview/index.html` | Vista previa con los tokens incrustados. | No |
+| `screens/src/*.html` | Fuente de los mockups. Los archivos que empiezan por `_` son piezas compartidas (estilos, menú, visor, toasts). | Sí |
+| `screens/*.html` | Mockups generados con los tokens y las piezas incrustadas. | No |
 
-Después de cambiar `tokens.json` o la plantilla:
+Después de cambiar `tokens.json`, la plantilla o las pantallas de `screens/src/`:
 
 ```
 node design/scripts/build-tokens.mjs
@@ -57,7 +71,7 @@ import { lightTheme, darkTheme } from "../../design/generated/antd-theme";
 </StyleProvider>;
 ```
 
-`StyleProvider layer` mete los estilos de Ant Design en una capa CSS, para que el preflight de Tailwind no los pise. El modo oscuro se activa con `data-theme="dark"` en `<html>` y con `darkTheme` en el `ConfigProvider`: los dos tienen que ir juntos.
+`StyleProvider layer` mete los estilos de Ant Design en una capa CSS, para que el preflight de Tailwind no los pise. Hay solo dos temas: claro (por defecto) y oscuro. No se sigue el tema del sistema operativo; el usuario elige con el botón de la barra superior y la elección se guarda en su navegador. El oscuro se activa con `data-theme="dark"` en `<html>` y con `darkTheme` en el `ConfigProvider`: los dos tienen que ir juntos.
 
 **Reglas:**
 
@@ -94,6 +108,9 @@ import { lightTheme, darkTheme } from "../../design/generated/antd-theme";
 | Progreso | `Progress` | Completitud: total, datos y documentos por separado. |
 | Slot de documento | Componente propio | Estado, archivo vigente, vencimiento y motivo de rechazo visible para el comprador. |
 | Layout | `Layout` + `Menu` | Barra lateral `bg.sidebar` y contenido sobre `bg.canvas`. |
+| Toast | `notification` / `message` de Ant Design con el estilo de `screens/src/_base.css` | Éxito e información se cierran a los 5 s (pausa al pasar el mouse); los errores se quedan hasta cerrarlos. Máximo 3. Arriba a la derecha en web, abajo en móvil. `role="status"` para éxito e información y `role="alert"` para errores. |
+| Visor de documentos | Componente propio sobre PDF.js | Zoom, páginas, girar y descargar por URL prefirmada. Las imágenes se muestran directo. |
+| Carga de documentos | `Upload.Dragger` en web; en móvil, botones "Tomar foto" y "Elegir archivo" | Valida tipo y tamaño antes de enviar; muestra subida, análisis antivirus y resultado. |
 
 ## Accesibilidad
 
@@ -104,5 +121,6 @@ import { lightTheme, darkTheme } from "../../design/generated/antd-theme";
 
 ## Próximos pasos
 
-1. Diseño de las pantallas clave en Claude Design, sobre estos tokens: login, listado de solicitudes, espacio de trabajo de la solicitud y portal del comprador en móvil.
-2. Paquete de componentes propios (badge de estado, slot de documento, campo de monto) al arrancar el frontend.
+1. Monorepo: `specs/TAREA-monorepo.md`.
+2. Base del frontend y reparto en dos agentes: `specs/TAREA-frontend-base.md`.
+3. Campos del listado que faltan en la API: `specs/TAREA-applications-listado.md`.

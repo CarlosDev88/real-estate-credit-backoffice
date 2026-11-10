@@ -204,56 +204,6 @@
   --um-shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.55);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    color-scheme: dark;
-    --um-bg-canvas: #0D1117;
-    --um-bg-surface: #151A21;
-    --um-bg-subtle: #1B2129;
-    --um-bg-muted: #222831;
-    --um-bg-sidebar: #0B1A30;
-    --um-bg-overlay: rgba(0, 0, 0, 0.6);
-    --um-border-default: #2C343E;
-    --um-border-strong: #343C46;
-    --um-text-primary: #E6EAEE;
-    --um-text-secondary: #A8B3BF;
-    --um-text-tertiary: #8B98A6;
-    --um-text-disabled: #66727F;
-    --um-text-inverse: #0D1117;
-    --um-text-link: #7FA7DB;
-    --um-text-on-sidebar: #D6E4F5;
-    --um-brand-primary: #5B8DD6;
-    --um-brand-primary-hover: #7FA7DB;
-    --um-brand-primary-active: #ADC8EA;
-    --um-brand-subtle: #13243A;
-    --um-brand-on-primary: #0D1117;
-    --um-accent-default: #3DB3A4;
-    --um-accent-subtle: #0A2E2A;
-    --um-focus-ring: #7FA7DB;
-    --um-tone-neutral-fg: #C3CCD5;
-    --um-tone-neutral-bg: #222831;
-    --um-tone-neutral-border: #343C46;
-    --um-tone-info-fg: #7FA7DB;
-    --um-tone-info-bg: #13243A;
-    --um-tone-info-border: #14325C;
-    --um-tone-accent-fg: #6FCBBF;
-    --um-tone-accent-bg: #0A2E2A;
-    --um-tone-accent-border: #115F56;
-    --um-tone-success-fg: #4CC38A;
-    --um-tone-success-bg: #0F2A1E;
-    --um-tone-success-border: #1D4A33;
-    --um-tone-warning-fg: #E0A84A;
-    --um-tone-warning-bg: #2E2210;
-    --um-tone-warning-border: #5A4317;
-    --um-tone-danger-fg: #EF6B64;
-    --um-tone-danger-bg: #331716;
-    --um-tone-danger-border: #5E2522;
-    --um-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
-    --um-shadow-md: 0 2px 8px rgba(0, 0, 0, 0.45);
-    --um-shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.55);
-  }
-}
-
 
 /* ---------- base de la vista previa (no forma parte de los tokens) ---------- */
 *, *::before, *::after { box-sizing: border-box; }
@@ -407,6 +357,34 @@ tbody tr:last-child td { border-bottom: 0; }
 .scale i { display: block; background: var(--um-brand-primary); border-radius: 2px; }
 .elev { height: 72px; display: grid; place-items: center; background: var(--um-bg-surface); border-radius: var(--um-radius-lg); border: 1px solid var(--um-border-default); font-size: var(--um-text-sm); color: var(--um-text-secondary); }
 
+.btn-ghost { background: transparent; color: var(--um-text-secondary); }
+.btn-ghost:hover { background: var(--um-bg-muted); color: var(--um-text-primary); }
+.btn-icon { width: var(--um-control-height); padding: 0; }
+.btn-icon.btn-sm { width: var(--um-control-height-sm); }
+.btn svg { width: 16px; height: 16px; }
+.toast-demo { display: grid; gap: var(--um-space-3); grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); }
+.toast-demo .toast { animation: none; }
+/* ---------- toasts (compartido) ---------- */
+.toasts { position: fixed; z-index: 80; top: 72px; right: var(--um-space-4); display: grid; gap: var(--um-space-2); width: min(380px, calc(100vw - 32px)); pointer-events: none; }
+.toast { pointer-events: auto; display: grid; grid-template-columns: auto 1fr auto; gap: var(--um-space-3); align-items: start; padding: var(--um-space-3) var(--um-space-3) var(--um-space-3) var(--um-space-4); background: var(--um-bg-surface); color: var(--um-text-primary); border: 1px solid var(--um-border-default); border-left: 4px solid var(--tone); border-radius: var(--um-radius-lg); box-shadow: var(--um-shadow-lg); position: relative; overflow: hidden; animation: toast-in 0.2s ease-out; }
+.toast.leaving { animation: toast-out 0.18s ease-in forwards; }
+.toast .t-ico { width: 20px; height: 20px; color: var(--tone); margin-top: 1px; }
+.toast b { display: block; font-size: var(--um-text-md); line-height: var(--um-leading-md); }
+.toast p { margin: 2px 0 0; font-size: var(--um-text-sm); line-height: var(--um-leading-sm); color: var(--um-text-secondary); }
+.toast .t-actions { display: flex; gap: var(--um-space-2); margin-top: var(--um-space-2); }
+.toast .t-close { margin: -4px -4px 0 0; }
+.toast .t-timer { position: absolute; left: 0; bottom: 0; height: 2px; background: var(--tone); opacity: 0.5; width: 100%; transform-origin: left; }
+.toast.success { --tone: var(--um-tone-success-fg); }
+.toast.danger { --tone: var(--um-tone-danger-fg); }
+.toast.warning { --tone: var(--um-tone-warning-fg); }
+.toast.info { --tone: var(--um-tone-info-fg); }
+@keyframes toast-in { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
+@keyframes toast-out { to { opacity: 0; transform: translateX(16px); } }
+@keyframes toast-timer { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+@media (max-width: 720px) { .toasts { top: auto; bottom: calc(84px + env(safe-area-inset-bottom)); right: 16px; left: 16px; width: auto; } @keyframes toast-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } } }
+@media (prefers-reduced-motion: reduce) { .toast, .toast.leaving { animation: none; } .toast .t-timer { display: none; } }
+
+
 @media (max-width: 720px) {
   .shell { grid-template-columns: 1fr; }
   .side { display: none; }
@@ -428,7 +406,7 @@ tbody tr:last-child td { border-bottom: 0; }
       Umbral <small>Design System v0.1</small>
     </div>
     <div class="spacer"></div>
-    <button class="btn btn-default btn-sm" id="themeToggle" type="button" aria-label="Cambiar tema">Tema: sistema</button>
+    <button class="btn btn-default btn-sm" id="themeToggle" type="button" aria-label="Cambiar tema">Tema: claro</button>
   </div>
 </header>
 
@@ -576,6 +554,22 @@ tbody tr:last-child td { border-bottom: 0; }
     <div class="alert tone-accent"><svg class="icon" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M10 1a9 9 0 1 0 0 18 9 9 0 0 0 0-18Zm-1.2 13L4.5 9.7l1.4-1.4 2.9 2.9 5.3-5.3 1.4 1.4-6.7 6.7Z"/></svg><div><b>Expediente completo</b><p>Todos los documentos obligatorios están aprobados. Puedes marcar la solicitud como lista para radicar.</p></div></div>
   </div>
 
+  <h3>Notificaciones (toasts)</h3>
+  <p class="hint">Confirman una acción o avisan de un error sin bloquear la pantalla. Aparecen arriba a la derecha en web y abajo en móvil, sobre la navegación. Éxito e información se cierran solos a los 5 segundos (se pausan al pasar el mouse); los errores se quedan hasta que el usuario los cierra. Máximo 3 a la vez. Usa una alerta en la página, no un toast, cuando el mensaje debe quedarse visible junto a lo que hay que corregir.</p>
+  <div class="toast-demo">
+    <div class="toast success" role="presentation"><svg class="t-ico" viewBox="0 0 20 20" fill="currentColor"><path d="M10 1a9 9 0 1 0 0 18 9 9 0 0 0 0-18Zm-1.2 13L4.5 9.7l1.4-1.4 2.9 2.9 5.3-5.3 1.4 1.4-6.7 6.7Z"/></svg><div><b>Documento subido</b><p>Certificado laboral: tu asesora lo revisará pronto.</p><div class="t-actions"><button class="btn btn-default btn-sm" type="button">Ver</button></div></div><button class="btn btn-ghost btn-icon btn-sm t-close" type="button" aria-label="Cerrar aviso"><svg viewBox="0 0 20 20" fill="currentColor"><path d="m5.4 4 4.6 4.6L14.6 4 16 5.4 11.4 10l4.6 4.6-1.4 1.4-4.6-4.6L5.4 16 4 14.6 8.6 10 4 5.4 5.4 4Z"/></svg></button></div>
+    <div class="toast danger" role="presentation"><svg class="t-ico" viewBox="0 0 20 20" fill="currentColor"><path d="M10 1a9 9 0 1 0 0 18 9 9 0 0 0 0-18Zm-1 4h2v6H9V5Zm0 8h2v2H9v-2Z"/></svg><div><b>No pudimos subir el documento</b><p>Parece que no tienes conexión. Tu archivo no se guardó.</p><div class="t-actions"><button class="btn btn-default btn-sm" type="button">Reintentar</button></div></div><button class="btn btn-ghost btn-icon btn-sm t-close" type="button" aria-label="Cerrar aviso"><svg viewBox="0 0 20 20" fill="currentColor"><path d="m5.4 4 4.6 4.6L14.6 4 16 5.4 11.4 10l4.6 4.6-1.4 1.4-4.6-4.6L5.4 16 4 14.6 8.6 10 4 5.4 5.4 4Z"/></svg></button></div>
+    <div class="toast warning" role="presentation"><svg class="t-ico" viewBox="0 0 20 20" fill="currentColor"><path d="M10 2 1 18h18L10 2Zm-1 6h2v5H9V8Zm0 6h2v2H9v-2Z"/></svg><div><b>Desprendible de nómina 2 de 3 rechazado</b><p>Le avisamos al comprador para que lo reemplace.</p></div><button class="btn btn-ghost btn-icon btn-sm t-close" type="button" aria-label="Cerrar aviso"><svg viewBox="0 0 20 20" fill="currentColor"><path d="m5.4 4 4.6 4.6L14.6 4 16 5.4 11.4 10l4.6 4.6-1.4 1.4-4.6-4.6L5.4 16 4 14.6 8.6 10 4 5.4 5.4 4Z"/></svg></button></div>
+    <div class="toast info" role="presentation"><svg class="t-ico" viewBox="0 0 20 20" fill="currentColor"><path d="M10 1a9 9 0 1 0 0 18 9 9 0 0 0 0-18Zm-1 4h2v2H9V5Zm0 4h2v6H9V9Z"/></svg><div><b>Enlace enviado</b><p>Sofía Herrera recibió el enlace de acceso por correo.</p></div><button class="btn btn-ghost btn-icon btn-sm t-close" type="button" aria-label="Cerrar aviso"><svg viewBox="0 0 20 20" fill="currentColor"><path d="m5.4 4 4.6 4.6L14.6 4 16 5.4 11.4 10l4.6 4.6-1.4 1.4-4.6-4.6L5.4 16 4 14.6 8.6 10 4 5.4 5.4 4Z"/></svg></button></div>
+  </div>
+  <div class="row" style="margin-top:var(--um-space-4)">
+    <span class="tertiary">Probar en vivo:</span>
+    <button class="btn btn-default btn-sm" type="button" data-toast="success">Éxito</button>
+    <button class="btn btn-default btn-sm" type="button" data-toast="danger">Error</button>
+    <button class="btn btn-default btn-sm" type="button" data-toast="warning">Atención</button>
+    <button class="btn btn-default btn-sm" type="button" data-toast="info">Información</button>
+  </div>
+
   <!-- ===================== PATRONES ===================== -->
   <h2>Patrones de pantalla</h2>
 
@@ -665,22 +659,76 @@ tbody tr:last-child td { border-bottom: 0; }
 <script>
   (function () {
     var btn = document.getElementById("themeToggle");
-    var order = ["system", "light", "dark"];
-    var labels = { system: "Tema: sistema", light: "Tema: claro", dark: "Tema: oscuro" };
-    var current = "system";
-    try { current = localStorage.getItem("um-theme") || "system"; } catch (e) {}
+    var current = "light";
+    try { current = localStorage.getItem("um-theme") === "dark" ? "dark" : "light"; } catch (e) {}
     function apply(mode) {
-      if (mode === "system") document.documentElement.removeAttribute("data-theme");
-      else document.documentElement.setAttribute("data-theme", mode);
-      btn.textContent = labels[mode];
+      document.documentElement.setAttribute("data-theme", mode);
+      btn.textContent = mode === "dark" ? "Tema: oscuro" : "Tema: claro";
     }
     apply(current);
     btn.addEventListener("click", function () {
-      current = order[(order.indexOf(current) + 1) % order.length];
+      current = current === "dark" ? "light" : "dark";
       try { localStorage.setItem("um-theme", current); } catch (e) {}
       apply(current);
     });
   })();
+</script>
+<script>
+// ---------- toasts ----------
+// UmToast.show({ tone: "success" | "danger" | "warning" | "info", title, message, action: { label, onClick }, duration })
+// Éxito e información se cierran solos (5 s); los errores se quedan hasta que el usuario los cierra.
+// Se pausan al pasar el mouse o al enfocar. Máximo 3 visibles: el más antiguo se va primero.
+(function () {
+  var host = document.createElement("div");
+  host.className = "toasts";
+  host.setAttribute("aria-live", "polite");
+  host.setAttribute("aria-relevant", "additions");
+  document.body.appendChild(host);
+  var icons = {
+    success: '<path d="M10 1a9 9 0 1 0 0 18 9 9 0 0 0 0-18Zm-1.2 13L4.5 9.7l1.4-1.4 2.9 2.9 5.3-5.3 1.4 1.4-6.7 6.7Z"/>',
+    danger: '<path d="M10 1a9 9 0 1 0 0 18 9 9 0 0 0 0-18Zm-1 4h2v6H9V5Zm0 8h2v2H9v-2Z"/>',
+    warning: '<path d="M10 2 1 18h18L10 2Zm-1 6h2v5H9V8Zm0 6h2v2H9v-2Z"/>',
+    info: '<path d="M10 1a9 9 0 1 0 0 18 9 9 0 0 0 0-18Zm-1 4h2v2H9V5Zm0 4h2v6H9V9Z"/>'
+  };
+  function remove(t) { if (!t.isConnected || t.classList.contains("leaving")) return; t.classList.add("leaving"); setTimeout(function () { t.remove(); }, 180); }
+  window.UmToast = {
+    show: function (o) {
+      var tone = o.tone || "info";
+      var duration = o.duration != null ? o.duration : (tone === "danger" ? 0 : 5000);
+      var t = document.createElement("div");
+      t.className = "toast " + tone;
+      t.setAttribute("role", tone === "danger" ? "alert" : "status");
+      t.innerHTML = '<svg class="t-ico" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">' + icons[tone] + "</svg>" +
+        "<div><b></b>" + (o.message ? "<p></p>" : "") + (o.action ? '<div class="t-actions"><button class="btn btn-default btn-sm" type="button"></button></div>' : "") + "</div>" +
+        '<button class="btn btn-ghost btn-icon btn-sm t-close" type="button" aria-label="Cerrar aviso"><svg viewBox="0 0 20 20" fill="currentColor"><path d="m5.4 4 4.6 4.6L14.6 4 16 5.4 11.4 10l4.6 4.6-1.4 1.4-4.6-4.6L5.4 16 4 14.6 8.6 10 4 5.4 5.4 4Z"/></svg></button>' +
+        (duration ? '<span class="t-timer" style="animation: toast-timer ' + duration + 'ms linear forwards"></span>' : "");
+      t.querySelector("b").textContent = o.title;
+      if (o.message) t.querySelector("p").textContent = o.message;
+      if (o.action) { var a = t.querySelector(".t-actions button"); a.textContent = o.action.label; a.addEventListener("click", function () { o.action.onClick && o.action.onClick(); remove(t); }); }
+      t.querySelector(".t-close").addEventListener("click", function () { remove(t); });
+      host.appendChild(t);
+      while (host.children.length > 3) remove(host.firstElementChild);
+      if (duration) {
+        var left = duration, started = Date.now(), timer = setTimeout(function () { remove(t); }, left), bar = t.querySelector(".t-timer");
+        var pause = function () { clearTimeout(timer); left -= Date.now() - started; if (bar) bar.style.animationPlayState = "paused"; };
+        var resume = function () { started = Date.now(); timer = setTimeout(function () { remove(t); }, left); if (bar) bar.style.animationPlayState = "running"; };
+        t.addEventListener("mouseenter", pause); t.addEventListener("mouseleave", resume);
+        t.addEventListener("focusin", pause); t.addEventListener("focusout", resume);
+      }
+      return t;
+    }
+  };
+})();
+
+document.querySelectorAll("[data-toast]").forEach(function (b) {
+  var demo = {
+    success: { title: "Documento subido", message: "Certificado laboral: tu asesora lo revisará pronto.", action: { label: "Ver" } },
+    danger: { title: "No pudimos subir el documento", message: "Parece que no tienes conexión. Tu archivo no se guardó.", action: { label: "Reintentar" } },
+    warning: { title: "Documento rechazado", message: "Le avisamos al comprador para que lo reemplace." },
+    info: { title: "Enlace enviado", message: "El comprador recibió el enlace de acceso por correo." }
+  }[b.dataset.toast];
+  b.addEventListener("click", function () { demo.tone = b.dataset.toast; UmToast.show(demo); });
+});
 </script>
 </body>
 </html>
