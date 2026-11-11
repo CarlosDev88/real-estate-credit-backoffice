@@ -1,0 +1,6 @@
+Migrations for 'crm':
+  apps/crm/migrations/0006_client_nickname.py
+    + Add field nickname to client
+Migrations for 'documents':
+  apps/documents/migrations/0009_alter_documentfile_status.py
+    ~ Alter field status on documentfile

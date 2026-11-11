@@ -1,0 +1,10 @@
+{
+  "openapi": "3.0.3",
+  "info": {"title": "Real Estate Credit Backoffice API", "version": "1.0.0"},
+  "paths": {
+    "/api/v1/clients": {
+      "get": {"operationId": "clients_list", "responses": {"200": {"description": ""}}}
+    }
+  },
+  "components": {"schemas": {"Client": {"type": "object"}}}
+}
