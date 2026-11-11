@@ -5,6 +5,19 @@ from django.db import models
 from django.db.models import Q
 
 
+class HolderScope(models.TextChoices):
+    """A quién pertenece el documento dentro de la solicitud.
+
+    Desvío del DER (§7.10): la columna ``holder_scope`` no está en el modelo original.
+    Un tipo ``APPLICATION`` (inmueble, legalización, carta externa) se pide una sola
+    vez por solicitud, con ``participant_id`` nulo en el slot; uno ``PARTICIPANT``, a
+    cada participante al que le aplique el requisito.
+    """
+
+    PARTICIPANT = "PARTICIPANT", "Participante"
+    APPLICATION = "APPLICATION", "Solicitud"
+
+
 class DocumentType(models.Model):
     """Tipo de soporte que puede pedir el sistema, por ejemplo la certificación laboral.
 
@@ -29,6 +42,9 @@ class DocumentType(models.Model):
     default_validity_days = models.SmallIntegerField(null=True, blank=True)
     # Admite varios archivos o periodos, por ejemplo tres desprendibles de nómina.
     is_repeatable = models.BooleanField(default=False)
+    holder_scope = models.CharField(
+        max_length=20, choices=HolderScope.choices, default=HolderScope.PARTICIPANT
+    )
     is_active = models.BooleanField(default=True)
 
     class Meta:
@@ -45,6 +61,10 @@ class DocumentType(models.Model):
             models.CheckConstraint(
                 condition=Q(allowed_mime_types__len__gt=0),
                 name="ck_document_types_mime_types",
+            ),
+            models.CheckConstraint(
+                condition=Q(holder_scope__in=HolderScope.values),
+                name="ck_document_types_holder_scope",
             ),
         ]
 

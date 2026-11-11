@@ -11,7 +11,7 @@ from django.conf import settings
 from rest_framework.request import Request
 from rest_framework.throttling import SimpleRateThrottle
 
-from apps.identity.models import UserManager
+from apps.identity.models import BuyerSession, UserManager
 
 _PERIODS = {"s": 1, "m": 60, "h": 3600, "d": 86400}
 
@@ -100,3 +100,34 @@ class BuyerAccessConsumeRateThrottle(PasswordResetConfirmRateThrottle):
     """Limita por IP los intentos de adivinar tokens de enlace del comprador."""
 
     scope = "buyer_access_consume"
+
+
+class BuyerDocumentUploadRateThrottle(AuthRateThrottle):
+    """Cargas de documentos del comprador: por sesión y solicitud (decisión 12)."""
+
+    scope = "buyer_document_upload"
+
+    def get_cache_key(self, request: Request, view: Any) -> str | None:
+        session = request.auth
+        if request.method != "POST" or not isinstance(session, BuyerSession):
+            return None
+        ident = f"{session.pk}|{session.application_id}"
+        return self.cache_format % {"scope": self.scope, "ident": self._hashed(ident)}
+
+
+class DocumentDownloadRateThrottle(AuthRateThrottle):
+    """Descargas de documentos: por usuario interno o por sesión del comprador
+    (decisión 12). Solo cuenta las descargas, no las demás lecturas."""
+
+    scope = "document_download"
+
+    def get_cache_key(self, request: Request, view: Any) -> str | None:
+        session = request.auth
+        if isinstance(session, BuyerSession):
+            ident = f"buyer_session|{session.pk}"
+        else:
+            user_id = getattr(request.user, "pk", None)
+            if user_id is None:
+                return None
+            ident = f"user|{user_id}"
+        return self.cache_format % {"scope": self.scope, "ident": self._hashed(ident)}

@@ -12,7 +12,9 @@ The API is implemented as a modular monolith with Django REST Framework and Post
 - PostgreSQL 16.
 - Docker Compose for the local development environment.
 - OpenAPI 3.1 and Swagger UI through `drf-spectacular`.
-- Redis for shared cache and rate limiting (always on); Celery prepared for asynchronous work (opt-in).
+- Redis for shared cache and rate limiting (always on), and as the Celery broker.
+- Celery worker and ClamAV for document scanning and filing packages (opt-in `async` profile).
+- S3-compatible private storage: SeaweedFS locally, S3 in production.
 - Pytest, Ruff, and MyPy for testing and code quality.
 
 ## Data Flow and Database Domains
@@ -92,7 +94,11 @@ Default services:
 | --- | --- | --- |
 | Django backend | http://localhost:8000 | API and documentation. |
 | PostgreSQL | `localhost:5433` | Local development database. |
-| Redis | internal only | Shared cache used by authentication rate limits. |
+| Redis | internal only | Shared cache used by authentication rate limits, and the Celery broker. |
+| SeaweedFS (S3 API) | http://localhost:8333 | Private document storage, S3-compatible. |
+| `storage-init` | runs once | Creates the private bucket if it does not exist, then exits. |
+
+The `backend` service waits for `storage-init`. SeaweedFS needs `DOCUMENT_STORAGE_ACCESS_KEY_ID` and `DOCUMENT_STORAGE_SECRET_ACCESS_KEY` in `.env` and refuses to start without them (see [Storage and Antivirus](#storage-and-antivirus)). The Celery worker and ClamAV are opt-in (see [Asynchronous Profile](#asynchronous-profile-worker-and-antivirus)).
 
 Useful endpoints:
 
@@ -130,11 +136,135 @@ docker compose exec -T backend pytest
 
 Tests use `config.settings.test` (forced through `--ds` in `pytest.ini`): in-memory cache, a fast password hasher, and an isolated test database.
 
-To start the Celery worker when asynchronous features are being built:
+Tests never use SeaweedFS, ClamAV, or Redis: `config.settings.test` uses an in-memory storage, a fake antivirus, and runs Celery tasks in-process (`CELERY_TASK_ALWAYS_EAGER`).
+
+## Document Dossier
+
+Each application gets a document checklist built from the published document requirements (API §19): one **slot** per expected file, for the application itself (property and legalization documents) or for each participant according to role and employment profile. The checklist is recalculated in the same transaction whenever the product, purpose, property condition, participants, or employment profile change; slots that stop applying are retired, never deleted, and keep their versions.
+
+| Method | Path | Access |
+| --- | --- | --- |
+| `GET` | `/applications/{id}/document-slots` | `documents.read`. Filters: `status`, `participant_id`, `document_type_code`, `required`, `include_retired`. |
+| `POST` | `/applications/{id}/document-slots/refresh` | `documents.manage_requirements`, before `FILED`. |
+| `GET` | `/document-slots/{id}`, `/document-slots/{id}/versions` | `documents.read` |
+| `PATCH` | `/document-slots/{id}/review` | `documents.review`; waivers and reopenings also need `documents.waive`. |
+| `GET` | `/document-files/{id}`, `/document-files/{id}/scan-status` | `documents.read` |
+| `GET` | `/document-files/{id}/download` | `documents.download` |
+| `POST` | `/applications/{id}/document-package-jobs` | `filings.prepare` |
+| `GET` | `/document-package-jobs/{id}`, `/document-package-jobs/{id}/download` | `filings.prepare` |
+| `GET` | `/buyer/applications/{id}/document-slots`, `/buyer/document-slots/{id}`, `/buyer/document-slots/{id}/versions` | Buyer session |
+| `POST` | `/buyer/document-slots/{id}/uploads` | Buyer session, consents accepted |
+| `GET` | `/buyer/document-files/{id}/download` | Buyer session |
+
+Admins see every dossier and advisors the applications assigned to them (`404` outside their scope). Brokers and partners get `403` everywhere. Document operations never change the application version nor require `If-Match`; instead, a **dossier fingerprint** (a hash of the current slots and versions) is stored with every package and will be checked at filing time.
+
+### Storage and Antivirus
+
+Uploaded documents and generated packages live in a private S3-compatible bucket, with the `documents/` and `packages/` prefixes. Object keys never contain the original file name, and files are only downloaded through short-lived presigned URLs.
+
+- **Local:** SeaweedFS (`chrislusf/seaweedfs:3.85`, `weed server -s3`) in `docker-compose.yml`. MinIO was discarded because its community edition no longer publishes container images.
+- **Production:** real S3. Switching is only a matter of environment variables: point `DOCUMENT_STORAGE_ENDPOINT_URL` and `DOCUMENT_STORAGE_PUBLIC_ENDPOINT_URL` to empty values (AWS endpoint), set the bucket, region and credentials (or leave the keys empty to use an IAM role), `DOCUMENT_STORAGE_ADDRESSING_STYLE=auto`, and `DOCUMENT_STORAGE_SSE=AES256`.
+- **Encryption:** server-side encryption (SSE-S3) only applies on real S3. SeaweedFS does not implement it, so `DOCUMENT_STORAGE_SSE` stays empty locally and `file_objects.encryption_key_version` is `null`.
+- **Presigned URLs** are signed for the host the browser sees (`DOCUMENT_STORAGE_PUBLIC_ENDPOINT_URL`, `http://localhost:8333` locally), while the backend talks to `http://seaweedfs:8333` inside the Docker network.
+
+| Variable | Local value | Purpose |
+| --- | --- | --- |
+| `DOCUMENT_STORAGE_BACKEND` | `s3` | `s3`, or `memory` (only with `DEBUG` or in tests). |
+| `DOCUMENT_STORAGE_BUCKET` | `mvp-credit-documents` | Private bucket. |
+| `DOCUMENT_STORAGE_REGION` | `us-east-1` | Region used to sign requests. |
+| `DOCUMENT_STORAGE_ENDPOINT_URL` | `http://seaweedfs:8333` | Endpoint the backend and worker use. Empty on AWS. |
+| `DOCUMENT_STORAGE_PUBLIC_ENDPOINT_URL` | `http://localhost:8333` | Host in presigned URLs. Empty: same as above. |
+| `DOCUMENT_STORAGE_ACCESS_KEY_ID` / `DOCUMENT_STORAGE_SECRET_ACCESS_KEY` | local-only values | Also the single SeaweedFS identity; anonymous access is denied. |
+| `DOCUMENT_STORAGE_ADDRESSING_STYLE` | `path` | `auto` on AWS. |
+| `DOCUMENT_STORAGE_SSE` | empty | `AES256` on AWS. |
+| `DOCUMENT_SCANNER` | `clamd` | `clamd`, or `fake` (only with `DEBUG` or in tests). |
+| `CLAMD_HOST` / `CLAMD_PORT` / `CLAMD_TIMEOUT_SECONDS` | `clamav` / `3310` / `30` | clamd over TCP (`INSTREAM`). |
+
+The application refuses to start with `memory` storage or the `fake` scanner unless `DEBUG` is on or it runs the test settings.
+
+### Asynchronous Profile: Worker and Antivirus
+
+The Celery worker and ClamAV belong to the `async` profile. Uploads are scanned asynchronously: until ClamAV answers, files stay `PENDING` and can be neither approved nor downloaded. They never become `CLEAN` without a real scan. Filing packages are also built by the worker.
+
+| Service | Profile | Purpose |
+| --- | --- | --- |
+| `seaweedfs` | default | S3-compatible private storage (`http://localhost:8333`). |
+| `storage-init` | default | Creates the private bucket, then exits. |
+| `worker` | `async` | Celery worker: antivirus scans (`scan_file_object`) and filing packages (`build_document_package`). |
+| `clamav` | `async` | ClamAV daemon (`clamav/clamav:1.4.3`); signatures persist in the `mvp_credit_clamav_data` volume. |
 
 ```powershell
-docker compose --profile async up -d
+# Start everything, including the worker and ClamAV
+docker compose --profile async up -d --build
+
+# ClamAV downloads its signatures on first start; wait until it is "healthy" (several minutes)
+docker compose --profile async ps clamav
+
+# Check that the storage bucket and clamd answer
+docker compose exec -T backend python manage.py check_document_services
+
+# Worker logs
+docker compose --profile async logs -f worker
 ```
+
+`python manage.py init_document_storage` creates the bucket if it is missing; `storage-init` runs it on every start. On real S3 the bucket is provisioned by the infrastructure instead.
+
+### Buyer Uploads and Scanning
+
+Only the buyer uploads documents, from the portal (`POST /api/v1/buyer/document-slots/{slot_id}/uploads`, `multipart/form-data`). Each upload is a new version of the slot; previous versions are kept.
+
+- The real type is detected from the file signature (PDF, JPEG, PNG), must be allowed by the document type and match the extension. Executable or double extensions are rejected (`422 UNSUPPORTED_FILE_TYPE`), as are files over the type's size limit (`422 FILE_TOO_LARGE`). A request body over 10.5 MB is cut before being read (`413 PAYLOAD_TOO_LARGE`).
+- Quotas: versions per slot and bytes per application (`409 DOCUMENT_QUOTA_EXCEEDED`). Rate limit: 60 uploads per hour per buyer session.
+- After the database commit, the `scan_file_object` task scans the file: `CLEAN` leaves the version `IN_REVIEW` for the advisor; `INFECTED` (or an object that no longer matches its SHA-256) rejects it, and the buyer sees a fixed message. If storage or clamd fail, the task retries with growing delays (about 1 h 15 min in total) and the file stays `PENDING`.
+- Files still `PENDING` (retries exhausted or broker down at upload time) are queued again with `python manage.py requeue_pending_scans` (only files older than 15 minutes by default; `--older-than-minutes` changes it). Run it periodically, for example from cron.
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `DOCUMENT_UPLOAD_MAX_VERSIONS_PER_SLOT` | `20` | Uploaded versions allowed per document slot. |
+| `DOCUMENT_UPLOAD_QUOTA_BYTES` | `209715200` (200 MB) | Total bytes of all uploaded versions per application. |
+
+### Review and Downloads
+
+Advisors (and admins) review each slot with `PATCH /api/v1/document-slots/{slot_id}/review`. No `If-Match`: documents never change the application version. Every decision adds an immutable row to `document_reviews`; correcting a decision is deciding again.
+
+- `APPROVED` / `REJECTED` act on `document_file_id`, which must be the slot's current version (`409 DOCUMENT_NOT_CURRENT`). Approving needs a `CLEAN` scan (`409 FILE_NOT_CLEAN`) and, when the slot has a validity period, a `document_date` (the buyer's or a corrected one); an expired document is not approved (`422 DOCUMENT_EXPIRED`). Rejecting needs `reason_code` and `buyer_comment`.
+- `WAIVED` (needs `documents.waive`) waives the slot with a `document_waiver_reason`. In an alternative group it also waives the holder's other slots of the group, except the approved ones; if any slot that would be waived is not waivable, nothing is waived.
+- `REOPENED` (needs `documents.waive` and an `internal_comment`) undoes the last waiver of the slot and of the slots waived with it; each returns to the status of its current version (`PENDING` without one).
+- Only before `FILED` (`409 APPLICATION_NOT_EDITABLE`). `internal_comment` never reaches the buyer.
+
+Downloads return a short-lived pre-signed URL: `GET /api/v1/document-files/{file_id}/download` (internal, `documents.download`) and `GET /api/v1/buyer/document-files/{file_id}/download` (buyer). Only `CLEAN` files (`409 FILE_NOT_CLEAN`); 60 downloads per hour per user or buyer session. The URL is never logged.
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `DOCUMENT_DOWNLOAD_URL_SECONDS` | `300` | Lifetime of the pre-signed download URL. |
+
+### Readiness and Completeness
+
+The `READY_TO_FILE` guard and `GET /api/v1/applications/{id}/completeness` share one rule, so they never disagree:
+
+- every current required slot must be `APPROVED` and not expired (`expires_at` after today) or `WAIVED`. An alternative group of the same holder counts as one and is fulfilled by a complete set of one document type;
+- a checklist without required documents is not fulfilled (`DOCUMENTS_NOT_CONFIGURED`);
+- the guard evaluates the slots locked, in the same transaction, and answers `422 APPLICATION_NOT_READY` with `DOCUMENT_PENDING`, `DOCUMENT_EXPIRED`, or `DOCUMENTS_NOT_CONFIGURED` in `details`, next to the bank-rule reasons;
+- completeness returns `data_percentage`, `documents_percentage`, and their average as `percentage`, plus `ready_to_file`, `ready_to_file_problems` (same format as the `422` details), and the required slots. It is read-only: a stale bank evaluation is computed in memory, never stored;
+- an application already in `READY_TO_FILE` that stops complying keeps its status; completeness shows why, and filing will stop it.
+
+The buyer portal shows the same progress (`progress` in `GET /api/v1/buyer/applications/{id}`) without the bank evaluation.
+
+### Filing Packages
+
+`POST /api/v1/applications/{id}/document-package-jobs` (`filings.prepare`) asks the worker for a ZIP to deliver to the bank:
+
+- It only requires the documents (same document reasons as the guard, `422 APPLICATION_NOT_READY`); it never evaluates bank rules. Any non-terminal status is accepted (`409 APPLICATION_CLOSED` otherwise).
+- **The content is fixed at request time**: the job stores the versions, their SHA-256, and the dossier fingerprint, and the worker packs exactly that list. A live job (`PENDING`, `RUNNING`, or unexpired `COMPLETED`) with the same fingerprint is returned with `200` instead of creating another one (`201`).
+- The ZIP holds the current version of every approved, unexpired slot in folders `00_SOLICITUD` and `<nn>_<ROLE>_<First_Last>` (`01_TITULAR_Laura_Gomez`, `02_COSOLICITANTE_Andres_Moreno`, `03_DEUDOR_SOLIDARIO_...`), with ASCII-safe names of up to 60 characters (`Desprendible_o_comprobante_de_nomina_2_de_3.pdf`), plus a `manifest.json` for the bank. That manifest has no internal ids, original file names, waiver reasons, or comments; waived slots are listed without a file.
+- The worker verifies every SHA-256 (`FAILED` with `CHECKSUM_MISMATCH` on a mismatch, no retry), retries storage failures with growing delays (`FAILED` with `STORAGE_UNAVAILABLE` when exhausted), and claims the job with a conditional update, so two workers never build it twice. A failed package is not retried: request a new one.
+- The ZIP is stored as `CLEAN` without going through ClamAV: it is built from `CLEAN` versions whose checksums are verified while packing.
+- `GET /api/v1/document-package-jobs/{id}/download` returns a short-lived pre-signed URL like version downloads (same 60 per hour limit), or `409 PACKAGE_NOT_READY` / `409 PACKAGE_EXPIRED`.
+- Packages expire after `DOCUMENT_PACKAGE_TTL_DAYS`. They read as `EXPIRED` as soon as the date passes; `python manage.py expire_document_packages` persists it and deletes the ZIP. `python manage.py requeue_document_packages` queues again the jobs still `PENDING` or stuck `RUNNING` for more than 15 minutes (`--older-than-minutes`). Schedule both, for example from cron.
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `DOCUMENT_PACKAGE_TTL_DAYS` | `7` | Days a completed package can be downloaded. |
 
 ## Internal Authentication
 
@@ -289,7 +419,7 @@ The credit application is the central record of the process (API §16 to §18). 
 - Optimistic concurrency: every response carries `ETag: "<version>"`. Every `PUT`/`PATCH` requires `If-Match` (`428` without it, `409 STALE_VERSION` when stale). Status transitions and withdrawals send `expected_version` in the body instead.
 - Application data can only change before `FILED` (`409 APPLICATION_NOT_EDITABLE`).
 - Bank rules: the evaluation applies the product's published rules plus its amount and term ranges as system blocking rules, and fails closed on missing data. Choosing a product stores an evaluation automatically.
-- `READY_TO_FILE` requires a product, a current eligible evaluation (re-evaluated automatically when stale), and approved documents. The document part fails closed until the document file module exists, so the transition returns `422 APPLICATION_NOT_READY` with every reason in `details`.
+- `READY_TO_FILE` requires a product, a current eligible evaluation (re-evaluated automatically when stale), and the required documents approved or waived (see [Readiness and Completeness](#readiness-and-completeness)). Otherwise the transition returns `422 APPLICATION_NOT_READY` with every reason in `details`.
 - Seeded `APPLICATION` transitions cover the pre-filing flow, closing to `CANCELLED`, `OWN_FUNDS`, and `EXTERNAL_CREDIT_APPROVED` (with a required reason), and `WITHDRAWN` from every non-terminal status. Transitions from `FILED` onwards arrive with the filings module.
 - Domain events (`application_created`, `application_updated`, `application_assigned`, `application_status_changed`, `participant_added`, `participant_removed`) are sent after commit, ready for the activity, notification, and audit modules.
 
@@ -362,7 +492,7 @@ backend/
 
 ## Current Status
 
-Build steps 1 to 9 are complete:
+Build steps 1 to 10 are complete:
 
 1. `identity` core: internal users, roles and permissions, sessions with rotating refresh tokens, password reset, and `/api/v1/auth/*`.
 2. `catalogs`: catalogs and items, workflow transitions, and the metadata endpoints.
@@ -373,5 +503,6 @@ Build steps 1 to 9 are complete:
 7. `documents`: document types and requirements.
 8. `applications`: credit applications, participants, financial profiles, income sources, property, financing, bank rule evaluations, status transitions, withdrawals, history, available actions, and completeness.
 9. `identity` buyer access: magic links, buyer sessions, consents, and the buyer portal endpoints.
+10. `documents` dossier: checklist slots, buyer uploads with asynchronous antivirus scanning, review, waivers, downloads, the `READY_TO_FILE` document guard, completeness, and asynchronous filing packages.
 
-Remaining modules follow the documented build order, starting with document files (step 10).
+Remaining modules follow the documented build order, starting with manual bank filings (step 11).

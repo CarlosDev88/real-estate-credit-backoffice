@@ -25,3 +25,110 @@ class DocumentTypeInactive(ApiError):
     status_code = status.HTTP_422_UNPROCESSABLE_ENTITY
     error_code = "DOCUMENT_TYPE_INACTIVE"
     default_detail = "El tipo documental está inactivo: actívalo antes de publicar el requisito."
+
+
+# --- Archivos del expediente (paso 10) ----------------------------------------------------
+
+
+class UnsupportedFileType(ApiError):
+    status_code = status.HTTP_422_UNPROCESSABLE_ENTITY
+    error_code = "UNSUPPORTED_FILE_TYPE"
+    default_detail = "El formato del archivo no está permitido para este documento."
+
+
+class FileTooLarge(ApiError):
+    status_code = status.HTTP_422_UNPROCESSABLE_ENTITY
+    error_code = "FILE_TOO_LARGE"
+    default_detail = "El archivo supera el tamaño máximo permitido para este documento."
+
+
+class StorageUnavailable(Exception):
+    """El almacenamiento de objetos no respondió o rechazó la operación.
+
+    No es un error de la API: quien lo captura decide si responde ``503`` o reintenta.
+    El mensaje nunca incluye la clave del objeto ni credenciales.
+    """
+
+
+class ScannerUnavailable(Exception):
+    """El antivirus no respondió o devolvió un error. El archivo sigue ``PENDING``."""
+
+
+class DocumentLocked(ApiError):
+    status_code = status.HTTP_409_CONFLICT
+    error_code = "DOCUMENT_LOCKED"
+    default_detail = "Este documento ya no se puede reemplazar en la etapa actual."
+
+
+class DocumentNotRejected(ApiError):
+    status_code = status.HTTP_409_CONFLICT
+    error_code = "DOCUMENT_NOT_REJECTED"
+    default_detail = (
+        "Después de la radicación solo se reemplazan los documentos observados por el banco."
+    )
+
+
+class DocumentQuotaExceeded(ApiError):
+    status_code = status.HTTP_409_CONFLICT
+    error_code = "DOCUMENT_QUOTA_EXCEEDED"
+    default_detail = "Se alcanzó el límite de archivos cargados para esta solicitud."
+
+
+class PayloadTooLarge(ApiError):
+    status_code = status.HTTP_413_REQUEST_ENTITY_TOO_LARGE
+    error_code = "PAYLOAD_TOO_LARGE"
+    default_detail = "La petición supera el tamaño máximo permitido."
+
+
+class UploadUnavailable(ApiError):
+    """El almacenamiento no respondió al guardar la carga (``503``): reintentar."""
+
+    status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+    error_code = "SERVICE_UNAVAILABLE"
+    default_detail = "No fue posible guardar el archivo en este momento. Intenta de nuevo."
+
+
+class DownloadUnavailable(ApiError):
+    """El almacenamiento no pudo firmar la URL de descarga (``503``): reintentar."""
+
+    status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+    error_code = "SERVICE_UNAVAILABLE"
+    default_detail = "No fue posible preparar la descarga en este momento. Intenta de nuevo."
+
+
+# --- Revisión (Parte 5) --------------------------------------------------------------------
+
+
+class DocumentNotCurrent(ApiError):
+    status_code = status.HTTP_409_CONFLICT
+    error_code = "DOCUMENT_NOT_CURRENT"
+    default_detail = (
+        "El archivo ya no es la versión vigente del documento: revisa la versión más reciente."
+    )
+
+
+class FileNotClean(ApiError):
+    status_code = status.HTTP_409_CONFLICT
+    error_code = "FILE_NOT_CLEAN"
+    default_detail = "El archivo no tiene un análisis de seguridad limpio."
+
+
+class DocumentExpired(ApiError):
+    status_code = status.HTTP_422_UNPROCESSABLE_ENTITY
+    error_code = "DOCUMENT_EXPIRED"
+    default_detail = "El documento está vencido: pide al comprador uno más reciente."
+
+
+# --- Paquete para radicar (Parte 7) --------------------------------------------------------
+
+
+class PackageNotReady(ApiError):
+    status_code = status.HTTP_409_CONFLICT
+    error_code = "PACKAGE_NOT_READY"
+    default_detail = "El paquete todavía no está listo para descargar."
+
+
+class PackageExpired(ApiError):
+    status_code = status.HTTP_409_CONFLICT
+    error_code = "PACKAGE_EXPIRED"
+    default_detail = "El paquete venció: pide uno nuevo."

@@ -448,5 +448,5 @@ No hay ciclo: `applications 0001` a `0003` dependen de `identity` hasta la `0008
 1. **Mejora futura: enlaces por participante.** Cada co-solicitante recibe su propio enlace, limitado a sus datos (decisión 2).
 2. **Mejora futura: autoservicio del enlace.** El comprador pide un enlace nuevo a su correo registrado, con respuesta uniforme y rate limit (decisión 6).
 3. **Paso 13.** `Idempotency-Key` en `POST /applications/{id}/buyer-access-links`. Envío del correo del enlace por la outbox.
-4. **Paso 10.** Usar `buyer_sessions` en `document_files.uploaded_by_buyer_session_id`, y la carga del comprador después de `FILED` solo en los slots observados.
+4. **Paso 10.** **Hecho** en `feat/document-file` (Parte 4): la carga guarda la sesión en `uploaded_by_buyer_session_id`, y después de `FILED` solo se carga en un slot `REJECTED` con observación abierta (enganche `slot_has_open_observation`, que se completa en el paso 11). Usar `buyer_sessions` en `document_files.uploaded_by_buyer_session_id`, y la carga del comprador después de `FILED` solo en los slots observados.
 5. **Paso 12.** Mostrar al comprador la actividad con `visibility = BUYER` y registrar `actor_buyer_session_id` en `activity_logs`.

@@ -39,6 +39,7 @@ from apps.documents.models import (
     SCOPE_FIELDS,
     DocumentRequirement,
     DocumentType,
+    HolderScope,
     RequirementStatus,
 )
 from apps.documents.signals import (
@@ -80,11 +81,26 @@ def create_document_type(data: dict[str, Any]) -> DocumentType:
 
 def update_document_type(document_type: DocumentType, changes: dict[str, Any]) -> DocumentType:
     """El código no se edita. Un tipo deja de ser repetible solo si ningún requisito
-    vigente o en borrador pide más de un archivo."""
+    vigente o en borrador pide más de un archivo, y cambia de titular solo si no tiene
+    requisitos vigentes ni en borrador."""
     if not changes:
         return document_type
     with transaction.atomic():
         _lock_document_type(document_type.pk)
+        new_scope = changes.get("holder_scope")
+        if new_scope is not None and new_scope != document_type.holder_scope:
+            live = DocumentRequirement.objects.filter(
+                document_type=document_type, status__in=_LIVE_STATUSES
+            ).exists()
+            if live:
+                raise ValidationError(
+                    {
+                        "holder_scope": [
+                            "Hay requisitos activos o en borrador de este tipo: desactívalos "
+                            "antes de cambiar a quién pertenece el documento."
+                        ]
+                    }
+                )
         if changes.get("is_repeatable") is False:
             multi_file = DocumentRequirement.objects.filter(
                 document_type=document_type, status__in=_LIVE_STATUSES, minimum_files__gt=1
@@ -177,6 +193,24 @@ def _check_minimum_files(document_type: DocumentType, minimum_files: int) -> Non
         )
 
 
+def _check_holder_scope(
+    document_type: DocumentType,
+    participant_role: str | None,
+    employment_profile: CatalogItem | None,
+) -> None:
+    """Un documento de la solicitud se pide una sola vez: no depende del participante."""
+    if document_type.holder_scope != HolderScope.APPLICATION:
+        return
+    message = "El documento es de la solicitud, no de un participante: deja este campo vacío."
+    errors: dict[str, list[str]] = {}
+    if participant_role is not None:
+        errors["participant_role"] = [message]
+    if employment_profile is not None:
+        errors["employment_profile_code"] = [message]
+    if errors:
+        raise ValidationError(errors)
+
+
 def _check_purpose_admitted(product: BankProduct | None, purpose: CatalogItem | None) -> None:
     if product is None or purpose is None:
         return
@@ -202,6 +236,9 @@ def create_requirement(data: dict[str, Any]) -> DocumentRequirement:
     document_type: DocumentType = data["document_type"]
     _check_validity(data["valid_from"], data.get("valid_to"))
     _check_minimum_files(document_type, data["minimum_files"])
+    _check_holder_scope(
+        document_type, data.get("participant_role"), data.get("employment_profile_item")
+    )
     _check_purpose_admitted(data.get("bank_product"), data.get("purpose_item"))
 
     scope = {name: data.get(name) for name in SCOPE_FIELDS}
@@ -264,6 +301,12 @@ def update_requirement(
             requirement.save(update_fields=[*changes, "updated_at"])
             return requirement, False
 
+        # El tipo pudo cambiar de titular mientras esta versión estaba inactiva.
+        _check_holder_scope(
+            requirement.document_type,
+            requirement.participant_role,
+            requirement.employment_profile_item,
+        )
         family = _family(requirement)
         draft = family.filter(status=RequirementStatus.DRAFT).first()
         if draft is not None:
@@ -377,6 +420,17 @@ class ParticipantChecklist:
     requirements: list[DocumentRequirement]
 
 
+@dataclass(frozen=True)
+class ChecklistPreview:
+    participants: list[ParticipantChecklist]
+    # Documentos de la solicitud (`holder_scope = APPLICATION`): se piden una sola vez.
+    application_requirements: list[DocumentRequirement]
+
+
+def is_application_document(requirement: DocumentRequirement) -> bool:
+    return requirement.document_type.holder_scope == HolderScope.APPLICATION
+
+
 def _matches(field: str, value: Any) -> Q:
     """Un campo de alcance vacío aplica a cualquier valor; uno lleno, solo al suyo.
 
@@ -424,11 +478,12 @@ def requirement_applies_to(requirement: DocumentRequirement, participant: Partic
     return profile is not None and requirement.employment_profile_item_id == profile.pk
 
 
-def preview_checklist(case: ChecklistCase) -> list[ParticipantChecklist]:
+def preview_checklist(case: ChecklistCase) -> ChecklistPreview:
     """Simula la lista documental de una solicitud sin tocar datos (una sola consulta).
 
-    Cada participante recibe los requisitos que le aplican. Los requisitos sin producto
-    son generales y aplican a cualquier banco.
+    Cada participante recibe los requisitos que le aplican; los documentos de la
+    solicitud van aparte. Los requisitos sin producto son generales y aplican a
+    cualquier banco.
     """
     candidates = list(
         applicable_requirements(
@@ -438,12 +493,18 @@ def preview_checklist(case: ChecklistCase) -> list[ParticipantChecklist]:
             at=case.at,
         )
     )
-    return [
-        ParticipantChecklist(
-            index=index,
-            role=participant.role,
-            employment_profile=participant.employment_profile,
-            requirements=[req for req in candidates if requirement_applies_to(req, participant)],
-        )
-        for index, participant in enumerate(case.participants)
-    ]
+    per_participant = [req for req in candidates if not is_application_document(req)]
+    return ChecklistPreview(
+        participants=[
+            ParticipantChecklist(
+                index=index,
+                role=participant.role,
+                employment_profile=participant.employment_profile,
+                requirements=[
+                    req for req in per_participant if requirement_applies_to(req, participant)
+                ],
+            )
+            for index, participant in enumerate(case.participants)
+        ],
+        application_requirements=[req for req in candidates if is_application_document(req)],
+    )

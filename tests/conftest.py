@@ -5,6 +5,7 @@ import pytest
 from django.core.cache import cache
 from rest_framework.test import APIClient
 
+from apps.documents.storage import MemoryStorage, get_storage
 from apps.identity.models import Permission, Role, RolePermission, User, UserRole
 from tests.helpers import DEFAULT_PASSWORD, login
 
@@ -15,6 +16,15 @@ def _clear_cache() -> Iterator[None]:
     cache.clear()
     yield
     cache.clear()
+
+
+@pytest.fixture(autouse=True)
+def _clear_document_storage() -> Iterator[None]:
+    """El almacenamiento en memoria es uno por proceso; cada prueba empieza vacía."""
+    yield
+    storage = get_storage()
+    if isinstance(storage, MemoryStorage):
+        storage.clear()
 
 
 @pytest.fixture

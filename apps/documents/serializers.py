@@ -11,6 +11,7 @@ from apps.documents.constants import ALLOWED_MIME_TYPES, MAX_FILE_SIZE_BYTES
 from apps.documents.models import (
     DocumentRequirement,
     DocumentType,
+    HolderScope,
     ParticipantRole,
 )
 from config.serializers import StrictSerializer
@@ -51,6 +52,7 @@ class DocumentTypeSerializer(serializers.ModelSerializer):
             "max_size_bytes",
             "default_validity_days",
             "is_repeatable",
+            "holder_scope",
             "is_active",
             "created_at",
             "updated_at",
@@ -84,6 +86,17 @@ def _max_size_field(**kwargs: Any) -> serializers.IntegerField:
     )
 
 
+def _holder_scope_field(**kwargs: Any) -> serializers.ChoiceField:
+    return serializers.ChoiceField(
+        choices=HolderScope.choices,
+        help_text=(
+            "`PARTICIPANT`: se pide a cada participante al que aplique el requisito. "
+            "`APPLICATION`: se pide una sola vez por solicitud (inmueble, legalización)."
+        ),
+        **kwargs,
+    )
+
+
 class _DocumentTypeFields(StrictSerializer):
     def validate_allowed_mime_types(self, value: list[str]) -> list[str]:
         duplicated = sorted({mime for mime in value if value.count(mime) > 1})
@@ -100,6 +113,7 @@ class DocumentTypeCreateSerializer(_DocumentTypeFields):
     max_size_bytes = _max_size_field()
     default_validity_days = _validity_days_field(required=False, allow_null=True, default=None)
     is_repeatable = serializers.BooleanField(required=False, default=False)
+    holder_scope = _holder_scope_field(required=False, default=HolderScope.PARTICIPANT)
 
 
 class DocumentTypeUpdateSerializer(_DocumentTypeFields):
@@ -111,6 +125,7 @@ class DocumentTypeUpdateSerializer(_DocumentTypeFields):
     max_size_bytes = _max_size_field(required=False)
     default_validity_days = _validity_days_field(required=False, allow_null=True)
     is_repeatable = serializers.BooleanField(required=False)
+    holder_scope = _holder_scope_field(required=False)
 
 
 # --- Requisitos -------------------------------------------------------------------------
@@ -324,3 +339,6 @@ class PreviewParticipantResultSerializer(serializers.Serializer):
 
 class ChecklistPreviewResponseSerializer(serializers.Serializer):
     participants = PreviewParticipantResultSerializer(many=True)
+    application_requirements = PreviewDocumentSerializer(
+        many=True, help_text="Documentos de la solicitud: se piden una sola vez, sin participante."
+    )

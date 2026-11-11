@@ -177,13 +177,28 @@ Las cookies de sesión usan `HttpOnly`, `Secure`, `SameSite=Lax` y `Path=/`. La 
 | `CONSENT_NOT_EFFECTIVE` | La versión del consentimiento no está vigente: futura, retirada o reemplazada (`422`). |
 | `CONSENT_NOT_ACCEPTED` | Retiro de un consentimiento que nunca se aceptó (`409`). |
 | `PARTICIPANT_INACTIVE` | Edición de un participante retirado; hay que agregarlo de nuevo (`409`). |
-| `APPLICATION_NOT_READY` | No cumple `READY_TO_FILE` (`422`); `details` trae `BANK_PRODUCT_REQUIRED`, `BANK_RULE_BLOCKED` y `DOCUMENTS_NOT_VERIFIED` según el caso. |
+| `APPLICATION_NOT_READY` | No cumple `READY_TO_FILE` o no se puede pedir el paquete para radicar (`422`); `details` trae `BANK_PRODUCT_REQUIRED`, `BANK_RULE_BLOCKED`, `DOCUMENT_PENDING`, `DOCUMENT_EXPIRED` y `DOCUMENTS_NOT_CONFIGURED` según el caso (el paquete, solo los tres documentales). |
+| `DOCUMENT_PENDING` | En `details` de `APPLICATION_NOT_READY`: un documento obligatorio, o un grupo alternativo, sin aprobar ni exonerar; `resource_id` es el slot (el primero del grupo). |
+| `DOCUMENTS_NOT_CONFIGURED` | En `details` de `APPLICATION_NOT_READY`: la solicitud no tiene documentos obligatorios; una lista vacía no se da por cumplida. |
 | `BANK_RULE_BLOCKED` | Regla bancaria bloqueante incumplida o sin datos para decidir. |
 | `BANK_PRODUCT_REQUIRED` | Evaluar reglas bancarias sin producto elegido (`422`). |
 | `FINANCING_MODE_MISMATCH` | Cierre `OWN_FUNDS` o `EXTERNAL_CREDIT_APPROVED` sin la modalidad de financiación correspondiente (`422`). |
-| `DOCUMENT_LOCKED` | Documento no modificable en la etapa actual. |
+| `DOCUMENT_LOCKED` | Documento no modificable en la etapa actual: carga sobre un slot aprobado o exonerado, revisión del archivo de un slot exonerado o de un slot retirado (`409`). |
 | `DOCUMENT_NOT_REJECTED` | Reemplazo posterior a radicación sin observación. |
-| `FILE_NOT_CLEAN` | Archivo sin análisis limpio. |
+| `DOCUMENT_NOT_CURRENT` | La revisión apunta a una versión que ya no es la vigente del slot (`409`). |
+| `DOCUMENT_EXPIRED` | Aprobación de un documento vencido (`422`). También en `details` de `APPLICATION_NOT_READY`, por cada aprobado que venció antes de radicar. |
+| `DOCUMENT_QUOTA_EXCEEDED` | Cuota de cargas superada: versiones por slot o bytes por solicitud; `details[0].code` dice cuál (`409`). |
+| `FILE_NOT_CLEAN` | Archivo sin análisis limpio: no se aprueba ni se descarga (`409`). |
+| `UNSUPPORTED_FILE_TYPE` | Tipo real, extensión o MIME declarado no permitidos para el documento (`422`). |
+| `FILE_TOO_LARGE` | El archivo supera el tamaño máximo del tipo documental (`422`). |
+| `PAYLOAD_TOO_LARGE` | El cuerpo de la carga supera el límite global; se corta antes de leerlo (`413`). |
+| `SERVICE_UNAVAILABLE` | El almacenamiento de archivos no respondió al cargar o al firmar una descarga (`503`). |
+| `PACKAGE_NOT_READY` | Descarga de un paquete para radicar pendiente, en proceso o fallido (`409`). |
+| `PACKAGE_EXPIRED` | Descarga de un paquete para radicar vencido: se pide otro (`409`). |
+| `REQUIREMENT_SCOPE_EXISTS` | Ya existe un requisito documental con ese alcance: se edita para crear una versión nueva (`409`). |
+| `REQUIREMENT_DRAFT_EXISTS` | El requisito ya tiene un borrador (`409`). |
+| `REQUIREMENT_EXPIRED` | La vigencia del requisito ya terminó y no se publica (`422`). |
+| `DOCUMENT_TYPE_INACTIVE` | Publicar un requisito de un tipo documental inactivo (`422`). |
 | `IDEMPOTENCY_CONFLICT` | Misma clave con cuerpo diferente. |
 | `DUPLICATE_CLIENT_DOCUMENT` | Documento de identidad ya registrado. |
 | `PROJECT_NOT_ACTIVE` | Proyecto borrador/archivado no asociable. |
@@ -212,7 +227,9 @@ Concurrencia de la solicitud de crédito:
 - `POST /status-transitions` y `POST /withdrawals` llevan `expected_version` en el cuerpo en lugar de `If-Match`.
 - El portal del comprador sigue las mismas reglas (sección 8). La confirmación del perfil financiero también exige `If-Match`.
 
-**Estado de implementación.** `Idempotency-Key` se exigirá cuando exista `idempotency_keys` (notificaciones). Mientras tanto, la creación de solicitudes se protege con la restricción de una sola solicitud no terminal por oportunidad (`409 APPLICATION_ALREADY_OPEN`) y las transiciones con `expected_version`. En la creación de enlaces mágicos, un reintento crea otro enlace y revoca el anterior; el límite de 3 por hora acota el abuso.
+**Estado de implementación.** `Idempotency-Key` se exigirá cuando exista `idempotency_keys` (notificaciones). Mientras tanto, la creación de solicitudes se protege con la restricción de una sola solicitud no terminal por oportunidad (`409 APPLICATION_ALREADY_OPEN`) y las transiciones con `expected_version`. En la creación de enlaces mágicos, un reintento crea otro enlace y revoca el anterior; el límite de 3 por hora acota el abuso. En el paquete para radicar, un `POST` repetido devuelve el trabajo vivo con la misma huella documental (`200`) en lugar de crear otro (§19.2).
+
+Concurrencia del expediente documental: cargas, análisis, revisiones, exoneraciones, recálculos y paquetes **no** cambian la versión de la solicitud ni exigen `If-Match`, y sus respuestas no llevan `ETag`. Cada operación bloquea las filas que toca (la solicitud y después los slots, en orden de id). Lo que cambia es la huella documental: el hash de los slots vigentes y sus versiones vigentes, que el paquete guarda y la radicación comparará.
 
 ## 7. Autenticación interna
 
@@ -366,7 +383,7 @@ Estos endpoints usan DTO exclusivos del portal. Aunque internamente consulten lo
 | Método | Ruta | Descripción |
 | --- | --- | --- |
 | `GET` | `/buyer/processes` | Devuelve únicamente el proceso asociado a la sesión vigente. |
-| `GET` | `/buyer/applications/{application_id}` | Estado público, siguiente acción, progreso, participantes, inmueble y financiación. |
+| `GET` | `/buyer/applications/{application_id}` | Estado público, siguiente acción, progreso, participantes, inmueble y financiación. `progress` trae `percentage`, `data_percentage`, `documents_percentage`, `documents_required_total` y `documents_completed_total`, con la regla de la completitud (§16.3) sin la evaluación bancaria. |
 | `GET`, `POST` | `/buyer/applications/{application_id}/consents` | Consentimientos vigentes y su estado; acepta o retira una versión. |
 | `GET`, `PATCH` | `/buyer/applications/{application_id}/profile` | Datos del titular: `email`, `phone`, `birth_date` y direcciones. |
 | `GET` | `/buyer/applications/{application_id}/participants` | Titular y co-solicitantes activos, incluidos los deudores solidarios. |
@@ -378,6 +395,10 @@ Estos endpoints usan DTO exclusivos del portal. Aunque internamente consulten lo
 | `GET`, `PUT` | `/buyer/applications/{application_id}/financing` | Financiación y producto elegido. |
 | `GET` | `/buyer/applications/{application_id}/eligible-bank-products` | Productos de la finalidad con `eligible`, sin el detalle de las reglas. |
 | `POST` | `/buyer/applications/{application_id}/withdrawals` | Desistimiento con motivo (`application_withdrawal_reason`) y `expected_version`. |
+| `GET` | `/buyer/applications/{application_id}/document-slots` y `/buyer/document-slots/{slot_id}` | Documentos que pide la solicitud (§19.1). |
+| `GET` | `/buyer/document-slots/{slot_id}/versions` | Archivos cargados en un documento. |
+| `POST` | `/buyer/document-slots/{slot_id}/uploads` | Carga una versión nueva (§19.1). |
+| `GET` | `/buyer/document-files/{file_id}/download` | URL firmada de un archivo propio. |
 
 Reglas del portal:
 
@@ -385,7 +406,7 @@ Reglas del portal:
 - La sesión vencida o revocada, o la de un cliente que dejó de ser el titular activo, responde `401 SESSION_EXPIRED`. Las escrituras exigen `X-CSRFToken`.
 - Las respuestas del expediente llevan `ETag`, y los `PUT`/`PATCH` exigen `If-Match` (sección 6). Todas las respuestas llevan `Cache-Control: no-store`.
 - Mientras falte aceptar un consentimiento obligatorio (sección 21.1), las escrituras responden `403 CONSENT_REQUIRED`. Las lecturas, la aceptación de consentimientos y el logout siguen permitidos.
-- Tras `FILED`, las ediciones responden `409 APPLICATION_NOT_EDITABLE`; el desistimiento sigue disponible. La carga de slots observados llega con el módulo de documentos.
+- Tras `FILED`, las ediciones responden `409 APPLICATION_NOT_EDITABLE`; el desistimiento sigue disponible. Los documentos solo se reemplazan en un slot `REJECTED` con observación del banco (§19.1); el resto responde `409 DOCUMENT_LOCKED` o `409 DOCUMENT_NOT_REJECTED`.
 - Con la solicitud terminada, la sesión sigue viva para consultar y toda escritura responde `409 APPLICATION_CLOSED`.
 - Todo cambio real del perfil financiero o de sus ingresos, del asesor o del comprador, limpia `data_confirmed_at`.
 - El documento de identidad del titular se muestra enmascarado. El comprador no ve notas internas, el asesor, ni el detalle de las evaluaciones bancarias.
@@ -760,7 +781,8 @@ Reglas:
 Guarda `APPLICATION_READY_TO_FILE` (transición a `READY_TO_FILE`):
 
 - Exige producto elegido y una evaluación bancaria vigente sin bloqueos. Si la última evaluación no corresponde a la versión y al producto actuales, la transición evalúa y la guarda; esa evaluación se conserva aunque la transición se rechace.
-- Exige también los documentos obligatorios aprobados o exonerados. Hasta que exista el expediente documental (§19), esta parte falla cerrada: `READY_TO_FILE` no se puede alcanzar.
+- Exige también los documentos obligatorios (§19): cada slot vigente obligatorio `APPROVED` y no vencido (`expires_at` posterior a hoy) o `WAIVED`. Un grupo alternativo del mismo titular cuenta como uno y se cumple con un juego completo de un mismo tipo. Una lista sin obligatorios no la cumple (`DOCUMENTS_NOT_CONFIGURED`). Los slots se evalúan bloqueados, en la misma transacción.
+- Una solicitud ya en `READY_TO_FILE` que deja de cumplir (se rechaza, reabre o reemplaza un documento, o vence un aprobado) no cambia de estado: `/completeness` lo muestra y la radicación la frenará. El asesor puede volver a `DOCUMENTS_REVIEW`.
 - Si no la cumple: `422 APPLICATION_NOT_READY` con todos los motivos en `details`:
 
 ```json
@@ -775,15 +797,22 @@ Guarda `APPLICATION_READY_TO_FILE` (transición a `READY_TO_FILE`):
     },
     {
       "field": "documents",
-      "code": "DOCUMENTS_NOT_VERIFIED",
-      "message": "Los documentos obligatorios todavía no se pueden verificar: el expediente documental aún no está disponible."
+      "code": "DOCUMENT_PENDING",
+      "message": "«Copia del documento de identidad» de Laura Gómez Vélez no está aprobado ni exonerado.",
+      "resource_id": "uuid-del-slot"
+    },
+    {
+      "field": "documents",
+      "code": "DOCUMENT_EXPIRED",
+      "message": "«Certificación laboral» de Laura Gómez Vélez venció el 2026-08-20: pide uno más reciente.",
+      "resource_id": "uuid-del-slot"
     }
   ],
   "request_id": "req_01J..."
 }
 ```
 
-Sin producto, el primer motivo es `BANK_PRODUCT_REQUIRED` (campo `bank_product_id`).
+Sin producto, el primer motivo es `BANK_PRODUCT_REQUIRED` (campo `bank_product_id`). Los documentales van en el orden del expediente. Un grupo alternativo sin cumplir da un `DOCUMENT_PENDING` (con el primer slot del grupo) y un `DOCUMENT_EXPIRED` por cada aprobado vencido del grupo; un grupo cumplido no da nada. Sin obligatorios: un único `DOCUMENTS_NOT_CONFIGURED`.
 
 Transiciones configuradas hoy (flujo `APPLICATION`), solo hasta antes de radicar:
 
@@ -848,21 +877,47 @@ Las transiciones de `FILED` en adelante llegan con la radicación (§20).
 
 ```json
 {
-  "percentage": 60,
+  "percentage": 55,
+  "data_percentage": 60,
+  "documents_percentage": 50,
   "ready_to_file": false,
+  "ready_to_file_problems": [
+    {
+      "field": "documents",
+      "code": "DOCUMENT_PENDING",
+      "message": "«Copia del documento de identidad» de Mateo Vargas León no está aprobado ni exonerado.",
+      "resource_id": "uuid-del-slot"
+    }
+  ],
   "items": [
     { "code": "property", "complete": true, "message": "Inmueble registrado.", "participant_id": null },
     { "code": "financial_profile", "complete": false, "message": "Registra el perfil financiero de Mateo Vargas León.", "participant_id": "uuid" }
   ],
   "documents": {
     "verified": false,
-    "message": "Los documentos obligatorios todavía no se pueden verificar: el expediente documental aún no está disponible."
+    "required_total": 2,
+    "completed_total": 1,
+    "message": "Faltan 1 de 2 documentos obligatorios.",
+    "slots": [
+      {
+        "slot_id": "uuid",
+        "participant_id": "uuid",
+        "document_type": { "code": "IDENTITY_DOCUMENT", "name": "Copia del documento de identidad" },
+        "label": "Copia del documento de identidad",
+        "status": "PENDING",
+        "alternative_group_code": null,
+        "expires_at": null,
+        "complete": false
+      }
+    ]
   }
 }
 ```
 
 - Ítems de datos: `property`, `financing`, `bank_product` y `bank_evaluation` (vigente y elegible; estos dos solo sin financiación registrada o con `BANK_CREDIT`), y `financial_profile` por cada participante activo que aporta ingresos.
-- `percentage` = ítems completos / total, entero hacia abajo. Los documentos todavía no cuentan, y `ready_to_file` es `false` hasta que exista el expediente documental (§19).
+- `data_percentage` = ítems completos / total; `documents_percentage` = obligatorios cumplidos / obligatorios, con un grupo alternativo como uno (0 si no hay obligatorios); `percentage` = promedio de los dos. Todos enteros hacia abajo.
+- `ready_to_file` y `ready_to_file_problems` usan la misma regla que la guarda: `ready_to_file_problems` trae lo mismo que los `details` del `422 APPLICATION_NOT_READY`. Es lectura pura: si la última evaluación bancaria no está vigente, evalúa en memoria sin guardarla.
+- `documents.slots` trae solo los obligatorios. `complete` dice si el slot cuenta como cumplido: en un grupo alternativo, si el grupo lo está.
 
 ## 17. Participantes, finanzas e ingresos
 
@@ -1060,80 +1115,160 @@ Estas reglas validan preparación operativa; no aprueban ni rechazan el crédito
 
 El expediente se modela como una lista de requisitos (`document slots`). Cada slot representa un documento esperado y conserva todas sus versiones. Los archivos no se reemplazan físicamente ni se eliminan: una nueva carga crea una nueva versión.
 
-### 19.1 Lista de documentos y vigencia de requisitos
+### 19.1 Lista de documentos, revisión y descargas
 
 | Método | Ruta | Permiso | Descripción |
 | --- | --- | --- | --- |
-| `GET` | `/applications/{application_id}/document-slots` | `ADMIN`, asesor asignado o comprador | Lista de chequeo, estado, obligatoriedad y versión vigente. |
-| `POST` | `/applications/{application_id}/document-slots/refresh` | `ADMIN` o asesor asignado con `documents.manage_requirements` | Recalcula requisitos según banco, finalidad, participantes y perfil laboral. |
-| `GET` | `/document-slots/{slot_id}` | `ADMIN`, asesor asignado o comprador | Detalle del requisito. |
-| `GET` | `/document-slots/{slot_id}/versions` | `ADMIN`, asesor asignado o comprador | Historial de versiones del documento. |
-| `POST` | `/document-slots/{slot_id}/uploads` | Comprador del expediente | Carga una nueva versión con `multipart/form-data`. |
-| `PATCH` | `/document-slots/{slot_id}/review` | `ADMIN` o asesor asignado con `documents.review` | Aprueba, rechaza o exonera el requisito. |
-| `GET` | `/document-files/{file_id}` | `ADMIN`, asesor asignado o comprador | Metadatos de una versión, filtrados por rol. |
-| `GET` | `/document-files/{file_id}/download` | `ADMIN`, asesor asignado o comprador | Obtiene URL firmada de descarga con vigencia corta. |
-| `GET` | `/document-files/{file_id}/scan-status` | `ADMIN` o asesor asignado | Consulta validación antivirus y técnica. |
+| `GET` | `/applications/{application_id}/document-slots` | `documents.read`, asesor asignado | Lista de chequeo, estado, obligatoriedad y versión vigente. |
+| `POST` | `/applications/{application_id}/document-slots/refresh` | `documents.manage_requirements`, asesor asignado | Recalcula requisitos según banco, finalidad, participantes y perfil laboral. |
+| `GET` | `/document-slots/{slot_id}` | `documents.read`, asesor asignado | Detalle del slot con `waiver_history` (exoneraciones y reaperturas). |
+| `GET` | `/document-slots/{slot_id}/versions` | `documents.read`, asesor asignado | Historial de versiones con sus aprobaciones y rechazos. |
+| `PATCH` | `/document-slots/{slot_id}/review` | `documents.review`, asesor asignado; `WAIVED` y `REOPENED` exigen además `documents.waive` | Aprueba, rechaza, exonera o reabre. |
+| `GET` | `/document-files/{file_id}` | `documents.read`, asesor asignado | Metadatos de una versión. |
+| `GET` | `/document-files/{file_id}/scan-status` | `documents.read`, asesor asignado | Validación técnica y antivirus. |
+| `GET` | `/document-files/{file_id}/download` | `documents.download`, asesor asignado | URL firmada de descarga con vigencia corta. |
+| `GET` | `/buyer/applications/{application_id}/document-slots` | Comprador del expediente | Documentos que pide la solicitud, con formatos, tamaño máximo y rechazo vigente. |
+| `GET` | `/buyer/document-slots/{slot_id}` y `.../versions` | Comprador del expediente | Detalle y archivos cargados. |
+| `POST` | `/buyer/document-slots/{slot_id}/uploads` | Comprador del expediente | Carga una nueva versión con `multipart/form-data`. |
+| `GET` | `/buyer/document-files/{file_id}/download` | Comprador del expediente | URL firmada de descarga de un archivo propio. |
 
-Filtros de la lista: `status`, `participant_id`, `document_type_code`, `required=true|false`.
+> **Nota (paso 10).** El comprador no usa las rutas internas: tiene las suyas bajo `/buyer/...`, con DTO propios que nunca traen comentarios internos, revisor, requisito ni datos técnicos del análisis. Broker y partner reciben `403` en todo el expediente; el asesor fuera de su alcance, `404`.
 
-Estados de un slot: `MISSING`, `UPLOADED`, `IN_REVIEW`, `APPROVED`, `REJECTED`, `WAIVED`. Estados técnicos del archivo: `PENDING_SCAN`, `CLEAN`, `INFECTED`, `INVALID`.
+Filtros de la lista interna: `status`, `participant_id`, `document_type_code`, `required=true|false`, `include_retired=true|false`.
+
+Estados de un slot: `PENDING`, `UPLOADED`, `APPROVED`, `REJECTED`, `WAIVED`. Estados de una versión: `UPLOADED` (análisis en curso), `IN_REVIEW` (análisis limpio, espera al asesor), `APPROVED`, `REJECTED`. Estados técnicos del archivo: `PENDING`, `CLEAN`, `INFECTED`, `INVALID`.
 
 Carga de archivo:
 
 ```http
-POST /api/v1/document-slots/00e6.../uploads
+POST /api/v1/buyer/document-slots/00e6.../uploads
 Content-Type: multipart/form-data
 
 file=<archivo>
-client_filename=certificacion_laboral.pdf
+document_date=2026-08-20
 ```
 
-```json
-{
-  "data": {
-    "id": "uuid",
-    "slot_id": "uuid",
-    "version": 2,
-    "filename": "certificacion_laboral.pdf",
-    "mime_type": "application/pdf",
-    "size_bytes": 483220,
-    "scan_status": "PENDING_SCAN",
-    "slot_status": "UPLOADED",
-    "uploaded_at": "2026-08-24T16:00:00Z"
-  }
-}
-```
+Responde `201` con el slot del comprador. La versión queda `UPLOADED` hasta que termina el análisis.
 
-Revisión:
+Revisión: `PATCH /document-slots/{slot_id}/review`, sin `If-Match`. Cada decisión deja una fila nueva en `document_reviews` por slot afectado; corregir es decidir otra vez, nunca se edita la anterior. Responde `200 {"slots": [...]}` con los slots que cambiaron.
 
 ```json
 {
   "decision": "REJECTED",
+  "document_file_id": "uuid",
   "reason_code": "OUTDATED",
   "buyer_comment": "La certificación laboral debe tener menos de 30 días.",
   "internal_comment": "Fecha de expedición: 2 de junio."
 }
 ```
 
+| `decision` | Campos | Efecto |
+| --- | --- | --- |
+| `APPROVED` | `document_file_id` (obligatorio), `document_date` e `internal_comment` (opcionales) | La versión vigente y el slot quedan `APPROVED`. Exige análisis `CLEAN` (`409 FILE_NOT_CLEAN`). Si el slot tiene vigencia, exige `document_date` (la de la carga o la que se envía, que la corrige y recalcula `expires_at`); un documento vencido responde `422 DOCUMENT_EXPIRED`. |
+| `REJECTED` | `document_file_id`, `reason_code` (`document_rejection_reason`) y `buyer_comment` (obligatorios), `internal_comment` | La versión vigente y el slot quedan `REJECTED`. El comprador ve el motivo y `buyer_comment`. |
+| `WAIVED` | `reason_code` (`document_waiver_reason`, obligatorio), `internal_comment` | El slot queda `WAIVED` con el motivo. En un grupo alternativo se exoneran también los demás slots del grupo del mismo titular, salvo los aprobados (conservan su aprobación) y los ya exonerados; todos comparten `decision_batch_id`. Si alguno de los que se exonerarían no es exonerable, no se exonera ninguno. Las versiones no cambian. |
+| `REOPENED` | `internal_comment` (obligatorio, no vacío) | Deshace la última exoneración del slot y de los slots que se exoneraron con ella y siguen así. Cada uno vuelve al estado de su versión vigente (`PENDING` si no tiene, `UPLOADED` si espera análisis o revisión). |
+
+Errores de la revisión: `400 VALIDATION_ERROR` (campo que no aplica a la decisión o que falta, `document_date` futura o faltante; en `details[].code`, `NOT_A_VERSION`, `NOT_WAIVABLE`, `NOTHING_TO_WAIVE` o `NOT_WAIVED`, con el slot en `resource_id`), `403 PERMISSION_DENIED` (sin `documents.waive`), `409 DOCUMENT_NOT_CURRENT`, `409 FILE_NOT_CLEAN`, `409 DOCUMENT_LOCKED` (slot retirado, o archivo de un slot exonerado: primero se reabre), `409 APPLICATION_NOT_EDITABLE` (desde `FILED`), `409 APPLICATION_CLOSED` y `422 DOCUMENT_EXPIRED`.
+
+Descarga:
+
+```json
+{
+  "url": "https://...",
+  "expires_at": "2026-08-24T16:05:00Z"
+}
+```
+
+La URL es prefirmada, dura `DOCUMENT_DOWNLOAD_URL_SECONDS` (300 por omisión), lleva `Content-Disposition: attachment` con el nombre de la versión y el `Content-Type` detectado, y la respuesta va con `Cache-Control: no-store`. Límite: 60 descargas por hora por usuario o por sesión del comprador. Errores: `409 FILE_NOT_CLEAN`, `429 RATE_LIMITED` y `503 SERVICE_UNAVAILABLE`.
+
 Reglas:
 
-- `APPROVED` exige una versión `CLEAN`; `WAIVED` exige motivo y permiso específico.
-- Un archivo `INFECTED` o `INVALID` no puede descargarse ni aprobarse.
+- `APPROVED` exige una versión `CLEAN`; `WAIVED` y `REOPENED` exigen motivo y el permiso `documents.waive`.
+- Un archivo `PENDING`, `INFECTED` o `INVALID` no puede descargarse ni aprobarse.
 - El comprador puede cargar documentos mientras la solicitud no esté radicada.
-- Broker y partner solo reciben avance/resumen del expediente; no pueden cargar, listar versiones ni descargar archivos.
-- Después de `FILED`, solo puede cargar una nueva versión en un slot `REJECTED` por observación.
-- La respuesta nunca expone la clave real del almacenamiento; la descarga usa URL firmada y auditada.
+- Broker y partner no acceden al expediente (`403`): no cargan, no listan slots ni versiones y no descargan archivos ni paquetes. Un resumen documental para ellos queda para el diseño UX.
+- Después de `FILED`, solo puede cargar una nueva versión en un slot `REJECTED` por observación, y el asesor solo aprueba o rechaza esas versiones; exonerar y reabrir quedan cerrados.
+- Las revisiones, exoneraciones y reaperturas no cambian la versión de la solicitud (`If-Match` no aplica). La huella del expediente sí cambia y la usan el paquete y la radicación.
+- `internal_comment` nunca llega al comprador.
+- La respuesta nunca expone la clave real del almacenamiento; la descarga usa URL firmada y la URL no se registra en los logs.
 - Cambiar banco, producto, finalidad, participantes o perfil laboral vuelve a evaluar los requisitos sin borrar el historial.
 
 ### 19.2 Paquete para radicación
 
 | Método | Ruta | Permiso | Descripción |
 | --- | --- | --- | --- |
-| `POST` | `/applications/{application_id}/document-package-jobs` | `ADMIN` o asesor asignado con `filings.prepare` | Genera de forma asíncrona el paquete ZIP/PDF para el banco. |
-| `GET` | `/document-package-jobs/{job_id}` | `ADMIN` o asesor asignado que inició el trabajo | Consulta progreso, errores y vencimiento. |
-| `GET` | `/document-package-jobs/{job_id}/download` | `ADMIN` o asesor asignado con `filings.prepare` | Descarga el paquete terminado mediante URL firmada. |
+| `POST` | `/applications/{application_id}/document-package-jobs` | `filings.prepare`, asesor asignado | Pide de forma asíncrona el ZIP para el banco. `201` si crea el trabajo; `200` si devuelve uno vivo con la misma huella. |
+| `GET` | `/document-package-jobs/{job_id}` | `filings.prepare`, asesor asignado | Estado, error, vencimiento y contenido fijado. |
+| `GET` | `/document-package-jobs/{job_id}/download` | `filings.prepare`, asesor asignado | URL firmada del ZIP terminado. |
 
-La creación requiere `Idempotency-Key`. Si falta un documento obligatorio aprobado o exonerado, retorna `409 APPLICATION_NOT_READY` con la lista de bloqueos. El paquete incluye manifiesto, versiones aprobadas y hash SHA-256 de cada archivo.
+El acceso sigue a la solicitud, no a quien pidió el paquete: un asesor reasignado ve los paquetes anteriores; uno al que se le quitó la solicitud recibe `404`. Broker y partner: `403`.
+
+Pedido (`POST`, sin cuerpo ni `If-Match`):
+
+- Exige solo los documentos, con los slots bloqueados: los obligatorios aprobados y no vencidos, o exonerados. Si no: `422 APPLICATION_NOT_READY` con `DOCUMENT_PENDING`, `DOCUMENT_EXPIRED` o `DOCUMENTS_NOT_CONFIGURED` en `details` (los mismos de la guarda, §16.3). No evalúa ni guarda reglas bancarias.
+- Se admite en cualquier estado no terminal; terminada: `409 APPLICATION_CLOSED`.
+- **El contenido se fija al pedirlo**: el trabajo guarda las versiones (ids, tamaño y SHA-256) y la huella documental, y el worker empaqueta exactamente esa lista. Una carga posterior no entra en el ZIP. `application_version` es la versión de la solicitud en ese momento, solo informativa.
+- Si ya hay un trabajo `PENDING`, `RUNNING` o `COMPLETED` sin vencer con la misma huella, responde ese con `200`. `Idempotency-Key` se exigirá con el resto de la idempotencia (§6).
+- Si la cola no responde, el trabajo igual se crea `PENDING` y lo retoma `requeue_document_packages`.
+
+```json
+{
+  "id": "uuid",
+  "application_id": "uuid",
+  "application_version": 12,
+  "status": "COMPLETED",
+  "error_code": null,
+  "fingerprint": "sha256-de-la-huella",
+  "requested_by": { "id": "uuid", "name": "Andrea García" },
+  "created_at": "2026-08-24T16:00:00Z",
+  "started_at": "2026-08-24T16:00:01Z",
+  "completed_at": "2026-08-24T16:00:04Z",
+  "expires_at": "2026-08-31T16:00:04Z",
+  "output": { "filename": "SOL-000123_expediente.zip", "size_bytes": 2483021, "sha256": "..." },
+  "documents": [
+    {
+      "slot_id": "uuid",
+      "document_type": { "code": "PAYROLL_SLIP", "name": "Desprendible o comprobante de nómina" },
+      "label": "Desprendible o comprobante de nómina 1 de 2",
+      "holder": {
+        "scope": "PARTICIPANT",
+        "participant_id": "uuid",
+        "role": "PRIMARY",
+        "role_name": "Titular",
+        "full_name": "Laura Gómez Vélez",
+        "folder": "01_TITULAR_Laura_Gomez"
+      },
+      "status": "APPROVED",
+      "document_date": "2026-07-30",
+      "expires_at": "2026-10-28",
+      "file": {
+        "path": "01_TITULAR_Laura_Gomez/Desprendible_o_comprobante_de_nomina_1_de_2.pdf",
+        "document_file_id": "uuid",
+        "version_number": 2,
+        "client_filename": "nomina julio.pdf",
+        "mime_type": "application/pdf",
+        "size_bytes": 182334,
+        "sha256": "..."
+      },
+      "waiver_reason": null
+    }
+  ]
+}
+```
+
+Estados: `PENDING` → `RUNNING` → `COMPLETED` o `FAILED`. `error_code` de un `FAILED`: `CHECKSUM_MISMATCH` (un archivo guardado no coincide con su SHA-256; no se reintenta) o `STORAGE_UNAVAILABLE` (el almacenamiento no respondió tras los reintentos). Un `FAILED` no se reintenta: se pide otro paquete. Un `COMPLETED` se lee `EXPIRED` a los `DOCUMENT_PACKAGE_TTL_DAYS` días (7 por omisión), aunque el comando `expire_document_packages` todavía no lo haya persistido ni borrado el ZIP.
+
+Contenido del ZIP:
+
+- la versión vigente de cada slot vigente `APPROVED` y no vencido (también los opcionales); los `WAIVED` van en el manifiesto, sin archivo;
+- carpetas `00_SOLICITUD` (documentos de la solicitud) y `<nn>_<ROL>_<Nombre_Apellido>` por titular, con `nn` en el orden en que entró y el rol `TITULAR`, `COSOLICITANTE` o `DEUDOR_SOLIDARIO`: `01_TITULAR_Laura_Gomez`, `02_COSOLICITANTE_Andres_Moreno`;
+- cada archivo con la etiqueta del documento y la extensión de su tipo real: `Desprendible_o_comprobante_de_nomina_2_de_3.pdf`. Nombres en ASCII seguro (sin tildes, `ñ` → `n`, palabras separadas con `_`, hasta 60 caracteres); si dos chocan, se agrega `_2`, `_3`;
+- `manifest.json` para el banco: por documento, tipo (código y nombre), etiqueta, titular (rol y nombre), estado, `document_date`, `expires_at` y el archivo (ruta, tipo, tamaño y SHA-256). No lleva ids internos, `client_filename`, motivos de exoneración ni comentarios; eso solo está en `documents` del trabajo.
+
+El worker verifica el SHA-256 de cada archivo al empaquetar. El ZIP no pasa por el antivirus: se arma con versiones `CLEAN` verificadas y se registra `CLEAN`.
+
+Descarga: `{url, expires_at}` como la de las versiones (§19.1), con `Content-Disposition: attachment`, `Cache-Control: no-store` y el mismo límite de 60 descargas por hora. Errores: `409 PACKAGE_NOT_READY` (pendiente, en proceso o fallido), `409 PACKAGE_EXPIRED`, `429 RATE_LIMITED` y `503 SERVICE_UNAVAILABLE`.
 
 ## 20. Radicación manual y respuestas del banco
 
@@ -1504,6 +1639,8 @@ Acepta de 1 a 20 casos. El `context` solo admite campos de la lista segura con s
 
 Un tipo documental define formatos MIME, tamaño máximo, titular posible y vigencia sugerida. Un requisito combina banco/producto, finalidad, condición del inmueble, tipo de participante y perfil de ingreso; además indica si es obligatorio, repetible y exonerable.
 
+`holder_scope` del tipo dice de quién es el documento: `PARTICIPANT` (por omisión, uno por cada participante al que aplica) o `APPLICATION` (uno por solicitud, sin participante: los del inmueble y la legalización, y la carta de aprobación externa). Un requisito de un tipo `APPLICATION` no admite `participant_role` ni `employment_profile_code` (`400`), y el tipo no cambia de `holder_scope` mientras tenga requisitos `DRAFT` o `ACTIVE` (`400`). `POST /document-requirements/preview` devuelve los documentos de la solicitud aparte, en `application_requirements`, y no los repite en la lista de cada participante.
+
 Documentos base contemplados por las reglas del MVP:
 
 - Identificación por ambas caras; firma/huella cuando el formato operativo del banco lo exija.
@@ -1582,7 +1719,7 @@ La auditoría es de solo lectura desde la API. Registra autenticación, enlaces 
 | Consentimientos | Evidencias | Evidencias de asignadas | No | No | Acepta o retira los suyos |
 | Proyectos | Todo | Lectura relacionada | Lectura relacionada | CRUD propio | Lectura del asociado |
 | Solicitudes | Todo | Asignadas | Originadas | Originadas | Su solicitud |
-| Expediente | Todo | Revisar/descargar asignadas | Solo resumen, sin archivos | Solo resumen, sin archivos | Cargar/ver permitido |
+| Expediente | Todo | Revisar, exonerar, descargar y empaquetar asignadas | No (`403`) | No (`403`) | Cargar y ver los suyos |
 | Radicación/respuestas | Todo | Gestionar asignadas | Solo seguimiento | Solo seguimiento | Estado visible |
 | Bancos, reglas y requisitos | CRUD/publicar | Lectura | Lectura pública aplicable | Lectura pública aplicable | Opciones aplicables |
 | Auditoría | Todo | No, salvo actividad funcional | No | No | No |
@@ -1600,8 +1737,8 @@ En bancos y reglas, la configuración (`/banks`, `/bank-products`, `/bank-policy
 | Solicitud de recuperación | 3 / hora | IP + correo |
 | Consumo de enlace mágico | 5 intentos / hora | IP |
 | Creación/reenvío de enlace mágico | 3 / hora | Usuario + solicitud |
-| Carga de documentos | 30 / hora | Sesión + solicitud |
-| Descarga de archivos/paquetes | 60 / hora | Usuario/sesión |
+| Carga de documentos | 60 / hora | Sesión + solicitud |
+| Descarga de archivos/paquetes | 60 / hora, compartido entre versiones y paquetes | Usuario/sesión |
 | Escrituras generales | 120 / min | Usuario |
 | Lecturas generales | 600 / min | Usuario |
 | Exportaciones | 5 trabajos / hora | Usuario |
@@ -1627,11 +1764,11 @@ Al superar el límite se retorna `429 RATE_LIMITED` y `Retry-After`. Los número
 
 1. El comprador consulta esquema y opciones en `/metadata/*`.
 2. Completa participantes, finanzas, inmueble y financiación en los endpoints de la solicitud.
-3. Consulta `GET /applications/{id}/document-slots`.
-4. Carga cada archivo con `POST /document-slots/{id}/uploads`.
-5. El asesor revisa con `PATCH /document-slots/{id}/review`.
-6. Si rechaza, la API notifica y el comprador carga una nueva versión.
-7. `GET /applications/{id}/completeness` indica cuándo está lista para radicar.
+3. Consulta `GET /buyer/applications/{id}/document-slots`: un slot por archivo esperado, con formatos y tamaño máximo.
+4. Carga cada archivo con `POST /buyer/document-slots/{id}/uploads`; el análisis corre en segundo plano.
+5. El asesor revisa con `PATCH /document-slots/{id}/review`, después de que el análisis da `CLEAN`.
+6. Si rechaza, el comprador ve el motivo en su slot y carga una versión nueva (la notificación llega con el módulo de notificaciones).
+7. `GET /applications/{id}/completeness` indica cuándo está lista para radicar; `GET /buyer/applications/{id}` muestra el avance al comprador.
 
 ### 27.3 Radicación, devolución y re-radicación
 

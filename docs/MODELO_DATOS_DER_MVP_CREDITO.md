@@ -852,7 +852,10 @@ Tipos de soporte que puede solicitar el sistema.
 | `max_size_bytes` | `BIGINT` | No | Límite. |
 | `default_validity_days` | `SMALLINT` | Sí | Vigencia sugerida. |
 | `is_repeatable` | `BOOLEAN` | No | Varias versiones/periodos. |
+| `holder_scope` | `VARCHAR(20)` | No | `PARTICIPANT` (por omisión) o `APPLICATION`. **Desvío del DER original (paso 10).** |
 | `is_active` | `BOOLEAN` | No | Estado. |
+
+`holder_scope` dice a quién pertenece el documento. Un tipo `PARTICIPANT` se pide a cada participante al que aplica el requisito; uno `APPLICATION` (inmueble, legalización, carta de aprobación externa) se pide una sola vez por solicitud, con `participant_id` nulo en el slot. Un requisito de un tipo `APPLICATION` no lleva rol ni perfil laboral, y el tipo no cambia de titular mientras tenga requisitos activos o en borrador.
 
 Relación 1:N con requisitos documentales: el mismo tipo, por ejemplo identificación, puede ser exigido por diferentes productos y perfiles sin duplicar su definición técnica.
 
@@ -930,15 +933,22 @@ Lista concreta de documentos esperados en una solicitud.
 | `minimum_files` | `SMALLINT` | No | Snapshot. |
 | `alternative_group_code` | `VARCHAR(50)` | Sí | Snapshot. |
 | `validity_days` | `SMALLINT` | Sí | Snapshot. |
+| `slot_index` | `SMALLINT` | No | 1..`minimum_files`: posición del archivo dentro del requisito. **Desvío del DER original (paso 10).** |
 | `status` | `VARCHAR(20)` | No | `PENDING`, `UPLOADED`, `APPROVED`, `REJECTED`, `WAIVED`. |
 | `sort_order` | `INTEGER` | No | Portal. |
 | `waiver_reason_item_id` | `UUID` | Sí | FK `catalog_items`, `RESTRICT`. |
 | `current_file_id` | `UUID` | Sí | FK diferible `document_files`, `SET NULL`; versión vigente. |
 | `locked_at` | `TIMESTAMPTZ` | Sí | Bloqueo posterior a radicación. |
+| `retired_at` | `TIMESTAMPTZ` | Sí | El slot dejó de aplicar al recalcular la lista. **Desvío del DER original (paso 10).** |
 
 Relación N:1 con solicitud porque un expediente necesita muchos documentos; N:1 opcional con participante porque algunos soportes pertenecen a una persona específica; N:1 con requisito para conocer el origen. Los valores principales se copian como snapshot para que una plantilla futura no cambie el pasado.
 
-Índices: (`application_id`, `status`, `is_required`), (`participant_id`, `document_type_id`), UQ funcional según tipo/participante/periodo definido por negocio.
+Desvíos del DER original, acordados en el paso 10:
+
+- **Un slot por archivo.** Un requisito con `minimum_files = n` (por ejemplo, tres desprendibles de nómina) crea n slots con `slot_index` de 1 a n, que se cargan y revisan por separado ("Desprendible de nómina 2 de 3"). Cada slot conserva el `minimum_files` del requisito como snapshot. `CHECK (slot_index > 0 AND slot_index <= minimum_files)`.
+- **Retiro sin borrado.** Cuando cambian el producto, la finalidad, los participantes o el perfil laboral, la lista se recalcula. El slot que deja de aplicar se retira con `retired_at`, conserva sus versiones y revive si el requisito vuelve a aplicar. Los slots retirados no cuentan para radicar ni para la completitud.
+
+Índices: (`application_id`, `status`, `is_required`) y el parcial de pendientes, ambos limitados a `retired_at IS NULL`. La UQ funcional que el DER original dejaba abierta es `uq_document_slots_active`: (`application_id`, `participant_id`, `document_type_id`, `slot_index`) `NULLS NOT DISTINCT` `WHERE retired_at IS NULL`.
 
 ### 8.3 `document_files`
 
@@ -957,28 +967,41 @@ Versiones cargadas para un slot.
 | `expires_at` | `DATE` | Sí | Vigencia calculada. |
 | `status` | `VARCHAR(20)` | No | `UPLOADED`, `IN_REVIEW`, `APPROVED`, `REJECTED`. |
 
-UQ (`slot_id`, `version_number`). Relaciones: N:1 con slot porque cada reemplazo es una nueva versión; 1:1 con objeto físico; N:1 con sesión de comprador para demostrar quién cargó el archivo. Nunca se sobrescribe la fila anterior.
+UQ (`slot_id`, `version_number`). `CHECK`: `expires_at` es nulo o posterior a `document_date` (paso 10). Relaciones: N:1 con slot porque cada reemplazo es una nueva versión; 1:1 con objeto físico; N:1 con sesión de comprador para demostrar quién cargó el archivo. Nunca se sobrescribe la fila anterior.
 
 Índice: (`slot_id`, `version_number DESC`).
 
 ### 8.4 `document_reviews`
 
-Decisiones de revisión sobre una versión concreta.
+Decisiones del asesor sobre un slot: aprobación y rechazo de una versión concreta y, desde el paso 10, exoneraciones y sus reaperturas.
 
 | Campo | Tipo | Nulo | Regla/uso |
 | --- | --- | --- | --- |
 | `id` | `UUID` | No | PK, `DEFAULT gen_random_uuid()`. |
 | `created_at` | `TIMESTAMPTZ` | No | Fecha y hora de creación del registro histórico. |
-| `document_file_id` | `UUID` | No | FK `document_files`, `RESTRICT`. |
+| `slot_id` | `UUID` | No | FK `application_document_slots`, `RESTRICT`. **Desvío del DER original (paso 10).** |
+| `document_file_id` | `UUID` | Sí | FK `document_files`, `RESTRICT`. Obligatorio en `APPROVED` y `REJECTED`; en `WAIVED` y `REOPENED` guarda la versión vigente del slot, si la hay. **Desvío del DER original (paso 10): era `NOT NULL`.** |
 | `reviewer_id` | `UUID` | No | FK `users`, `RESTRICT`. |
-| `decision` | `VARCHAR(20)` | No | `APPROVED` o `REJECTED`. |
-| `reason_item_id` | `UUID` | Sí | FK `catalog_items`, `RESTRICT`. |
+| `decision` | `VARCHAR(20)` | No | `APPROVED`, `REJECTED`, `WAIVED` o `REOPENED`. **Desvío del DER original (paso 10): solo admitía las dos primeras.** |
+| `reason_item_id` | `UUID` | Sí | FK `catalog_items`, `RESTRICT`: `document_rejection_reason` al rechazar, `document_waiver_reason` al exonerar. |
 | `buyer_comment` | `TEXT` | Sí | Explicación visible. |
-| `internal_comment` | `TEXT` | Sí | Nota privada. |
+| `internal_comment` | `TEXT` | Sí | Nota privada; obligatoria al reabrir. |
+| `decision_batch_id` | `UUID` | Sí | Lote de una exoneración o reapertura: los slots de un grupo alternativo exonerados juntos lo comparten. **Desvío del DER original (paso 10).** |
 
-Relación N:1 con versión y asesor. Separar la revisión permite conservar una corrección de decisión y saber exactamente qué versión fue aprobada; el estado del slot es solo el resumen actual.
+`CHECK`:
 
-Índice: (`document_file_id`, `created_at DESC`).
+- `ck_document_reviews_decision`: los cuatro valores de `decision`;
+- `ck_document_reviews_rejection`: `REJECTED` exige `reason_item_id` y `buyer_comment`;
+- `ck_document_reviews_file`: `APPROVED` y `REJECTED` exigen `document_file_id` y no llevan lote;
+- `ck_document_reviews_batch`: `WAIVED` y `REOPENED` exigen `decision_batch_id`;
+- `ck_document_reviews_waiver`: `WAIVED` exige `reason_item_id`;
+- `ck_document_reviews_reopen`: `REOPENED` exige `internal_comment` no vacío.
+
+Relación N:1 con slot, versión (opcional) y asesor. Separar la revisión permite conservar una corrección de decisión y saber exactamente qué versión fue aprobada o rechazada. Ninguna fila se edita: corregir, exonerar o reabrir crea otra.
+
+Desvío del DER original, acordado en el paso 10 (Parte 5): el esquema original solo guardaba aprobaciones y rechazos de una versión, y la exoneración vivía solo en el slot (`waiver_reason_item_id`), sin quién ni cuándo. Para poder deshacer una exoneración y saber quién exoneró y quién reabrió, la tabla guarda también esas decisiones del slot; `slot_id` se llenó desde la versión de las filas existentes antes de volverse `NOT NULL`. Reabrir toma el lote de la última exoneración del slot y reabre los slots cuya última revisión es esa exoneración.
+
+Índices: (`document_file_id`, `created_at DESC`), (`slot_id`, `created_at DESC`) y (`decision_batch_id`) donde no es nulo.
 
 ### 8.5 `document_package_jobs`
 
@@ -991,16 +1014,23 @@ Trabajo asíncrono que construye el paquete descargable para radicar.
 | `updated_at` | `TIMESTAMPTZ` | No | Fecha y hora de última modificación. |
 | `application_id` | `UUID` | No | FK `credit_applications`, `RESTRICT`. |
 | `requested_by_id` | `UUID` | No | FK `users`, `RESTRICT`. |
-| `application_version` | `INTEGER` | No | Versión preparada. |
+| `application_version` | `INTEGER` | No | Versión de la solicitud al pedir el paquete, solo informativa: los documentos no cambian esa versión. |
 | `status` | `VARCHAR(20)` | No | `PENDING`, `RUNNING`, `COMPLETED`, `FAILED`, `EXPIRED`. |
-| `output_file_object_id` | `UUID` | Sí | FK `file_objects`, `RESTRICT`. |
-| `manifest` | `JSONB` | Sí | IDs y hashes incluidos. |
-| `error_code` | `VARCHAR(80)` | Sí | Fallo seguro. |
-| `started_at` | `TIMESTAMPTZ` | Sí | Inicio. |
+| `output_file_object_id` | `UUID` | Sí | FK `file_objects`, `RESTRICT`; UQ. El ZIP terminado. |
+| `manifest` | `JSONB` | Sí | Manifiesto interno, fijado al pedir el paquete: huella documental y, por documento, versión, SHA-256, ruta dentro del ZIP, `client_filename` y motivo de exoneración. |
+| `error_code` | `VARCHAR(80)` | Sí | Fallo seguro: `CHECKSUM_MISMATCH` o `STORAGE_UNAVAILABLE`. |
+| `started_at` | `TIMESTAMPTZ` | Sí | Inicio del intento en curso; marca qué worker tiene el trabajo. |
 | `completed_at` | `TIMESTAMPTZ` | Sí | Fin. |
 | `expires_at` | `TIMESTAMPTZ` | Sí | Vencimiento del paquete. |
 
 Relación N:1 con solicitud y usuario, 0..1:1 con archivo de salida. Un expediente puede generar varios paquetes, pero cada radicación selecciona uno preciso para no mezclar versiones.
+
+Reglas de implementación (paso 10):
+
+- el contenido se fija al pedir el paquete (`manifest`); el worker empaqueta exactamente esa lista, aunque el comprador cargue después;
+- el worker toma el trabajo con un `UPDATE` condicional (`PENDING` → `RUNNING`, con un `started_at` nuevo) y solo lo marca `COMPLETED` si sigue teniendo ese `started_at`: dos workers no lo procesan a la vez y uno atrasado no pisa el resultado;
+- **el ZIP no pasa por el antivirus.** Se arma con versiones `CLEAN` cuyo SHA-256 se verifica al empaquetar, y su `file_objects` se guarda `CLEAN`, con `scanned_at` al terminar y `detected_mime_type = application/zip`. Un `file_objects` que es `output_file_object_id` de un trabajo es, por eso, un ZIP marcado limpio al empaquetar; no hay columna para el motor del análisis;
+- `EXPIRED` se deriva al leer cuando pasa `expires_at`; un proceso periódico lo persiste y borra el objeto, y la fila de `file_objects` se conserva.
 
 Índice: (`application_id`, `created_at DESC`), (`status`, `created_at`) para workers.
 

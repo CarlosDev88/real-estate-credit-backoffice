@@ -43,8 +43,9 @@ from apps.crm.serializers import (
     UserRefSerializer,
 )
 from apps.crm.validators import mask_document_number
+from apps.documents.models import SlotStatus
 from apps.identity.models import User
-from config.serializers import StrictSerializer
+from config.serializers import ErrorDetailSerializer, StrictSerializer
 
 __all__ = [
     "DETAIL_INCLUDES",
@@ -861,13 +862,54 @@ class CompletenessItemSerializer(serializers.Serializer):
     )
 
 
+class CompletenessDocumentTypeSerializer(serializers.Serializer):
+    code = serializers.CharField(source="document_type_code")
+    name = serializers.CharField(source="document_type_name")
+
+
+class CompletenessDocumentSlotSerializer(serializers.Serializer):
+    slot_id = serializers.UUIDField()
+    participant_id = serializers.UUIDField(
+        allow_null=True, help_text="Nulo en los documentos de la solicitud."
+    )
+    document_type = CompletenessDocumentTypeSerializer(source="*")
+    # `label` choca con el atributo `Field.label` de los stubs de DRF; como en
+    # `CatalogItemRefSerializer`, el campo de la API se llama así.
+    label = serializers.CharField()  # type: ignore[assignment]
+    status = serializers.ChoiceField(choices=SlotStatus.choices)
+    alternative_group_code = serializers.CharField(allow_null=True)
+    expires_at = serializers.DateField(allow_null=True)
+    complete = serializers.BooleanField(
+        help_text="Cuenta como cumplido. En un grupo alternativo, si el grupo está cumplido."
+    )
+
+
 class CompletenessDocumentsSerializer(serializers.Serializer):
-    verified = serializers.BooleanField(source="documents_verified")
-    message = serializers.CharField(source="documents_message")
+    verified = serializers.BooleanField()
+    required_total = serializers.IntegerField(
+        help_text="Obligatorios; un grupo alternativo cuenta como uno."
+    )
+    completed_total = serializers.IntegerField()
+    message = serializers.CharField()
+    slots = CompletenessDocumentSlotSerializer(
+        many=True, help_text="Solo los slots vigentes y obligatorios."
+    )
 
 
 class CompletenessSerializer(serializers.Serializer):
-    percentage = serializers.IntegerField(help_text="Ítems de datos completos; sin documentos.")
-    ready_to_file = serializers.BooleanField()
+    percentage = serializers.IntegerField(
+        help_text="Promedio, entero hacia abajo, de `data_percentage` y `documents_percentage`."
+    )
+    data_percentage = serializers.IntegerField(help_text="Ítems de datos completos.")
+    documents_percentage = serializers.IntegerField(
+        help_text="Obligatorios cumplidos sobre obligatorios; 0 si no hay obligatorios."
+    )
+    ready_to_file = serializers.BooleanField(
+        help_text="La guarda de `READY_TO_FILE` no tiene problemas."
+    )
+    ready_to_file_problems = ErrorDetailSerializer(
+        many=True,
+        help_text="Los mismos `details` que daría el `422 APPLICATION_NOT_READY`.",
+    )
     items = CompletenessItemSerializer(many=True)
-    documents = CompletenessDocumentsSerializer(source="*")
+    documents = CompletenessDocumentsSerializer()

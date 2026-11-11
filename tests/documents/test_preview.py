@@ -202,7 +202,36 @@ def test_preview_runs_a_single_query(django_assert_num_queries: DjangoAssertNumQ
 
     with django_assert_num_queries(1):
         result = preview_checklist(case)
-        validity = [req.effective_validity_days for item in result for req in item.requirements]
+        validity = [
+            req.effective_validity_days for item in result.participants for req in item.requirements
+        ]
 
-    assert [len(item.requirements) for item in result] == [5, 5, 3]
+    assert [len(item.requirements) for item in result.participants] == [5, 5, 3]
+    assert result.application_requirements == []
     assert 30 in validity
+
+
+def test_application_documents_are_listed_once_outside_the_participants(
+    admin_client: APIClient,
+    make_type: Callable[..., DocumentType],
+    make_requirement: Callable[..., DocumentRequirement],
+) -> None:
+    make_requirement(status="ACTIVE")
+    budget = make_type(code="WORKS_BUDGET", holder_scope="APPLICATION")
+    make_requirement(status="ACTIVE", document_type=budget)
+
+    response = preview(admin_client, participants=[{"role": "PRIMARY"}, {"role": "CO_APPLICANT"}])
+
+    assert documents(response, 0) == documents(response, 1) == ["TEST_DOCUMENT"]
+    application_documents = response.json()["application_requirements"]
+    assert [doc["document_type"]["code"] for doc in application_documents] == ["WORKS_BUDGET"]
+    assert application_documents[0]["is_general"] is True
+
+
+def test_preview_without_application_documents_returns_an_empty_list(
+    admin_client: APIClient,
+) -> None:
+    response = preview(admin_client, bank_product_id=str(seeded_product("BANCOLOMBIA").id))
+
+    assert response.status_code == 200, response.content
+    assert response.json()["application_requirements"] == []

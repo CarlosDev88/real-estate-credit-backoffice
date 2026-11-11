@@ -9,9 +9,15 @@ from dataclasses import dataclass
 from django.db.models import Prefetch, QuerySet
 
 from apps.applications.models import CreditApplication
-from apps.applications.services import CompletenessItem, completeness, participants_queryset
+from apps.applications.services import (
+    CompletenessItem,
+    data_items,
+    items_percentage,
+    participants_queryset,
+)
 from apps.catalogs.models import CatalogItem
 from apps.catalogs.workflow import ApplicationStatus
+from apps.documents.verification import check_dossier
 from apps.identity.models import BuyerSession
 
 APPLICATION_STATUS_CATALOG = "application_status"
@@ -43,7 +49,15 @@ _INTERNAL_PROGRESS_ITEMS = frozenset({"bank_evaluation"})
 
 @dataclass(frozen=True)
 class BuyerProgress:
+    """La regla de la completitud (acordada 7 de ``TAREA-document-file``): promedio de
+    los datos (sin la evaluación bancaria) y los documentos obligatorios. Sin detalle
+    por documento ni mensajes internos: el detalle está en ``/buyer/.../document-slots``."""
+
     percentage: int
+    data_percentage: int
+    documents_percentage: int
+    documents_required_total: int
+    documents_completed_total: int
     items: list[CompletenessItem]
 
 
@@ -62,14 +76,18 @@ def next_action(status: str) -> str:
 
 
 def buyer_progress(application: CreditApplication) -> BuyerProgress:
-    """Ítems de ``completeness`` sin los internos, con su propio porcentaje."""
-    items = [
-        item
-        for item in completeness(application).items
-        if item.code not in _INTERNAL_PROGRESS_ITEMS
-    ]
-    percentage = sum(item.complete for item in items) * 100 // len(items)
-    return BuyerProgress(percentage=percentage, items=items)
+    """Ítems de datos sin los internos y el avance de los documentos obligatorios."""
+    items = [item for item in data_items(application) if item.code not in _INTERNAL_PROGRESS_ITEMS]
+    data_percentage = items_percentage(items)
+    dossier = check_dossier(application)
+    return BuyerProgress(
+        percentage=(data_percentage + dossier.percentage) // 2,
+        data_percentage=data_percentage,
+        documents_percentage=dossier.percentage,
+        documents_required_total=dossier.required_total,
+        documents_completed_total=dossier.completed_total,
+        items=items,
+    )
 
 
 def session_applications(session: BuyerSession) -> QuerySet[CreditApplication]:

@@ -36,6 +36,60 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      storage-init:
+        condition: service_completed_successfully
+    networks:
+      - mvp_credit_network
+
+  # Almacenamiento de documentos compatible con S3 (SeaweedFS). Arranca siempre: la API
+  # guarda ahí las cargas del comprador. En producción se reemplaza por S3 real con solo
+  # cambiar las variables DOCUMENT_STORAGE_*. MinIO se descartó: su edición comunitaria
+  # ya no publica imágenes. SeaweedFS no implementa SSE: DOCUMENT_STORAGE_SSE va vacío.
+  seaweedfs:
+    image: chrislusf/seaweedfs:3.85
+    environment:
+      S3_ACCESS_KEY: ${DOCUMENT_STORAGE_ACCESS_KEY_ID:-}
+      S3_SECRET_KEY: ${DOCUMENT_STORAGE_SECRET_ACCESS_KEY:-}
+    # Una sola identidad con las credenciales del .env; sin ella, el acceso anónimo
+    # queda denegado.
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        if [ -z "$$S3_ACCESS_KEY" ] || [ -z "$$S3_SECRET_KEY" ]; then
+          echo "Faltan DOCUMENT_STORAGE_ACCESS_KEY_ID y DOCUMENT_STORAGE_SECRET_ACCESS_KEY en .env" >&2
+          exit 1
+        fi
+        printf '{"identities":[{"name":"backend","credentials":[{"accessKey":"%s","secretKey":"%s"}],"actions":["Admin","Read","Write","List","Tagging"]}]}' "$$S3_ACCESS_KEY" "$$S3_SECRET_KEY" > /tmp/s3.json
+        exec weed server -dir=/data -s3 -s3.port=8333 -s3.config=/tmp/s3.json -volume.max=0 -master.volumeSizeLimitMB=1024
+    ports:
+      - "${DOCUMENT_STORAGE_HOST_PORT:-8333}:8333"
+    volumes:
+      - mvp_credit_seaweedfs_data:/data
+    healthcheck:
+      # 127.0.0.1 y no localhost: en el contenedor, localhost resuelve a IPv6 y
+      # SeaweedFS solo escucha en IPv4.
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 8333"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
+    networks:
+      - mvp_credit_network
+
+  # Crea el bucket privado si no existe y termina.
+  storage-init:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: python manage.py init_document_storage
+    env_file:
+      - .env
+    volumes:
+      - .:/app
+    depends_on:
+      seaweedfs:
+        condition: service_healthy
+    restart: "no"
     networks:
       - mvp_credit_network
 
@@ -68,6 +122,28 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      storage-init:
+        condition: service_completed_successfully
+      # Sin esperar a que esté sano: la primera descarga de firmas tarda minutos, y
+      # mientras tanto el análisis reintenta y el archivo sigue PENDING.
+      clamav:
+        condition: service_started
+    networks:
+      - mvp_credit_network
+
+  # Antivirus (clamd por TCP, puerto 3310, solo en la red interna). Al arrancar descarga
+  # las firmas con freshclam; la primera vez puede tardar varios minutos.
+  clamav:
+    image: clamav/clamav:1.4.3
+    profiles: ["async"]
+    volumes:
+      - mvp_credit_clamav_data:/var/lib/clamav
+    healthcheck:
+      test: ["CMD", "clamdcheck.sh"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 300s
     networks:
       - mvp_credit_network
 
@@ -76,6 +152,10 @@ volumes:
     name: mvp_credit_postgres_data
   mvp_credit_redis_data:
     name: mvp_credit_redis_data
+  mvp_credit_seaweedfs_data:
+    name: mvp_credit_seaweedfs_data
+  mvp_credit_clamav_data:
+    name: mvp_credit_clamav_data
 
 networks:
   mvp_credit_network:

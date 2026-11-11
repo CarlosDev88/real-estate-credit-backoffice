@@ -1102,9 +1102,15 @@ class ApplicationCompletenessView(ExpedienteView):
         summary="Completitud del expediente",
         description=(
             "Ítems de datos (inmueble, financiación, producto y evaluación bancaria cuando "
-            "aplica, y el perfil de cada participante que aporta ingresos). `percentage` "
-            "cuenta solo esos ítems. Los documentos todavía no se verifican, así que "
-            f"`ready_to_file` es `false`. {ETAG_NOTE}"
+            "aplica, y el perfil de cada participante que aporta ingresos) y documentos "
+            "obligatorios. `percentage` es el promedio, entero hacia abajo, de "
+            "`data_percentage` y `documents_percentage`; un grupo alternativo cuenta como "
+            "un documento y se cumple con un juego completo de un mismo tipo. "
+            "`ready_to_file` es la guarda de `READY_TO_FILE` sin problemas, y "
+            "`ready_to_file_problems` trae los mismos `details` que daría su `422`. Una "
+            "solicitud en `READY_TO_FILE` que deja de cumplir sigue en ese estado y aquí "
+            "aparece con `ready_to_file = false`. Es solo lectura: si la última evaluación "
+            f"bancaria no está vigente, evalúa en memoria sin guardarla. {ETAG_NOTE}"
         ),
         responses={200: CompletenessSerializer, **NOT_FOUND, **COMMON_ERRORS},
     )

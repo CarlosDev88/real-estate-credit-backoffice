@@ -362,7 +362,11 @@ CREATE TABLE document_types (
     max_size_bytes BIGINT NOT NULL CHECK (max_size_bytes > 0),
     default_validity_days SMALLINT CHECK (default_validity_days IS NULL OR default_validity_days > 0),
     is_repeatable BOOLEAN NOT NULL DEFAULT FALSE,
-    is_active BOOLEAN NOT NULL DEFAULT TRUE
+    -- Desvío del DER original (paso 10): a quién pertenece el documento.
+    -- PARTICIPANT se pide a cada participante; APPLICATION, una sola vez por solicitud.
+    holder_scope VARCHAR(20) NOT NULL DEFAULT 'PARTICIPANT',
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    CONSTRAINT ck_document_types_holder_scope CHECK (holder_scope IN ('PARTICIPANT', 'APPLICATION'))
 );
 
 CREATE TABLE document_requirements (
@@ -659,13 +663,20 @@ CREATE TABLE application_document_slots (
     minimum_files SMALLINT NOT NULL DEFAULT 1 CHECK (minimum_files > 0),
     alternative_group_code VARCHAR(50),
     validity_days SMALLINT CHECK (validity_days IS NULL OR validity_days > 0),
+    -- Desvío del DER original (paso 10): un requisito con minimum_files = n crea n slots,
+    -- uno por archivo (1..n), que se cargan y revisan por separado.
+    slot_index SMALLINT NOT NULL DEFAULT 1,
     status VARCHAR(20) NOT NULL DEFAULT 'PENDING',
     sort_order INTEGER NOT NULL DEFAULT 0,
     waiver_reason_item_id UUID REFERENCES catalog_items(id) ON DELETE RESTRICT,
     current_file_id UUID UNIQUE,
     locked_at TIMESTAMPTZ,
+    -- Desvío del DER original (paso 10): el slot que deja de aplicar al recalcular la lista
+    -- se retira sin borrarse; conserva sus versiones y revive si vuelve a aplicar.
+    retired_at TIMESTAMPTZ,
     CONSTRAINT ck_document_slots_status CHECK (status IN ('PENDING', 'UPLOADED', 'APPROVED', 'REJECTED', 'WAIVED')),
-    CONSTRAINT ck_document_slots_waiver CHECK (status <> 'WAIVED' OR (is_waivable AND waiver_reason_item_id IS NOT NULL))
+    CONSTRAINT ck_document_slots_waiver CHECK (status <> 'WAIVED' OR (is_waivable AND waiver_reason_item_id IS NOT NULL)),
+    CONSTRAINT ck_document_slots_index CHECK (slot_index > 0 AND slot_index <= minimum_files)
 );
 
 CREATE TABLE document_files (
@@ -680,7 +691,11 @@ CREATE TABLE document_files (
     expires_at DATE,
     status VARCHAR(20) NOT NULL DEFAULT 'UPLOADED',
     CONSTRAINT uq_document_files_slot_version UNIQUE (slot_id, version_number),
-    CONSTRAINT ck_document_files_status CHECK (status IN ('UPLOADED', 'IN_REVIEW', 'APPROVED', 'REJECTED'))
+    CONSTRAINT ck_document_files_status CHECK (status IN ('UPLOADED', 'IN_REVIEW', 'APPROVED', 'REJECTED')),
+    -- Paso 10: la vigencia es document_date + validity_days del slot.
+    CONSTRAINT ck_document_files_expiry CHECK (
+        expires_at IS NULL OR (document_date IS NOT NULL AND expires_at > document_date)
+    )
 );
 
 ALTER TABLE application_document_slots
@@ -690,18 +705,39 @@ ALTER TABLE application_document_slots
     ON DELETE SET NULL
     DEFERRABLE INITIALLY DEFERRED;
 
+-- Desvío del DER original (paso 10, Parte 5): la tabla guarda también las exoneraciones
+-- (`WAIVED`) y sus reaperturas (`REOPENED`), que son decisiones del slot. `slot_id` es
+-- nuevo, `document_file_id` pasa a ser nulable y `decision_batch_id` agrupa las filas de
+-- una misma exoneración o reapertura.
 CREATE TABLE document_reviews (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    document_file_id UUID NOT NULL REFERENCES document_files(id) ON DELETE RESTRICT,
+    slot_id UUID NOT NULL REFERENCES application_document_slots(id) ON DELETE RESTRICT,
+    document_file_id UUID REFERENCES document_files(id) ON DELETE RESTRICT,
     reviewer_id UUID NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
     decision VARCHAR(20) NOT NULL,
     reason_item_id UUID REFERENCES catalog_items(id) ON DELETE RESTRICT,
     buyer_comment TEXT,
     internal_comment TEXT,
-    CONSTRAINT ck_document_reviews_decision CHECK (decision IN ('APPROVED', 'REJECTED')),
+    decision_batch_id UUID,
+    CONSTRAINT ck_document_reviews_decision CHECK (
+        decision IN ('APPROVED', 'REJECTED', 'WAIVED', 'REOPENED')
+    ),
     CONSTRAINT ck_document_reviews_rejection CHECK (
         decision <> 'REJECTED' OR (reason_item_id IS NOT NULL AND buyer_comment IS NOT NULL)
+    ),
+    CONSTRAINT ck_document_reviews_file CHECK (
+        decision NOT IN ('APPROVED', 'REJECTED')
+        OR (document_file_id IS NOT NULL AND decision_batch_id IS NULL)
+    ),
+    CONSTRAINT ck_document_reviews_batch CHECK (
+        decision NOT IN ('WAIVED', 'REOPENED') OR decision_batch_id IS NOT NULL
+    ),
+    CONSTRAINT ck_document_reviews_waiver CHECK (
+        decision <> 'WAIVED' OR reason_item_id IS NOT NULL
+    ),
+    CONSTRAINT ck_document_reviews_reopen CHECK (
+        decision <> 'REOPENED' OR (internal_comment IS NOT NULL AND internal_comment <> '')
     )
 );
 
@@ -711,11 +747,17 @@ CREATE TABLE document_package_jobs (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     application_id UUID NOT NULL REFERENCES credit_applications(id) ON DELETE RESTRICT,
     requested_by_id UUID NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    -- Versión de la solicitud al pedir el paquete; solo informativa.
     application_version INTEGER NOT NULL CHECK (application_version > 0),
     status VARCHAR(20) NOT NULL DEFAULT 'PENDING',
+    -- El ZIP no pasa por el antivirus: se arma con versiones CLEAN cuyo SHA-256 se
+    -- verifica al empaquetar, y su file_objects se guarda CLEAN al terminar.
     output_file_object_id UUID UNIQUE REFERENCES file_objects(id) ON DELETE RESTRICT,
+    -- Manifiesto interno fijado al pedir el paquete: huella documental y versiones.
     manifest JSONB,
+    -- CHECKSUM_MISMATCH o STORAGE_UNAVAILABLE.
     error_code VARCHAR(80),
+    -- Inicio del intento en curso; marca qué worker tiene el trabajo.
     started_at TIMESTAMPTZ,
     completed_at TIMESTAMPTZ,
     expires_at TIMESTAMPTZ,
@@ -988,12 +1030,23 @@ CREATE INDEX ix_buyer_access_links_pending ON buyer_access_links (application_id
 CREATE INDEX ix_tasks_pending_assignee ON tasks (assigned_to_id, due_at) WHERE status = 'PENDING';
 CREATE INDEX ix_application_status_history ON application_status_history (application_id, created_at DESC);
 CREATE INDEX ix_file_objects_scan_queue ON file_objects (scan_status, created_at) WHERE scan_status = 'PENDING';
-CREATE INDEX ix_document_slots_application_status ON application_document_slots (application_id, status, is_required);
+-- Paso 10: los índices de slots solo cubren los vigentes (retired_at IS NULL). En Django se
+-- llaman ix_doc_slots_app_status e ix_doc_slots_pending (límite de 30 caracteres).
+CREATE INDEX ix_document_slots_application_status ON application_document_slots (application_id, status, is_required)
+    WHERE retired_at IS NULL;
 CREATE INDEX ix_document_slots_pending ON application_document_slots (application_id, sort_order)
     INCLUDE (document_type_id, participant_id, status, current_file_id)
-    WHERE is_required = TRUE AND status NOT IN ('APPROVED', 'WAIVED');
+    WHERE is_required = TRUE AND retired_at IS NULL AND status NOT IN ('APPROVED', 'WAIVED');
+-- Desvío del DER original (paso 10): la "UQ funcional según tipo/participante/periodo".
+CREATE UNIQUE INDEX uq_document_slots_active
+    ON application_document_slots (application_id, participant_id, document_type_id, slot_index)
+    NULLS NOT DISTINCT
+    WHERE retired_at IS NULL;
 CREATE INDEX ix_document_files_versions ON document_files (slot_id, version_number DESC);
 CREATE INDEX ix_document_reviews_latest ON document_reviews (document_file_id, created_at DESC);
+-- Paso 10, Parte 5: historial del slot y lotes de exoneración.
+CREATE INDEX ix_document_reviews_slot ON document_reviews (slot_id, created_at DESC);
+CREATE INDEX ix_document_reviews_batch ON document_reviews (decision_batch_id) WHERE decision_batch_id IS NOT NULL;
 CREATE INDEX ix_document_package_jobs_application ON document_package_jobs (application_id, created_at DESC);
 CREATE INDEX ix_document_package_jobs_queue ON document_package_jobs (status, created_at) WHERE status IN ('PENDING', 'RUNNING');
 CREATE INDEX ix_filings_application ON filings (application_id, sequence_number DESC);

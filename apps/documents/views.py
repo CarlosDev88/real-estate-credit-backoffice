@@ -442,5 +442,4 @@ class DocumentRequirementPreviewView(PermissionCodeView):
                 for participant in data["participants"]
             ],
         )
-        participants = services.preview_checklist(case)
-        return Response(ChecklistPreviewResponseSerializer({"participants": participants}).data)
+        return Response(ChecklistPreviewResponseSerializer(services.preview_checklist(case)).data)
