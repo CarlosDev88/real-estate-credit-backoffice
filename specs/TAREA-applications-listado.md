@@ -36,6 +36,8 @@ Las mismas de siempre:
 | 6 | `status_label` en `ApplicationSerializer` | Ya está en el resumen del broker; el asesor también la necesita. | |
 | 7 | Orden por `requested_amount`, nombre del banco y nombre del titular | Columnas ordenables del mockup. | Lista permitida, como hoy. |
 | 8 | Pestañas rápidas: endpoint con `code`, `label`, `count` y los estados que agrupa; más un filtro `quick_filter=<code>` en el listado | "Todas 48 · Esperando al comprador 14 · …". El frontend no puede decidir qué estados forman cada pestaña. | Ver ambigüedad B. |
+| 9 | Marca de "ya no cumple" en las filas `READY_TO_FILE` | Aviso en el listado cuando una solicitud lista para radicar dejó de cumplir (documento rechazado, reabierto, vencido o versión nueva). Viene de la fase 10: la solicitud sigue en `READY_TO_FILE` y `/completeness` trae `ready_to_file_problems`. | Debe salir sin consultas por fila. Ver ambigüedad A. |
+| 10 | `short_name` en `banks` (opcional, editable) y en la referencia del banco | La columna "Banco" muestra "FNA" en lugar de "Fondo Nacional del Ahorro" truncado. Si viene vacío, el front usa `name`. | Cambio de modelo: migración, DER, SQL y API §23.2. |
 
 ## Ambigüedades a resolver antes de implementar
 - **A. Costo de la completitud en el listado.** Calcularla por fila puede ser caro con 100 filas. Opciones:

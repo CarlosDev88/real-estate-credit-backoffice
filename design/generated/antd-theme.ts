@@ -12,7 +12,7 @@ export const lightTheme: ThemeConfig = {
     "colorLink": "#1F4E91",
     "colorText": "#151A21",
     "colorTextSecondary": "#4B5561",
-    "colorTextTertiary": "#66727F",
+    "colorTextTertiary": "#5E6A77",
     "colorTextDisabled": "#8B98A6",
     "colorBgLayout": "#F4F6F8",
     "colorBgContainer": "#FFFFFF",

@@ -39,6 +39,7 @@
   --um-color-neutral-300: #B6C1CC;
   --um-color-neutral-400: #8B98A6;
   --um-color-neutral-500: #66727F;
+  --um-color-neutral-550: #5E6A77;
   --um-color-neutral-600: #4B5561;
   --um-color-neutral-700: #343C46;
   --um-color-neutral-750: #2C343E;
@@ -120,7 +121,7 @@
   --um-border-strong: #B6C1CC;
   --um-text-primary: #151A21;
   --um-text-secondary: #4B5561;
-  --um-text-tertiary: #66727F;
+  --um-text-tertiary: #5E6A77;
   --um-text-disabled: #8B98A6;
   --um-text-inverse: #FFFFFF;
   --um-text-link: #1F4E91;
@@ -154,6 +155,12 @@
   --um-shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.06);
   --um-shadow-md: 0 2px 8px rgba(16, 24, 40, 0.08);
   --um-shadow-lg: 0 12px 32px rgba(16, 24, 40, 0.14);
+  --um-text-on-sidebar-strong: #FFFFFF;
+  --um-sidebar-item-hover: rgba(255, 255, 255, 0.08);
+  --um-sidebar-item-active: rgba(255, 255, 255, 0.14);
+  --um-sidebar-divider: rgba(255, 255, 255, 0.1);
+  --um-tone-danger-solid: #C2413B;
+  --um-tone-danger-on-solid: #FFFFFF;
 }
 
 [data-theme="dark"] {
@@ -202,6 +209,12 @@
   --um-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
   --um-shadow-md: 0 2px 8px rgba(0, 0, 0, 0.45);
   --um-shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.55);
+  --um-text-on-sidebar-strong: #FFFFFF;
+  --um-sidebar-item-hover: rgba(255, 255, 255, 0.08);
+  --um-sidebar-item-active: rgba(255, 255, 255, 0.14);
+  --um-sidebar-divider: rgba(255, 255, 255, 0.1);
+  --um-tone-danger-solid: #C2413B;
+  --um-tone-danger-on-solid: #FFFFFF;
 }
 
 /* Estilos compartidos de las pantallas de referencia. Usan solo tokens de tokens.css.
@@ -239,6 +252,11 @@ a:hover { text-decoration: underline; }
 .btn svg { width: 16px; height: 16px; flex: none; }
 .btn-primary { background: var(--um-brand-primary); color: var(--um-brand-on-primary); }
 .btn-primary:hover { background: var(--um-brand-primary-hover); }
+.btn-primary:active { background: var(--um-brand-primary-active); }
+.btn-default:active { background: var(--um-bg-muted); }
+.btn-danger { background: var(--um-bg-surface); color: var(--um-tone-danger-fg); border-color: var(--um-tone-danger-border); }
+.btn-danger:hover { background: var(--um-tone-danger-bg); border-color: var(--um-tone-danger-fg); }
+.btn-danger.btn-solid { background: var(--um-tone-danger-solid); color: var(--um-tone-danger-on-solid); border-color: transparent; }
 .btn-default { background: var(--um-bg-surface); color: var(--um-text-primary); border-color: var(--um-border-strong); }
 .btn-default:hover { border-color: var(--um-brand-primary); color: var(--um-text-link); }
 .btn-text { color: var(--um-text-link); }
@@ -250,6 +268,12 @@ a:hover { text-decoration: underline; }
 .btn-block { width: 100%; }
 .btn-icon { width: var(--um-control-height); padding: 0; }
 .btn-icon.btn-sm { width: var(--um-control-height-sm); }
+.btn:disabled, .btn[aria-disabled="true"] { background: var(--um-bg-muted); color: var(--um-text-disabled); border-color: var(--um-border-default); cursor: not-allowed; }
+.btn-text:disabled, .btn-ghost:disabled { background: none; border-color: transparent; }
+/* conteos: texto tabular, sin píldora */
+.count-n { font-size: var(--um-text-xs); font-weight: var(--um-weight-regular); color: var(--um-text-tertiary); font-variant-numeric: tabular-nums; }
+/* etiqueta de sección o columna: minúscula inicial, sin espaciado */
+.label-sm { font-size: var(--um-text-xs); font-weight: var(--um-weight-medium); color: var(--um-text-secondary); }
 
 /* campos */
 .field { display: grid; gap: 6px; }
@@ -261,6 +285,7 @@ a:hover { text-decoration: underline; }
   border: 1px solid var(--um-border-strong); background: var(--um-bg-surface); color: var(--um-text-primary);
 }
 .input:hover, .select:hover { border-color: var(--um-brand-primary); }
+.input[aria-invalid="true"] { border-color: var(--um-tone-danger-fg); }
 .input::placeholder { color: var(--um-text-tertiary); }
 .input-lg { height: var(--um-control-height-lg); }
 .input-wrap { position: relative; display: flex; align-items: center; }
@@ -300,18 +325,18 @@ a:hover { text-decoration: underline; }
 /* app shell compartido: barra lateral, barra superior y menú móvil */
 .app { display: grid; grid-template-columns: 232px minmax(0, 1fr); min-height: 100vh; }
 .side { background: var(--um-bg-sidebar); color: var(--um-text-on-sidebar); display: flex; flex-direction: column; padding: var(--um-space-4) var(--um-space-3); position: sticky; top: 0; height: 100vh; overflow-y: auto; z-index: 30; }
-.side .logo { color: #fff; font-size: var(--um-text-lg); padding: var(--um-space-1) var(--um-space-2) var(--um-space-6); }
+.side .logo { color: var(--um-text-on-sidebar-strong); font-size: var(--um-text-lg); padding: var(--um-space-1) var(--um-space-2) var(--um-space-6); }
 .side nav { display: flex; flex-direction: column; gap: 2px; }
 .side a { color: inherit; display: flex; align-items: center; gap: var(--um-space-3); padding: 8px var(--um-space-3); border-radius: var(--um-radius-md); font-size: var(--um-text-sm); text-decoration: none; }
 .side a svg { width: 16px; height: 16px; opacity: 0.85; flex: none; }
-.side a:hover { background: rgba(255,255,255,0.08); }
-.side a.active { background: rgba(255,255,255,0.14); color: #fff; font-weight: var(--um-weight-medium); }
-.side a .count { margin-left: auto; font-size: 11px; background: rgba(255,255,255,0.14); border-radius: var(--um-radius-full); padding: 1px 7px; }
-.side .group { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; opacity: 0.55; padding: var(--um-space-5) var(--um-space-3) var(--um-space-1); }
-.side .me { margin-top: auto; display: flex; align-items: center; gap: var(--um-space-3); padding: var(--um-space-3) var(--um-space-2) 0; border-top: 1px solid rgba(255,255,255,0.1); }
+.side a:hover { background: var(--um-sidebar-item-hover); }
+.side a.active { background: var(--um-sidebar-item-active); color: var(--um-text-on-sidebar-strong); font-weight: var(--um-weight-medium); }
+.side a .count { margin-left: auto; font-size: var(--um-text-xs); font-variant-numeric: tabular-nums; opacity: 0.8; }
+.side .group { font-size: var(--um-text-xs); font-weight: var(--um-weight-medium); opacity: 0.7; padding: var(--um-space-5) var(--um-space-3) var(--um-space-1); }
+.side .me { margin-top: auto; display: flex; align-items: center; gap: var(--um-space-3); padding: var(--um-space-3) var(--um-space-2) 0; border-top: 1px solid var(--um-sidebar-divider); }
 .avatar { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; font-size: var(--um-text-xs); font-weight: var(--um-weight-semibold); flex: none; background: var(--um-bg-muted); color: var(--um-text-secondary); }
-.side .avatar { background: var(--um-color-teal-600); color: #fff; }
-.side .me b { display: block; color: #fff; font-size: var(--um-text-sm); font-weight: var(--um-weight-medium); }
+.side .avatar { background: var(--um-sidebar-item-active); color: var(--um-text-on-sidebar-strong); }
+.side .me b { display: block; color: var(--um-text-on-sidebar-strong); font-size: var(--um-text-sm); font-weight: var(--um-weight-medium); }
 .side .me span { font-size: var(--um-text-xs); opacity: 0.7; }
 .side .close-menu { display: none; }
 .topbar { height: 56px; display: flex; align-items: center; gap: var(--um-space-2); padding: 0 var(--um-space-6); background: var(--um-bg-surface); border-bottom: 1px solid var(--um-border-default); position: sticky; top: 0; z-index: 20; }
@@ -327,8 +352,8 @@ a:hover { text-decoration: underline; }
   .app { grid-template-columns: 1fr; }
   .side { position: fixed; left: 0; top: 0; bottom: 0; width: 264px; height: auto; transform: translateX(-100%); transition: transform 0.2s ease; box-shadow: var(--um-shadow-lg); }
   .side.open { transform: none; }
-  .side .close-menu { display: inline-flex; position: absolute; right: 8px; top: 10px; color: #fff; }
-  .side .close-menu:hover { background: rgba(255,255,255,0.1); }
+  .side .close-menu { display: inline-flex; position: absolute; right: 8px; top: 10px; color: var(--um-text-on-sidebar-strong); }
+  .side .close-menu:hover { background: var(--um-sidebar-item-hover); }
   .scrim { position: fixed; inset: 0; background: var(--um-bg-overlay); z-index: 25; }
   .scrim.show { display: block; }
   .menu-btn { display: inline-flex; }
@@ -398,14 +423,10 @@ a:hover { text-decoration: underline; }
   padding: var(--um-space-10) var(--um-space-12);
   display: flex; flex-direction: column;
 }
-.brand-panel .logo { color: #fff; font-size: var(--um-text-xl); }
+.brand-panel .logo { color: var(--um-text-on-sidebar-strong); font-size: var(--um-text-xl); }
 .brand-panel .pitch { margin-top: auto; max-width: 440px; position: relative; z-index: 1; }
-.brand-panel h1 { color: #fff; font-size: var(--um-text-4xl); line-height: var(--um-leading-4xl); letter-spacing: -0.02em; margin: 0 0 var(--um-space-4); font-weight: var(--um-weight-semibold); }
-.brand-panel p { margin: 0 0 var(--um-space-8); font-size: var(--um-text-lg); line-height: var(--um-leading-lg); opacity: 0.85; }
-.points { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--um-space-3); }
-.points li { display: flex; gap: var(--um-space-3); align-items: flex-start; font-size: var(--um-text-md); }
-.points svg { flex: none; width: 18px; height: 18px; margin-top: 2px; color: var(--um-color-teal-300); }
-.brand-panel footer { margin-top: var(--um-space-10); font-size: var(--um-text-xs); opacity: 0.6; position: relative; z-index: 1; }
+.brand-panel h1 { color: var(--um-text-on-sidebar-strong); font-size: var(--um-text-4xl); line-height: var(--um-leading-4xl); letter-spacing: -0.02em; margin: 0 0 var(--um-space-4); font-weight: var(--um-weight-semibold); }
+.brand-panel p { margin: 0; font-size: var(--um-text-lg); line-height: var(--um-leading-lg); }
 .arches { position: absolute; right: -80px; top: 40px; width: 420px; height: 420px; opacity: 0.18; pointer-events: none; }
 
 /* formulario */
@@ -435,15 +456,13 @@ a:hover { text-decoration: underline; }
 
 @media (max-width: 900px) {
   .auth { grid-template-columns: 1fr; }
-  .brand-panel { padding: var(--um-space-6) var(--um-space-4); }
-  .brand-panel .pitch { margin-top: var(--um-space-6); }
-  .brand-panel h1 { font-size: var(--um-text-2xl); line-height: var(--um-leading-2xl); }
-  .brand-panel p { margin-bottom: 0; font-size: var(--um-text-md); }
-  .points, .brand-panel footer, .arches { display: none; }
+  /* en móvil la marca se reduce al logo, para que el formulario quede arriba */
+  .brand-panel { padding: var(--um-space-4); }
+  .brand-panel .pitch, .arches { display: none; }
   .form-side { place-items: start center; padding-top: var(--um-space-6); }
   .form-tools { top: var(--um-space-4); right: var(--um-space-3); }
   .form-tools .btn { color: var(--um-text-on-sidebar); }
-  .form-tools .btn:hover { background: rgba(255,255,255,0.1); }
+  .form-tools .btn:hover { background: var(--um-sidebar-item-hover); }
 }
 </style>
 </head>
@@ -460,7 +479,7 @@ a:hover { text-decoration: underline; }
       Umbral
     </div>
 
-    <svg class="arches" viewBox="0 0 400 400" aria-hidden="true" fill="none" stroke="#fff" stroke-width="2">
+    <svg class="arches" viewBox="0 0 400 400" aria-hidden="true" fill="none" stroke="var(--um-text-on-sidebar-strong)" stroke-width="2">
       <path d="M80 380V200a120 120 0 0 1 240 0v180"/>
       <path d="M120 380V210a80 80 0 0 1 160 0v170"/>
       <path d="M160 380V220a40 40 0 0 1 80 0v160"/>
@@ -470,14 +489,8 @@ a:hover { text-decoration: underline; }
     <div class="pitch">
       <h1>Del primer contacto a la llave de la casa.</h1>
       <p>Gestiona clientes, solicitudes de crédito, documentos y radicaciones en un solo lugar.</p>
-      <ul class="points">
-        <li><svg viewBox="0 0 20 20" fill="currentColor"><path d="M10 1a9 9 0 1 0 0 18 9 9 0 0 0 0-18Zm-1.2 13L4.5 9.7l1.4-1.4 2.9 2.9 5.3-5.3 1.4 1.4-6.7 6.7Z"/></svg>Reglas de cada banco evaluadas antes de radicar.</li>
-        <li><svg viewBox="0 0 20 20" fill="currentColor"><path d="M10 1a9 9 0 1 0 0 18 9 9 0 0 0 0-18Zm-1.2 13L4.5 9.7l1.4-1.4 2.9 2.9 5.3-5.3 1.4 1.4-6.7 6.7Z"/></svg>Checklist de documentos que se arma solo según el banco y el perfil.</li>
-        <li><svg viewBox="0 0 20 20" fill="currentColor"><path d="M10 1a9 9 0 1 0 0 18 9 9 0 0 0 0-18Zm-1.2 13L4.5 9.7l1.4-1.4 2.9 2.9 5.3-5.3 1.4 1.4-6.7 6.7Z"/></svg>El comprador carga sus documentos desde el celular, sin crear cuenta.</li>
-      </ul>
     </div>
 
-    <footer>Bancolombia · Fondo Nacional del Ahorro · Banco de Bogotá</footer>
   </section>
 
   <!-- Formulario -->
@@ -496,7 +509,7 @@ a:hover { text-decoration: underline; }
           <label for="email">Correo</label>
           <div class="input-wrap">
             <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M2 4h16v12H2V4Zm2 2v.5l6 4 6-4V6H4Zm12 2.9-6 4-6-4V14h12V8.9Z"/></svg>
-            <input class="input input-lg" id="email" type="email" autocomplete="username" placeholder="nombre@empresa.com" value="paula.rincon@umbral.co">
+            <input class="input input-lg" id="email" type="email" aria-describedby="errorAlert" autocomplete="username" placeholder="nombre@empresa.com" value="paula.rincon@umbral.co">
           </div>
         </div>
 
@@ -504,7 +517,7 @@ a:hover { text-decoration: underline; }
           <div class="label-row"><label for="password">Contraseña</label><a href="#">¿La olvidaste?</a></div>
           <div class="input-wrap">
             <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M6 8V6a4 4 0 1 1 8 0v2h1a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1h1Zm2 0h4V6a2 2 0 1 0-4 0v2Zm1 3v3h2v-3H9Z"/></svg>
-            <input class="input input-lg has-suffix" id="password" type="password" autocomplete="current-password" value="contrasena-demo">
+            <input class="input input-lg has-suffix" id="password" type="password" aria-describedby="errorAlert" autocomplete="current-password" value="contrasena-demo">
             <button class="btn btn-ghost btn-icon btn-sm suffix" id="togglePwd" type="button" aria-label="Mostrar contraseña" aria-pressed="false">
               <svg viewBox="0 0 20 20" fill="currentColor"><path d="M10 4C5 4 1.7 8.1 1 10c.7 1.9 4 6 9 6s8.3-4.1 9-6c-.7-1.9-4-6-9-6Zm0 10a4 4 0 1 1 0-8 4 4 0 0 1 0 8Zm0-2a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z"/></svg>
             </button>
@@ -550,9 +563,12 @@ a:hover { text-decoration: underline; }
   });
   var alertEl = document.getElementById("errorAlert");
   var submit = document.getElementById("submitBtn");
-  function reset() { alertEl.classList.remove("show"); submit.removeAttribute("aria-busy"); submit.lastElementChild.textContent = "Ingresar"; }
-  document.getElementById("loginForm").addEventListener("submit", function (e) { e.preventDefault(); submit.setAttribute("aria-busy", "true"); submit.lastElementChild.textContent = "Ingresando…"; setTimeout(function () { reset(); alertEl.classList.add("show"); }, 1200); });
-  document.getElementById("demoError").addEventListener("click", function () { reset(); alertEl.classList.add("show"); });
+  // El error marca los dos campos como inválidos (no se dice cuál falló, para no revelar si el correo existe).
+  var fields = [document.getElementById("email"), pwd];
+  function showError() { alertEl.classList.add("show"); fields.forEach(function (f) { f.setAttribute("aria-invalid", "true"); }); }
+  function reset() { fields.forEach(function (f) { f.removeAttribute("aria-invalid"); }); alertEl.classList.remove("show"); submit.removeAttribute("aria-busy"); submit.lastElementChild.textContent = "Ingresar"; }
+  document.getElementById("loginForm").addEventListener("submit", function (e) { e.preventDefault(); submit.setAttribute("aria-busy", "true"); submit.lastElementChild.textContent = "Ingresando…"; setTimeout(function () { reset(); showError(); }, 1200); });
+  document.getElementById("demoError").addEventListener("click", function () { reset(); showError(); });
   document.getElementById("demoLoading").addEventListener("click", function () { reset(); submit.setAttribute("aria-busy", "true"); submit.lastElementChild.textContent = "Ingresando…"; });
   document.getElementById("demoReset").addEventListener("click", reset);
 

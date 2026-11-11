@@ -102,9 +102,9 @@ import { lightTheme, darkTheme } from "../../design/generated/antd-theme";
 | Botón | `Button` de Ant Design | Primario: una sola acción principal por vista. `danger` solo para acciones destructivas (rechazar, revocar). |
 | Campo de texto y monto | `Input`, `InputNumber` | Monto con prefijo `COP`, alineado a la derecha y con separador de miles. |
 | Select | `Select` | Las opciones siempre vienen de la API (catálogos). |
-| Badge de estado | `Tag` con las clases de tono | Punto de color + etiqueta de la API. |
+| Badge de estado | `Tag` con las clases de tono | Punto de color + etiqueta de la API. Es la única píldora con color: los conteos de pestañas y menús van como texto tabular, sin fondo. |
 | Alerta | `Alert` | Mensajes de reglas bancarias: `warning` para datos faltantes y `error` para bloqueos. |
-| Tabla | `Table` + TanStack Table para el estado (orden, filtros, selección) | Encabezado en mayúsculas pequeñas, filas de 44 px y hover en `brand.subtle`. |
+| Tabla | `Table` + TanStack Table para el estado (orden, filtros, selección) | Encabezado en minúscula inicial, 12 px, peso medio y `text.secondary`. Filas de 52 px cuando la celda tiene dos líneas (44 px si es de una), y hover en `brand.subtle`. El orden se activa con un botón dentro del encabezado, para que funcione con teclado; la flecha solo aparece en la columna ordenada. Los filtros visibles no se repiten como chips: los chips son solo para filtros que no se ven en la barra. En móvil, los filtros van en una hoja inferior detrás de un botón "Filtros (n)". |
 | Progreso | `Progress` | Completitud: total, datos y documentos por separado. |
 | Slot de documento | Componente propio | Estado, archivo vigente, vencimiento y motivo de rechazo visible para el comprador. |
 | Layout | `Layout` + `Menu` | Barra lateral `bg.sidebar` y contenido sobre `bg.canvas`. |
@@ -112,9 +112,22 @@ import { lightTheme, darkTheme } from "../../design/generated/antd-theme";
 | Visor de documentos | Componente propio sobre PDF.js | Zoom, páginas, girar y descargar por URL prefirmada. Las imágenes se muestran directo. |
 | Carga de documentos | `Upload.Dragger` en web; en móvil, botones "Tomar foto" y "Elegir archivo" | Valida tipo y tamaño antes de enviar; muestra subida, análisis antivirus y resultado. |
 
+## Reglas visuales
+
+- **Etiquetas:** nada de mayúsculas espaciadas. Encabezados de tabla, etiquetas de KPI, grupos del menú y grupos de listas van en minúscula inicial, `text.xs` (12 px), peso medio. No se usan tamaños fuera de la escala (no hay 11 px).
+- **Sombras:** las tarjetas que están en el flujo de la página llevan borde y fondo, sin sombra. `shadow.md` y `shadow.lg` son solo para lo que flota: menús, toasts, drawer y hojas inferiores.
+- **Teal es estado, no avance:** las barras de completitud siempre van en `brand.primary`. El teal (`accent`) queda para "Lista para radicar" y exonerado.
+- **Conteos de alerta sobre color sólido** (documentos pendientes en la navegación del portal): `tone.danger.solid` con `tone.danger.onSolid`.
+- **Menú lateral:** colores desde `sidebar.itemHover`, `sidebar.itemActive`, `sidebar.divider` y `text.onSidebarStrong`; nada escrito a mano.
+- **Una acción principal por vista, y que se pueda ejecutar.** Si la acción natural está bloqueada (por ejemplo, "Marcar lista para radicar" con documentos pendientes), queda deshabilitada con la razón visible, y el primario pasa a lo que desbloquea ("Revisar 3 documentos").
+- **El comprador ve una sola métrica de avance:** "10 de 16 documentos listos", igual en el inicio y en la pantalla de documentos. El porcentaje interno de completitud es del backoffice.
+- **Lo destructivo no se destaca:** "Ya no quiero continuar" va en `text.secondary`; lo urgente (vencimiento del acceso) va arriba, en la tarjeta de estado.
+
 ## Accesibilidad
 
-- Contraste verificado en el build (`generated/contrast-report.md`): texto normal 4,5:1 y elementos de interfaz 3:1, en los dos temas.
+- Contraste verificado en el build (`generated/contrast-report.md`): texto normal 4,5:1 y elementos de interfaz 3:1, en los dos temas. Incluye texto terciario sobre fondos de fila seleccionada (`brand.subtle`), sobre `bg.canvas` y `bg.subtle`.
+- Los diálogos con `aria-modal` (drawer de revisión, hojas inferiores) mantienen el foco adentro y lo devuelven al cerrar.
+- Íconos que comunican algo (alerta de inactividad) llevan texto oculto, no solo `title`.
 - Foco visible con `focus.ring` en todo control interactivo.
 - El estado nunca depende solo del color: el badge siempre lleva el texto.
 - Los mensajes de error de un campo van debajo del campo y se enlazan con `aria-describedby`.

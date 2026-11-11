@@ -8,7 +8,7 @@ Generado por `build-tokens.mjs`. Texto normal exige 4,5:1; elementos de interfaz
 | light | `text.primary` | `bg.canvas` | 16.13 | 4.5 | sí |
 | light | `text.secondary` | `bg.surface` | 7.58 | 4.5 | sí |
 | light | `text.secondary` | `bg.canvas` | 6.99 | 4.5 | sí |
-| light | `text.tertiary` | `bg.surface` | 4.91 | 4.5 | sí |
+| light | `text.tertiary` | `bg.surface` | 5.52 | 4.5 | sí |
 | light | `text.link` | `bg.surface` | 8.21 | 4.5 | sí |
 | light | `text.onSidebar` | `bg.sidebar` | 11.89 | 4.5 | sí |
 | light | `brand.onPrimary` | `brand.primary` | 8.21 | 4.5 | sí |
@@ -21,6 +21,12 @@ Generado por `build-tokens.mjs`. Texto normal exige 4,5:1; elementos de interfaz
 | light | `tone.success.fg` | `tone.success.bg` | 5.39 | 4.5 | sí |
 | light | `tone.warning.fg` | `tone.warning.bg` | 5.41 | 4.5 | sí |
 | light | `tone.danger.fg` | `tone.danger.bg` | 6.34 | 4.5 | sí |
+| light | `text.tertiary` | `bg.canvas` | 5.10 | 4.5 | sí |
+| light | `text.tertiary` | `bg.subtle` | 5.33 | 4.5 | sí |
+| light | `text.tertiary` | `brand.subtle` | 4.99 | 4.5 | sí |
+| light | `text.secondary` | `brand.subtle` | 6.84 | 4.5 | sí |
+| light | `text.onSidebarStrong` | `bg.sidebar` | 15.35 | 4.5 | sí |
+| light | `tone.danger.onSolid` | `tone.danger.solid` | 5.11 | 4.5 | sí |
 | dark | `text.primary` | `bg.surface` | 14.45 | 4.5 | sí |
 | dark | `text.primary` | `bg.canvas` | 15.65 | 4.5 | sí |
 | dark | `text.secondary` | `bg.surface` | 8.21 | 4.5 | sí |
@@ -38,3 +44,9 @@ Generado por `build-tokens.mjs`. Texto normal exige 4,5:1; elementos de interfaz
 | dark | `tone.success.fg` | `tone.success.bg` | 6.92 | 4.5 | sí |
 | dark | `tone.warning.fg` | `tone.warning.bg` | 7.30 | 4.5 | sí |
 | dark | `tone.danger.fg` | `tone.danger.bg` | 5.46 | 4.5 | sí |
+| dark | `text.tertiary` | `bg.canvas` | 6.43 | 4.5 | sí |
+| dark | `text.tertiary` | `bg.subtle` | 5.51 | 4.5 | sí |
+| dark | `text.tertiary` | `brand.subtle` | 5.32 | 4.5 | sí |
+| dark | `text.secondary` | `brand.subtle` | 7.36 | 4.5 | sí |
+| dark | `text.onSidebarStrong` | `bg.sidebar` | 17.43 | 4.5 | sí |
+| dark | `tone.danger.onSolid` | `tone.danger.solid` | 5.11 | 4.5 | sí |
