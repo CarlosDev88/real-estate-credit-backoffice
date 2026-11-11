@@ -7,6 +7,8 @@ __pycache__/
 .ruff_cache/
 htmlcov/
 .coverage
+# Salidas de las verificaciones para el reporte del CI
+.ci-report/
 staticfiles/
 media/
 

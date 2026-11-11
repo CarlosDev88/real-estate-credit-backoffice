@@ -464,7 +464,8 @@ def load_coverage(ctx: Context) -> tuple[float, list[CoverageModule]] | None:
 def check_coverage(ctx: Context) -> Verdict:
     succeeded = ctx.outcome("coverage") == SUCCESS
     status = Status.PASSED if succeeded else Status.FAILED
-    suffix = " (con tests fallidos)" if ctx.outcome("tests") == FAILURE else ""
+    tests_failed = ctx.outcome("tests") == FAILURE
+    suffix = " · con tests fallidos" if tests_failed else ""
     minimum = format_minimum(ctx.coverage_min)
     data = load_coverage(ctx)
     if data is None:
@@ -475,7 +476,11 @@ def check_coverage(ctx: Context) -> Verdict:
         )
         return Verdict(status, summary + suffix)
     total, modules = data
-    summary = f"{format_percent(total)} (mínimo {minimum}){suffix}"
+    percent = format_percent(total)
+    # Con tests fallidos se separa con "·" para no encadenar paréntesis.
+    summary = (
+        f"{percent} · mínimo {minimum}{suffix}" if tests_failed else f"{percent} (mínimo {minimum})"
+    )
     if succeeded:
         return Verdict(status, summary)
     candidates = [module for module in modules if "migrations" not in PurePath(module.path).parts]
@@ -626,6 +631,24 @@ def contract_changes(committed: Any, generated: Any) -> tuple[list[str], list[st
     )
 
 
+# Signo de cada cambio → (singular, plural) para el resumen, en este orden.
+ROUTE_CHANGE_LABELS = {
+    "+": ("ruta nueva", "rutas nuevas"),
+    "-": ("ruta quitada", "rutas quitadas"),
+    "~": ("ruta cambiada", "rutas cambiadas"),
+}
+SCHEMA_CHANGE_LABELS = {
+    "+": ("esquema nuevo", "esquemas nuevos"),
+    "-": ("esquema quitado", "esquemas quitados"),
+    "~": ("esquema cambiado", "esquemas cambiados"),
+}
+
+
+def _change_counts(changes: Sequence[str], labels: Mapping[str, tuple[str, str]]) -> list[str]:
+    counts = Counter(change[0] for change in changes)
+    return [plural(counts[sign], *label) for sign, label in labels.items() if counts[sign]]
+
+
 def check_openapi(ctx: Context) -> Verdict:
     if ctx.outcome("openapi") == SUCCESS:
         return Verdict(Status.PASSED, "Al día")
@@ -658,15 +681,11 @@ def check_openapi(ctx: Context) -> Verdict:
     generated = _load_json(ctx, "openapi.generated.json")
     if committed is not None and generated is not None and committed != generated:
         routes, schemas = contract_changes(committed, generated)
-        parts = []
-        if routes:
-            parts.append(plural(len(routes), "ruta", "rutas"))
-        if schemas:
-            parts.append(plural(len(schemas), "esquema", "esquemas"))
-        verb = "cambió" if len(routes) + len(schemas) == 1 else "cambiaron"
-        summary = f"Desactualizado: {verb} {' y '.join(parts)}" if parts else "Desactualizado"
+        parts = _change_counts(routes, ROUTE_CHANGE_LABELS) + _change_counts(
+            schemas, SCHEMA_CHANGE_LABELS
+        )
+        summary = f"Desactualizado: {' · '.join(parts)}" if parts else "Desactualizado"
         entries = routes + schemas or ["Cambios fuera de paths y components.schemas"]
-        entries += tail(ctx.read_text("openapi-diff.txt"))
         title = f"{OPENAPI}: cambios sin regenerar"
         return Verdict(Status.FAILED, summary, (Detail(title, entries),))
     details = _tail_details(f"{OPENAPI}: salida de spectacular", text)

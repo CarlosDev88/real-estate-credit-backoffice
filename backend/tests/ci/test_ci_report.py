@@ -147,7 +147,7 @@ def test_failures_and_warnings_together(report_dir: Path) -> None:
     assert row(markdown, "Mypy") == ("❌", "2 errores en 2 archivos")
     assert row(markdown, "Migraciones") == ("❌", "Faltan migraciones en: crm, documents")
     assert row(markdown, "Tests") == ("❌", "2 pasan · 3 fallan · 1 saltado (6 en 2 min 14 s)")
-    assert row(markdown, "Cobertura") == ("❌", "93,10 % (mínimo 95 %) (con tests fallidos)")
+    assert row(markdown, "Cobertura") == ("❌", "93,10 % · mínimo 95 % · con tests fallidos")
     assert row(markdown, "Advertencias") == (
         "⚠️",
         "4 (DeprecationWarning: 3, RuntimeWarning: 1)",
@@ -250,7 +250,7 @@ def test_coverage_measured_after_failed_tests(report_dir: Path) -> None:
 
     markdown = run_report(github_env(report_dir, tests="failure"))
 
-    assert row(markdown, "Cobertura") == ("✅", "98,31 % (mínimo 95 %) (con tests fallidos)")
+    assert row(markdown, "Cobertura") == ("✅", "98,31 % · mínimo 95 % · con tests fallidos")
 
 
 def test_long_output_is_truncated(report_dir: Path) -> None:
@@ -366,10 +366,11 @@ COMMITTED = {
 
 def change_routes_and_schemas(contract: dict[str, Any]) -> None:
     contract["paths"]["/api/v1/clients"] = {"get": operation("cambió"), "post": operation()}
-    contract["paths"]["/api/v1/clients/{id}"] = {"delete": operation()}
+    contract["paths"]["/api/v1/clients/{id}"] = {"delete": operation(), "patch": operation()}
     del contract["paths"]["/api/v1/legacy"]
     contract["components"]["schemas"]["Client"] = {"type": "string"}
     del contract["components"]["schemas"]["Legacy"]
+    contract["components"]["schemas"]["Note"] = {"type": "object"}
 
 
 def remove_one_route(contract: dict[str, Any]) -> None:
@@ -385,16 +386,19 @@ def change_only_info(contract: dict[str, Any]) -> None:
     [
         (
             change_routes_and_schemas,
-            "Desactualizado: cambiaron 3 rutas y 2 esquemas",
+            "Desactualizado: 2 rutas nuevas · 1 ruta quitada · 1 ruta cambiada · "
+            "1 esquema nuevo · 1 esquema quitado · 1 esquema cambiado",
             [
                 "~ GET /api/v1/clients",
                 "+ DELETE /api/v1/clients/{id}",
+                "+ PATCH /api/v1/clients/{id}",
                 "- GET /api/v1/legacy",
                 "~ esquema Client",
                 "- esquema Legacy",
+                "+ esquema Note",
             ],
         ),
-        (remove_one_route, "Desactualizado: cambió 1 ruta", ["- GET /api/v1/legacy"]),
+        (remove_one_route, "Desactualizado: 1 ruta quitada", ["- GET /api/v1/legacy"]),
         (
             change_only_info,
             "Desactualizado",
@@ -409,14 +413,12 @@ def test_outdated_contract_lists_what_changed(
     change(generated)
     write_json(report_dir / "openapi.committed.json", COMMITTED)
     write_json(report_dir / "openapi.generated.json", generated)
-    stat = " contracts/openapi.json | 4 ++--\n 1 file changed, 2 insertions(+), 2 deletions(-)\n"
-    (report_dir / "openapi-diff.txt").write_text(stat, encoding="utf-8")
 
     markdown = run_report(github_env(report_dir, openapi="failure"))
 
     assert row(markdown, "Contrato OpenAPI") == ("❌", summary)
     lines = code_lines(detail_block(markdown, "Contrato OpenAPI: cambios sin regenerar"))
-    assert lines == [*entries, *stat.rstrip("\n").splitlines()]
+    assert lines == entries  # Sin el diff --stat: la lista ya dice qué cambió.
 
 
 def test_schema_errors_without_summary(report_dir: Path) -> None:
@@ -444,7 +446,7 @@ def test_missing_files_after_failed_steps(workspace: Path) -> None:
     assert row(markdown, "Mypy")[1] == "Falló (ver el log)"
     assert row(markdown, "Migraciones")[1] == "Falló (ver el log)"
     assert row(markdown, "Cobertura")[1] == (
-        "Por debajo del mínimo (95 %) o sin datos (ver el log) (con tests fallidos)"
+        "Por debajo del mínimo (95 %) o sin datos (ver el log) · con tests fallidos"
     )
     # Si los tests corrieron y no hay warnings.json, no hubo warnings.
     assert row(markdown, "Advertencias") == ("✅", "Sin advertencias")

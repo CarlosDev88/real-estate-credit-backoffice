@@ -128,6 +128,8 @@ Cuando exista el CI del frontend (`TAREA-frontend-base.md`, F0, parte 6), se usa
 - El paso mantiene `--fail-on-warn`: una advertencia del esquema es ❌ (bloquea como hoy), con los avisos de `spectacular` en su `<details>`.
 - Estados de la fila: ✅ al día; ❌ desactualizado, con las rutas y métodos agregados, quitados o cambiados (y los esquemas de `components` que cambiaron), calculados comparando el JSON generado con el del repo, porque `git diff --stat` solo da conteos de líneas; ❌ con advertencias del esquema.
 - "Las advertencias nunca hacen fallar el job" aplica solo a los warnings de pytest.
+- El resumen separa los cambios por tipo: `Desactualizado: 1 ruta nueva · 4 esquemas cambiados` (rutas nuevas, quitadas y cambiadas; luego esquemas nuevos, quitados y cambiados).
+- No se captura `git diff --stat`: la lista de rutas y esquemas ya dice qué cambió, y el log del paso muestra el diff completo. El contrato se regenera de forma estable (dos corridas en el mismo entorno dan el mismo archivo, byte a byte), así que el diff solo trae lo que cambió.
 
 ### 2. Warnings de pytest
 - Se capturan con el hook `pytest_warning_recorded` en `tests/conftest.py`. El hook acumula en memoria y escribe `$CI_REPORT_DIR/warnings.json` una sola vez, en `pytest_sessionfinish`. Si `CI_REPORT_DIR` no está definida, no hace nada. Lleva tipos y pasa mypy.
@@ -137,7 +139,7 @@ Cuando exista el CI del frontend (`TAREA-frontend-base.md`, F0, parte 6), se usa
 
 ### 3. Cobertura
 - Paso aparte, **"Coverage"**: `python -m coverage report --fail-under=95`. El paso de tests queda sin `--cov-fail-under` y mide `--cov=apps --cov=scripts` en una sola corrida, con un solo `coverage.xml` y un solo mínimo.
-- Si el paso de tests falla, Coverage corre igual cuando existe el archivo de datos, y la fila lo marca "(con tests fallidos)". Si no hay datos, ⏭️.
+- Si el paso de tests falla, Coverage corre igual cuando existe el archivo de datos, y la fila lo marca: `98,40 % · mínimo 95 % · con tests fallidos` (sin paréntesis encadenados; sin tests fallidos queda `98,41 % (mínimo 95 %)`). Si no hay datos, ⏭️.
 - La lista de los 5 módulos con menos cobertura excluye las migraciones y los archivos sin sentencias. La configuración de coverage no cambia: el total sigue siendo el mismo.
 - En "X de N", N es el número de verificaciones que pueden bloquear: 7 (todas menos "Advertencias"). Las ⏭️ cuentan en N y el encabezado las indica (`❌ 1 de 7 fallaron · ⏭️ 6 no corrieron`; en verde, `✅ 7 de 7 pasaron`).
 
