@@ -187,6 +187,10 @@ Se resuelven en `TAREA-applications-listado.md`. Mientras tanto, se simulan con 
 - Conteos de las pestañas del listado y qué estados agrupa cada una (no los puede definir el frontend).
 - Marca de "ya no cumple" en solicitudes `READY_TO_FILE` y nombre corto del banco (filas 9 y 10 de esa spec).
 - Etiqueta pública del estado de cada documento para el comprador ("Te falta", "Corrígelo", "En revisión", "No aplica"). Hoy el DTO del comprador trae el código; el texto no puede escribirse en el frontend. Va en el DTO de `/buyer/.../document-slots` (tarea pequeña aparte, después de la fase 10).
+- Etiqueta del rol del usuario interno: `/auth/me` trae `role` y `roles` como códigos, sin texto. Mientras no exista, bajo el avatar van el nombre y el correo.
+- Casilla "Mantener la sesión en este equipo" del login: `/auth/login` solo recibe correo y contraseña, y la sesión dura 8 h fijas. Se quita.
+- Búsqueda global de la barra superior: no hay endpoint. Se quita.
+- Campana de notificaciones internas de la barra superior: no hay endpoint. Se quita.
 
 ## Pruebas
 - **Unitarias** (Vitest + Testing Library): componentes de `ui`, formularios con validación, manejo de `ApiError` y formato de montos.
@@ -206,3 +210,58 @@ Se resuelven en `TAREA-applications-listado.md`. Mientras tanto, se simulan con 
 
 ## Precisiones acordadas
 _(se completan al resolver las ambigüedades de cada fase)_
+
+### F0
+
+**Versiones** (fijadas exactas en `package.json`, sin `^`):
+- Node 24 LTS (`engines >=24`) y pnpm 12.18.0 con `packageManager` (corepack).
+- next y eslint-config-next 16.4.6; react y react-dom 19.3.1; TypeScript 5.9.3. La 7.x no es compatible con `typescript-eslint` (`<6.1`) ni con `openapi-typescript` (`^5`).
+- antd 6.7.0, `@ant-design/cssinjs` 2.1.2 (la misma que usa antd) y `@ant-design/nextjs-registry` 1.3.0; tailwindcss y `@tailwindcss/postcss` 4.3.5.
+- `@tanstack/react-query` 5.107.1 y `@tanstack/react-table` 9.3.1; react-hook-form 7.92.0, zod 4.6.7 y `@hookform/resolvers` 5.9.2. La línea 5 se prefiere a la 6 y la 7, que salieron con pocos días de diferencia.
+- openapi-typescript 7.13.0 y openapi-fetch 0.17.0; pdfjs-dist 6.5.438.
+- vitest y `@vitest/coverage-v8` 5.1.0, vite 8.3.x, `@vitejs/plugin-react` 6.3.0, jsdom 31.0.0; Testing Library: react 16.3.3, dom 10.4.2, user-event 14.6.9 y jest-dom 7.0.1; msw 3.0.5; `@playwright/test` 1.65.0 y `@axe-core/playwright` 4.14.0.
+- eslint 10.14.0, typescript-eslint 8.72.2 y prettier 3.9.10. La línea 9.x de ESLint ya no tiene soporte. Se aceptan los avisos de peer dependencies de `eslint-plugin-react`, `eslint-plugin-import` y `eslint-plugin-jsx-a11y` (vienen con `eslint-config-next` y declaran ESLint hasta 9); con ESLint 10 funcionan. **Pendiente:** revisar cuando `eslint-config-next` declare soporte oficial para ESLint 10.
+- Antigüedad mínima: si una versión aprobada cae dentro de la antigüedad mínima de publicación de pnpm (`minimumReleaseAge`), se usa la versión anterior. No se agregan excepciones en `pnpm-workspace.yaml`. Aplica a msw y vite cuando entren.
+- Fuentes: `@fontsource/inter` y `@fontsource/jetbrains-mono` 5.3.0, solo con los pesos que usan los tokens (Inter 400, 500, 600 y 700; Mono 400 y 500). Declaran las familias con el mismo nombre que usan los tokens y `antd-theme.ts`, así que no se sobrescribe nada, y no hay peticiones a Google.
+
+**Backend local y mismo origen:**
+- En local (`AUTH_COOKIE_SECURE=false`) las cookies no llevan el prefijo `__Host-`: son `app_access` y `app_refresh`. Los nombres se configuran por entorno (`AUTH_ACCESS_COOKIE` y `AUTH_REFRESH_COOKIE`).
+- El rewrite de `/api/v1` va desde la parte 1. Al cerrarla se verifica con `pnpm dev`: login, cookies guardadas en `localhost:3000`, `/auth/me` con `200` y una escritura con `X-CSRFToken` (`POST /auth/refresh` y luego `POST /auth/logout`). Si algo falla, se para y se reporta.
+- Usuario de prueba: un `ADVISOR` creado en la base local, con las credenciales en `frontend/.env.local` (`E2E_USER_EMAIL` y `E2E_USER_PASSWORD`), que no se versiona (`.env*.local` en `.gitignore`).
+
+**Sesión interna:**
+- El refresh se dispara con `401 NOT_AUTHENTICATED` y con `401 SESSION_EXPIRED`. Cuando vence la cookie de acceso, el navegador deja de enviarla y llega `NOT_AUTHENTICATED`.
+- El refresh se serializa:
+  - Entre pestañas, con `navigator.locks` (candado `um-auth-refresh`). Con el candado tomado, si otra pestaña refrescó después de que salió la petición, solo se reintenta. Si no, `POST /auth/refresh`, se guarda la hora y se reintenta la petición una vez.
+  - Dentro de la pestaña, los `401` simultáneos comparten una sola promesa. Sin `navigator.locks`, queda solo esta.
+- En `localStorage` va solo la hora del último refresh, nunca tokens ni datos de la sesión. Lecturas y escrituras van con try/catch; si fallan, se actúa como si no hubiera dato.
+- `/auth/login`, `/auth/refresh`, `/auth/logout` y `/buyer/*` no disparan el refresh.
+- Si el refresh falla, se va a `/login?next=…`. `next` solo acepta rutas internas; un valor externo se ignora.
+- Pruebas obligatorias:
+  - dos `401` a la vez en la misma pestaña hacen un solo refresh;
+  - con un refresh reciente de otra pestaña, no se vuelve a refrescar;
+  - un refresh fallido lleva a `/login` con un `next` interno;
+  - un `next` externo se ignora.
+
+**Guarda del `(backoffice)`:**
+- `proxy.ts` solo redirige a `/login?next=…` cuando no hay cookie de acceso ni de refresh. Es una decisión de experiencia de uso: no mira permisos ni datos. La seguridad la pone la API.
+- El layout del grupo pide `/auth/me` con TanStack Query y muestra el shell con un esqueleto mientras carga. Un `401` sigue el flujo de refresh; si falla, va al login.
+- `/login` con una sesión válida redirige a `next` o al destino por defecto.
+
+**Login (mockup `login.html`):**
+- Se quita la casilla "Mantener la sesión en este equipo" (ver "Brechas").
+- El enlace "¿La olvidaste?" queda fuera de F0. **Pendiente:** pantallas de recuperación de contraseña sobre `POST /auth/password-reset-requests` y `POST /auth/password-resets/confirm`, que ya existen.
+- Errores:
+  - **Título del aviso:** el `message` de la API.
+  - **`INVALID_CREDENTIALS`:** el texto de ayuda del mockup, con `aria-invalid` en los dos campos y sin decir cuál falló.
+  - **`RATE_LIMITED` (`429`):** "Vuelve a intentarlo en N minutos", con N calculado desde `Retry-After`.
+  - **`USER_INACTIVE` y cualquier otro código:** solo el `message`.
+
+**Shell y menú:**
+- Se quitan la búsqueda global y la campana (ver "Brechas"). Bajo el avatar van el nombre y el correo.
+- El menú se arma desde una configuración de navegación: ruta, texto, ícono, grupo y permiso exigido. Solo aparecen las rutas que existen. En F0, "Solicitudes" (`applications.read`), en el grupo "Comercial". Un grupo sin entradas visibles no se pinta. El conteo de "Mi día" entra con su pantalla, si la API lo da.
+- Destino después del login: `next`, si es interno y el usuario puede verlo. Si no, la primera entrada del menú que su permiso le deja ver. Si no ve ninguna, una pantalla en el shell: "Tu usuario todavía no tiene módulos habilitados. Pídele acceso a un administrador."
+
+**Página de prueba:** `/dev/ui`, solo en desarrollo (`notFound()` en producción), sin sesión ni API. Muestra tokens, componentes de Ant Design con el tema y los componentes de `components/ui`. Playwright la usa para `axe` en claro y en oscuro y para revisarla en 1440, 1280 y 390 px.
+
+**Saltos de línea:** los archivos de `frontend/` van en LF (Prettier `endOfLine: "lf"`), y se verifica con `git ls-files --eol`.
