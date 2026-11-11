@@ -108,6 +108,7 @@ Las de siempre:
 - `CELERY_TASK_ALWAYS_EAGER` se lee del entorno (`false` por defecto). `CELERY_TASK_EAGER_PROPAGATES = False` fijo en `base.py`; `test.py` mantiene `True`.
 - En modo inmediato Celery ignora el `countdown` de `retry()`: los reintentos corren seguidos dentro de la petición. Se acepta: el estado final es el de hoy (`PENDING` para el análisis, `FAILED` con `STORAGE_UNAVAILABLE` para el paquete). Las tareas no cambian.
 - Un fallo de la tarea en modo inmediato nunca llega a la petición del usuario: queda en el log con `logger.exception` y el id del archivo o del paquete.
+- En modo inmediato, Celery igual pide un productor al broker al encolar (`producer_or_acquire`). Por eso, con `CELERY_TASK_ALWAYS_EAGER=true` el broker es siempre `memory://localhost/` y no se guardan resultados, aunque haya `REDIS_URL`. Sin modo inmediato, `REDIS_URL` vacío impide arrancar: ningún worker vería las tareas. Verificado en un proceso real: 0 conexiones al puerto 6379.
 - Aviso en `.env.example` y en el README: el modo inmediato es para `DOCUMENT_SCANNER=fake`; con `clamd` caído, una carga puede esperar varios minutos.
 - Pruebas, con almacenamiento que falla y `propagates=False`: la carga responde lo de siempre y el archivo queda `PENDING`; el paquete responde lo de siempre y queda `FAILED`; un error inesperado de la tarea no convierte la respuesta en 500.
 

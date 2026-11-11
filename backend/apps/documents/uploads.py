@@ -142,12 +142,14 @@ def expires_on(slot: ApplicationDocumentSlot, document_date: date | None) -> dat
 def _enqueue_scan(file_object_id: str) -> None:
     """Encola el análisis. Si el broker no responde, la carga ya quedó guardada: el
     archivo sigue ``PENDING`` y lo retoma ``requeue_pending_scans``."""
-    from apps.documents.tasks import scan_file_object
+    from apps.documents.tasks import log_eager_failure, scan_file_object
 
     try:
-        scan_file_object.delay(file_object_id)
+        result = scan_file_object.delay(file_object_id)
     except OperationalError:
         logger.warning("No se pudo encolar el análisis del archivo %s", file_object_id)
+        return
+    log_eager_failure(result, f"Análisis del archivo {file_object_id}")
 
 
 def _save_version(

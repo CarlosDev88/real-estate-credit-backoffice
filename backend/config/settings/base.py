@@ -4,6 +4,8 @@ from pathlib import Path
 import environ
 from corsheaders.defaults import default_headers
 
+from config.runtime_services import cache_settings, celery_broker_url, celery_result_backend
+
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 env = environ.Env(DJANGO_DEBUG=(bool, False))
@@ -154,14 +156,11 @@ CSRF_COOKIE_SAMESITE = "Lax"
 CSRF_COOKIE_SECURE = env.bool("AUTH_COOKIE_SECURE", default=True)
 
 # Caché compartida: la usan los límites de consumo, que no pueden vivir en memoria.
-CACHES = {
-    "default": {
-        "BACKEND": "django.core.cache.backends.redis.RedisCache",
-        "LOCATION": env("REDIS_CACHE_URL", default="redis://redis:6379/1"),
-        "KEY_PREFIX": "mvp_credit",
-        "TIMEOUT": 300,
-    }
-}
+# `redis` | `database` (`database` es el modo local simple: tabla de `createcachetable`).
+CACHES = cache_settings(
+    env("CACHE_BACKEND", default="redis"),
+    env("REDIS_CACHE_URL", default="redis://redis:6379/1"),
+)
 
 # --- Autenticación interna (secciones 4, 7 y 9.1) ------------------------------------
 # Clave dedicada para firmar los JWT; distinta de SECRET_KEY y de alta entropía.
@@ -221,8 +220,14 @@ METADATA_ON_DEMAND_CATALOGS = ["municipality"]
 # Configuración pública que el frontend usa para mostrar u ocultar funciones.
 PUBLIC_FEATURES = {"manual_filing": True, "buyer_magic_link": True}
 
-CELERY_BROKER_URL = env("REDIS_URL", default="redis://redis:6379/0")
-CELERY_RESULT_BACKEND = CELERY_BROKER_URL
+# Con `CELERY_TASK_ALWAYS_EAGER=true` (modo local simple) las tareas corren en el mismo
+# proceso, después del commit. Un fallo de la tarea nunca llega a la petición: queda en
+# el log y en el estado del archivo o del paquete. Las pruebas sí lo propagan (test.py).
+CELERY_TASK_ALWAYS_EAGER = env.bool("CELERY_TASK_ALWAYS_EAGER", default=False)
+CELERY_TASK_EAGER_PROPAGATES = False
+REDIS_URL = env("REDIS_URL", default="redis://redis:6379/0")
+CELERY_BROKER_URL = celery_broker_url(REDIS_URL, always_eager=CELERY_TASK_ALWAYS_EAGER)
+CELERY_RESULT_BACKEND = celery_result_backend(REDIS_URL, always_eager=CELERY_TASK_ALWAYS_EAGER)
 CELERY_TASK_ACKS_LATE = True
 CELERY_TASK_TIME_LIMIT = 300
 # Las tareas solo reciben ids; nunca archivos ni datos personales.
