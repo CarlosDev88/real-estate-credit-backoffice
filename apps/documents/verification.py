@@ -111,7 +111,7 @@ def _active_slots(application: CreditApplication, *, lock: bool) -> list[Applica
     return list(slots)
 
 
-def _presentation_order(slot: ApplicationDocumentSlot) -> tuple[Any, ...]:
+def presentation_order(slot: ApplicationDocumentSlot) -> tuple[Any, ...]:
     """El orden de ``dossier.slots_queryset``: la solicitud primero, después cada
     participante en el orden en que entró."""
     participant = slot.participant
@@ -185,7 +185,7 @@ def check_dossier(application: CreditApplication, *, lock: bool = False) -> Doss
     def label(slot: ApplicationDocumentSlot) -> str:
         return slot_label(slot, sizes[slot.participant_id, slot.document_type_id])
 
-    required = sorted((slot for slot in active if slot.is_required), key=_presentation_order)
+    required = sorted((slot for slot in active if slot.is_required), key=presentation_order)
 
     groups: dict[tuple[uuid.UUID | None, str], list[ApplicationDocumentSlot]] = {}
     for slot in required:

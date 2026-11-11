@@ -36,8 +36,8 @@ Paso 10 del orden de construcción (DER_COMPLETO §15), después del acceso del 
 | 3 | Materialización y recálculo de slots; lectura interna del expediente | Hecha | `a7d82ac` |
 | 4 | Portal del comprador: slots, carga, reemplazo y análisis asíncrono | Hecha | `8191f3d` |
 | 5 | Revisión, exoneración, reapertura, huella documental y descargas | Hecha | `13cbb94` |
-| 6 | Guarda de `READY_TO_FILE`, completitud y progreso del comprador | Hecha | (pendiente de commit) |
-| 7 | Paquete ZIP asíncrono, README y documentación | **Siguiente** | |
+| 6 | Guarda de `READY_TO_FILE`, completitud y progreso del comprador | Hecha | `3d3d8e2` |
+| 7 | Paquete ZIP asíncrono, README y documentación | Hecha | (pendiente de commit) |
 
 Al cerrar la Parte 1: 1192 tests en verde (32 nuevos), 97,95 % de cobertura total, los modelos y la semilla nuevos al 100 % y el esquema OpenAPI sin avisos.
 
@@ -50,6 +50,8 @@ Al cerrar la Parte 4: 1361 tests en verde (50 nuevos), 98,16 % de cobertura tota
 Al cerrar la Parte 5: 1448 tests en verde (87 nuevos), 98,24 % de cobertura total, `reviews.py`, `downloads.py`, `fingerprint.py`, `dossier_views.py`, `dossier_serializers.py` y la migración `documents 0005` al 100 %, y el esquema OpenAPI sin avisos.
 
 Al cerrar la Parte 6: 1466 tests en verde (18 nuevos), 98,27 % de cobertura total, `verification.py` y `buyer_portal.py` al 100 %, y el esquema OpenAPI sin avisos. Los `monkeypatch` de `documents_verified` del paso 8 se reemplazaron por expedientes reales.
+
+Al cerrar la Parte 7: 1531 tests en verde (65 nuevos), 98,33 % de cobertura total, `packages.py`, `package_views.py`, `package_serializers.py`, `tasks.py` y los comandos `requeue_document_packages` y `expire_document_packages` al 100 %, y el esquema OpenAPI sin avisos. Además, verificado de punta a punta con SeaweedFS real (ver "Decididas en la implementación", Parte 7).
 
 Sin cubrir, de antes de este paso: `admin.py` (los `has_*_permission` de `_ReadOnlyAdmin`), el `unseed` de `documents 0002` y cuatro ramas de `services.py` (líneas 87, 261, 288 y 386).
 
@@ -145,12 +147,16 @@ Sin cubrir, de antes de este paso: `admin.py` (los `has_*_permission` de `_ReadO
 - `slot_label(slot, set_size=None)`: el total se puede pasar sin anotar el queryset.
 - Tests: `tests/applications/dossier/test_verification.py` (fixtures `decide` e `income_group`) y, en `tests/applications/test_status_api.py`, la guarda y la completitud con expedientes reales. El helper `approve_required_slots(application)` de `tests/applications/dossier/conftest.py` aprueba los obligatorios con versiones limpias.
 
-### Próximo paso: Parte 7
-- **Primero, confirmar con el usuario** los nombres de las carpetas por rol: el ejemplo de la decisión 38 dice `02_CODEUDOR_Andres_Moreno`, pero los roles del sistema son `PRIMARY` (Titular), `CO_APPLICANT` (Co-solicitante) y `SOLIDARY_DEBTOR` (Deudor solidario).
-- Paquete según las decisiones 14, 15 y 36 a 42: `POST /applications/{id}/document-package-jobs`, `GET /document-package-jobs/{id}` y `.../download`; tarea `build_document_package`; comandos `requeue_document_packages` y `expire_document_packages`; variable `DOCUMENT_PACKAGE_TTL_DAYS`.
-- Errores nuevos `PACKAGE_NOT_READY` y `PACKAGE_EXPIRED` en API §5.5.
-- README y documentación de la Parte 7 (plan), incluidos la guarda (API §16.3) y la completitud con los cambios de la Parte 6.
-- Al cerrar: checks, resumen, mensaje de commit y título y cuerpo del PR.
+**De la Parte 7:**
+- `apps/documents/packages.py`: `request_package(actor, application)` → `PackageRequest(job, created)`, `build_package(job_id, last_attempt=)`, `package_download(job, requested_by=)`, `requeue_stale_packages(older_than)`, `expire_packages()`, `jobs_visible_to(user)`, `build_manifest`, `bank_manifest`, `safe_name`, `participant_folder` y `package_filename`. Constantes `CHECKSUM_MISMATCH`, `STORAGE_UNAVAILABLE`, `ROLE_FOLDERS` y `APPLICATION_FOLDER`.
+- `DocumentPackageJob.effective_status` (`EXPIRED` derivado al leer).
+- `apps/documents/tasks.py`: `build_document_package` (`PACKAGE_MAX_RETRIES = 5`). Comandos `requeue_document_packages` y `expire_document_packages`.
+- `apps/documents/package_views.py` y `package_serializers.py` (`DocumentPackageJobSerializer`). Errores `PackageNotReady` y `PackageExpired`.
+- `verification.presentation_order` (antes privada) y `dossier_views.error_response` (antes `_error`).
+- Fixtures en `tests/applications/dossier/conftest.py`: `approve_stored` (versión aprobada con su contenido en el almacenamiento), `waive_slot` y `package_dossier` (`PackageDossier`: un documento de la solicitud, el titular con cédula, dos desprendibles y una certificación exonerada, y un co-solicitante con cédula).
+
+### Cierre del paso 10
+Las siete partes están hechas. Lo que sigue está en "Pendientes para pasos posteriores"; el próximo paso es la radicación (paso 11).
 
 ---
 
@@ -296,7 +302,7 @@ No quedan. Las dos tandas y la precisión de SeaweedFS están en "Decisiones (ac
 - `/completeness` y progreso del comprador (`buyer_portal.py`) según la acordada 7.
 - Se reemplazan los `monkeypatch` de `documents_verified` de los tests del paso 8 por expedientes reales.
 
-### Parte 7. Paquete, README y documentación
+### Parte 7. Paquete, README y documentación (hecha)
 - `POST /applications/{id}/document-package-jobs`, `GET /document-package-jobs/{id}` y `.../download` (decisiones 14 y 15).
 - Tarea `build_document_package`: empaqueta las versiones del `manifest` fijado en el `POST` (decisión 15), `RUNNING`, ZIP en streaming hacia el almacenamiento, `COMPLETED` o `FAILED` con `error_code`; reintentable.
 - Comando `expire_document_packages`.
@@ -396,7 +402,8 @@ No quedan. Las dos tandas y la precisión de SeaweedFS están en "Decisiones (ac
 36. **Precondición del paquete: solo los documentos** (`DOCUMENT_PENDING`, `DOCUMENT_EXPIRED`, `DOCUMENTS_NOT_CONFIGURED`), con los slots bloqueados. El `POST` no guarda evaluaciones bancarias (test).
 37. **Acceso a los paquetes:** `filings.prepare` con la solicitud en el alcance, para crear, consultar y descargar. Un asesor reasignado ve los paquetes anteriores; uno al que se le quitó la solicitud recibe `404`; el broker, nunca (`403`). Tests de los tres casos.
 38. **Nombres dentro del ZIP:**
-    - carpetas `00_SOLICITUD` y `<nn>_<ROL>_<Nombre_Apellido>` con el rol en español (`01_TITULAR_Laura_Gomez`, `02_CODEUDOR_Andres_Moreno`), `nn` en el orden en que entró el participante;
+    - carpetas `00_SOLICITUD` y `<nn>_<ROL>_<Nombre_Apellido>` con el rol en español (`01_TITULAR_Laura_Gomez`, `02_COSOLICITANTE_Andres_Moreno`), `nn` en el orden en que entró el participante;
+    - **precisión antes de la Parte 7:** el ejemplo decía `CODEUDOR`. El usuario eligió las etiquetas del sistema: `TITULAR`, `COSOLICITANTE` y `DEUDOR_SOLIDARIO`;
     - archivos con la etiqueta del tipo en español, más el número si hay varios: `Desprendible_de_nomina_2_de_3.pdf`;
     - saneado a ASCII seguro: sin tildes, `ñ` → `n`, sin espacios ni caracteres especiales, palabras separadas con guion bajo, máximo 60 caracteres. Si dos archivos chocan, se agrega un sufijo;
     - el código del tipo, el id de la versión y `client_filename` van en el manifiesto interno, no en el nombre. Tests con tildes, `ñ`, nombres largos y choques.
@@ -574,13 +581,39 @@ No quedan. Las dos tandas y la precisión de SeaweedFS están en "Decisiones (ac
 - **El ítem `bank_evaluation`** de la completitud no cambia: sigue diciendo si hay una evaluación guardada y vigente. `ready_to_file` puede ser `true` sin ella, porque la guarda evaluaría y guardaría al pasar.
 - **Progreso del comprador:** usa los mismos ítems de datos (`data_items`) sin `bank_evaluation` y `check_dossier`; no calcula la guarda.
 
+### Parte 7
+- **Archivos:** `apps/documents/packages.py` (pedido, manifiestos, worker, descarga, reencolado y vencimiento), `package_serializers.py`, `package_views.py`, la tarea `build_document_package` en `tasks.py`, los comandos `requeue_document_packages` y `expire_document_packages`, tres rutas en `urls.py` y `DOCUMENT_PACKAGE_TTL_DAYS` (7) en `base.py`. **Sin migración:** el modelo de la Parte 1 alcanzaba; solo se agregó `effective_status` y el comentario de la decisión 41.
+- **Pedido:** bloquea la solicitud y, con `check_dossier(lock=True)`, todos sus slots vigentes. Terminada: `409 APPLICATION_CLOSED`; con problemas documentales, `422 APPLICATION_NOT_READY` con los mismos `details` de la guarda. La huella se calcula con los bloqueos puestos, y el trabajo se encola en `on_commit`; si el broker no responde, queda `PENDING`.
+- **Qué entra en el paquete:** los slots vigentes `APPROVED` con la versión vigente `CLEAN` y no vencida, **también los opcionales**, y los `WAIVED` (sin archivo). Un aprobado vencido no entra aunque sea opcional o esté en el otro juego de un grupo cumplido: el banco no debe recibir un documento vencido. Un opcional pendiente no aparece.
+- **Nombres** (decisión 38):
+  - `Nombre_Apellido` es el primer nombre y el primer apellido (`Laura Gómez Vélez` → `Laura_Gomez`);
+  - `nn` numera, por `created_at`, los participantes que tienen algo en el paquete;
+  - la extensión sale del MIME real (`pdf`, `jpg`, `png`), no del nombre que cargó el comprador;
+  - los choques se comparan sin distinguir mayúsculas (`Carta_laboral` y `CARTA_LABORAL` chocan) y el sufijo `_2` cabe dentro de los 60 caracteres;
+  - el ZIP se llama `<código de la solicitud>_expediente.zip` (`SOL-000123_expediente.zip`; el guion se conserva porque el código lo genera el sistema).
+- **Manifiestos** (decisión 39): el interno (`manifest`) lleva `format_version`, la huella, la solicitud (id y código), `application_version`, `requested_at` y, por documento, slot, tipo, etiqueta, titular (alcance, participante, rol, nombre y carpeta), estado, fechas, archivo (ruta, versión, `file_object_id`, `client_filename`, MIME, tamaño y SHA-256) y motivo de exoneración. El del ZIP sale del interno al empaquetar, sin ids, `client_filename`, carpeta ni motivo, con `application_code` y `generated_at`. Ninguno lleva la clave del objeto: el worker la busca por `file_object_id`.
+- **`GET /document-package-jobs/{id}`** expone el contenido fijado (`documents`) con los datos internos, pero sin `file_object_id`, y `output` (`filename`, `size_bytes`, `sha256`) cuando terminó. `status` es `effective_status`. `DocumentPackageJobStatusEnum` va en `ENUM_NAME_OVERRIDES`.
+- **Worker** (decisión 42):
+  - **la marca del intento es `started_at`**, sin columna nueva: tomar el trabajo es `UPDATE ... SET status = RUNNING, started_at = ahora WHERE status = PENDING`, y terminar, `... WHERE status = RUNNING AND started_at = <el mío>`. Si el `UPDATE` final no toca filas, la transacción que creó el `file_object` se revierte y el objeto se borra (si el borrado falla, queda un aviso de "objeto huérfano");
+  - **si el almacenamiento falla, el trabajo vuelve a `PENDING`** antes de reintentar, y el reintento lo toma de nuevo con otro `started_at`. En el último intento queda `FAILED` con `STORAGE_UNAVAILABLE`. Reintentos: 5, con la espera creciente del análisis (30 s a 8 min, ≈ 15 min en total): alguien está esperando el ZIP;
+  - un error de lectura de `botocore` a mitad de la copia cuenta como falla del almacenamiento;
+  - el SHA-256 se compara dos veces: el del `file_object` contra el manifiesto (la fila cambió) y el del contenido leído contra el manifiesto (el objeto cambió). Cualquiera de los dos: `FAILED` con `CHECKSUM_MISMATCH`, sin reintento, y el log dice qué slot;
+  - **el ZIP se arma en un `SpooledTemporaryFile`** (16 MB en memoria y después en disco) y se sube con `put` (`upload_fileobj`, que hace multipart). No se escribe directo a S3 en partes: con los límites de cuota (200 MB por solicitud) no hace falta y el código es más simple;
+  - el `file_object` del ZIP guarda `CLEAN`, `scanned_at` = `completed_at`, `application/zip`, el tamaño, el SHA-256 y el `encryption_key_version` del almacenamiento (decisión 41).
+- **Reencolado:** `requeue_document_packages` devuelve a `PENDING` los `RUNNING` con `started_at` de más de 15 minutos (`--older-than-minutes`) y encola los `PENDING` creados hace más de eso. El límite de tiempo de las tareas (`CELERY_TASK_TIME_LIMIT`, 300 s) es menor, así que un `RUNNING` tan viejo ya no tiene worker.
+- **Vencimiento:** `expire_document_packages` borra el objeto y después persiste `EXPIRED` (condicional sobre `COMPLETED`). La fila de `file_objects` se conserva (`RESTRICT`). Si el borrado falla, el paquete sigue `COMPLETED` (se lee `EXPIRED`) y lo retoma la siguiente ejecución.
+- **Descarga:** misma forma, `Cache-Control: no-store` y límite (`document_download`) que las versiones. La URL dura `DOCUMENT_DOWNLOAD_URL_SECONDS` aunque el paquete venza antes: son 5 minutos. El log dice qué paquete se firmó y para quién, nunca la URL ni la clave.
+- **Retoques:** `verification._presentation_order` pasó a `presentation_order` (la usa el paquete) y `dossier_views._error` a `error_response` (la usan las vistas del paquete).
+- **Tests** (`tests/applications/dossier/`): `test_packages.py` (nombres con tildes, `ñ`, largos y choques; pedido, reutilización, precondición sin evaluación bancaria, contenido fijado, los dos manifiestos, el `CLEAN` del ZIP, `CHECKSUM_MISMATCH`, reintentos, worker atrasado, dos ejecuciones simultáneas con hilos, comandos) y `test_packages_api.py` (permisos de los tres casos de la decisión 37, `201`/`200`, `422`, `409`, descarga, `409 PACKAGE_NOT_READY`/`PACKAGE_EXPIRED`, `503`, límite y que la URL no va al log).
+- **Verificado de punta a punta** con SeaweedFS real, igual que en la Parte 4 (contenedor aparte `e2e-seaweedfs` sin volumen ni puerto, credenciales temporales, test fuera del repositorio montado en `/e2e`): `POST` → worker → ZIP en SeaweedFS; URL prefirmada descargada con `Content-Type: application/zip` y `Content-Disposition` correctos, SHA-256 igual al registrado y contenido esperado; acceso sin firma `403`; `expire_document_packages` borra el objeto. Un paquete de 25 MB (pasa a disco y sube por multipart) también. Al terminar se borró el contenedor.
+
 ## Pendientes para pasos posteriores
 
 1. **Paso 11.** Implementar `slot_has_open_observation`, fijar `locked_at` al radicar, exigir que la huella documental del paquete coincida con la actual (`dossier_fingerprint`, acordada 6) con su test (radicar con un paquete de otra huella, Tanda 3, decisión 28) y la huella y firma de `IDENTITY_DOCUMENT`.
 2. **Paso 12.** Actividad de cargas, revisiones y descargas (RF-61), con la visible para el comprador.
 3. **Paso 13.** `Idempotency-Key` en `POST /document-package-jobs`; notificación al comprador de un rechazo; aviso al comprador cuando un documento aprobado esté por vencer (acordada 8).
 4. **Paso 14.** Auditoría de descargas.
-5. **Despliegue.** Programar `requeue_pending_scans` (cron o Celery beat) y decidir cuánto tiempo se conservan los objetos infectados (hoy no se borran).
+5. **Despliegue.** Programar `requeue_pending_scans`, `requeue_document_packages` y `expire_document_packages` (cron o Celery beat) y decidir cuánto tiempo se conservan los objetos infectados (hoy no se borran).
 6. **Listado de solicitudes** (`TAREA-applications-listado.md`, que se actualiza cuando arranque esa tarea): fila nueva para marcar las solicitudes en `READY_TO_FILE` que ya no cumplen (decisión 29). Texto para pegar:
 
    ```

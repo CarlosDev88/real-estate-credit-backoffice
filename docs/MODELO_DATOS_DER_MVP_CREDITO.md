@@ -1014,16 +1014,23 @@ Trabajo asíncrono que construye el paquete descargable para radicar.
 | `updated_at` | `TIMESTAMPTZ` | No | Fecha y hora de última modificación. |
 | `application_id` | `UUID` | No | FK `credit_applications`, `RESTRICT`. |
 | `requested_by_id` | `UUID` | No | FK `users`, `RESTRICT`. |
-| `application_version` | `INTEGER` | No | Versión preparada. |
+| `application_version` | `INTEGER` | No | Versión de la solicitud al pedir el paquete, solo informativa: los documentos no cambian esa versión. |
 | `status` | `VARCHAR(20)` | No | `PENDING`, `RUNNING`, `COMPLETED`, `FAILED`, `EXPIRED`. |
-| `output_file_object_id` | `UUID` | Sí | FK `file_objects`, `RESTRICT`. |
-| `manifest` | `JSONB` | Sí | IDs y hashes incluidos. |
-| `error_code` | `VARCHAR(80)` | Sí | Fallo seguro. |
-| `started_at` | `TIMESTAMPTZ` | Sí | Inicio. |
+| `output_file_object_id` | `UUID` | Sí | FK `file_objects`, `RESTRICT`; UQ. El ZIP terminado. |
+| `manifest` | `JSONB` | Sí | Manifiesto interno, fijado al pedir el paquete: huella documental y, por documento, versión, SHA-256, ruta dentro del ZIP, `client_filename` y motivo de exoneración. |
+| `error_code` | `VARCHAR(80)` | Sí | Fallo seguro: `CHECKSUM_MISMATCH` o `STORAGE_UNAVAILABLE`. |
+| `started_at` | `TIMESTAMPTZ` | Sí | Inicio del intento en curso; marca qué worker tiene el trabajo. |
 | `completed_at` | `TIMESTAMPTZ` | Sí | Fin. |
 | `expires_at` | `TIMESTAMPTZ` | Sí | Vencimiento del paquete. |
 
 Relación N:1 con solicitud y usuario, 0..1:1 con archivo de salida. Un expediente puede generar varios paquetes, pero cada radicación selecciona uno preciso para no mezclar versiones.
+
+Reglas de implementación (paso 10):
+
+- el contenido se fija al pedir el paquete (`manifest`); el worker empaqueta exactamente esa lista, aunque el comprador cargue después;
+- el worker toma el trabajo con un `UPDATE` condicional (`PENDING` → `RUNNING`, con un `started_at` nuevo) y solo lo marca `COMPLETED` si sigue teniendo ese `started_at`: dos workers no lo procesan a la vez y uno atrasado no pisa el resultado;
+- **el ZIP no pasa por el antivirus.** Se arma con versiones `CLEAN` cuyo SHA-256 se verifica al empaquetar, y su `file_objects` se guarda `CLEAN`, con `scanned_at` al terminar y `detected_mime_type = application/zip`. Un `file_objects` que es `output_file_object_id` de un trabajo es, por eso, un ZIP marcado limpio al empaquetar; no hay columna para el motor del análisis;
+- `EXPIRED` se deriva al leer cuando pasa `expires_at`; un proceso periódico lo persiste y borra el objeto, y la fila de `file_objects` se conserva.
 
 Índice: (`application_id`, `created_at DESC`), (`status`, `created_at`) para workers.
 

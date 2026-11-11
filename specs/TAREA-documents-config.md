@@ -43,15 +43,17 @@ Paso 7 del orden de construcción (DER §15), después de `banking` (6). Rama: `
 
 ## Pendientes para el paso 10 (expediente)
 
-1. **Formatos y tamaños para el comprador.** El comprador no consulta `/document-types`. Conocerá los MIME y el tamaño máximo a través de los slots de su propia solicitud, que deben exponer esas restricciones del tipo.
-2. **Lista vacía no permite `READY_TO_FILE`.** Una solicitud sin requisitos documentales (hoy, cualquier producto de FNA o Banco de Bogotá) no puede pasar a `READY_TO_FILE`: la regla "todos los obligatorios aprobados" no puede cumplirse con una lista vacía. El guard de esa transición debe rechazarla explícitamente.
-3. **Documentos de la solicitud y documentos del participante.** El DER no tiene el "titular posible" que menciona la API §23.4. El preview asume que todo requisito es por participante, lo que es correcto para la semilla actual. Los soportes del inmueble (`PROPERTY_*`, `REMODELING_BUDGET`, `EXTERNAL_APPROVAL_LETTER`) son de la solicitud: falta decidir cómo se distinguen al crear slots con `participant_id` nulo.
-4. **Varios archivos en un slot.** `minimum_files = 3` (nómina, extractos, pagos de pensión) choca con el único `current_file_id` del slot. Falta decidir si se crean varios slots o si un slot admite varios archivos vigentes.
-5. **Huella y firma física** de `IDENTITY_DOCUMENT` (REQUERIMIENTOS §7.1): no hay columna en la configuración. Corresponde al slot o al archivo.
-6. **Grupo alternativo satisfecho.** El backend, no el portal, decide cuándo un grupo (`INCOME_TAX_PROOF`) está completo, y la exoneración aplica al grupo entero.
-7. **Tipos sin requisito.** `CO_APPLICANT_INCOME_SUPPORT` y `EXTERNAL_APPROVAL_LETTER` existen como tipos pero no tienen requisito. El primero lo cubren hoy las reglas por perfil de cada participante. El segundo depende de la modalidad `EXTERNAL_CREDIT_APPROVED`, que no es un campo del alcance.
+Resueltos en `feat/document-file` (ver `TAREA-document-file.md`): 1, 2, 3, 4 y 6. El 5 pasa al paso 11 y el 7 queda igual (decisión 16 de esa tarea).
+
+1. **Hecho.** Los slots del comprador traen `allowed_mime_types` y `max_size_bytes` del tipo vigente (Parte 4). **Formatos y tamaños para el comprador.** El comprador no consulta `/document-types`. Conocerá los MIME y el tamaño máximo a través de los slots de su propia solicitud, que deben exponer esas restricciones del tipo.
+2. **Hecho.** `DOCUMENTS_NOT_CONFIGURED` en la guarda, la completitud y el paquete (Parte 6). **Lista vacía no permite `READY_TO_FILE`.** Una solicitud sin requisitos documentales (hoy, cualquier producto de FNA o Banco de Bogotá) no puede pasar a `READY_TO_FILE`: la regla "todos los obligatorios aprobados" no puede cumplirse con una lista vacía. El guard de esa transición debe rechazarla explícitamente.
+3. **Hecho.** `document_types.holder_scope` (`PARTICIPANT` o `APPLICATION`), con slots de la solicitud sin participante y `application_requirements` en el preview (Parte 1). **Documentos de la solicitud y documentos del participante.** El DER no tiene el "titular posible" que menciona la API §23.4. El preview asume que todo requisito es por participante, lo que es correcto para la semilla actual. Los soportes del inmueble (`PROPERTY_*`, `REMODELING_BUDGET`, `EXTERNAL_APPROVAL_LETTER`) son de la solicitud: falta decidir cómo se distinguen al crear slots con `participant_id` nulo.
+4. **Hecho.** Un slot por archivo (`slot_index`, de 1 a `minimum_files`), con la etiqueta "n de m" (Partes 1 y 3). **Varios archivos en un slot.** `minimum_files = 3` (nómina, extractos, pagos de pensión) choca con el único `current_file_id` del slot. Falta decidir si se crean varios slots o si un slot admite varios archivos vigentes.
+5. **Pasa al paso 11**: es una condición de la entrega física al banco. **Huella y firma física** de `IDENTITY_DOCUMENT` (REQUERIMIENTOS §7.1): no hay columna en la configuración. Corresponde al slot o al archivo.
+6. **Hecho.** El grupo se cumple con un juego completo de un mismo tipo, y exonerar un slot exonera los demás del grupo del mismo titular, salvo los aprobados (Partes 5 y 6). **Grupo alternativo satisfecho.** El backend, no el portal, decide cuándo un grupo (`INCOME_TAX_PROOF`) está completo, y la exoneración aplica al grupo entero.
+7. **Sin cambios** (decisión 16): siguen sin requisito y no generan slots. **Tipos sin requisito.** `CO_APPLICANT_INCOME_SUPPORT` y `EXTERNAL_APPROVAL_LETTER` existen como tipos pero no tienen requisito. El primero lo cubren hoy las reglas por perfil de cada participante. El segundo depende de la modalidad `EXTERNAL_CREDIT_APPROVED`, que no es un campo del alcance.
 
 ## Documentación pendiente de actualizar
 
 - API §23.4: falta la subsección de versionado y publicación (como en §23.3) y la forma del `preview`.
-- API §5.5: faltan los errores nuevos `REQUIREMENT_SCOPE_EXISTS`, `REQUIREMENT_DRAFT_EXISTS`, `REQUIREMENT_EXPIRED` y `DOCUMENT_TYPE_INACTIVE`.
+- ~~API §5.5: faltan los errores nuevos `REQUIREMENT_SCOPE_EXISTS`, `REQUIREMENT_DRAFT_EXISTS`, `REQUIREMENT_EXPIRED` y `DOCUMENT_TYPE_INACTIVE`.~~ Hecho en el paso 10, Parte 7.

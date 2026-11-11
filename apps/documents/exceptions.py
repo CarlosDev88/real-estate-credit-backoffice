@@ -117,3 +117,18 @@ class DocumentExpired(ApiError):
     status_code = status.HTTP_422_UNPROCESSABLE_ENTITY
     error_code = "DOCUMENT_EXPIRED"
     default_detail = "El documento está vencido: pide al comprador uno más reciente."
+
+
+# --- Paquete para radicar (Parte 7) --------------------------------------------------------
+
+
+class PackageNotReady(ApiError):
+    status_code = status.HTTP_409_CONFLICT
+    error_code = "PACKAGE_NOT_READY"
+    default_detail = "El paquete todavía no está listo para descargar."
+
+
+class PackageExpired(ApiError):
+    status_code = status.HTTP_409_CONFLICT
+    error_code = "PACKAGE_EXPIRED"
+    default_detail = "El paquete venció: pide uno nuevo."

@@ -132,6 +132,7 @@ SPECTACULAR_SETTINGS = {
         # Expediente documental: estado del slot y de cada versión cargada.
         "DocumentSlotStatusEnum": "apps.documents.models.SlotStatus",
         "DocumentFileStatusEnum": "apps.documents.models.DocumentFileStatus",
+        "DocumentPackageJobStatusEnum": "apps.documents.models.PackageJobStatus",
     },
 }
 
@@ -268,6 +269,9 @@ DOCUMENT_UPLOAD_QUOTA_BYTES = env.int("DOCUMENT_UPLOAD_QUOTA_BYTES", default=200
 DOCUMENT_UPLOAD_MAX_REQUEST_BYTES = 10 * 1024 * 1024 + 512 * 1024
 # Vigencia de la URL prefirmada de descarga (decisión 13).
 DOCUMENT_DOWNLOAD_URL_SECONDS = env.int("DOCUMENT_DOWNLOAD_URL_SECONDS", default=300)
+# Días que se conserva el ZIP para radicar (decisión 15). Al vencer, el paquete se lee
+# como `EXPIRED` y `expire_document_packages` borra el objeto.
+DOCUMENT_PACKAGE_TTL_DAYS = env.int("DOCUMENT_PACKAGE_TTL_DAYS", default=7)
 
 LOGGING = {
     "version": 1,

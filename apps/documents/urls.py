@@ -1,6 +1,6 @@
 from django.urls import path
 
-from apps.documents import buyer_views, dossier_views, views
+from apps.documents import buyer_views, dossier_views, package_views, views
 
 app_name = "documents"
 
@@ -45,6 +45,22 @@ urlpatterns = [
         "document-files/<uuid:file_id>/download",
         dossier_views.DocumentFileDownloadView.as_view(),
         name="document-file-download",
+    ),
+    # Paquetes para radicar (sección 19)
+    path(
+        "applications/<uuid:application_id>/document-package-jobs",
+        package_views.ApplicationDocumentPackageJobView.as_view(),
+        name="application-document-package-job-create",
+    ),
+    path(
+        "document-package-jobs/<uuid:job_id>",
+        package_views.DocumentPackageJobDetailView.as_view(),
+        name="document-package-job-detail",
+    ),
+    path(
+        "document-package-jobs/<uuid:job_id>/download",
+        package_views.DocumentPackageJobDownloadView.as_view(),
+        name="document-package-job-download",
     ),
     # Expediente en el portal del comprador
     path(

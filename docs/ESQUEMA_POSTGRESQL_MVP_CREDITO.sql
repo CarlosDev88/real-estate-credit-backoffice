@@ -747,11 +747,17 @@ CREATE TABLE document_package_jobs (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     application_id UUID NOT NULL REFERENCES credit_applications(id) ON DELETE RESTRICT,
     requested_by_id UUID NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    -- Versión de la solicitud al pedir el paquete; solo informativa.
     application_version INTEGER NOT NULL CHECK (application_version > 0),
     status VARCHAR(20) NOT NULL DEFAULT 'PENDING',
+    -- El ZIP no pasa por el antivirus: se arma con versiones CLEAN cuyo SHA-256 se
+    -- verifica al empaquetar, y su file_objects se guarda CLEAN al terminar.
     output_file_object_id UUID UNIQUE REFERENCES file_objects(id) ON DELETE RESTRICT,
+    -- Manifiesto interno fijado al pedir el paquete: huella documental y versiones.
     manifest JSONB,
+    -- CHECKSUM_MISMATCH o STORAGE_UNAVAILABLE.
     error_code VARCHAR(80),
+    -- Inicio del intento en curso; marca qué worker tiene el trabajo.
     started_at TIMESTAMPTZ,
     completed_at TIMESTAMPTZ,
     expires_at TIMESTAMPTZ,

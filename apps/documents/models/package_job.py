@@ -2,6 +2,7 @@ import uuid
 
 from django.db import models
 from django.db.models import F, Q
+from django.utils import timezone
 
 
 class PackageJobStatus(models.TextChoices):
@@ -37,6 +38,10 @@ class DocumentPackageJob(models.Model):
     status = models.CharField(
         max_length=20, choices=PackageJobStatus.choices, default=PackageJobStatus.PENDING
     )
+    # El ZIP no pasa por el antivirus (decisión 41): se arma con versiones `CLEAN` cuyo
+    # SHA-256 se verifica al empaquetar, y su `file_object` se guarda `CLEAN`, con
+    # `scanned_at` al terminar. Un `file_object` que es el resultado de un trabajo es, por
+    # eso, un ZIP marcado limpio al empaquetar, no por un análisis.
     output_file_object = models.OneToOneField(
         "documents.FileObject",
         on_delete=models.RESTRICT,
@@ -89,3 +94,15 @@ class DocumentPackageJob(models.Model):
 
     def __str__(self) -> str:
         return f"{self.application_id} ({self.status})"
+
+    @property
+    def effective_status(self) -> str:
+        """El estado que ve la API: un ``COMPLETED`` cuya vigencia ya pasó es ``EXPIRED``
+        aunque ``expire_document_packages`` todavía no lo haya persistido."""
+        if (
+            self.status == PackageJobStatus.COMPLETED
+            and self.expires_at is not None
+            and self.expires_at <= timezone.now()
+        ):
+            return PackageJobStatus.EXPIRED
+        return self.status

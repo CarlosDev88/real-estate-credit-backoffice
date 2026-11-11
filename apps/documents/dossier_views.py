@@ -42,15 +42,15 @@ WAIVE = "documents.waive"
 DOWNLOAD = "documents.download"
 
 
-def _error(description: str) -> OpenApiResponse:
+def error_response(description: str) -> OpenApiResponse:
     return OpenApiResponse(response=ErrorSerializer, description=description)
 
 
 COMMON_ERRORS = {
-    401: _error("NOT_AUTHENTICATED o SESSION_EXPIRED"),
-    403: _error("PERMISSION_DENIED o CSRF_FAILED"),
+    401: error_response("NOT_AUTHENTICATED o SESSION_EXPIRED"),
+    403: error_response("PERMISSION_DENIED o CSRF_FAILED"),
 }
-NOT_FOUND = {404: _error("RESOURCE_NOT_FOUND (inexistente o fuera del alcance)")}
+NOT_FOUND = {404: error_response("RESOURCE_NOT_FOUND (inexistente o fuera del alcance)")}
 
 
 class DossierView(GenericAPIView):
@@ -151,7 +151,7 @@ class ApplicationDocumentSlotRefreshView(DossierView):
         request=None,
         responses={
             200: SlotRefreshSerializer,
-            409: _error("APPLICATION_NOT_EDITABLE"),
+            409: error_response("APPLICATION_NOT_EDITABLE"),
             **NOT_FOUND,
             **COMMON_ERRORS,
         },
@@ -239,18 +239,18 @@ class DocumentSlotReviewView(DossierView):
         request=DocumentSlotReviewSerializer,
         responses={
             200: DocumentSlotReviewResultSerializer,
-            400: _error(
+            400: error_response(
                 "VALIDATION_ERROR: campos de la decisión, `document_date` faltante o "
                 "futura, `NOT_A_VERSION`, `NOT_WAIVABLE`, `NOTHING_TO_WAIVE` o "
                 "`NOT_WAIVED` en `details[].code`, con el slot en `resource_id`"
             ),
             401: COMMON_ERRORS[401],
-            403: _error("PERMISSION_DENIED (también sin `documents.waive`) o CSRF_FAILED"),
-            409: _error(
+            403: error_response("PERMISSION_DENIED (también sin `documents.waive`) o CSRF_FAILED"),
+            409: error_response(
                 "DOCUMENT_NOT_CURRENT, FILE_NOT_CLEAN, DOCUMENT_LOCKED, "
                 "APPLICATION_NOT_EDITABLE o APPLICATION_CLOSED"
             ),
-            422: _error("DOCUMENT_EXPIRED"),
+            422: error_response("DOCUMENT_EXPIRED"),
             **NOT_FOUND,
         },
     )
@@ -329,9 +329,9 @@ class DocumentFileDownloadView(DossierView):
         description=DOWNLOAD_DESCRIPTION,
         responses={
             200: DocumentDownloadSerializer,
-            409: _error("FILE_NOT_CLEAN"),
-            429: _error("RATE_LIMITED"),
-            503: _error("SERVICE_UNAVAILABLE (almacenamiento no disponible)"),
+            409: error_response("FILE_NOT_CLEAN"),
+            429: error_response("RATE_LIMITED"),
+            503: error_response("SERVICE_UNAVAILABLE (almacenamiento no disponible)"),
             **NOT_FOUND,
             **COMMON_ERRORS,
         },
