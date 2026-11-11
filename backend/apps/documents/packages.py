@@ -318,12 +318,14 @@ def _reusable(application: CreditApplication, fingerprint: str) -> DocumentPacka
 def _enqueue_build(job_id: str) -> None:
     """Encola el armado. Si el broker no responde, el trabajo queda ``PENDING`` y lo
     retoma ``requeue_document_packages``."""
-    from apps.documents.tasks import build_document_package
+    from apps.documents.tasks import build_document_package, log_eager_failure
 
     try:
-        build_document_package.delay(job_id)
+        result = build_document_package.delay(job_id)
     except OperationalError:
         logger.warning("No se pudo encolar el paquete %s", job_id)
+        return
+    log_eager_failure(result, f"Paquete {job_id}")
 
 
 @dataclass(frozen=True)
@@ -565,7 +567,7 @@ def package_download(job: DocumentPackageJob, *, requested_by: str) -> DownloadL
 def requeue_stale_packages(older_than: timedelta) -> int:
     """Devuelve a ``PENDING`` los ``RUNNING`` colgados y encola los ``PENDING`` de más de
     ``older_than``. Un worker atrasado pierde el trabajo: no lo marcará ``COMPLETED``."""
-    from apps.documents.tasks import build_document_package
+    from apps.documents.tasks import build_document_package, log_eager_failure
 
     now = timezone.now()
     cutoff = now - older_than
@@ -579,7 +581,7 @@ def requeue_stale_packages(older_than: timedelta) -> int:
     )
     count = 0
     for job_id in pending.iterator():
-        build_document_package.delay(str(job_id))
+        log_eager_failure(build_document_package.delay(str(job_id)), f"Paquete {job_id}")
         count += 1
     return count
 

@@ -5,6 +5,7 @@ import logging
 import uuid
 
 from celery import Task, shared_task
+from celery.result import AsyncResult, EagerResult
 
 from apps.documents.exceptions import ScannerUnavailable, StorageUnavailable
 from apps.documents.models import ScanStatus
@@ -12,6 +13,19 @@ from apps.documents.packages import build_package
 from apps.documents.scans import scan_document_file
 
 logger = logging.getLogger(__name__)
+
+
+def log_eager_failure(result: AsyncResult, description: str) -> None:
+    """En modo inmediato (``CELERY_TASK_ALWAYS_EAGER``) la tarea ya corrió dentro de la
+    petición. Si falló, se registra con su traza y la petición sigue: el archivo o el
+    paquete quedan en el estado en que los dejó la tarea."""
+    if not isinstance(result, EagerResult) or not result.failed():
+        return
+    try:
+        result.maybe_throw()
+    except Exception:
+        logger.exception("%s falló en modo inmediato", description)
+
 
 # Reintentos del análisis: 30 s, 1, 2, 4 y 8 min, y después cada 15 min (≈ 1 h 15 min).
 SCAN_MAX_RETRIES = 8

@@ -2,8 +2,8 @@
 
 Las tareas se encolan con ``transaction.on_commit`` para no correr sobre datos que aún
 no se confirmaron, solo reciben ids y son idempotentes. El worker se levanta con el
-perfil ``async`` de docker-compose. En las pruebas corren en el mismo proceso
-(``CELERY_TASK_ALWAYS_EAGER``).
+perfil ``full`` de docker-compose. En el modo local simple y en las pruebas corren en el
+mismo proceso (``CELERY_TASK_ALWAYS_EAGER``).
 """
 
 import os

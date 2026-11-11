@@ -50,6 +50,14 @@ class StorageUnavailable(Exception):
     """
 
 
+class DownloadLinkInvalid(ApiError):
+    """URL firmada del almacenamiento en disco vencida o alterada."""
+
+    status_code = status.HTTP_403_FORBIDDEN
+    error_code = "DOWNLOAD_LINK_INVALID"
+    default_detail = "El enlace de descarga venció o no es válido: pide uno nuevo."
+
+
 class ScannerUnavailable(Exception):
     """El antivirus no respondió o devolvió un error. El archivo sigue ``PENDING``."""
 

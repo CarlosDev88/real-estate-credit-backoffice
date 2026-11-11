@@ -1,10 +1,16 @@
 from django.urls import path
 
-from apps.documents import buyer_views, dossier_views, package_views, views
+from apps.documents import buyer_views, dossier_views, package_views, storage_views, views
 
 app_name = "documents"
 
 urlpatterns = [
+    # Descarga del almacenamiento en disco (solo local; fuera del esquema OpenAPI).
+    path(
+        "storage/objects/<str:token>",
+        storage_views.StorageObjectView.as_view(),
+        name="storage-object",
+    ),
     # Expediente documental (sección 19)
     path(
         "applications/<uuid:application_id>/document-slots",

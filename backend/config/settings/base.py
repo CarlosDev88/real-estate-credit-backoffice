@@ -4,6 +4,8 @@ from pathlib import Path
 import environ
 from corsheaders.defaults import default_headers
 
+from config.runtime_services import cache_settings, celery_broker_url, celery_result_backend
+
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 env = environ.Env(DJANGO_DEBUG=(bool, False))
@@ -154,14 +156,11 @@ CSRF_COOKIE_SAMESITE = "Lax"
 CSRF_COOKIE_SECURE = env.bool("AUTH_COOKIE_SECURE", default=True)
 
 # Caché compartida: la usan los límites de consumo, que no pueden vivir en memoria.
-CACHES = {
-    "default": {
-        "BACKEND": "django.core.cache.backends.redis.RedisCache",
-        "LOCATION": env("REDIS_CACHE_URL", default="redis://redis:6379/1"),
-        "KEY_PREFIX": "mvp_credit",
-        "TIMEOUT": 300,
-    }
-}
+# `redis` | `database` (`database` es el modo local simple: tabla de `createcachetable`).
+CACHES = cache_settings(
+    env("CACHE_BACKEND", default="redis"),
+    env("REDIS_CACHE_URL", default="redis://redis:6379/1"),
+)
 
 # --- Autenticación interna (secciones 4, 7 y 9.1) ------------------------------------
 # Clave dedicada para firmar los JWT; distinta de SECRET_KEY y de alta entropía.
@@ -221,8 +220,14 @@ METADATA_ON_DEMAND_CATALOGS = ["municipality"]
 # Configuración pública que el frontend usa para mostrar u ocultar funciones.
 PUBLIC_FEATURES = {"manual_filing": True, "buyer_magic_link": True}
 
-CELERY_BROKER_URL = env("REDIS_URL", default="redis://redis:6379/0")
-CELERY_RESULT_BACKEND = CELERY_BROKER_URL
+# Con `CELERY_TASK_ALWAYS_EAGER=true` (modo local simple) las tareas corren en el mismo
+# proceso, después del commit. Un fallo de la tarea nunca llega a la petición: queda en
+# el log y en el estado del archivo o del paquete. Las pruebas sí lo propagan (test.py).
+CELERY_TASK_ALWAYS_EAGER = env.bool("CELERY_TASK_ALWAYS_EAGER", default=False)
+CELERY_TASK_EAGER_PROPAGATES = False
+REDIS_URL = env("REDIS_URL", default="redis://redis:6379/0")
+CELERY_BROKER_URL = celery_broker_url(REDIS_URL, always_eager=CELERY_TASK_ALWAYS_EAGER)
+CELERY_RESULT_BACKEND = celery_result_backend(REDIS_URL, always_eager=CELERY_TASK_ALWAYS_EAGER)
 CELERY_TASK_ACKS_LATE = True
 CELERY_TASK_TIME_LIMIT = 300
 # Las tareas solo reciben ids; nunca archivos ni datos personales.
@@ -234,8 +239,10 @@ CELERY_TIMEZONE = "UTC"
 # --- Expediente documental (API §19, REQUERIMIENTOS §9) ------------------------------
 # Almacenamiento privado compatible con S3. En local es SeaweedFS (docker-compose); en
 # producción, S3 real: pasar de uno a otro es solo cambiar estas variables.
-# `s3` | `memory` (`memory` solo en desarrollo o pruebas).
+# `s3` | `filesystem` | `memory` (`filesystem` y `memory` solo en desarrollo o pruebas).
 DOCUMENT_STORAGE_BACKEND = env("DOCUMENT_STORAGE_BACKEND", default="s3")
+# Carpeta de `filesystem` (un volumen de Docker). Ruta absoluta.
+DOCUMENT_STORAGE_ROOT = env("DOCUMENT_STORAGE_ROOT", default="/data/documents")
 DOCUMENT_STORAGE_BUCKET = env("DOCUMENT_STORAGE_BUCKET", default="mvp-credit-documents")
 DOCUMENT_STORAGE_REGION = env("DOCUMENT_STORAGE_REGION", default="us-east-1")
 # Vacío: el endpoint de AWS para la región.
@@ -276,7 +283,12 @@ DOCUMENT_PACKAGE_TTL_DAYS = env.int("DOCUMENT_PACKAGE_TTL_DAYS", default=7)
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
-    "filters": {"request_id": {"()": "config.request_context.RequestIDLogFilter"}},
+    "filters": {
+        "request_id": {"()": "config.request_context.RequestIDLogFilter"},
+        # Las URL firmadas del almacenamiento en disco son credenciales: el token no se
+        # escribe ni en el log de peticiones de runserver.
+        "redact_object_tokens": {"()": "config.log_redaction.RedactObjectTokensFilter"},
+    },
     "formatters": {
         "default": {
             "format": "%(asctime)s %(levelname)s %(name)s [request_id=%(request_id)s] %(message)s"
@@ -285,7 +297,7 @@ LOGGING = {
     "handlers": {
         "console": {
             "class": "logging.StreamHandler",
-            "filters": ["request_id"],
+            "filters": ["request_id", "redact_object_tokens"],
             "formatter": "default",
         }
     },
