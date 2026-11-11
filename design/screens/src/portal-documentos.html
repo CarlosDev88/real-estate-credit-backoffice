@@ -19,7 +19,7 @@
 .top nav a { padding: 8px var(--um-space-3); border-radius: var(--um-radius-md); color: var(--um-text-secondary); font-weight: var(--um-weight-medium); text-decoration: none; display: inline-flex; gap: 6px; align-items: center; }
 .top nav a:hover { background: var(--um-bg-muted); color: var(--um-text-primary); }
 .top nav a[aria-current="page"] { color: var(--um-text-link); background: var(--um-brand-subtle); }
-.top nav .n { font-size: 11px; background: var(--um-tone-danger-fg); color: #fff; border-radius: 9px; padding: 0 6px; line-height: 17px; }
+.top nav .n { font-size: var(--um-text-xs); font-weight: var(--um-weight-semibold); background: var(--um-tone-danger-solid); color: var(--um-tone-danger-on-solid); border-radius: var(--um-radius-full); padding: 0 6px; line-height: 18px; font-variant-numeric: tabular-nums; }
 .top .avatar { width: 34px; height: 34px; background: var(--um-brand-subtle); color: var(--um-text-link); }
 .who-chip { display: flex; flex-direction: column; line-height: 1.2; font-size: var(--um-text-sm); }
 .who-chip span { font-size: var(--um-text-xs); color: var(--um-text-tertiary); }
@@ -31,17 +31,17 @@
 .overall { min-width: 260px; }
 .overall .row { font-size: var(--um-text-sm); }
 .progress { height: 8px; border-radius: var(--um-radius-full); background: var(--um-bg-muted); overflow: hidden; margin-top: 6px; }
-.progress > i { display: block; height: 100%; background: var(--um-accent-default); border-radius: inherit; transition: width 0.3s; }
+.progress > i { display: block; height: 100%; width: 100%; background: var(--um-brand-primary); border-radius: inherit; transform-origin: left; transition: transform 0.3s; }
 
 .layout { display: grid; grid-template-columns: 400px minmax(0, 1fr); gap: var(--um-space-5); align-items: start; }
 
 /* lista */
-.listcol { background: var(--um-bg-surface); border: 1px solid var(--um-border-default); border-radius: var(--um-radius-xl); box-shadow: var(--um-shadow-sm); overflow: hidden; }
+.listcol { background: var(--um-bg-surface); border: 1px solid var(--um-border-default); border-radius: var(--um-radius-xl); overflow: hidden; }
 .filters { display: flex; gap: 6px; padding: var(--um-space-3); border-bottom: 1px solid var(--um-border-default); overflow-x: auto; }
 .filters button { border: 1px solid var(--um-border-strong); background: var(--um-bg-surface); border-radius: var(--um-radius-full); height: 30px; padding: 0 12px; font-size: var(--um-text-sm); cursor: pointer; white-space: nowrap; color: var(--um-text-secondary); }
-.filters button[aria-pressed="true"] { background: var(--um-brand-primary); border-color: var(--um-brand-primary); color: var(--um-brand-on-primary); }
+.filters button[aria-pressed="true"] { background: var(--um-brand-subtle); border-color: var(--um-tone-info-border); color: var(--um-text-link); font-weight: var(--um-weight-medium); }
 .filters .c { opacity: 0.75; margin-left: 4px; }
-.grp { padding: var(--um-space-3) var(--um-space-4) var(--um-space-1); font-size: var(--um-text-xs); color: var(--um-text-tertiary); text-transform: uppercase; letter-spacing: 0.05em; font-weight: var(--um-weight-semibold); }
+.grp { padding: var(--um-space-3) var(--um-space-4) var(--um-space-1); font-size: var(--um-text-xs); color: var(--um-text-secondary); font-weight: var(--um-weight-medium); }
 .items { list-style: none; margin: 0; padding: 0 var(--um-space-2) var(--um-space-2); }
 .item { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: var(--um-space-3); align-items: center; padding: 10px var(--um-space-2); border-radius: var(--um-radius-md); cursor: pointer; border: 1px solid transparent; width: 100%; text-align: left; background: none; }
 .item:hover { background: var(--um-bg-subtle); }
@@ -53,7 +53,7 @@
 .item .chev { color: var(--um-text-tertiary); width: 16px; height: 16px; }
 
 /* detalle */
-.detail { background: var(--um-bg-surface); border: 1px solid var(--um-border-default); border-radius: var(--um-radius-xl); box-shadow: var(--um-shadow-sm); position: sticky; top: 84px; }
+.detail { background: var(--um-bg-surface); border: 1px solid var(--um-border-default); border-radius: var(--um-radius-xl); position: sticky; top: 84px; }
 .d-head { display: flex; align-items: flex-start; gap: var(--um-space-3); padding: var(--um-space-5) var(--um-space-6) var(--um-space-4); border-bottom: 1px solid var(--um-border-default); }
 .d-head h2 { margin: 0; font-size: var(--um-text-2xl); line-height: var(--um-leading-2xl); font-weight: var(--um-weight-semibold); }
 .d-head .who { font-size: var(--um-text-sm); color: var(--um-text-tertiary); margin-top: 2px; }
@@ -96,7 +96,10 @@
 .uploading .bar { height: 8px; border-radius: 4px; background: var(--um-bg-muted); overflow: hidden; }
 .uploading .bar i { display: block; height: 100%; width: 0; background: var(--um-brand-primary); transition: width 0.25s; }
 .uploading p { margin: 0; font-size: var(--um-text-sm); color: var(--um-text-secondary); }
-.date-field { max-width: 260px; }
+.date-field { max-width: 320px; }
+.prev-file { margin: 0; display: flex; align-items: center; gap: var(--um-space-2); font-size: var(--um-text-sm); color: var(--um-text-secondary); flex-wrap: wrap; }
+.prev-file svg { width: 16px; height: 16px; flex: none; }
+.prev-file span { word-break: break-all; }
 .lock { display: flex; gap: var(--um-space-2); font-size: var(--um-text-sm); color: var(--um-text-secondary); align-items: flex-start; }
 .lock svg { width: 16px; height: 16px; flex: none; margin-top: 2px; }
 details.versions { border-top: 1px solid var(--um-border-default); padding-top: var(--um-space-4); }
@@ -127,7 +130,7 @@ details.versions li span { color: var(--um-text-tertiary); }
   .tabbar a { display: grid; justify-items: center; gap: 2px; padding: 10px 0 8px; font-size: 12px; color: var(--um-text-tertiary); text-decoration: none; position: relative; }
   .tabbar a svg { width: 22px; height: 22px; }
   .tabbar a[aria-current="page"] { color: var(--um-text-link); font-weight: var(--um-weight-semibold); }
-  .tabbar .badge-n { position: absolute; top: 6px; left: calc(50% + 6px); min-width: 18px; height: 18px; border-radius: 9px; background: var(--um-tone-danger-fg); color: #fff; font-size: 11px; display: grid; place-items: center; padding: 0 5px; font-weight: 600; }
+  .tabbar .badge-n { position: absolute; top: 6px; left: calc(50% + 6px); min-width: 18px; height: 18px; border-radius: 9px; background: var(--um-tone-danger-solid); color: var(--um-tone-danger-on-solid); font-size: var(--um-text-xs); display: grid; place-items: center; padding: 0 5px; font-weight: 600; }
 }
 </style>
 </head>
@@ -146,7 +149,7 @@ details.versions li span { color: var(--um-text-tertiary); }
     <span class="spacer"></span>
     <!--__THEME_BUTTON__-->
     <div class="who-chip"><b>Sofía Herrera</b><span>SOL-000182</span></div>
-    <span class="avatar" aria-label="Sofía Herrera">SH</span>
+    <span class="avatar" role="img" aria-label="Sofía Herrera">SH</span>
   </div>
 </header>
 
@@ -158,8 +161,8 @@ details.versions li span { color: var(--um-text-tertiary); }
     </div>
     <div class="spacer"></div>
     <div class="overall">
-      <div class="row"><span class="muted">Listos</span><span class="spacer"></span><b class="num" id="readyCount">10 de 16</b></div>
-      <div class="progress"><i id="readyBar" style="width:62.5%"></i></div>
+      <div class="row"><span class="muted">Documentos listos</span><span class="spacer"></span><b class="num" id="readyCount">10 de 16</b></div>
+      <div class="progress" role="img" aria-label="10 de 16 documentos listos"><i id="readyBar" style="transform:scaleX(0.625)"></i></div>
     </div>
   </div>
 
@@ -217,6 +220,8 @@ details.versions li span { color: var(--um-text-tertiary); }
     { id: 15, g: "app", name: "Promesa de compraventa", st: "APPROVED", file: { name: "promesa-apto-1204.pdf", size: "3,4 MB", kind: "pdf", pages: 6, when: "10 nov" }, v: 1 },
     { id: 16, g: "app", name: "Certificado de tradición y libertad", st: "WAIVED", v: 0, waived: "No aplica: el inmueble es sobre planos." }
   ];
+  // Etiquetas pensadas para el comprador. En la app real llegan de la API (etiqueta pública del estado del slot);
+  // el frontend solo elige el tono e ícono a partir del código, nunca escribe estas etiquetas.
   var STATUS = {
     PENDING: { label: "Te falta", tone: "warning", icon: '<path d="M9 3h2v6h6v2h-6v6H9v-6H3V9h6V3Z"/>' },
     REJECTED: { label: "Corrígelo", tone: "danger", icon: '<path d="M10 1a9 9 0 1 0 0 18 9 9 0 0 0 0-18Zm-1 4h2v6H9V5Zm0 8h2v2H9v-2Z"/>' },
@@ -237,7 +242,8 @@ details.versions li span { color: var(--um-text-tertiary); }
     docs.forEach(function (d) { c[bucket(d)]++; });
     document.querySelectorAll("[data-c]").forEach(function (s) { s.textContent = c[s.dataset.c]; });
     document.getElementById("readyCount").textContent = c.done + " de " + c.all;
-    document.getElementById("readyBar").style.width = (c.done / c.all * 100) + "%";
+    document.getElementById("readyBar").style.transform = "scaleX(" + (c.done / c.all) + ")";
+    document.getElementById("readyBar").parentNode.setAttribute("aria-label", c.done + " de " + c.all + " documentos listos");
     document.getElementById("navCount").textContent = c.todo; document.getElementById("tabCount").textContent = c.todo;
     document.getElementById("navCount").hidden = document.getElementById("tabCount").hidden = c.todo === 0;
     document.getElementById("summary").textContent = c.todo ? "Te faltan " + c.todo + (c.todo === 1 ? " documento" : " documentos") + ". Tu asesora revisa los demás." : "Subiste todo. Tu asesora está revisando tus documentos.";
@@ -280,7 +286,7 @@ details.versions li span { color: var(--um-text-tertiary); }
       '<span class="tertiary">PDF, JPG o PNG · hasta 10 MB</span></div>' +
       '<div class="mobile-pick"><button class="primary" type="button" data-cam>' + icon('<path d="M7.5 3 6 5H4a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2l-1.5-2h-5ZM10 7.5a3.5 3.5 0 1 1 0 7 3.5 3.5 0 0 1 0-7Z"/>') + "Tomar foto</button>" +
       '<button class="secondary" type="button" data-pick>' + icon('<path d="M5 2h7l4 4v12H5V2Zm4 7v3H6v2h3v3h2v-3h3v-2h-3V9H9Z"/>') + "Elegir archivo</button></div>" +
-      '<div class="field date-field"><label for="docDate">Fecha del documento <span class="tertiary">(opcional)</span></label><input class="input" type="date" id="docDate"' + (d.date ? ' value="' + d.date + '"' : "") + '><span class="help">La fecha de expedición o del periodo que cubre.</span></div>';
+      '<div class="field date-field"><label for="docDate">Fecha del documento <span class="tertiary">(opcional)</span></label><input class="input" type="date" id="docDate"' + (d.date ? ' value="' + d.date + '"' : "") + '><span class="help">Expedición o periodo que cubre.</span></div>';
   }
 
   function renderDetail() {
@@ -299,7 +305,7 @@ details.versions li span { color: var(--um-text-tertiary); }
       body = reqs + dropzone(d, false);
     } else if (d.st === "REJECTED") {
       body = '<div class="msg tone-danger">' + icon(STATUS.REJECTED.icon) + "<div><b>Tu asesora pidió corregirlo · " + esc(d.reason) + "</b><p>" + esc(d.msg) + "</p></div></div>" +
-        fileCard(d, '<button class="btn btn-default btn-sm" type="button" data-open>Ver el que subiste</button>') + reqs + dropzone(d, true);
+        '<p class="prev-file">' + icon('<path d="M5 2h7l4 4v12H5V2Zm7 1.5V7h3.5L12 3.5Z"/>') + "<span>" + esc(d.file.name) + '</span><button class="btn btn-text btn-sm" type="button" data-open>Ver el que subiste</button></p>' + reqs + dropzone(d, true);
     } else if (d.st === "UPLOADED") {
       body = fileCard(d, '<button class="btn btn-default btn-sm" type="button" data-open>Ver</button><button class="btn btn-default btn-sm" type="button" data-replace>Reemplazar</button>') +
         '<div class="lock">' + icon('<path d="M10 1a9 9 0 1 0 0 18 9 9 0 0 0 0-18Zm-1 4h2v2H9V5Zm0 4h2v6H9V9Z"/>') + "Puedes reemplazarlo mientras tu asesora no lo haya revisado. Si subes otro, ella revisará el más reciente.</div>" +

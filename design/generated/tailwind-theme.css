@@ -42,6 +42,12 @@
   --color-tone-danger-fg: var(--um-tone-danger-fg);
   --color-tone-danger-bg: var(--um-tone-danger-bg);
   --color-tone-danger-border: var(--um-tone-danger-border);
+  --color-text-on-sidebar-strong: var(--um-text-on-sidebar-strong);
+  --color-sidebar-item-hover: var(--um-sidebar-item-hover);
+  --color-sidebar-item-active: var(--um-sidebar-item-active);
+  --color-sidebar-divider: var(--um-sidebar-divider);
+  --color-tone-danger-solid: var(--um-tone-danger-solid);
+  --color-tone-danger-on-solid: var(--um-tone-danger-on-solid);
   --font-sans: var(--um-font-sans);
   --font-mono: var(--um-font-mono);
   --text-xs: var(--um-text-xs);

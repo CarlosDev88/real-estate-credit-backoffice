@@ -180,6 +180,8 @@ Se resuelven en `TAREA-applications-listado.md`. Mientras tanto, se simulan con 
 - Tipo de crédito (`bank_product_type`) en el listado, y filtro por tipo.
 - Monto solicitado, completitud y número de co-solicitantes en cada fila.
 - Conteos de las pestañas del listado y qué estados agrupa cada una (no los puede definir el frontend).
+- Marca de "ya no cumple" en solicitudes `READY_TO_FILE` y nombre corto del banco (filas 9 y 10 de esa spec).
+- Etiqueta pública del estado de cada documento para el comprador ("Te falta", "Corrígelo", "En revisión", "No aplica"). Hoy el DTO del comprador trae el código; el texto no puede escribirse en el frontend. Va en el DTO de `/buyer/.../document-slots` (tarea pequeña aparte, después de la fase 10).
 
 ## Pruebas
 - **Unitarias** (Vitest + Testing Library): componentes de `ui`, formularios con validación, manejo de `ApiError` y formato de montos.

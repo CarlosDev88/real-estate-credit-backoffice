@@ -11,26 +11,27 @@
 /*__TOKENS_CSS__*/
 /*__BASE_CSS__*/
 
-.content { padding: var(--um-space-6); display: grid; gap: var(--um-space-5); align-content: start; max-width: 1400px; }
-.card { background: var(--um-bg-surface); border: 1px solid var(--um-border-default); border-radius: var(--um-radius-lg); box-shadow: var(--um-shadow-sm); }
+.content { padding: var(--um-space-6); display: grid; gap: var(--um-space-5); align-content: start; max-width: 1148px; }
+.card { background: var(--um-bg-surface); border: 1px solid var(--um-border-default); border-radius: var(--um-radius-lg); }
 .card-h { display: flex; align-items: center; gap: var(--um-space-2); padding: var(--um-space-4) var(--um-space-5) 0; }
-.card-h h3 { margin: 0; font-size: var(--um-text-lg); line-height: var(--um-leading-lg); font-weight: var(--um-weight-semibold); }
+.card-h h2 { margin: 0; font-size: var(--um-text-lg); line-height: var(--um-leading-lg); font-weight: var(--um-weight-semibold); }
 .card-b { padding: var(--um-space-4) var(--um-space-5) var(--um-space-5); }
-.label { font-size: var(--um-text-xs); color: var(--um-text-tertiary); text-transform: uppercase; letter-spacing: 0.05em; font-weight: var(--um-weight-semibold); }
+.label { font-size: var(--um-text-xs); color: var(--um-text-secondary); font-weight: var(--um-weight-medium); }
 
 /* encabezado */
 .back { display: inline-flex; align-items: center; gap: 4px; font-size: var(--um-text-sm); color: var(--um-text-secondary); }
 .head { padding: var(--um-space-5); display: grid; gap: var(--um-space-4); }
 .head-top { display: flex; flex-wrap: wrap; gap: var(--um-space-3); align-items: flex-start; }
 .title-row { display: flex; align-items: center; gap: var(--um-space-3); flex-wrap: wrap; }
-.title-row h1 { margin: 0; font-family: var(--um-font-mono); font-size: var(--um-text-2xl); line-height: var(--um-leading-2xl); font-weight: var(--um-weight-medium); }
+.title-row h1 { margin: 0; font-family: var(--um-font-mono); font-size: var(--um-text-3xl); line-height: var(--um-leading-3xl); font-weight: var(--um-weight-medium); }
 .subtitle { margin: 4px 0 0; color: var(--um-text-secondary); }
 .subtitle b { color: var(--um-text-primary); font-weight: var(--um-weight-medium); }
 .actions { display: flex; gap: var(--um-space-2); align-items: center; flex-wrap: wrap; }
-.actions .hint { font-size: var(--um-text-xs); color: var(--um-tone-warning-fg); display: flex; align-items: center; gap: 4px; }
-.actions .hint svg { width: 14px; height: 14px; }
+.action-col { display: grid; gap: 6px; justify-items: start; }
+.reason { margin: 0; font-size: var(--um-text-xs); color: var(--um-text-secondary); }
 .kpis { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: var(--um-space-4); padding-top: var(--um-space-4); border-top: 1px solid var(--um-border-default); }
-.kpi .v { font-size: var(--um-text-lg); font-weight: var(--um-weight-semibold); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kpi .v { font-size: var(--um-text-lg); line-height: var(--um-leading-lg); font-weight: var(--um-weight-semibold); margin-top: 2px; }
+.kpi .v small { display: block; }
 .kpi .v small { font-size: var(--um-text-xs); font-weight: var(--um-weight-regular); color: var(--um-text-tertiary); }
 .menu { position: relative; }
 .menu-list { position: absolute; right: 0; top: calc(100% + 4px); z-index: 15; min-width: 230px; margin: 0; padding: 4px; list-style: none; background: var(--um-bg-surface); border: 1px solid var(--um-border-default); border-radius: var(--um-radius-lg); box-shadow: var(--um-shadow-lg); }
@@ -59,17 +60,15 @@
 .tabs { display: flex; gap: var(--um-space-1); border-bottom: 1px solid var(--um-border-default); overflow-x: auto; }
 .tabs button { border: 0; background: none; padding: var(--um-space-2) var(--um-space-3) 10px; cursor: pointer; color: var(--um-text-secondary); font-weight: var(--um-weight-medium); border-bottom: 2px solid transparent; margin-bottom: -1px; white-space: nowrap; display: inline-flex; gap: 6px; align-items: center; }
 .tabs button[aria-selected="true"] { color: var(--um-text-link); border-bottom-color: var(--um-brand-primary); }
-.tabs .n { font-size: 11px; padding: 0 7px; border-radius: var(--um-radius-full); background: var(--um-tone-warning-bg); color: var(--um-tone-warning-fg); line-height: 18px; }
+.tabs .n { font-size: var(--um-text-xs); font-weight: var(--um-weight-regular); color: var(--um-tone-warning-fg); font-variant-numeric: tabular-nums; }
 [role="tabpanel"][hidden] { display: none; }
 
 /* resumen */
 /* Una sola columna: las tarjetas van apiladas en todas las pantallas. */
 .grid-main { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--um-space-5); max-width: 1100px; }
 .col { display: grid; gap: var(--um-space-5); }
-.big { font-size: var(--um-text-4xl); line-height: var(--um-leading-4xl); font-weight: var(--um-weight-semibold); letter-spacing: -0.02em; }
 .progress { height: 8px; border-radius: var(--um-radius-full); background: var(--um-bg-muted); overflow: hidden; }
 .progress > i { display: block; height: 100%; border-radius: inherit; background: var(--um-brand-primary); }
-.progress > i.full { background: var(--um-accent-default); }
 .split { display: grid; grid-template-columns: 1fr 1fr; gap: var(--um-space-5); margin-top: var(--um-space-4); }
 .split b { font-variant-numeric: tabular-nums; }
 .checks { list-style: none; margin: var(--um-space-4) 0 0; padding: 0; display: grid; gap: 6px; font-size: var(--um-text-sm); }
@@ -84,9 +83,9 @@
 .rule svg { width: 16px; height: 16px; }
 .rule small { display: block; color: var(--um-text-tertiary); font-size: var(--um-text-xs); }
 
-.dl { display: grid; grid-template-columns: auto 1fr; gap: 8px var(--um-space-4); font-size: var(--um-text-sm); margin: 0; }
+.dl { display: grid; grid-template-columns: minmax(140px, 220px) 1fr; gap: 8px var(--um-space-4); font-size: var(--um-text-sm); margin: 0; }
 .dl dt { color: var(--um-text-tertiary); }
-.dl dd { margin: 0; text-align: right; font-weight: var(--um-weight-medium); }
+.dl dd { margin: 0; font-weight: var(--um-weight-medium); }
 .people { display: grid; gap: var(--um-space-3); }
 .person-row { display: flex; gap: var(--um-space-3); align-items: center; }
 .person-row b { display: block; font-weight: var(--um-weight-medium); }
@@ -105,8 +104,8 @@
 
 /* documentos */
 .doc-group + .doc-group { margin-top: var(--um-space-6); }
-.doc-group h4 { margin: 0 0 var(--um-space-3); display: flex; align-items: center; gap: var(--um-space-2); font-size: var(--um-text-md); }
-.doc-group h4 .tertiary { font-weight: var(--um-weight-regular); }
+.doc-group h3 { margin: 0 0 var(--um-space-3); display: flex; align-items: center; gap: var(--um-space-2); font-size: var(--um-text-md); }
+.doc-group h3 .tertiary { font-weight: var(--um-weight-regular); }
 .slot { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; gap: var(--um-space-3); align-items: center; padding: 10px var(--um-space-4); border: 1px solid var(--um-border-default); border-radius: var(--um-radius-lg); background: var(--um-bg-surface); }
 .slot + .slot { margin-top: var(--um-space-2); }
 .slot .ico { width: 34px; height: 34px; border-radius: var(--um-radius-md); display: grid; place-items: center; background: var(--um-bg-muted); color: var(--um-text-secondary); }
@@ -115,7 +114,7 @@
 .slot .s { font-size: var(--um-text-xs); color: var(--um-text-tertiary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .slot.empty { border-style: dashed; background: var(--um-bg-subtle); }
 .slot .note { grid-column: 2 / -1; font-size: var(--um-text-sm); padding: 6px 10px; border-radius: var(--um-radius-md); }
-.group-tag { font-size: 11px; color: var(--um-text-tertiary); border: 1px dashed var(--um-border-strong); border-radius: var(--um-radius-full); padding: 0 8px; margin-left: 6px; }
+.group-tag { font-size: var(--um-text-xs); color: var(--um-text-tertiary); border: 1px dashed var(--um-border-strong); border-radius: var(--um-radius-full); padding: 0 8px; margin-left: 6px; }
 
 /* panel lateral de revisión */
 .drawer-scrim { position: fixed; inset: 0; background: var(--um-bg-overlay); z-index: 40; display: none; }
@@ -148,6 +147,9 @@ textarea.input { height: auto; min-height: 76px; padding: 8px var(--um-space-3);
   .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .actions { width: 100%; }
   .actions .btn-primary { flex: 1; }
+  .action-col { width: 100%; justify-items: stretch; }
+  .actions .btn:not(.btn-icon) { flex: 1 1 auto; }
+  .dl { grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); }
   .split { grid-template-columns: 1fr; gap: var(--um-space-3); }
   .slot { grid-template-columns: auto minmax(0, 1fr) auto; }
   .slot .badge { grid-column: 2; justify-self: start; }
@@ -184,10 +186,12 @@ textarea.input { height: auto; min-height: 76px; padding: 8px var(--um-space-3);
             <p class="subtitle"><b>Sofía Herrera</b> y Daniel Mejía (co-solicitante) · Vivienda nueva · Torres del Parque, etapa 2</p>
           </div>
           <div class="spacer"></div>
+          <div class="action-col">
           <div class="actions">
-            <span class="hint" title="La condición se revisa al ejecutar la acción"><svg viewBox="0 0 20 20" fill="currentColor"><path d="M10 2 1 18h18L10 2Zm-1 6h2v5H9V8Zm0 6h2v2H9v-2Z"/></svg>Requiere documentos aprobados</span>
-            <button class="btn btn-default" type="button"><svg viewBox="0 0 20 20" fill="currentColor"><path d="M11 3h6v6h-2V6.4l-6.3 6.3-1.4-1.4L13.6 5H11V3ZM3 5h6v2H5v8h8v-4h2v6H3V5Z"/></svg>Enviar enlace al comprador</button>
-            <button class="btn btn-primary" type="button" id="readyBtn">Marcar lista para radicar</button>
+            <button class="btn btn-default" type="button"><svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M11 3h6v6h-2V6.4l-6.3 6.3-1.4-1.4L13.6 5H11V3ZM3 5h6v2H5v8h8v-4h2v6H3V5Z"/></svg>Enviar enlace al comprador</button>
+            <!-- Mientras falten documentos, la acción principal es revisarlos; marcar como lista queda deshabilitado con la razón visible. -->
+            <button class="btn btn-default" type="button" id="readyBtn" disabled aria-describedby="readyReason">Marcar lista para radicar</button>
+            <button class="btn btn-primary" type="button" id="reviewNext" data-review="Certificado laboral|Sofía Herrera · Titular|certificado-laboral.pdf|412 KB|30">Revisar 3 documentos</button>
             <div class="menu">
               <button class="btn btn-default btn-icon" type="button" id="moreBtn" aria-haspopup="menu" aria-expanded="false" aria-label="Más acciones"><svg viewBox="0 0 20 20" fill="currentColor"><circle cx="4" cy="10" r="1.6"/><circle cx="10" cy="10" r="1.6"/><circle cx="16" cy="10" r="1.6"/></svg></button>
               <ul class="menu-list" id="moreMenu" role="menu" hidden>
@@ -200,12 +204,14 @@ textarea.input { height: auto; min-height: 76px; padding: 8px var(--um-space-3);
               </ul>
             </div>
           </div>
+            <p class="reason" id="readyReason">Para marcarla lista faltan 3 documentos por revisar, 2 por cargar y 1 rechazado.</p>
+          </div>
         </div>
         <div class="kpis">
           <div class="kpi"><div class="label">Monto solicitado</div><div class="v num">$ 365.000.000</div></div>
           <div class="kpi"><div class="label">Valor del inmueble</div><div class="v num">$ 520.000.000</div></div>
           <div class="kpi"><div class="label">Financiación</div><div class="v num">70,2 % <small>del valor</small></div></div>
-          <div class="kpi"><div class="label">Banco</div><div class="v">Banco de Bogotá <small>Vivienda</small></div></div>
+          <div class="kpi"><div class="label">Banco</div><div class="v">Banco de Bogotá <small>Leasing habitacional</small></div></div>
           <div class="kpi"><div class="label">Plazo</div><div class="v num">240 <small>meses</small></div></div>
           <div class="kpi"><div class="label">Origen</div><div class="v">Broker <small>Andrés Cárdenas</small></div></div>
         </div>
@@ -232,12 +238,10 @@ textarea.input { height: auto; min-height: 76px; padding: 8px var(--um-space-3);
         <div class="grid-main">
           <div class="col">
             <article class="card">
-              <div class="card-h"><h3>Completitud del expediente</h3></div>
+              <div class="card-h"><h2>Completitud del expediente</h2><div class="spacer"></div><span class="muted num" style="white-space:nowrap">81 % en total</span></div>
               <div class="card-b">
-                <div class="row" style="align-items:baseline"><span class="big num">81 %</span><span class="tertiary">Falta revisar y completar documentos</span></div>
-                <div class="progress" style="margin-top:var(--um-space-3)"><i style="width:81%"></i></div>
-                <div class="split">
-                  <div><div class="row"><span class="muted">Datos</span><div class="spacer"></div><b>100 %</b></div><div class="progress" style="margin-top:6px"><i class="full" style="width:100%"></i></div></div>
+                <div class="split" style="margin-top:0">
+                  <div><div class="row"><span class="muted">Datos</span><div class="spacer"></div><b>100 %</b></div><div class="progress" style="margin-top:6px"><i style="width:100%"></i></div></div>
                   <div><div class="row"><span class="muted">Documentos</span><div class="spacer"></div><b>10 de 16 · 62 %</b></div><div class="progress" style="margin-top:6px"><i style="width:62%"></i></div></div>
                 </div>
                 <ul class="checks">
@@ -249,35 +253,32 @@ textarea.input { height: auto; min-height: 76px; padding: 8px var(--um-space-3);
             </article>
 
             <article class="card">
-              <div class="card-h"><h3>Por revisar</h3><div class="spacer"></div><button class="btn btn-text btn-sm" type="button" data-goto="t-docs">Ver todos los documentos</button></div>
+              <div class="card-h"><h2>Por revisar</h2><div class="spacer"></div><button class="btn btn-text btn-sm" type="button" data-goto="t-docs">Ver todos los documentos</button></div>
               <div class="card-b">
                 <div class="slot">
                   <div class="ico"><svg viewBox="0 0 20 20" fill="currentColor"><path d="M5 2h7l4 4v12H5V2Zm7 1.5V7h3.5L12 3.5Z"/></svg></div>
                   <div><div class="t">Certificado laboral</div><div class="s">Sofía Herrera · certificado-laboral.pdf · hace 3 h</div></div>
-                  <span class="badge tone-info">Cargado</span>
                   <button class="btn btn-default btn-sm act" type="button" data-review="Certificado laboral|Sofía Herrera · Titular|certificado-laboral.pdf|412 KB|30">Revisar</button>
                 </div>
                 <div class="slot">
                   <div class="ico"><svg viewBox="0 0 20 20" fill="currentColor"><path d="M5 2h7l4 4v12H5V2Zm7 1.5V7h3.5L12 3.5Z"/></svg></div>
                   <div><div class="t">Extracto bancario 1 de 3</div><div class="s">Sofía Herrera · extracto-agosto.pdf · hace 3 h</div></div>
-                  <span class="badge tone-info">Cargado</span>
                   <button class="btn btn-default btn-sm act" type="button" data-review="Extracto bancario 1 de 3|Sofía Herrera · Titular|extracto-agosto.pdf|1,1 MB|">Revisar</button>
                 </div>
                 <div class="slot">
                   <div class="ico"><svg viewBox="0 0 20 20" fill="currentColor"><path d="M5 2h7l4 4v12H5V2Zm7 1.5V7h3.5L12 3.5Z"/></svg></div>
                   <div><div class="t">Cédula del co-solicitante</div><div class="s">Daniel Mejía · cedula-daniel.jpg · hace 5 h</div></div>
-                  <span class="badge tone-info">Cargado</span>
                   <button class="btn btn-default btn-sm act" type="button" data-review="Documento de identidad|Daniel Mejía · Co-solicitante|cedula-daniel.jpg|860 KB|">Revisar</button>
                 </div>
               </div>
             </article>
 
             <article class="card">
-              <div class="card-h"><h3>Evaluación del banco</h3><div class="spacer"></div><span class="badge tone-success">Elegible</span></div>
+              <div class="card-h"><h2>Evaluación del banco</h2><div class="spacer"></div><span class="badge tone-success">Elegible</span></div>
               <div class="card-b">
                 <div class="eval-head">
                   <div class="bank-mark" aria-hidden="true">BdB</div>
-                  <div><b>Banco de Bogotá · Crédito de vivienda</b><div class="tertiary">Evaluada hace 2 h · vigente para la versión actual</div></div>
+                  <div><b>Banco de Bogotá · Leasing habitacional</b><div class="tertiary">Evaluada hace 2 h · vigente para la versión actual</div></div>
                 </div>
                 <div class="rules">
                   <div class="rule"><svg class="ok" viewBox="0 0 20 20" fill="currentColor"><path d="M10 1a9 9 0 1 0 0 18 9 9 0 0 0 0-18Zm-1.2 13L4.5 9.7l1.4-1.4 2.9 2.9 5.3-5.3 1.4 1.4-6.7 6.7Z"/></svg><div>Monto dentro del rango del producto<small>Regla del sistema · PRODUCT_AMOUNT_RANGE</small></div><span class="tertiary">Cumple</span></div>
@@ -290,7 +291,7 @@ textarea.input { height: auto; min-height: 76px; padding: 8px var(--um-space-3);
 
           <div class="col">
             <article class="card">
-              <div class="card-h"><h3>Participantes</h3><div class="spacer"></div><button class="btn btn-text btn-sm" type="button">Agregar</button></div>
+              <div class="card-h"><h2>Participantes</h2><div class="spacer"></div><button class="btn btn-text btn-sm" type="button">Agregar</button></div>
               <div class="card-b people">
                 <div class="person-row"><span class="avatar">SH</span><div><b>Sofía Herrera</b><span>Titular · Empleada · Perfil confirmado</span></div><div class="money"><b class="num">$ 7.800.000</b><span class="tertiary">ingreso mensual</span></div></div>
                 <div class="person-row"><span class="avatar">DM</span><div><b>Daniel Mejía</b><span>Co-solicitante · Independiente · Perfil confirmado</span></div><div class="money"><b class="num">$ 4.200.000</b><span class="tertiary">ingreso mensual</span></div></div>
@@ -302,7 +303,7 @@ textarea.input { height: auto; min-height: 76px; padding: 8px var(--um-space-3);
             </article>
 
             <article class="card">
-              <div class="card-h"><h3>Inmueble</h3></div>
+              <div class="card-h"><h2>Inmueble</h2></div>
               <div class="card-b">
                 <dl class="dl">
                   <dt>Proyecto</dt><dd>Torres del Parque, etapa 2</dd>
@@ -315,7 +316,7 @@ textarea.input { height: auto; min-height: 76px; padding: 8px var(--um-space-3);
             </article>
 
             <article class="card">
-              <div class="card-h"><h3>Acceso del comprador</h3></div>
+              <div class="card-h"><h2>Acceso del comprador</h2></div>
               <div class="card-b">
                 <dl class="dl">
                   <dt>Enlace</dt><dd><span class="badge tone-success">Usado</span></dd>
@@ -327,7 +328,7 @@ textarea.input { height: auto; min-height: 76px; padding: 8px var(--um-space-3);
             </article>
 
             <article class="card">
-              <div class="card-h"><h3>Actividad reciente</h3><div class="spacer"></div><button class="btn btn-text btn-sm" type="button" data-goto="t-hist">Ver historial</button></div>
+              <div class="card-h"><h2>Actividad reciente</h2><div class="spacer"></div><button class="btn btn-text btn-sm" type="button" data-goto="t-hist">Ver historial</button></div>
               <div class="card-b">
                 <ul class="timeline">
                   <li class="info"><div><b>Sofía Herrera</b> cargó 2 documentos<small>Hace 3 h · portal del comprador</small></div></li>
@@ -344,7 +345,7 @@ textarea.input { height: auto; min-height: 76px; padding: 8px var(--um-space-3);
       <section role="tabpanel" id="p-docs" aria-labelledby="t-docs" hidden>
         <div class="card"><div class="card-b" style="padding-top:var(--um-space-5)">
           <div class="doc-group">
-            <h4><span class="avatar" style="width:24px;height:24px;font-size:10px">SH</span>Sofía Herrera <span class="tertiary">· Titular · Empleada</span></h4>
+            <h3><span class="avatar" style="width:24px;height:24px;font-size:10px">SH</span>Sofía Herrera <span class="tertiary">· Titular · Empleada</span></h3>
             <div class="slot"><div class="ico"><svg viewBox="0 0 20 20" fill="currentColor"><path d="M5 2h7l4 4v12H5V2Zm7 1.5V7h3.5L12 3.5Z"/></svg></div><div><div class="t">Documento de identidad</div><div class="s">cedula-sofia.pdf · 1,2 MB · aprobado por Paula R.</div></div><span class="badge tone-success">Aprobado</span><button class="btn btn-ghost btn-sm act" type="button" data-view="cedula-sofia.pdf|pdf|2|1,2 MB">Ver</button></div>
             <div class="slot"><div class="ico"><svg viewBox="0 0 20 20" fill="currentColor"><path d="M5 2h7l4 4v12H5V2Zm7 1.5V7h3.5L12 3.5Z"/></svg></div><div><div class="t">Certificado laboral</div><div class="s">certificado-laboral.pdf · 412 KB · máximo 30 días de expedido</div></div><span class="badge tone-info">Cargado</span><button class="btn btn-default btn-sm act" type="button" data-review="Certificado laboral|Sofía Herrera · Titular|certificado-laboral.pdf|412 KB|30">Revisar</button></div>
             <div class="slot"><div class="ico"><svg viewBox="0 0 20 20" fill="currentColor"><path d="M5 2h7l4 4v12H5V2Zm7 1.5V7h3.5L12 3.5Z"/></svg></div><div><div class="t">Desprendible de nómina 1 de 3</div><div class="s">nomina-julio.pdf · 380 KB</div></div><span class="badge tone-success">Aprobado</span><button class="btn btn-ghost btn-sm act" type="button" data-view="nomina-julio.pdf|pdf|1|380 KB">Ver</button></div>
@@ -356,14 +357,14 @@ textarea.input { height: auto; min-height: 76px; padding: 8px var(--um-space-3);
           </div>
 
           <div class="doc-group">
-            <h4><span class="avatar" style="width:24px;height:24px;font-size:10px">DM</span>Daniel Mejía <span class="tertiary">· Co-solicitante · Independiente</span></h4>
+            <h3><span class="avatar" style="width:24px;height:24px;font-size:10px">DM</span>Daniel Mejía <span class="tertiary">· Co-solicitante · Independiente</span></h3>
             <div class="slot"><div class="ico"><svg viewBox="0 0 20 20" fill="currentColor"><path d="M5 2h7l4 4v12H5V2Zm7 1.5V7h3.5L12 3.5Z"/></svg></div><div><div class="t">Documento de identidad</div><div class="s">cedula-daniel.jpg · 860 KB</div></div><span class="badge tone-info">Cargado</span><button class="btn btn-default btn-sm act" type="button" data-review="Documento de identidad|Daniel Mejía · Co-solicitante|cedula-daniel.jpg|860 KB|">Revisar</button></div>
             <div class="slot"><div class="ico"><svg viewBox="0 0 20 20" fill="currentColor"><path d="M5 2h7l4 4v12H5V2Zm7 1.5V7h3.5L12 3.5Z"/></svg></div><div><div class="t">Soporte de actividad e ingresos</div><div class="s">contrato-servicios.pdf · 2,3 MB</div></div><span class="badge tone-success">Aprobado</span><button class="btn btn-ghost btn-sm act" type="button" data-view="contrato-servicios.pdf|pdf|2|2,3 MB">Ver</button></div>
             <div class="slot empty"><div class="ico"><svg viewBox="0 0 20 20" fill="currentColor"><path d="M9 3h2v6h6v2h-6v6H9v-6H3V9h6V3Z"/></svg></div><div><div class="t">Extracto bancario 1 de 3</div><div class="s">Pendiente de carga por el comprador</div></div><span class="badge tone-neutral">Pendiente</span><button class="btn btn-ghost btn-sm act" type="button">Exonerar</button></div>
           </div>
 
           <div class="doc-group">
-            <h4><span class="avatar" style="width:24px;height:24px;font-size:10px"><svg width="12" height="12" viewBox="0 0 20 20" fill="currentColor"><path d="M10 2 2 8v10h5v-6h6v6h5V8l-8-6Z"/></svg></span>Solicitud <span class="tertiary">· Inmueble y trámite</span></h4>
+            <h3><span class="avatar" style="width:24px;height:24px;font-size:10px"><svg width="12" height="12" viewBox="0 0 20 20" fill="currentColor"><path d="M10 2 2 8v10h5v-6h6v6h5V8l-8-6Z"/></svg></span>Solicitud <span class="tertiary">· Inmueble y trámite</span></h3>
             <div class="slot"><div class="ico"><svg viewBox="0 0 20 20" fill="currentColor"><path d="M5 2h7l4 4v12H5V2Zm7 1.5V7h3.5L12 3.5Z"/></svg></div><div><div class="t">Promesa de compraventa</div><div class="s">promesa-apto-1204.pdf · 3,4 MB</div></div><span class="badge tone-success">Aprobado</span><button class="btn btn-ghost btn-sm act" type="button" data-view="promesa-apto-1204.pdf|pdf|2|3,4 MB">Ver</button></div>
             <div class="slot"><div class="ico"><svg viewBox="0 0 20 20" fill="currentColor"><path d="M5 2h7l4 4v12H5V2Zm7 1.5V7h3.5L12 3.5Z"/></svg></div><div><div class="t">Certificado de tradición y libertad</div><div class="s">No aplica: inmueble sobre planos</div></div><span class="badge tone-accent">Exonerado</span><span class="tertiary act">Sin archivo</span></div>
           </div>
@@ -479,19 +480,23 @@ textarea.input { height: auto; min-height: 76px; padding: 8px var(--um-space-3);
     if (reject) UmToast.show({ tone: "warning", title: name + " rechazado", message: "Le avisamos al comprador por el portal y por correo para que lo reemplace." });
     else UmToast.show({ tone: "success", title: name + " aprobado", message: "Quedan 5 documentos por cumplir en el expediente.", action: { label: "Deshacer", onClick: function () { UmToast.show({ tone: "info", title: "Aprobación deshecha", message: "El documento volvió a quedar por revisar." }); } } });
   });
-  document.getElementById("readyBtn").addEventListener("click", function () {
-    UmToast.show({ tone: "danger", title: "Todavía no está lista para radicar", message: "Faltan 6 documentos obligatorios por aprobar. La evaluación del banco sí está vigente y sin bloqueos.", action: { label: "Ver documentos", onClick: function () { document.getElementById("t-docs").click(); } } });
-  });
   scrim.addEventListener("click", closeDrawer);
-  document.addEventListener("keydown", function (e) { if (e.key === "Escape" && drawer.classList.contains("open")) closeDrawer(); });
+  document.addEventListener("keydown", function (e) {
+    if (!drawer.classList.contains("open")) return;
+    if (e.key === "Escape") { closeDrawer(); return; }
+    if (e.key !== "Tab") return;
+    // Mantener el foco dentro del panel mientras está abierto (aria-modal).
+    var f = [].filter.call(drawer.querySelectorAll("button, input, textarea, select, a[href], [tabindex]:not([tabindex='-1'])"), function (el) { return !el.disabled && el.offsetParent !== null; });
+    if (!f.length) return;
+    if (e.shiftKey && document.activeElement === f[0]) { e.preventDefault(); f[f.length - 1].focus(); }
+    else if (!e.shiftKey && document.activeElement === f[f.length - 1]) { e.preventDefault(); f[0].focus(); }
+  });
   document.querySelectorAll("input[name=decision]").forEach(function (r) {
     r.addEventListener("change", function () {
       var reject = r.value === "reject" && r.checked;
       rej.hidden = !reject;
       save.textContent = reject ? "Rechazar documento" : "Aprobar documento";
-      save.className = reject ? "btn btn-default" : "btn btn-primary";
-      save.style.color = reject ? "var(--um-tone-danger-fg)" : "";
-      save.style.borderColor = reject ? "var(--um-tone-danger-border)" : "";
+      save.className = reject ? "btn btn-danger btn-solid" : "btn btn-primary";
     });
   });
 })();
