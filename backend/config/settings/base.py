@@ -234,8 +234,10 @@ CELERY_TIMEZONE = "UTC"
 # --- Expediente documental (API §19, REQUERIMIENTOS §9) ------------------------------
 # Almacenamiento privado compatible con S3. En local es SeaweedFS (docker-compose); en
 # producción, S3 real: pasar de uno a otro es solo cambiar estas variables.
-# `s3` | `memory` (`memory` solo en desarrollo o pruebas).
+# `s3` | `filesystem` | `memory` (`filesystem` y `memory` solo en desarrollo o pruebas).
 DOCUMENT_STORAGE_BACKEND = env("DOCUMENT_STORAGE_BACKEND", default="s3")
+# Carpeta de `filesystem` (un volumen de Docker). Ruta absoluta.
+DOCUMENT_STORAGE_ROOT = env("DOCUMENT_STORAGE_ROOT", default="/data/documents")
 DOCUMENT_STORAGE_BUCKET = env("DOCUMENT_STORAGE_BUCKET", default="mvp-credit-documents")
 DOCUMENT_STORAGE_REGION = env("DOCUMENT_STORAGE_REGION", default="us-east-1")
 # Vacío: el endpoint de AWS para la región.
@@ -276,7 +278,12 @@ DOCUMENT_PACKAGE_TTL_DAYS = env.int("DOCUMENT_PACKAGE_TTL_DAYS", default=7)
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
-    "filters": {"request_id": {"()": "config.request_context.RequestIDLogFilter"}},
+    "filters": {
+        "request_id": {"()": "config.request_context.RequestIDLogFilter"},
+        # Las URL firmadas del almacenamiento en disco son credenciales: el token no se
+        # escribe ni en el log de peticiones de runserver.
+        "redact_object_tokens": {"()": "config.log_redaction.RedactObjectTokensFilter"},
+    },
     "formatters": {
         "default": {
             "format": "%(asctime)s %(levelname)s %(name)s [request_id=%(request_id)s] %(message)s"
@@ -285,7 +292,7 @@ LOGGING = {
     "handlers": {
         "console": {
             "class": "logging.StreamHandler",
-            "filters": ["request_id"],
+            "filters": ["request_id", "redact_object_tokens"],
             "formatter": "default",
         }
     },
