@@ -13,9 +13,12 @@ RUN python -m pip install --upgrade pip \
 
 COPY . ./
 
+# /data/documents: almacenamiento en disco del modo local simple. Existe en la imagen con
+# dueño `app` para que el volumen con nombre, al crearse, herede ese dueño.
 RUN addgroup --system app \
     && adduser --system --ingroup app app \
-    && chown -R app:app /app
+    && mkdir -p /data/documents \
+    && chown -R app:app /app /data/documents
 
 USER app
 

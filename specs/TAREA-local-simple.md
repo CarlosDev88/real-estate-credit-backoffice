@@ -114,6 +114,7 @@ Las de siempre:
 
 ### 6. Paso al modo `full`
 - `.env` decide la configuración y el perfil decide los contenedores: pasar a `full` es cambiar de bloque en `.env` y usar `docker compose --profile full up -d`.
-- Al arrancar, el backend escribe en el log una línea con el modo: `Servicios locales: almacenamiento=… · caché=… · tareas=… · antivirus=…`.
+- Al arrancar, el backend escribe en el log una línea con el modo: `Servicios locales: almacenamiento=… · caché=… · tareas=… · antivirus=…`. La escribe el comando `describe_local_services`, que el `command` del compose corre entre `createcachetable` y `runserver`.
+- El `Dockerfile` crea `/data/documents` con dueño `app`: el volumen con nombre hereda ese dueño al crearse (el contenedor no corre como root).
 - `backend` depende de `postgres` (healthy) y de `redis` y `storage-init` con `required: false`.
 - El README explica los dos pasos de cada modo y cómo confirmar con `check_document_services`.

@@ -32,6 +32,10 @@ docker compose up -d --build
 
 The API answers at http://localhost:8000 ([health](http://localhost:8000/health), [Swagger UI](http://localhost:8000/docs)). Configuration, services, commands, and module details are in [`backend/README.md`](backend/README.md).
 
+This starts the **simple local mode**: only the `postgres` and `backend` containers (the frontend will add a third). Documents are stored on disk, the shared cache lives in PostgreSQL, and antivirus scans and filing packages run in the same process. Migrations are applied on every start. The project has no deployment; everything runs locally.
+
+The real asynchronous architecture (Redis, SeaweedFS, a Celery worker, and ClamAV) is opt-in, with `docker compose --profile full up -d` and the "Full" block of `.env`. See [Local Modes](backend/README.md#local-modes) for both modes and what changes between them.
+
 ## API Contract
 
 [`contracts/openapi.json`](contracts/openapi.json) is generated from the backend, and CI fails if it is out of date. Any pull request that changes the API must include the regenerated contract; see [OpenAPI Contract](backend/README.md#openapi-contract) for the command.

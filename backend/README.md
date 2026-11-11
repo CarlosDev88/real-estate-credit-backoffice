@@ -12,9 +12,10 @@ The API is implemented as a modular monolith with Django REST Framework and Post
 - PostgreSQL 16.
 - Docker Compose for the local development environment.
 - OpenAPI 3.1 and Swagger UI through `drf-spectacular`.
-- Redis for shared cache and rate limiting (always on), and as the Celery broker.
-- Celery worker and ClamAV for document scanning and filing packages (opt-in `async` profile).
-- S3-compatible private storage: SeaweedFS locally, S3 in production.
+- Two local modes (see [Local Modes](#local-modes)): **simple** by default, with only PostgreSQL and the backend, and **full** (`full` profile), with the real asynchronous architecture.
+- Redis for shared cache and rate limiting, and as the Celery broker (full mode; in simple mode the cache lives in PostgreSQL).
+- Celery worker and ClamAV for document scanning and filing packages (full mode; in simple mode tasks run in the same process).
+- Private document storage: a local folder in simple mode, SeaweedFS (S3-compatible) in full mode, S3 in production.
 - Pytest, Ruff, and MyPy for testing and code quality.
 
 ## Data Flow and Database Domains
@@ -88,17 +89,61 @@ To run services in the background:
 docker compose up -d --build
 ```
 
-Default services:
+Default services (simple mode):
 
 | Service | Local address | Purpose |
 | --- | --- | --- |
-| Django backend | http://localhost:8000 | API and documentation. |
-| PostgreSQL | `localhost:5433` | Local development database. |
-| Redis | internal only | Shared cache used by authentication rate limits, and the Celery broker. |
-| SeaweedFS (S3 API) | http://localhost:8333 | Private document storage, S3-compatible. |
-| `storage-init` | runs once | Creates the private bucket if it does not exist, then exits. |
+| Django backend | http://localhost:8000 | API and documentation. Applies migrations and creates the cache table on every start. |
+| PostgreSQL | `localhost:5433` | Local development database, also the shared cache used by rate limits. |
 
-The `backend` service waits for `storage-init`. SeaweedFS needs `DOCUMENT_STORAGE_ACCESS_KEY_ID` and `DOCUMENT_STORAGE_SECRET_ACCESS_KEY` in `.env` and refuses to start without them (see [Storage and Antivirus](#storage-and-antivirus)). The Celery worker and ClamAV are opt-in (see [Asynchronous Profile](#asynchronous-profile-worker-and-antivirus)).
+Uploaded documents and filing packages are stored in the `mvp_credit_documents_data` volume. Redis, SeaweedFS, the Celery worker, and ClamAV belong to the `full` profile.
+
+### Local Modes
+
+`.env` decides how the backend is configured, and the compose profile decides which containers run. Switching modes always takes both steps.
+
+| | Simple (default) | Full (`full` profile) |
+| --- | --- | --- |
+| Containers | `postgres`, `backend` | Also `redis`, `seaweedfs`, `storage-init`, `worker`, and `clamav`. |
+| Documents | Disk, in the `mvp_credit_documents_data` volume (`DOCUMENT_STORAGE_BACKEND=filesystem`). | SeaweedFS, through the S3 API (`s3`). |
+| Downloads | Signed backend URL: `/api/v1/storage/objects/{token}`. | Presigned S3 URL (`http://localhost:8333`). |
+| Cache (rate limits) | PostgreSQL table (`CACHE_BACKEND=database`). | Redis (`redis`). |
+| Tasks (scans, packages) | Same process, after the commit (`CELERY_TASK_ALWAYS_EAGER=true`). | Celery worker. |
+| Antivirus | Fake scanner (`DOCUMENT_SCANNER=fake`). | ClamAV (`clamd`). |
+
+**Simple mode** is the `.env.example` default:
+
+```powershell
+docker compose up -d --build
+docker compose logs backend
+```
+
+The log shows the mode the backend started with: `Servicios locales: almacenamiento=filesystem · caché=database · tareas=inmediatas · antivirus=fake`.
+
+**Full mode:**
+
+1. In `.env`, comment out the "Local simple" block and uncomment the "Full" block.
+2. Start with the profile, and check that storage and antivirus answer:
+
+```powershell
+docker compose --profile full up -d --build
+# ClamAV downloads its signatures on first start; wait until it is "healthy" (several minutes)
+docker compose --profile full ps clamav
+docker compose exec -T backend python manage.py check_document_services
+```
+
+To go back to simple mode, restore the simple block in `.env`, then:
+
+```powershell
+docker compose --profile full stop worker clamav redis seaweedfs
+docker compose up -d
+```
+
+- **When the log does not match the profile,** `.env` and the profile disagree. With the profile but the simple `.env`, the extra containers run and the backend ignores them. With the full `.env` but no profile, uploads and downloads answer `503`.
+- **Files do not move between modes.** Each mode keeps its own documents. A download of a file uploaded in the other mode answers `503 DOWNLOAD_UNAVAILABLE` until you switch back. The `mvp_credit_seaweedfs_data` and `mvp_credit_redis_data` volumes are kept for full mode.
+- **Inline tasks are meant for the fake scanner.** With `CELERY_TASK_ALWAYS_EAGER=true`, an upload waits for its scan and a package request waits for its ZIP. Retries run back to back, without the usual wait. With `DOCUMENT_SCANNER=clamd` and clamd down, an upload can take several minutes (up to 9 attempts of up to 30 s each). The final state is the same as with the worker: the scan stays `PENDING`, and the package ends `FAILED`. A failed task never breaks the request: it is logged with the file or package id.
+- **Nothing connects to Redis in simple mode.** With `CELERY_TASK_ALWAYS_EAGER=true`, Celery uses an in-memory broker and keeps no results. Without it, an empty `REDIS_URL` stops the backend from starting.
+- **SeaweedFS needs its keys.** In full mode, `DOCUMENT_STORAGE_ACCESS_KEY_ID` and `DOCUMENT_STORAGE_SECRET_ACCESS_KEY` must be set in `.env`. SeaweedFS refuses to start without them (see [Storage and Antivirus](#storage-and-antivirus)).
 
 Useful endpoints:
 
@@ -211,16 +256,21 @@ Admins see every dossier and advisors the applications assigned to them (`404` o
 
 ### Storage and Antivirus
 
-Uploaded documents and generated packages live in a private S3-compatible bucket, with the `documents/` and `packages/` prefixes. Object keys never contain the original file name, and files are only downloaded through short-lived presigned URLs.
+Uploaded documents and generated packages live in private storage, with the `documents/` and `packages/` prefixes. Object keys never contain the original file name, and files are only downloaded through short-lived signed URLs.
 
-- **Local:** SeaweedFS (`chrislusf/seaweedfs:3.85`, `weed server -s3`) in `docker-compose.yml`. MinIO was discarded because its community edition no longer publishes container images.
+- **Local, simple mode:** a folder in the `mvp_credit_documents_data` volume (`DOCUMENT_STORAGE_ROOT`, `/data/documents`). Keys cannot leave that folder (no `..`, absolute paths, or links pointing outside). Downloads go through `GET /api/v1/storage/objects/{token}`, which plays the role of a presigned S3 URL:
+  - The URL is relative, so it works through the frontend rewrites and directly on `:8000`. It needs no session: the signature (`django.core.signing`, with its own salt and the expiry inside) is the credential, and it lasts `DOCUMENT_DOWNLOAD_URL_SECONDS`.
+  - Expired or altered links answer `403 DOWNLOAD_LINK_INVALID`, and missing objects answer `404`. Outside `filesystem` mode the endpoint always answers `404`, and it is not part of the OpenAPI contract.
+  - Files are always sent as attachments (never `inline`), with the signed `Content-Type`, `Cache-Control: no-store`, and `X-Content-Type-Options: nosniff`. The token is replaced by `***` in every log, including runserver's.
+- **Local, full mode:** SeaweedFS (`chrislusf/seaweedfs:3.85`, `weed server -s3`) in `docker-compose.yml`. MinIO was discarded because its community edition no longer publishes container images.
 - **Production:** real S3. Switching is only a matter of environment variables: point `DOCUMENT_STORAGE_ENDPOINT_URL` and `DOCUMENT_STORAGE_PUBLIC_ENDPOINT_URL` to empty values (AWS endpoint), set the bucket, region and credentials (or leave the keys empty to use an IAM role), `DOCUMENT_STORAGE_ADDRESSING_STYLE=auto`, and `DOCUMENT_STORAGE_SSE=AES256`.
-- **Encryption:** server-side encryption (SSE-S3) only applies on real S3. SeaweedFS does not implement it, so `DOCUMENT_STORAGE_SSE` stays empty locally and `file_objects.encryption_key_version` is `null`.
-- **Presigned URLs** are signed for the host the browser sees (`DOCUMENT_STORAGE_PUBLIC_ENDPOINT_URL`, `http://localhost:8333` locally), while the backend talks to `http://seaweedfs:8333` inside the Docker network.
+- **Encryption:** server-side encryption (SSE-S3) only applies on real S3. Neither SeaweedFS nor the local folder encrypts, so `DOCUMENT_STORAGE_SSE` stays empty locally and `file_objects.encryption_key_version` is `null`.
+- **Presigned S3 URLs (full mode)** are signed for the host the browser sees (`DOCUMENT_STORAGE_PUBLIC_ENDPOINT_URL`, `http://localhost:8333` locally), while the backend talks to `http://seaweedfs:8333` inside the Docker network.
 
 | Variable | Local value | Purpose |
 | --- | --- | --- |
-| `DOCUMENT_STORAGE_BACKEND` | `s3` | `s3`, or `memory` (only with `DEBUG` or in tests). |
+| `DOCUMENT_STORAGE_BACKEND` | `filesystem` (simple) / `s3` (full) | `s3`, `filesystem`, or `memory` (`filesystem` and `memory` only with `DEBUG` or in tests). |
+| `DOCUMENT_STORAGE_ROOT` | `/data/documents` | `filesystem` folder, an absolute path (the `mvp_credit_documents_data` volume). |
 | `DOCUMENT_STORAGE_BUCKET` | `mvp-credit-documents` | Private bucket. |
 | `DOCUMENT_STORAGE_REGION` | `us-east-1` | Region used to sign requests. |
 | `DOCUMENT_STORAGE_ENDPOINT_URL` | `http://seaweedfs:8333` | Endpoint the backend and worker use. Empty on AWS. |
@@ -228,34 +278,39 @@ Uploaded documents and generated packages live in a private S3-compatible bucket
 | `DOCUMENT_STORAGE_ACCESS_KEY_ID` / `DOCUMENT_STORAGE_SECRET_ACCESS_KEY` | local-only values | Also the single SeaweedFS identity; anonymous access is denied. |
 | `DOCUMENT_STORAGE_ADDRESSING_STYLE` | `path` | `auto` on AWS. |
 | `DOCUMENT_STORAGE_SSE` | empty | `AES256` on AWS. |
-| `DOCUMENT_SCANNER` | `clamd` | `clamd`, or `fake` (only with `DEBUG` or in tests). |
+| `DOCUMENT_SCANNER` | `fake` (simple) / `clamd` (full) | `clamd`, or `fake` (only with `DEBUG` or in tests). |
 | `CLAMD_HOST` / `CLAMD_PORT` / `CLAMD_TIMEOUT_SECONDS` | `clamav` / `3310` / `30` | clamd over TCP (`INSTREAM`). |
 
-The application refuses to start with `memory` storage or the `fake` scanner unless `DEBUG` is on or it runs the test settings.
+| `CACHE_BACKEND` | `database` (simple) / `redis` (full) | Shared cache for rate limits. `database` uses the table created by `createcachetable`. |
+| `REDIS_URL` / `REDIS_CACHE_URL` | empty (simple) / `redis://redis:6379/0` and `/1` (full) | Celery broker and Redis cache. |
+| `CELERY_TASK_ALWAYS_EAGER` | `true` (simple) / `false` (full) | Run tasks in the same process, after the commit. |
 
-### Asynchronous Profile: Worker and Antivirus
+The application refuses to start with `filesystem` or `memory` storage, or the `fake` scanner, unless `DEBUG` is on or it runs the test settings.
 
-The Celery worker and ClamAV belong to the `async` profile. Uploads are scanned asynchronously: until ClamAV answers, files stay `PENDING` and can be neither approved nor downloaded. They never become `CLEAN` without a real scan. Filing packages are also built by the worker.
+### Full Profile: Worker and Antivirus
+
+Redis, SeaweedFS, the Celery worker, and ClamAV belong to the `full` profile (see [Local Modes](#local-modes)). In full mode, uploads are scanned asynchronously: until ClamAV answers, files stay `PENDING` and can be neither approved nor downloaded. They never become `CLEAN` without a real scan. Filing packages are also built by the worker.
 
 | Service | Profile | Purpose |
 | --- | --- | --- |
-| `seaweedfs` | default | S3-compatible private storage (`http://localhost:8333`). |
-| `storage-init` | default | Creates the private bucket, then exits. |
-| `worker` | `async` | Celery worker: antivirus scans (`scan_file_object`) and filing packages (`build_document_package`). |
-| `clamav` | `async` | ClamAV daemon (`clamav/clamav:1.4.3`); signatures persist in the `mvp_credit_clamav_data` volume. |
+| `redis` | `full` | Shared cache for rate limits, and the Celery broker. |
+| `seaweedfs` | `full` | S3-compatible private storage (`http://localhost:8333`). |
+| `storage-init` | `full` | Creates the private bucket, then exits. The backend waits for it. |
+| `worker` | `full` | Celery worker: antivirus scans (`scan_file_object`) and filing packages (`build_document_package`). |
+| `clamav` | `full` | ClamAV daemon (`clamav/clamav:1.4.3`); signatures persist in the `mvp_credit_clamav_data` volume. |
 
 ```powershell
-# Start everything, including the worker and ClamAV
-docker compose --profile async up -d --build
+# Start everything, with the "Full" block of .env
+docker compose --profile full up -d --build
 
 # ClamAV downloads its signatures on first start; wait until it is "healthy" (several minutes)
-docker compose --profile async ps clamav
+docker compose --profile full ps clamav
 
 # Check that the storage bucket and clamd answer
 docker compose exec -T backend python manage.py check_document_services
 
 # Worker logs
-docker compose --profile async logs -f worker
+docker compose --profile full logs -f worker
 ```
 
 `python manage.py init_document_storage` creates the bucket if it is missing; `storage-init` runs it on every start. On real S3 the bucket is provisioned by the infrastructure instead.
