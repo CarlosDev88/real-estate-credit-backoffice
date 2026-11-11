@@ -142,6 +142,10 @@ function antdTokens(mode) {
     colorTextSecondary: t["text.secondary"],
     colorTextTertiary: t["text.tertiary"],
     colorTextDisabled: t["text.disabled"],
+    colorTextPlaceholder: t["text.tertiary"],
+    // Texto sobre fondos sólidos (botón primario, danger sólido, badges). En oscuro
+    // el primario es claro, así que el texto va oscuro (brand.onPrimary).
+    colorTextLightSolid: t["brand.onPrimary"],
     colorBgLayout: t["bg.canvas"],
     colorBgContainer: t["bg.surface"],
     colorBgElevated: t["bg.surface"],
@@ -179,6 +183,18 @@ function antdComponents(mode) {
       borderColor: t["border.default"],
       cellPaddingBlock: 10,
       cellPaddingInline: 12,
+    },
+    // Tokens de componente: darkAlgorithm no los transforma, así el botón pinta
+    // exactamente los colores verificados en contrastChecks.
+    Button: {
+      colorPrimary: t["brand.primary"],
+      colorPrimaryHover: t["brand.primaryHover"],
+      colorPrimaryActive: t["brand.primaryActive"],
+      primaryColor: t["brand.onPrimary"],
+      // Ant Design usa colorError para el texto del danger con borde y para el
+      // fondo del danger sólido; el texto del sólido es brand.onPrimary.
+      colorError: t["tone.danger.fg"],
+      dangerColor: t["brand.onPrimary"],
     },
     Card: { headerFontSize: 16 },
     Tag: { defaultBg: t["tone.neutral.bg"], defaultColor: t["tone.neutral.fg"] },

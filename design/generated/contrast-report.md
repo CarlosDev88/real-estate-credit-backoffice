@@ -27,6 +27,8 @@ Generado por `build-tokens.mjs`. Texto normal exige 4,5:1; elementos de interfaz
 | light | `text.secondary` | `brand.subtle` | 6.84 | 4.5 | sí |
 | light | `text.onSidebarStrong` | `bg.sidebar` | 15.35 | 4.5 | sí |
 | light | `tone.danger.onSolid` | `tone.danger.solid` | 5.11 | 4.5 | sí |
+| light | `tone.danger.fg` | `bg.surface` | 7.26 | 4.5 | sí |
+| light | `brand.onPrimary` | `tone.danger.fg` | 7.26 | 4.5 | sí |
 | dark | `text.primary` | `bg.surface` | 14.45 | 4.5 | sí |
 | dark | `text.primary` | `bg.canvas` | 15.65 | 4.5 | sí |
 | dark | `text.secondary` | `bg.surface` | 8.21 | 4.5 | sí |
@@ -50,3 +52,5 @@ Generado por `build-tokens.mjs`. Texto normal exige 4,5:1; elementos de interfaz
 | dark | `text.secondary` | `brand.subtle` | 7.36 | 4.5 | sí |
 | dark | `text.onSidebarStrong` | `bg.sidebar` | 17.43 | 4.5 | sí |
 | dark | `tone.danger.onSolid` | `tone.danger.solid` | 5.11 | 4.5 | sí |
+| dark | `tone.danger.fg` | `bg.surface` | 5.79 | 4.5 | sí |
+| dark | `brand.onPrimary` | `tone.danger.fg` | 6.27 | 4.5 | sí |
