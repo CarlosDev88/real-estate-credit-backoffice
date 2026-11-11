@@ -14,9 +14,11 @@ import {
   Space,
   Table,
 } from "antd";
+import { useMutation } from "@tanstack/react-query";
 import Link from "next/link";
 
 import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { ApiError, networkError } from "@/lib/api/errors";
 import { useToast } from "@/providers/toast";
 
 type Mode = "light" | "dark";
@@ -180,8 +182,32 @@ function Section({ mode }: { mode: Mode }) {
 }
 
 /** Barra con el tema global, los toasts y el enlace a la demo del shell. */
+// Errores de ejemplo para ver el manejador global de escrituras (sin llamar a la API).
+const SAMPLE_ERRORS = {
+  generic: () =>
+    new ApiError(
+      422,
+      "APPLICATION_NOT_READY",
+      "La solicitud todavía no cumple los requisitos.",
+      [{ field: "documents", code: "DOCUMENT_PENDING", message: "Falta 1 documento obligatorio." }],
+      "d1f98a64-bf42-4b93-a952-754eb5cb98a2",
+    ),
+  stale: () =>
+    new ApiError(
+      409,
+      "STALE_VERSION",
+      "La versión cambió.",
+      [],
+      "a2c4e6f8-0000-4000-8000-000000000001",
+    ),
+  network: () => networkError(),
+};
+
 function Toolbar() {
   const toast = useToast();
+  const failing = useMutation({
+    mutationFn: (kind: keyof typeof SAMPLE_ERRORS) => Promise.reject(SAMPLE_ERRORS[kind]()),
+  });
   return (
     <header className="bg-bg-surface border-border-default text-text-primary flex flex-wrap items-center gap-2 border-b px-6 py-3">
       <h1 className="m-0 mr-auto text-lg font-semibold">Componentes del design system</h1>
@@ -214,6 +240,9 @@ function Toolbar() {
         >
           Toast de error
         </Button>
+        <Button onClick={() => failing.mutate("generic")}>Escritura fallida</Button>
+        <Button onClick={() => failing.mutate("stale")}>Versión obsoleta</Button>
+        <Button onClick={() => failing.mutate("network")}>Sin conexión</Button>
         <Link href="/dev/ui/shell" className="text-text-link px-2 text-sm">
           Ver el shell
         </Link>

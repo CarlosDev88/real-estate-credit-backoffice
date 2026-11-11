@@ -14,7 +14,10 @@
     "lint": "eslint .",
     "typecheck": "next typegen && tsc --noEmit",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "api:gen": "openapi-typescript ../contracts/openapi.json -o src/lib/api/schema.d.ts",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@ant-design/cssinjs": "2.1.2",
@@ -24,6 +27,7 @@
     "@tanstack/react-query": "5.107.1",
     "antd": "6.7.0",
     "next": "16.4.6",
+    "openapi-fetch": "0.17.0",
     "react": "19.3.1",
     "react-dom": "19.3.1"
   },
@@ -32,11 +36,17 @@
     "@types/node": "24.19.2",
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
+    "@vitest/coverage-v8": "5.1.0",
     "eslint": "10.14.0",
     "eslint-config-next": "16.4.6",
+    "jsdom": "31.0.0",
+    "msw": "3.0.4",
+    "openapi-typescript": "7.13.0",
     "prettier": "3.9.10",
     "tailwindcss": "4.3.5",
     "typescript": "5.9.3",
-    "typescript-eslint": "8.72.2"
+    "typescript-eslint": "8.72.2",
+    "vite": "8.3.7",
+    "vitest": "5.1.0"
   }
 }

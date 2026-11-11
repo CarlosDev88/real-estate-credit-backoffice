@@ -191,6 +191,7 @@ Se resuelven en `TAREA-applications-listado.md`. Mientras tanto, se simulan con 
 - Casilla "Mantener la sesión en este equipo" del login: `/auth/login` solo recibe correo y contraseña, y la sesión dura 8 h fijas. Se quita.
 - Búsqueda global de la barra superior: no hay endpoint. Se quita.
 - Campana de notificaciones internas de la barra superior: no hay endpoint. Se quita.
+- El contrato (`contracts/openapi.json`) no declara la cabecera `ETag` en ninguna respuesta, aunque exige `If-Match` en 12 escrituras y API §6 dice que toda respuesta del expediente la lleva. El frontend la lee igual desde la respuesta, pero el contrato debe documentarla.
 
 ## Pruebas
 - **Unitarias** (Vitest + Testing Library): componentes de `ui`, formularios con validación, manejo de `ApiError` y formato de montos.
@@ -272,5 +273,24 @@ _(se completan al resolver las ambigüedades de cada fase)_
 **Cierre de sesión en el shell (parte 2):** el bloque del usuario (avatar, nombre y correo) es un botón que abre un menú hacia arriba con "Cerrar sesión".
 - Teclado: Enter o Espacio abren el menú, las flechas recorren las opciones y Escape lo cierra y devuelve el foco al botón. El botón lleva `aria-haspopup` y `aria-expanded`.
 - El `AppShell` recibe `onLogout` como prop y el logout real se conecta en la parte 4. En `/dev/ui` solo muestra un toast.
+
+**Cliente API (parte 3):**
+- El refresh completo vive en `lib/api` (candado entre pestañas, hora del último refresh, un reintento, rutas excluidas y `next` validado), con sus cuatro tests. Si falla, el cliente llama a un manejador inyectable que por defecto lleva a `/login?next=<ruta actual>`. La parte 4 conecta login, `/auth/me`, la guarda y el logout.
+- Versión explícita:
+  - El cliente devuelve `{ data, version }`, con `version` tomada del `ETag`. Las consultas del expediente guardan esa versión en la caché, junto a los datos.
+  - Las escrituras pasan `If-Match` a mano; el contrato la tipa como obligatoria. Un helper normaliza `"7"`, `7` y `W/"7"`.
+  - La versión nueva se toma del `ETag` de la respuesta de cada escritura, también en los `204`.
+- Errores:
+  - **Escrituras:** las maneja un `MutationCache.onError` global.
+    - `details[].field` va al formulario con `applyFieldErrors(error, setError)`. Los detalles sin campo en el formulario van a un toast.
+    - **Error sin campo:** toast de error persistente con el `message` y, debajo, pequeño, "Código: <request_id>".
+    - **`409 STALE_VERSION`:** toast de advertencia "Alguien cambió esta solicitud" con el botón "Recargar" (`invalidateQueries`).
+    - **`429`:** "Vuelve a intentarlo en N minutos", con N desde `Retry-After`.
+    - **Error de red, sin respuesta del servidor:** toast "No hay conexión con el servidor. Revisa tu conexión e inténtalo de nuevo".
+    - Una escritura que maneja su error lo indica con `meta: { handlesErrors: true }`.
+  - **Lecturas:** sin toast global; cada pantalla muestra su error en línea.
+  - **Portal:** `401 SESSION_EXPIRED` y `403 CONSENT_REQUIRED` salen como eventos con manejador inyectable, y la pantalla la decide F2.
+  - **Solo lectura:** `isReadOnlyError` identifica `APPLICATION_NOT_EDITABLE` y `APPLICATION_CLOSED`.
+- Versiones con la regla de antigüedad: msw 3.0.4 y vite 8.3.7, porque msw 3.0.5 y vite 8.3.8 se publicaron hoy.
 
 **Saltos de línea:** los archivos de `frontend/` van en LF (Prettier `endOfLine: "lf"`), y se verifica con `git ls-files --eol`.

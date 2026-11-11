@@ -30,5 +30,7 @@ export default defineConfig([
     "playwright-report/**",
     "test-results/**",
     "next-env.d.ts",
+    // Generado por `pnpm api:gen` desde ../contracts/openapi.json.
+    "src/lib/api/schema.d.ts",
   ]),
 ]);
