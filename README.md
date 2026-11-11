@@ -17,7 +17,7 @@ This repository is a monorepo: the Django API, the frontend, the API contract be
 ├── design/             # Umbral design system: tokens and approved mockups
 ├── docs/               # Functional requirements, data model, and API specification
 ├── specs/              # Implementation tasks with their design decisions
-└── .github/workflows/  # CI: backend.yml
+└── .github/workflows/  # CI: backend.yml, with a PR report comment
 ```
 
 ## Quick Start (Backend)
@@ -35,6 +35,14 @@ The API answers at http://localhost:8000 ([health](http://localhost:8000/health)
 ## API Contract
 
 [`contracts/openapi.json`](contracts/openapi.json) is generated from the backend, and CI fails if it is out of date. Any pull request that changes the API must include the regenerated contract; see [OpenAPI Contract](backend/README.md#openapi-contract) for the command.
+
+## CI
+
+Every pull request runs the backend checks in [`backend.yml`](.github/workflows/backend.yml). The `Lint, types and tests` job is the required check: it fails if any check fails, and pytest warnings never block it. A single comment on the pull request, updated on every push, shows the status of each check and the details of what failed:
+
+![CI report comment on a pull request](docs/images/ci-report.png)
+
+[CI Report](backend/README.md#ci-report) explains what each status means and how to preview the report locally.
 
 ## Documentation
 
