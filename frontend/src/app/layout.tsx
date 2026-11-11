@@ -8,18 +8,35 @@ import "./globals.css";
 
 import { AntdRegistry } from "@ant-design/nextjs-registry";
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
 import type { ReactNode } from "react";
+
+import { parseTheme, THEME_COOKIE, THEME_FALLBACK_SCRIPT } from "@/lib/theme/theme";
+import { AppProviders } from "@/providers/app-providers";
 
 export const metadata: Metadata = {
   title: { default: "Umbral", template: "%s · Umbral" },
 };
 
-export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
+export default async function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
+  const themeCookie = (await cookies()).get(THEME_COOKIE)?.value;
+  const theme = parseTheme(themeCookie);
+
   return (
-    <html lang="es" data-theme="light">
+    // El script de respaldo puede cambiar `data-theme` antes de hidratar.
+    <html lang="es" data-theme={theme} suppressHydrationWarning>
+      <head>
+        {themeCookie === undefined && (
+          <script dangerouslySetInnerHTML={{ __html: THEME_FALLBACK_SCRIPT }} />
+        )}
+      </head>
       <body>
         {/* `layer` mete los estilos de Ant Design en la capa CSS `antd`. */}
-        <AntdRegistry layer>{children}</AntdRegistry>
+        <AntdRegistry layer>
+          <AppProviders initialTheme={theme} hasThemeCookie={themeCookie !== undefined}>
+            {children}
+          </AppProviders>
+        </AntdRegistry>
       </body>
     </html>
   );

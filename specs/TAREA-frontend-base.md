@@ -264,4 +264,13 @@ _(se completan al resolver las ambigüedades de cada fase)_
 
 **Página de prueba:** `/dev/ui`, solo en desarrollo (`notFound()` en producción), sin sesión ni API. Muestra tokens, componentes de Ant Design con el tema y los componentes de `components/ui`. Playwright la usa para `axe` en claro y en oscuro y para revisarla en 1440, 1280 y 390 px.
 
+**Tema (parte 2):**
+- `localStorage` (`um-theme`) es la fuente. La elección también se copia en la cookie `um-theme`: no `HttpOnly`, `SameSite=Lax`, un año, solo `light` o `dark`. Cualquier otro valor se trata como `light`.
+- El layout raíz lee la cookie en el servidor y pinta `data-theme` y el `ConfigProvider` con ese tema, así Ant Design no parpadea. Por eso todas las páginas se generan en cada petición.
+- El script de `<head>` es el respaldo: sin cookie, toma el tema de `localStorage` y aplica `data-theme`.
+
+**Cierre de sesión en el shell (parte 2):** el bloque del usuario (avatar, nombre y correo) es un botón que abre un menú hacia arriba con "Cerrar sesión".
+- Teclado: Enter o Espacio abren el menú, las flechas recorren las opciones y Escape lo cierra y devuelve el foco al botón. El botón lleva `aria-haspopup` y `aria-expanded`.
+- El `AppShell` recibe `onLogout` como prop y el logout real se conecta en la parte 4. En `/dev/ui` solo muestra un toast.
+
 **Saltos de línea:** los archivos de `frontend/` van en LF (Prettier `endOfLine: "lf"`), y se verifica con `git ls-files --eol`.

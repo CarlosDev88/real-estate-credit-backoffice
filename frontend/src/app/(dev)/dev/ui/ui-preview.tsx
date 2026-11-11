@@ -14,6 +14,10 @@ import {
   Space,
   Table,
 } from "antd";
+import Link from "next/link";
+
+import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { useToast } from "@/providers/toast";
 
 type Mode = "light" | "dark";
 
@@ -85,7 +89,7 @@ function Section({ mode }: { mode: Mode }) {
           <p className="text-text-secondary m-0">Texto secundario.</p>
           <p className="text-text-tertiary m-0 text-sm">Texto terciario.</p>
           <p className="m-0">
-            <a className="text-text-link" href="#enlace">
+            <a className="text-text-link underline" href="#enlace">
               Enlace
             </a>{" "}
             · <span className="font-mono text-sm">COD-000184</span> ·{" "}
@@ -143,7 +147,7 @@ function Section({ mode }: { mode: Mode }) {
           <h3 className="text-text-secondary m-0 text-xs font-medium">Alertas y progreso</h3>
           <Alert type="warning" showIcon title="Faltan datos para evaluar una regla" />
           <Alert type="error" showIcon title="Una regla bloqueante no se cumple" />
-          <Progress percent={62} />
+          <Progress percent={62} aria-label={`Progreso de ejemplo (${label})`} />
         </div>
 
         <div className="grid gap-2">
@@ -175,12 +179,58 @@ function Section({ mode }: { mode: Mode }) {
   );
 }
 
+/** Barra con el tema global, los toasts y el enlace a la demo del shell. */
+function Toolbar() {
+  const toast = useToast();
+  return (
+    <header className="bg-bg-surface border-border-default text-text-primary flex flex-wrap items-center gap-2 border-b px-6 py-3">
+      <h1 className="m-0 mr-auto text-lg font-semibold">Componentes del design system</h1>
+      <Space wrap>
+        <Button
+          onClick={() =>
+            toast.success({
+              title: "Cambios guardados",
+              message: "El aviso se cierra solo en 5 s.",
+            })
+          }
+        >
+          Toast de éxito
+        </Button>
+        <Button onClick={() => toast.info({ title: "Información", message: "Se cierra en 5 s." })}>
+          Toast de información
+        </Button>
+        <Button onClick={() => toast.warning({ title: "Advertencia" })}>
+          Toast de advertencia
+        </Button>
+        <Button
+          danger
+          onClick={() =>
+            toast.error({
+              title: "No pudimos guardar",
+              message: "Este aviso se queda hasta cerrarlo.",
+              action: { label: "Reintentar", onClick: () => toast.info({ title: "Reintentando" }) },
+            })
+          }
+        >
+          Toast de error
+        </Button>
+        <Link href="/dev/ui/shell" className="text-text-link px-2 text-sm">
+          Ver el shell
+        </Link>
+        <ThemeToggle />
+      </Space>
+    </header>
+  );
+}
+
 export function UiPreview() {
   return (
-    <main className="grid min-h-screen grid-cols-1 xl:grid-cols-2">
-      <h1 className="sr-only">Componentes del design system</h1>
-      <Section mode="light" />
-      <Section mode="dark" />
-    </main>
+    <div className="min-h-screen">
+      <Toolbar />
+      <main className="grid grid-cols-1 xl:grid-cols-2">
+        <Section mode="light" />
+        <Section mode="dark" />
+      </main>
+    </div>
   );
 }
