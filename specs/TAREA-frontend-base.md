@@ -68,6 +68,11 @@ frontend/
 
 ### Cliente API (`lib/api`)
 - Tipos generados con `pnpm api:gen` desde `../contracts/openapi.json`. El archivo generado se commitea, y el CI verifica que esté al día.
+- El contrato lo genera el backend; el frontend no lo edita. Si hace falta regenerarlo (por ejemplo, después de traer cambios de la API), se corre desde `backend/` con el stack levantado, y luego `pnpm api:gen`:
+  ```
+  docker compose exec backend python manage.py spectacular --settings config.settings.test --format openapi-json --file /contracts/openapi.json --validate --fail-on-warn
+  ```
+  Ver `backend/README.md`, sección *OpenAPI Contract*.
 - Middleware del cliente:
   - en `POST`/`PUT`/`PATCH`/`DELETE`, agrega `X-CSRFToken` con el valor de la cookie `app_csrf`;
   - en toda petición, agrega `X-Request-ID` (UUID).

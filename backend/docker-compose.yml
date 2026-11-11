@@ -31,6 +31,8 @@ services:
       - "${BACKEND_HOST_PORT:-8000}:8000"
     volumes:
       - .:/app
+      # Contrato OpenAPI del monorepo: desde /app, `../contracts` es esta carpeta.
+      - ../contracts:/contracts
     depends_on:
       postgres:
         condition: service_healthy
