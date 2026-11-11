@@ -35,9 +35,9 @@ Paso 10 del orden de construcción (DER_COMPLETO §15), después del acceso del 
 | 2 | Infraestructura: almacenamiento, validación de archivos, antivirus y Celery | Hecha | `4e73503` |
 | 3 | Materialización y recálculo de slots; lectura interna del expediente | Hecha | `a7d82ac` |
 | 4 | Portal del comprador: slots, carga, reemplazo y análisis asíncrono | Hecha | `8191f3d` |
-| 5 | Revisión, exoneración, reapertura, huella documental y descargas | Hecha | (pendiente de commit) |
-| 6 | Guarda de `READY_TO_FILE`, completitud y progreso del comprador | **Siguiente** | |
-| 7 | Paquete ZIP asíncrono, README y documentación | Pendiente | |
+| 5 | Revisión, exoneración, reapertura, huella documental y descargas | Hecha | `13cbb94` |
+| 6 | Guarda de `READY_TO_FILE`, completitud y progreso del comprador | Hecha | (pendiente de commit) |
+| 7 | Paquete ZIP asíncrono, README y documentación | **Siguiente** | |
 
 Al cerrar la Parte 1: 1192 tests en verde (32 nuevos), 97,95 % de cobertura total, los modelos y la semilla nuevos al 100 % y el esquema OpenAPI sin avisos.
 
@@ -48,6 +48,8 @@ Al cerrar la Parte 3: 1311 tests en verde (49 nuevos), 98,09 % de cobertura tota
 Al cerrar la Parte 4: 1361 tests en verde (50 nuevos), 98,16 % de cobertura total, `uploads.py`, `scans.py`, `tasks.py`, `buyer_views.py`, `buyer_serializers.py` y `requeue_pending_scans` al 100 %, y el esquema OpenAPI sin avisos. Además, verificado de punta a punta con SeaweedFS y clamd reales (ver "Decididas en la implementación", Parte 4).
 
 Al cerrar la Parte 5: 1448 tests en verde (87 nuevos), 98,24 % de cobertura total, `reviews.py`, `downloads.py`, `fingerprint.py`, `dossier_views.py`, `dossier_serializers.py` y la migración `documents 0005` al 100 %, y el esquema OpenAPI sin avisos.
+
+Al cerrar la Parte 6: 1466 tests en verde (18 nuevos), 98,27 % de cobertura total, `verification.py` y `buyer_portal.py` al 100 %, y el esquema OpenAPI sin avisos. Los `monkeypatch` de `documents_verified` del paso 8 se reemplazaron por expedientes reales.
 
 Sin cubrir, de antes de este paso: `admin.py` (los `has_*_permission` de `_ReadOnlyAdmin`), el `unseed` de `documents 0002` y cuatro ramas de `services.py` (líneas 87, 261, 288 y 386).
 
@@ -137,12 +139,18 @@ Sin cubrir, de antes de este paso: `admin.py` (los `has_*_permission` de `_ReadO
 - Errores: `DocumentNotCurrent`, `FileNotClean`, `DocumentExpired` y `DownloadUnavailable` (`503 SERVICE_UNAVAILABLE`). Throttle `DocumentDownloadRateThrottle`. `uploads.expires_on(slot, document_date)` (antes `_expires_at`).
 - Tests: `tests/applications/dossier/test_reviews_api.py` (fixtures `with_version`, `group` y `no_waive_permission`; helpers `approve`, `reject`, `waive`, `reopen`) y `test_downloads_api.py` (`make_version`).
 
-### Próximo paso: Parte 6
-- **Primero, preguntarle al usuario** (lo dejó pendiente para esta parte): qué pasa con una solicitud en `READY_TO_FILE` cuando se reabre una exoneración o se rechaza un documento. O sigue en `READY_TO_FILE` y la guarda la frena al radicar, o vuelve sola a revisión documental.
-- `documents_verified` y los `details` de la decisión 21 en `_ready_to_file_problems`, con los slots bloqueados (acordada 6); se elimina `DOCUMENTS_NOT_VERIFIED_MESSAGE`.
-- Test pedido por el usuario: una solicitud en `READY_TO_FILE` a la que se le reabre un slot exonerado no pasa la guarda. `dossier_fingerprint` ya existe (Parte 5).
-- Vigencia: antes de `FILED`, un aprobado vencido no cuenta (`expires_at <= hoy`, la misma regla que la aprobación).
-- Completitud (acordada 7) y progreso del comprador.
+**De la Parte 6:**
+- `apps/documents/verification.py`: `check_dossier(application, lock=)` → `DossierCheck` (`required_total`, `completed_total`, `slots` de `SlotCheck`, `problems`, `verified`, `percentage`, `message`), `is_fulfilled`, `is_expired` y `NOT_CONFIGURED_MESSAGE`. El paquete la usa con `lock=True` para su precondición (decisión 36).
+- `apps/applications/services.py`: `ready_to_file_problems(application, dossier=, evaluate_as=)` (la guarda y `/completeness`), `data_items(application)` e `items_percentage(items)`. `Completeness` trae `data_percentage`, `documents_percentage`, `ready_to_file_problems` y `documents` (`DossierCheck`). Ya no existen `documents_verified` ni `DOCUMENTS_NOT_VERIFIED_MESSAGE`.
+- `slot_label(slot, set_size=None)`: el total se puede pasar sin anotar el queryset.
+- Tests: `tests/applications/dossier/test_verification.py` (fixtures `decide` e `income_group`) y, en `tests/applications/test_status_api.py`, la guarda y la completitud con expedientes reales. El helper `approve_required_slots(application)` de `tests/applications/dossier/conftest.py` aprueba los obligatorios con versiones limpias.
+
+### Próximo paso: Parte 7
+- **Primero, confirmar con el usuario** los nombres de las carpetas por rol: el ejemplo de la decisión 38 dice `02_CODEUDOR_Andres_Moreno`, pero los roles del sistema son `PRIMARY` (Titular), `CO_APPLICANT` (Co-solicitante) y `SOLIDARY_DEBTOR` (Deudor solidario).
+- Paquete según las decisiones 14, 15 y 36 a 42: `POST /applications/{id}/document-package-jobs`, `GET /document-package-jobs/{id}` y `.../download`; tarea `build_document_package`; comandos `requeue_document_packages` y `expire_document_packages`; variable `DOCUMENT_PACKAGE_TTL_DAYS`.
+- Errores nuevos `PACKAGE_NOT_READY` y `PACKAGE_EXPIRED` en API §5.5.
+- README y documentación de la Parte 7 (plan), incluidos la guarda (API §16.3) y la completitud con los cambios de la Parte 6.
+- Al cerrar: checks, resumen, mensaje de commit y título y cuerpo del PR.
 
 ---
 
@@ -280,7 +288,7 @@ No quedan. Las dos tandas y la precisión de SeaweedFS están en "Decisiones (ac
 - `GET /document-files/{id}`, `.../scan-status` y `.../download` (interno), y `GET /buyer/document-files/{id}/download` (decisión 13).
 - Tests: aprobar sin `CLEAN`, aprobar un archivo que ya no es el vigente (`409 DOCUMENT_NOT_CURRENT`), aprobar sin `document_date` o vencido, rechazar sin comentario, exonerar no exonerable, exoneración del grupo, corrección de una decisión, descarga de un archivo infectado, la URL no aparece en logs.
 
-### Parte 6. Guarda, completitud y progreso
+### Parte 6. Guarda, completitud y progreso (hecha)
 - `documents_verified` y los `details` de la decisión 21 en `_ready_to_file_problems`, evaluados dentro de la transacción de la transición con los slots bloqueados (acordada 6); se elimina `DOCUMENTS_NOT_VERIFIED_MESSAGE`.
 - `dossier_fingerprint` (decisión 23): ya hecha en la Parte 5. Falta el test de la guarda con un slot reabierto (Tanda 3, decisión 28).
 - Lista sin obligatorios: `DOCUMENTS_NOT_CONFIGURED` (pendiente 2).
@@ -370,6 +378,38 @@ No quedan. Las dos tandas y la precisión de SeaweedFS están en "Decisiones (ac
     - Solo pasan a `WAIVED` los slots no aprobados; los `APPROVED` conservan su estado y su archivo vigente. Si todos ya están aprobados: `400 VALIDATION_ERROR` (no hay nada que exonerar).
     - `is_waivable` se valida solo en los slots que de verdad se exonerarían: un no exonerable ya aprobado no bloquea. Si alguno de los que se exonerarían no es exonerable: `400 VALIDATION_ERROR` en `decision`, sin exonerar nada (una transacción); el detalle dice qué slot y qué documento lo impiden.
 28. **Huella documental en la Parte 5.** `dossier_fingerprint` (decisión 23) se adelanta, con tests de que exonerar y reabrir la cambian. El test "reabrir en `READY_TO_FILE` y la guarda no deja radicar" va en la Parte 6, y el de radicar con un paquete de otra huella, en el paso 11. Queda para la Parte 6 preguntar si una solicitud en `READY_TO_FILE` sigue así cuando se reabre o rechaza un documento (y la guarda la frena al radicar) o vuelve sola a revisión documental.
+
+### Tanda 4 (antes de las Partes 6 y 7)
+
+**Parte 6**
+
+29. **Una solicitud en `READY_TO_FILE` que deja de cumplir** (se reabre una exoneración, se rechaza un documento, el comprador carga una versión nueva o vence un aprobado) **sigue en `READY_TO_FILE`**: no cambia de estado ni de versión (acordada 6). `/completeness` muestra `ready_to_file = false` con el motivo en `ready_to_file_problems`, y la guarda de radicación del paso 11 la frena. El asesor puede volver a `DOCUMENTS_REVIEW` con `REOPEN`. El listado de solicitudes deberá marcarlas (pendiente 6); no se implementa ahora.
+30. **Grupo alternativo con `minimum_files > 1`:** se cumple con un juego completo del mismo tipo (todos los slots obligatorios de ese tipo del grupo, aprobados no vencidos o exonerados). Con `minimum_files = 1` equivale a "un slot aprobado". Test: dos desprendibles y un extracto no cumplen el grupo.
+31. **`ready_to_file` = la guarda sin problemas**, con la misma función que la guarda, para que nunca digan cosas distintas (test de que coinciden, en `READY_TO_FILE` y en otro estado). `/completeness` es lectura pura: no guarda evaluaciones bancarias (si la última no está vigente, evalúa en memoria). Agrega `ready_to_file_problems`, con el mismo formato que los `details` del `422 APPLICATION_NOT_READY`. `GET /applications/{id}` no cambia.
+32. **Detalle documental de `/completeness`:** solo los slots obligatorios.
+33. **Vencidos en la guarda:** un grupo sin cumplir da un `DOCUMENT_PENDING` (`resource_id` = su primer slot; el mensaje nombra los tipos y el titular) y, además, un `DOCUMENT_EXPIRED` por cada aprobado vencido del grupo. Un grupo cumplido no da nada aunque tenga un vencido en el otro juego. Un slot fuera de grupo vencido da solo `DOCUMENT_EXPIRED`. Tests de los tres casos.
+34. **Vencido** = `expires_at <= hoy`, la misma regla que la aprobación (Parte 5).
+35. **Progreso del comprador:** `data_percentage`, `documents_percentage`, `documents_required_total` y `documents_completed_total`. Sin detalle por slot (lo tiene en `/buyer/.../document-slots`) y sin mensajes internos. Test de que el DTO no expone campos internos.
+
+**Parte 7**
+
+36. **Precondición del paquete: solo los documentos** (`DOCUMENT_PENDING`, `DOCUMENT_EXPIRED`, `DOCUMENTS_NOT_CONFIGURED`), con los slots bloqueados. El `POST` no guarda evaluaciones bancarias (test).
+37. **Acceso a los paquetes:** `filings.prepare` con la solicitud en el alcance, para crear, consultar y descargar. Un asesor reasignado ve los paquetes anteriores; uno al que se le quitó la solicitud recibe `404`; el broker, nunca (`403`). Tests de los tres casos.
+38. **Nombres dentro del ZIP:**
+    - carpetas `00_SOLICITUD` y `<nn>_<ROL>_<Nombre_Apellido>` con el rol en español (`01_TITULAR_Laura_Gomez`, `02_CODEUDOR_Andres_Moreno`), `nn` en el orden en que entró el participante;
+    - archivos con la etiqueta del tipo en español, más el número si hay varios: `Desprendible_de_nomina_2_de_3.pdf`;
+    - saneado a ASCII seguro: sin tildes, `ñ` → `n`, sin espacios ni caracteres especiales, palabras separadas con guion bajo, máximo 60 caracteres. Si dos archivos chocan, se agrega un sufijo;
+    - el código del tipo, el id de la versión y `client_filename` van en el manifiesto interno, no en el nombre. Tests con tildes, `ñ`, nombres largos y choques.
+39. **Dos manifiestos:**
+    - `manifest.json` dentro del ZIP (para el banco): tipo (código y etiqueta), titular, rol, nombre del archivo en el ZIP, SHA-256, `document_date` y los exonerados con estado `WAIVED`, sin el motivo. **No** lleva `client_filename`, ids internos, motivos de exoneración ni comentarios internos (test);
+    - `document_package_jobs.manifest` (interno): todo lo anterior más los ids de versión, `client_filename` y los motivos.
+40. **Descarga del paquete:** `409 PACKAGE_NOT_READY` (`PENDING`, `RUNNING` o `FAILED`) y `409 PACKAGE_EXPIRED` (códigos nuevos, en API §5.5). URL prefirmada como las versiones, `Cache-Control: no-store` y el mismo límite de descargas.
+41. **El ZIP no pasa por clamd:** se guarda `CLEAN`, con `scanned_at` al terminar, `detected_mime_type = application/zip` y su SHA-256, porque se arma con versiones `CLEAN` cuyo SHA-256 se verifica al empaquetar. **Sin columna nueva** para el motor del análisis: un `file_object` que es `output_file_object` de un `document_package_job` es un ZIP marcado `CLEAN` por empaquetar; se documenta aquí y en un comentario del modelo. Test del `CLEAN`, `scanned_at`, tipo y SHA-256.
+42. **Fallas del worker, como el análisis:**
+    - reintento con espera creciente si el almacenamiento falla; al agotarlo, `FAILED` con `error_code = STORAGE_UNAVAILABLE`. Un SHA-256 distinto: `FAILED` con `CHECKSUM_MISMATCH`, sin reintento. Si el broker no responde al encolar, el `POST` igual responde `201` con el trabajo `PENDING`. Un `FAILED` no se reintenta: se pide otro paquete;
+    - la tarea toma el trabajo con un `UPDATE` condicional (solo si sigue en el estado esperado), para que dos workers no lo procesen a la vez;
+    - cada intento escribe en una ruta propia del trabajo, y solo el worker que tiene el trabajo lo marca `COMPLETED`: uno atrasado no pisa el resultado. Test de dos ejecuciones simultáneas del mismo trabajo: un solo ZIP y un solo `COMPLETED`;
+    - comandos `requeue_document_packages` (vuelve a encolar los `PENDING` y `RUNNING` de más de 15 minutos) y `expire_document_packages`, con tests.
 
 ## Decididas en la implementación
 
@@ -523,6 +563,17 @@ No quedan. Las dos tandas y la precisión de SeaweedFS están en "Decisiones (ac
   - límite `document_download` = `60/1h` en `AUTH_RATE_LIMITS`, por usuario o por sesión. Solo cuenta las descargas.
 - **Huella:** `dossier_fingerprint` usa `json.dumps` compacto de la lista ordenada por `slot_id`. Reabrir devuelve la huella anterior a la exoneración, porque el expediente queda igual.
 
+### Parte 6
+- **Archivos:** `apps/documents/verification.py` (cumplimiento del expediente), cambios en `apps/applications/services.py` (guarda y completitud), `serializers.py` y `views.py` de `applications`, y `apps/identity/buyer_portal.py` y su serializer.
+- **Una sola regla** (decisión 31): `ready_to_file_problems` arma los `details` del producto, las reglas bancarias y los documentos. La guarda la llama con `evaluate_as=actor` (si la última evaluación no está vigente, evalúa y la guarda, como antes) y con `check_dossier(locked, lock=True)`; `/completeness` la llama sin actor y evalúa las reglas en memoria con `evaluate_product`, sin escribir.
+- **Bloqueos de la guarda:** la solicitud (ya bloqueada por la transición) y después todos sus slots vigentes en orden de id (decisión 22), en una sola consulta con `select_for_update(of=("self",))`.
+- **Orden de los `details` y del detalle:** el de presentación del expediente (solicitud primero, después cada participante; dentro, `sort_order`, código del tipo e índice). Un grupo sale en la posición de su primer slot.
+- **`complete` en el detalle** dice si el slot cuenta como cumplido: en un grupo alternativo, si el grupo lo está (los extractos pendientes de un grupo cumplido con desprendibles salen `complete = true`).
+- **Mensajes:** `DOCUMENT_PENDING` nombra la etiqueta y el titular ("«Copia del documento de identidad» de Laura Gómez no está aprobado ni exonerado."); el de un grupo, sus tipos ("Falta un juego completo del grupo INCOME de …: Desprendible … o Extracto bancario."); `DOCUMENT_EXPIRED`, la fecha de vencimiento. Todos con `field = documents` y el slot en `resource_id`.
+- **Respuesta de `/completeness`:** `percentage`, `data_percentage`, `documents_percentage`, `ready_to_file`, `ready_to_file_problems`, `items` (los de datos, sin cambios) y `documents` (`verified`, `required_total`, `completed_total`, `message` y `slots`, cada uno con `slot_id`, `participant_id`, `document_type` `{code, name}`, `label`, `status`, `alternative_group_code`, `expires_at` y `complete`).
+- **El ítem `bank_evaluation`** de la completitud no cambia: sigue diciendo si hay una evaluación guardada y vigente. `ready_to_file` puede ser `true` sin ella, porque la guarda evaluaría y guardaría al pasar.
+- **Progreso del comprador:** usa los mismos ítems de datos (`data_items`) sin `bank_evaluation` y `check_dossier`; no calcula la guarda.
+
 ## Pendientes para pasos posteriores
 
 1. **Paso 11.** Implementar `slot_has_open_observation`, fijar `locked_at` al radicar, exigir que la huella documental del paquete coincida con la actual (`dossier_fingerprint`, acordada 6) con su test (radicar con un paquete de otra huella, Tanda 3, decisión 28) y la huella y firma de `IDENTITY_DOCUMENT`.
@@ -530,3 +581,8 @@ No quedan. Las dos tandas y la precisión de SeaweedFS están en "Decisiones (ac
 3. **Paso 13.** `Idempotency-Key` en `POST /document-package-jobs`; notificación al comprador de un rechazo; aviso al comprador cuando un documento aprobado esté por vencer (acordada 8).
 4. **Paso 14.** Auditoría de descargas.
 5. **Despliegue.** Programar `requeue_pending_scans` (cron o Celery beat) y decidir cuánto tiempo se conservan los objetos infectados (hoy no se borran).
+6. **Listado de solicitudes** (`TAREA-applications-listado.md`, que se actualiza cuando arranque esa tarea): fila nueva para marcar las solicitudes en `READY_TO_FILE` que ya no cumplen (decisión 29). Texto para pegar:
+
+   ```
+   | 9 | Marca `ready_to_file_ok` en las filas en `READY_TO_FILE` (`null` en los demás estados) | Aviso "Ya no cumple para radicar" en el listado: la solicitud sigue en `READY_TO_FILE` aunque deje de cumplir (decisión 29 de `TAREA-document-file.md`). | Misma función que la guarda y `/completeness` (`ready_to_file_problems`, lectura pura). Medir el costo antes de evaluar las reglas del banco por fila. |
+   ```

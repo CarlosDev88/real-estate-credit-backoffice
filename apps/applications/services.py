@@ -88,6 +88,7 @@ from apps.crm.services import (
     opportunities_visible_to,
 )
 from apps.documents.slots import sync_slots
+from apps.documents.verification import DossierCheck, check_dossier
 from apps.identity.models import BuyerSession, User
 from apps.partners.models import Project
 from apps.partners.services import ensure_project_accepts_opportunities, projects_visible_to
@@ -1093,10 +1094,6 @@ CLOSING_FINANCING_MODES: dict[str, str] = {
     ApplicationStatus.OWN_FUNDS: OWN_FUNDS,
     ApplicationStatus.EXTERNAL_CREDIT_APPROVED: EXTERNAL_CREDIT,
 }
-DOCUMENTS_NOT_VERIFIED_MESSAGE = (
-    "Los documentos obligatorios todavía no se pueden verificar: el expediente documental "
-    "aún no está disponible."
-)
 
 
 @dataclass(frozen=True)
@@ -1104,14 +1101,6 @@ class StatusChange:
     application: CreditApplication
     previous_status: str
     transitioned_at: datetime
-
-
-def documents_verified(application: CreditApplication) -> bool:
-    """Parte documental de `APPLICATION_READY_TO_FILE` y de la completitud.
-
-    Falla cerrada hasta que exista el expediente documental (paso 10).
-    """
-    return False
 
 
 def _lock_for_status_change(
@@ -1151,14 +1140,38 @@ def _ensure_financing_mode(locked: CreditApplication, to_status: str) -> None:
         )
 
 
-def _ready_to_file_problems(actor: User, locked: CreditApplication) -> list[dict[str, Any]]:
+def _bank_rule_rows(
+    application: CreditApplication, evaluate_as: User | None
+) -> list[Mapping[str, Any]]:
+    """Reglas de la última evaluación, si corresponde a la versión y al producto
+    actuales. Si no, la guarda evalúa y guarda (``evaluate_as``; la evaluación se conserva
+    aunque la transición se rechace) y la completitud evalúa en memoria, sin escribir."""
+    evaluation = latest_evaluation(application)
+    if evaluation is not None and is_current(evaluation, application):
+        return list(evaluation.result_snapshot["rules"])
+    if evaluate_as is not None:
+        return list(save_evaluation(evaluate_as, application).result_snapshot["rules"])
+    product = application.bank_product
+    assert product is not None
+    context = build_rule_context(application)
+    return list(evaluate_product(product, context, purpose=application.purpose_item))
+
+
+def ready_to_file_problems(
+    application: CreditApplication,
+    *,
+    dossier: DossierCheck,
+    evaluate_as: User | None = None,
+) -> list[dict[str, Any]]:
     """Motivos por los que no cumple `APPLICATION_READY_TO_FILE`; vacío si la cumple.
 
-    Si la última evaluación no corresponde a la versión y al producto actuales, evalúa
-    y la guarda: la evaluación se conserva aunque la transición se rechace.
+    Es la única regla: la usan la guarda (con ``evaluate_as`` y el expediente bloqueado)
+    y ``completeness`` (lectura pura), para que nunca digan cosas distintas (decisión 31
+    de ``TAREA-document-file``). Los documentos traen ``DOCUMENT_PENDING``,
+    ``DOCUMENT_EXPIRED`` y ``DOCUMENTS_NOT_CONFIGURED`` (decisión 21).
     """
     problems: list[dict[str, Any]] = []
-    if locked.bank_product_id is None:
+    if application.bank_product_id is None:
         problems.append(
             {
                 "field": "bank_product_id",
@@ -1167,10 +1180,7 @@ def _ready_to_file_problems(actor: User, locked: CreditApplication) -> list[dict
             }
         )
     else:
-        evaluation = latest_evaluation(locked)
-        if evaluation is None or not is_current(evaluation, locked):
-            evaluation = save_evaluation(actor, locked)
-        for row in blocking_rows(evaluation.result_snapshot["rules"]):
+        for row in blocking_rows(_bank_rule_rows(application, evaluate_as)):
             blocked = issue(row)
             problems.append(
                 {
@@ -1179,14 +1189,7 @@ def _ready_to_file_problems(actor: User, locked: CreditApplication) -> list[dict
                     "message": blocked["message"],
                 }
             )
-    if not documents_verified(locked):
-        problems.append(
-            {
-                "field": "documents",
-                "code": "DOCUMENTS_NOT_VERIFIED",
-                "message": DOCUMENTS_NOT_VERIFIED_MESSAGE,
-            }
-        )
+    problems.extend(dossier.problems)
     return problems
 
 
@@ -1295,7 +1298,9 @@ def transition_application(
         )
         _ensure_financing_mode(locked, to_status)
         if transition.guard_code == READY_TO_FILE_GUARD:
-            problems = _ready_to_file_problems(actor, locked)
+            # Solicitud y después todos sus slots vigentes, en orden (decisión 22).
+            dossier = check_dossier(locked, lock=True)
+            problems = ready_to_file_problems(locked, dossier=dossier, evaluate_as=actor)
         if not problems:
             change = _apply_status_change(actor, locked, transition, reason=reason, comment=comment)
     if problems:
@@ -1386,11 +1391,16 @@ class CompletenessItem:
 
 @dataclass(frozen=True)
 class Completeness:
+    """``percentage`` es el promedio, entero hacia abajo, de los datos y los documentos
+    (acordada 7). ``ready_to_file`` es la guarda sin problemas."""
+
     percentage: int
+    data_percentage: int
+    documents_percentage: int
     ready_to_file: bool
+    ready_to_file_problems: list[dict[str, Any]]
     items: list[CompletenessItem]
-    documents_verified: bool
-    documents_message: str
+    documents: DossierCheck
 
 
 def _bank_items(application: CreditApplication) -> list[CompletenessItem]:
@@ -1421,8 +1431,13 @@ def _bank_items(application: CreditApplication) -> list[CompletenessItem]:
     return [CompletenessItem("bank_product", True, "Producto bancario elegido."), evaluated]
 
 
-def completeness(application: CreditApplication) -> Completeness:
-    """Datos que faltan para radicar. Los documentos no cuentan hasta el paso 10."""
+def items_percentage(items: list[CompletenessItem]) -> int:
+    return sum(item.complete for item in items) * 100 // len(items)
+
+
+def data_items(application: CreditApplication) -> list[CompletenessItem]:
+    """Ítems de datos: inmueble, financiación, producto y evaluación bancaria cuando
+    aplican, y el perfil de cada participante que aporta ingresos."""
     has_property = Property.objects.filter(application=application).exists()
     mode = (
         FinancingPreference.objects.filter(application=application)
@@ -1461,12 +1476,22 @@ def completeness(application: CreditApplication) -> Completeness:
                 participant_id=participant.pk,
             )
         )
-    percentage = sum(item.complete for item in items) * 100 // len(items)
-    verified = documents_verified(application)
+    return items
+
+
+def completeness(application: CreditApplication) -> Completeness:
+    """Datos y documentos que faltan para radicar. Lectura pura: no bloquea ni guarda
+    evaluaciones bancarias."""
+    items = data_items(application)
+    data_percentage = items_percentage(items)
+    dossier = check_dossier(application)
+    problems = ready_to_file_problems(application, dossier=dossier)
     return Completeness(
-        percentage=percentage,
-        ready_to_file=percentage == 100 and verified,
+        percentage=(data_percentage + dossier.percentage) // 2,
+        data_percentage=data_percentage,
+        documents_percentage=dossier.percentage,
+        ready_to_file=not problems,
+        ready_to_file_problems=problems,
         items=items,
-        documents_verified=verified,
-        documents_message=DOCUMENTS_NOT_VERIFIED_MESSAGE,
+        documents=dossier,
     )

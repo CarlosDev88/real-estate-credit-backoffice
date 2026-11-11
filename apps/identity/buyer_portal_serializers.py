@@ -117,7 +117,17 @@ class BuyerProgressItemSerializer(serializers.Serializer):
 
 
 class BuyerProgressSerializer(serializers.Serializer):
-    percentage = serializers.IntegerField()
+    percentage = serializers.IntegerField(
+        help_text="Promedio, entero hacia abajo, de `data_percentage` y `documents_percentage`."
+    )
+    data_percentage = serializers.IntegerField()
+    documents_percentage = serializers.IntegerField(
+        help_text="Documentos obligatorios cumplidos; 0 si la solicitud no pide ninguno."
+    )
+    documents_required_total = serializers.IntegerField(
+        help_text="Documentos obligatorios; un grupo de alternativas cuenta como uno."
+    )
+    documents_completed_total = serializers.IntegerField()
     items = BuyerProgressItemSerializer(many=True)
 
 

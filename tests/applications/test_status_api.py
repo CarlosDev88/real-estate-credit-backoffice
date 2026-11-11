@@ -6,6 +6,7 @@ from datetime import timedelta
 from typing import Any
 
 import pytest
+from django.db import transaction
 from django.utils import timezone
 from rest_framework.test import APIClient
 
@@ -24,8 +25,11 @@ from apps.banking.models import BankPolicyRule, RuleStatus
 from apps.catalogs.models import CatalogItem
 from apps.catalogs.workflow import ApplicationStatus
 from apps.crm.models import Client
+from apps.documents.models import ApplicationDocumentSlot, SlotStatus
+from apps.documents.verification import NOT_CONFIGURED_MESSAGE, check_dossier
 from apps.identity.models import User
 from tests.applications.conftest import application_url, catalog_item, seeded_product
+from tests.applications.dossier.conftest import approve_required_slots
 from tests.applications.test_property_financing_api import PROPERTY, bank_credit, put
 from tests.helpers import assert_error
 
@@ -107,9 +111,9 @@ def in_review(advisor_client: APIClient, application: CreditApplication) -> Cred
 
 
 @pytest.fixture
-def documents_ok(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Simula el expediente documental del paso 10 ya verificado."""
-    monkeypatch.setattr(services, "documents_verified", lambda application: True)
+def documents_ok(in_review: CreditApplication) -> None:
+    """Expediente documental real con todos los obligatorios aprobados (paso 10)."""
+    assert approve_required_slots(in_review)
 
 
 # --- POST /status-transitions -----------------------------------------------------------
@@ -300,9 +304,10 @@ def test_ready_to_file_without_product_lists_every_reason(
         transition(advisor_client, application, "READY_TO_FILE"), 422, "APPLICATION_NOT_READY"
     )
 
+    # Sin producto no hay requisitos: el expediente no tiene obligatorios.
     assert [(d["code"], d["field"]) for d in body["details"]] == [
         ("BANK_PRODUCT_REQUIRED", "bank_product_id"),
-        ("DOCUMENTS_NOT_VERIFIED", "documents"),
+        ("DOCUMENTS_NOT_CONFIGURED", "documents"),
     ]
     application.refresh_from_db()
     assert (application.status, application.version) == ("DOCUMENTS_REVIEW", 1)
@@ -332,18 +337,12 @@ def test_ready_to_file_reevaluates_and_keeps_the_evaluation_when_rejected(
         "APPLICATION_NOT_READY",
     )
 
-    assert body["details"] == [
-        {
-            "field": "applicant.employment_profile_code",
-            "code": "BANK_RULE_BLOCKED",
-            "message": "Faltan datos para evaluar la regla: applicant.employment_profile_code.",
-        },
-        {
-            "field": "documents",
-            "code": "DOCUMENTS_NOT_VERIFIED",
-            "message": services.DOCUMENTS_NOT_VERIFIED_MESSAGE,
-        },
-    ]
+    assert body["details"][0] == {
+        "field": "applicant.employment_profile_code",
+        "code": "BANK_RULE_BLOCKED",
+        "message": "Faltan datos para evaluar la regla: applicant.employment_profile_code.",
+    }
+    assert {d["code"] for d in body["details"][1:]} == {"DOCUMENT_PENDING"}
     evaluation = BankRuleEvaluation.objects.latest("created_at")
     assert (evaluation.application_version, evaluation.is_eligible) == (4, False)
     in_review.refresh_from_db()
@@ -359,7 +358,7 @@ def test_ready_to_file_reuses_a_current_evaluation(
         "APPLICATION_NOT_READY",
     )
 
-    assert [d["code"] for d in body["details"]] == ["DOCUMENTS_NOT_VERIFIED"]
+    assert {d["code"] for d in body["details"]} == {"DOCUMENT_PENDING"}
     assert BankRuleEvaluation.objects.count() == 1
 
 
@@ -570,7 +569,21 @@ def test_new_application_is_incomplete(
 
     assert body == {
         "percentage": 0,
+        "data_percentage": 0,
+        "documents_percentage": 0,
         "ready_to_file": False,
+        "ready_to_file_problems": [
+            {
+                "field": "bank_product_id",
+                "code": "BANK_PRODUCT_REQUIRED",
+                "message": "Elige un producto bancario.",
+            },
+            {
+                "field": "documents",
+                "code": "DOCUMENTS_NOT_CONFIGURED",
+                "message": NOT_CONFIGURED_MESSAGE,
+            },
+        ],
         "items": [
             {
                 "code": "property",
@@ -603,7 +616,13 @@ def test_new_application_is_incomplete(
                 "participant_id": str(primary.id),
             },
         ],
-        "documents": {"verified": False, "message": services.DOCUMENTS_NOT_VERIFIED_MESSAGE},
+        "documents": {
+            "verified": False,
+            "required_total": 0,
+            "completed_total": 0,
+            "message": NOT_CONFIGURED_MESSAGE,
+            "slots": [],
+        },
     }
 
 
@@ -617,7 +636,9 @@ def test_complete_data_reaches_100_but_documents_keep_it_not_ready(
 
     body = completeness(advisor_client, in_review)
 
-    assert body["percentage"] == 100
+    assert body["data_percentage"] == 100
+    assert body["documents_percentage"] == 0
+    assert body["percentage"] == 50
     assert body["ready_to_file"] is False
     assert all(item["complete"] for item in body["items"])
 
@@ -634,6 +655,8 @@ def test_ready_to_file_when_data_and_documents_are_complete(
     body = completeness(advisor_client, in_review)
 
     assert (body["ready_to_file"], body["documents"]["verified"]) == (True, True)
+    assert body["percentage"] == body["documents_percentage"] == 100
+    assert body["ready_to_file_problems"] == []
 
 
 def test_own_funds_skips_the_bank_items(
@@ -648,7 +671,8 @@ def test_own_funds_skips_the_bank_items(
         "financing",
         "financial_profile",
     ]
-    assert body["percentage"] == 33
+    assert body["data_percentage"] == 33
+    assert body["percentage"] == 16
 
 
 def test_bank_evaluation_item_explains_what_is_missing(
@@ -733,3 +757,95 @@ def test_application_out_of_scope_is_404(
 
 def test_admin_can_transition(admin_client: APIClient, application: CreditApplication) -> None:
     assert transition(admin_client, application, "WAITING_BUYER_DATA").status_code == 200
+
+
+# --- Guarda y completitud con el expediente real (paso 10, Tanda 4) ----------------------
+
+
+def guard_details(client: APIClient, application: CreditApplication) -> list[dict[str, Any]]:
+    """Intenta pasar a READY_TO_FILE y devuelve los `details` del 422."""
+    application.refresh_from_db(fields=["version"])
+    response = transition(client, application, "READY_TO_FILE", version=application.version)
+    return list(assert_error(response, 422, "APPLICATION_NOT_READY")["details"])
+
+
+def review_slot(client: APIClient, slot: ApplicationDocumentSlot, **data: Any) -> Any:
+    response = client.patch(f"/api/v1/document-slots/{slot.id}/review", data, format="json")
+    assert response.status_code == 200, response.content
+    return response
+
+
+def test_completeness_and_the_guard_agree_in_review(
+    advisor_client: APIClient, in_review: CreditApplication, blocking_rule: BankPolicyRule
+) -> None:
+    # Versión 4 sin evaluación vigente: la completitud evalúa en memoria y no guarda.
+    put(advisor_client, in_review, "financing", bank_credit(term_months=200), '"3"')
+    evaluations = BankRuleEvaluation.objects.count()
+
+    body = completeness(advisor_client, in_review)
+
+    assert BankRuleEvaluation.objects.count() == evaluations
+    assert body["ready_to_file"] is False
+    codes = {problem["code"] for problem in body["ready_to_file_problems"]}
+    assert codes == {"BANK_RULE_BLOCKED", "DOCUMENT_PENDING"}
+    assert body["ready_to_file_problems"] == guard_details(advisor_client, in_review)
+    # La guarda sí guarda la evaluación.
+    assert BankRuleEvaluation.objects.count() == evaluations + 1
+
+
+def test_a_ready_application_that_stops_complying_stays_ready(
+    advisor_client: APIClient, in_review: CreditApplication, documents_ok: None
+) -> None:
+    slot = ApplicationDocumentSlot.objects.filter(application=in_review, is_required=True).first()
+    assert slot is not None
+    # Un obligatorio sin archivo: se exonera, y reabrirlo lo deja PENDING.
+    ApplicationDocumentSlot.objects.filter(pk=slot.pk).update(
+        is_waivable=True, status=SlotStatus.PENDING, current_file=None
+    )
+    review_slot(advisor_client, slot, decision="WAIVED", reason_code="NOT_APPLICABLE")
+    assert transition(advisor_client, in_review, "READY_TO_FILE", version=3).status_code == 200
+    assert completeness(advisor_client, in_review)["ready_to_file"] is True
+
+    review_slot(advisor_client, slot, decision="REOPENED", internal_comment="Se exoneró por error.")
+
+    # Sigue en READY_TO_FILE y con la misma versión (decisión 29).
+    in_review.refresh_from_db()
+    assert (in_review.status, in_review.version) == ("READY_TO_FILE", 4)
+    body = completeness(advisor_client, in_review)
+    assert body["ready_to_file"] is False
+    assert [(p["code"], p["resource_id"]) for p in body["ready_to_file_problems"]] == [
+        ("DOCUMENT_PENDING", str(slot.pk))
+    ]
+    # La misma función, con los bloqueos de la guarda, dice lo mismo.
+    with transaction.atomic():
+        locked = CreditApplication.objects.select_for_update().get(pk=in_review.pk)
+        problems = services.ready_to_file_problems(locked, dossier=check_dossier(locked, lock=True))
+    assert problems == body["ready_to_file_problems"]
+    # Al volver a revisión, la guarda no la deja pasar otra vez.
+    assert transition(advisor_client, in_review, "DOCUMENTS_REVIEW", version=4).status_code == 200
+    assert guard_details(advisor_client, in_review) == body["ready_to_file_problems"]
+
+
+def test_completeness_lists_only_the_required_slots(
+    advisor_client: APIClient, in_review: CreditApplication
+) -> None:
+    ApplicationDocumentSlot.objects.filter(application=in_review).update(is_required=False)
+    first = ApplicationDocumentSlot.objects.filter(application=in_review).first()
+    assert first is not None
+    ApplicationDocumentSlot.objects.filter(pk=first.pk).update(is_required=True)
+
+    documents = completeness(advisor_client, in_review)["documents"]
+
+    assert [row["slot_id"] for row in documents["slots"]] == [str(first.pk)]
+    row = documents["slots"][0]
+    assert row.pop("label").startswith(first.document_type.name)
+    assert row == {
+        "slot_id": str(first.pk),
+        "participant_id": str(first.participant_id) if first.participant_id else None,
+        "document_type": {"code": first.document_type.code, "name": first.document_type.name},
+        "status": "PENDING",
+        "alternative_group_code": None,
+        "expires_at": None,
+        "complete": False,
+    }
+    assert (documents["required_total"], documents["completed_total"]) == (1, 0)

@@ -22,14 +22,16 @@ from apps.documents.serializers import DocumentTypeRefSerializer
 from config.serializers import StrictSerializer
 
 
-def slot_label(slot: ApplicationDocumentSlot) -> str:
+def slot_label(slot: ApplicationDocumentSlot, set_size: int | None = None) -> str:
     """Etiqueta del slot: "Desprendible de nómina 2 de 3", o solo el nombre del tipo.
 
-    El total son los slots vigentes del juego (``set_size``). Un slot retirado usa su
-    snapshot de ``minimum_files``.
+    El total son los slots vigentes del juego (``set_size``, o la anotación del mismo
+    nombre). Un slot retirado usa su snapshot de ``minimum_files``.
     """
     name = slot.document_type.name
-    total = slot.minimum_files if slot.retired_at is not None else getattr(slot, "set_size", None)
+    if set_size is None:
+        set_size = getattr(slot, "set_size", None)
+    total = slot.minimum_files if slot.retired_at is not None else set_size
     total = total or slot.minimum_files
     return name if total <= 1 else f"{name} {slot.slot_index} de {total}"
 
