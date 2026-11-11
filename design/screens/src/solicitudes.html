@@ -1,0 +1,508 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Umbral · Solicitudes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/*__TOKENS_CSS__*/
+/*__BASE_CSS__*/
+
+.content { padding: var(--um-space-6); display: grid; gap: var(--um-space-4); align-content: start; }
+.page-head { display: flex; align-items: flex-end; gap: var(--um-space-3); flex-wrap: wrap; }
+.page-head h1 { margin: 0; font-size: var(--um-text-3xl); line-height: var(--um-leading-3xl); letter-spacing: -0.01em; font-weight: var(--um-weight-semibold); }
+.page-head p { margin: 2px 0 0; color: var(--um-text-secondary); }
+
+/* pestañas rápidas por estado */
+/* pestañas de estado: se desplazan sin barra visible, con desvanecido y flechas cuando no caben */
+.quick-wrap { position: relative; min-width: 0; box-shadow: inset 0 -1px 0 var(--um-border-default); }
+.quick { display: flex; gap: var(--um-space-1); overflow-x: auto; overflow-y: hidden; scrollbar-width: none; scroll-behavior: smooth; scroll-padding: 0 40px; }
+.quick::-webkit-scrollbar { display: none; }
+.quick-wrap.more-left .quick { -webkit-mask-image: linear-gradient(to right, transparent 0, #000 48px); mask-image: linear-gradient(to right, transparent 0, #000 48px); }
+.quick-wrap.more-right .quick { -webkit-mask-image: linear-gradient(to left, transparent 0, #000 48px); mask-image: linear-gradient(to left, transparent 0, #000 48px); }
+.quick-wrap.more-left.more-right .quick { -webkit-mask-image: linear-gradient(to right, transparent 0, #000 48px, #000 calc(100% - 48px), transparent 100%); mask-image: linear-gradient(to right, transparent 0, #000 48px, #000 calc(100% - 48px), transparent 100%); }
+.quick-arrow { position: absolute; top: 50%; transform: translateY(-50%); width: 28px; height: 28px; border-radius: var(--um-radius-full); border: 1px solid var(--um-border-default); background: var(--um-bg-surface); color: var(--um-text-secondary); box-shadow: var(--um-shadow-sm); display: none; place-items: center; cursor: pointer; z-index: 2; }
+.quick-arrow:hover { color: var(--um-text-primary); }
+.quick-arrow svg { width: 14px; height: 14px; }
+.quick-arrow.left { left: 0; } .quick-arrow.right { right: 0; }
+.quick-wrap.more-left .quick-arrow.left, .quick-wrap.more-right .quick-arrow.right { display: grid; }
+@media (pointer: coarse) { .quick-wrap .quick-arrow { display: none !important; } }
+.quick button { flex: none; border: 0; background: none; padding: var(--um-space-2) var(--um-space-3) 10px; cursor: pointer; color: var(--um-text-secondary); font-weight: var(--um-weight-medium); font-size: var(--um-text-sm); box-shadow: inset 0 -2px 0 transparent; white-space: nowrap; display: inline-flex; gap: var(--um-space-2); align-items: center; }
+.quick button:hover { color: var(--um-text-primary); }
+.quick button[aria-selected="true"] { color: var(--um-text-link); box-shadow: inset 0 -2px 0 var(--um-brand-primary); }
+.quick button[aria-selected="true"] .count-n { color: var(--um-text-link); }
+
+/* tabla */
+.panel { background: var(--um-bg-surface); border: 1px solid var(--um-border-default); border-radius: var(--um-radius-lg); overflow: hidden; }
+.filters { display: flex; flex-wrap: wrap; gap: var(--um-space-2); padding: var(--um-space-3); border-bottom: 1px solid var(--um-border-default); align-items: center; }
+.filters .search { flex: 1 1 200px; min-width: 0; }
+.filter-set { display: contents; }
+.filter-set .select { width: 156px; }
+.filter-set #fType { width: 196px; }
+.filter-set .combo { width: 172px; }
+.filter-set .sheet-head, .filter-set .sheet-foot, .filters-btn, .fscrim { display: none; }
+.chip[hidden], .btn[hidden], .chips[hidden] { display: none; }
+.chips { display: flex; flex-wrap: wrap; gap: var(--um-space-2); padding: var(--um-space-2) var(--um-space-3); border-bottom: 1px solid var(--um-border-default); background: var(--um-bg-subtle); align-items: center; font-size: var(--um-text-sm); }
+.chip { display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 4px 0 10px; border-radius: var(--um-radius-full); background: var(--um-bg-surface); border: 1px solid var(--um-border-strong); font-size: var(--um-text-xs); }
+.chip b { font-weight: var(--um-weight-semibold); }
+.chip button { border: 0; background: none; cursor: pointer; width: 18px; height: 18px; border-radius: 50%; display: grid; place-items: center; color: var(--um-text-tertiary); }
+.chip button:hover { background: var(--um-bg-muted); color: var(--um-text-primary); }
+.bulk { display: none; align-items: center; gap: var(--um-space-3); padding: var(--um-space-2) var(--um-space-3); background: var(--um-brand-subtle); border-bottom: 1px solid var(--um-tone-info-border); font-size: var(--um-text-sm); }
+.bulk.show { display: flex; flex-wrap: wrap; }
+.bulk b { color: var(--um-text-link); }
+.scroll { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; min-width: 920px; }
+th, td { padding: 0 8px; height: 52px; border-bottom: 1px solid var(--um-border-default); text-align: left; white-space: nowrap; }
+thead th { height: 40px; background: var(--um-bg-subtle); color: var(--um-text-secondary); font-size: var(--um-text-xs); font-weight: var(--um-weight-medium); position: sticky; top: 0; }
+/* orden: un botón dentro del encabezado, para que funcione con teclado */
+.sort { all: unset; display: inline-flex; vertical-align: middle; align-items: center; gap: 4px; cursor: pointer; border-radius: var(--um-radius-sm); }
+.sort:hover { color: var(--um-text-primary); }
+.sort:focus-visible { outline: 2px solid var(--um-focus-ring); outline-offset: 2px; }
+th.right .sort { flex-direction: row-reverse; }
+.sort .arrow { display: inline-block; width: 10px; color: var(--um-text-tertiary); }
+th[aria-sort="descending"] .arrow::after { content: "↓"; color: var(--um-text-link); }
+th[aria-sort="ascending"] .arrow::after { content: "↑"; color: var(--um-text-link); }
+th[aria-sort="none"] .sort:hover .arrow::after, th[aria-sort="none"] .sort:focus-visible .arrow::after { content: "↕"; }
+.right { text-align: right; }
+.w-check { box-sizing: border-box; width: 44px; min-width: 44px; max-width: 44px; padding-right: 0; }
+tbody tr { cursor: pointer; }
+tbody tr:hover { background: var(--um-brand-subtle); }
+tbody tr.selected { background: var(--um-brand-subtle); }
+tbody tr:last-child td { border-bottom: 0; }
+/* checkbox y código fijos al desplazar la tabla en pantallas angostas */
+.stick { position: sticky; left: 0; z-index: 1; background: var(--um-bg-surface); }
+.stick + .stick { left: 44px; box-shadow: inset -1px 0 0 var(--um-border-default); }
+thead th.stick { z-index: 3; background: var(--um-bg-subtle); }
+tbody tr:hover td.stick, tbody tr.selected td.stick { background: var(--um-brand-subtle); }
+.code { white-space: nowrap; font-family: var(--um-font-mono); font-size: var(--um-text-sm); color: var(--um-text-link); font-weight: var(--um-weight-medium); }
+.person b { display: block; font-weight: var(--um-weight-medium); line-height: 18px; }
+.person span { font-size: var(--um-text-xs); color: var(--um-text-tertiary); }
+.bank { max-width: 150px; overflow: hidden; text-overflow: ellipsis; }
+.ctype b { display: block; font-weight: var(--um-weight-regular); line-height: 18px; }
+.ctype span { font-size: var(--um-text-xs); color: var(--um-text-tertiary); }
+.mini { display: flex; align-items: center; gap: var(--um-space-2); width: 80px; }
+.mini .bar { flex: 1; height: 6px; border-radius: var(--um-radius-full); background: var(--um-bg-muted); overflow: hidden; }
+.mini .bar i { display: block; height: 100%; border-radius: inherit; background: var(--um-brand-primary); }
+.mini span { font-size: var(--um-text-xs); color: var(--um-text-secondary); min-width: 38px; text-align: right; white-space: nowrap; }
+.advisor { display: flex; align-items: center; gap: var(--um-space-2); font-size: var(--um-text-sm); }
+.advisor .avatar { width: 24px; height: 24px; font-size: 10px; background: var(--um-bg-muted); color: var(--um-text-secondary); }
+.when { color: var(--um-text-secondary); font-size: var(--um-text-sm); }
+.when small { display: block; font-size: var(--um-text-xs); color: var(--um-text-tertiary); }
+.flag { color: var(--um-tone-warning-fg); display: inline-flex; vertical-align: -2px; margin-left: 4px; }
+.flag svg { width: 14px; height: 14px; }
+.foot { display: flex; align-items: center; gap: var(--um-space-3); padding: var(--um-space-2) var(--um-space-3); border-top: 1px solid var(--um-border-default); font-size: var(--um-text-sm); color: var(--um-text-secondary); flex-wrap: wrap; }
+.pages { display: flex; gap: 4px; }
+.pages .btn { min-width: 28px; padding: 0 8px; }
+.pages .btn.current { background: var(--um-brand-subtle); color: var(--um-text-link); border-color: var(--um-tone-info-border); }
+/* autocompletar de asesor */
+.combo { position: relative; }
+.combo-list { position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 15; margin: 0; padding: 4px; list-style: none; background: var(--um-bg-surface); border: 1px solid var(--um-border-default); border-radius: var(--um-radius-lg); box-shadow: var(--um-shadow-lg); max-height: 280px; overflow-y: auto; }
+.combo-list li { display: flex; align-items: center; gap: var(--um-space-2); padding: 7px var(--um-space-2); border-radius: var(--um-radius-md); cursor: pointer; font-size: var(--um-text-sm); }
+.combo-list li .avatar { width: 24px; height: 24px; font-size: 10px; }
+.combo-list li small { margin-left: auto; color: var(--um-text-tertiary); font-size: var(--um-text-xs); }
+.combo-list li[aria-selected="true"], .combo-list li:hover { background: var(--um-brand-subtle); }
+.combo-list li mark { background: none; color: var(--um-text-link); font-weight: var(--um-weight-semibold); }
+.combo-list .none { color: var(--um-text-tertiary); cursor: default; }
+.combo-list .none:hover { background: none; }
+
+/* tarjetas en móvil */
+.cards { display: none; list-style: none; margin: 0; padding: 0; }
+.cards li { padding: var(--um-space-3) var(--um-space-4); border-bottom: 1px solid var(--um-border-default); display: grid; gap: 6px; }
+.cards li.selected { background: var(--um-brand-subtle); }
+.cards .c-top { display: flex; align-items: center; gap: var(--um-space-2); }
+.cards .c-top .badge { margin-left: auto; }
+.cards .c-name { font-weight: var(--um-weight-medium); }
+.cards .c-name span { font-weight: var(--um-weight-regular); color: var(--um-text-tertiary); font-size: var(--um-text-xs); margin-left: 4px; }
+.cards .c-meta { font-size: var(--um-text-sm); color: var(--um-text-secondary); }
+.cards .c-bottom { display: flex; align-items: center; gap: var(--um-space-3); }
+.cards .c-bottom .mini { width: auto; flex: 1; }
+.cards .c-bottom .num { font-weight: var(--um-weight-medium); }
+
+.empty { display: none; padding: var(--um-space-12) var(--um-space-4); text-align: center; color: var(--um-text-secondary); }
+.empty.show { display: block; }
+
+@media (max-width: 860px) {
+  .content { padding: var(--um-space-4); }
+  .filters { flex-wrap: nowrap; }
+  .filters .search { flex: 1; width: auto; min-width: 0; }
+  .filters-btn { display: inline-flex; }
+  /* en móvil, los filtros viven en una hoja inferior */
+  .filter-set { display: grid; gap: var(--um-space-3); position: fixed; left: 0; right: 0; bottom: 0; z-index: 41; background: var(--um-bg-surface); border-radius: var(--um-radius-xl) var(--um-radius-xl) 0 0; padding: var(--um-space-4) var(--um-space-4) calc(var(--um-space-4) + env(safe-area-inset-bottom)); box-shadow: var(--um-shadow-lg); transform: translateY(100%); visibility: hidden; transition: transform 0.2s ease, visibility 0s linear 0.2s; }
+  .filter-set.open { transform: none; visibility: visible; transition: transform 0.2s ease; }
+  .filter-set .sheet-head { display: flex; align-items: center; justify-content: space-between; }
+  .filter-set .sheet-head b { font-size: var(--um-text-lg); }
+  .filter-set .sheet-foot { display: flex; gap: var(--um-space-2); }
+  .filter-set .sheet-foot .btn { flex: 1; }
+  .filter-set .select, .filter-set #fType, .filter-set .combo, .filter-set .combo .input { width: 100%; height: var(--um-control-height-lg); }
+  .filter-set > .btn-ghost { justify-self: start; }
+  .filter-set #clearFilters { display: none; }
+  .fscrim { position: fixed; inset: 0; background: var(--um-bg-overlay); z-index: 40; }
+  .fscrim.show { display: block; }
+  .page-head .btn { flex: 1; }
+  .page-head > div:first-child { flex-basis: 100%; }
+}
+@media (max-width: 720px) {
+  .scroll { display: none; }
+  .cards { display: block; }
+  .foot .pages .btn:not(:first-child):not(:last-child):not(.current) { display: none; }
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <!--__SIDEBAR__-->
+
+  <!-- ============ contenido ============ -->
+  <div>
+    <header class="topbar">
+      <button class="btn btn-ghost btn-icon menu-btn" id="menuToggle" type="button" aria-label="Abrir menú" aria-controls="sideNav" aria-expanded="false"><svg viewBox="0 0 20 20" fill="currentColor"><path d="M3 5h14v2H3V5Zm0 4h14v2H3V9Zm0 4h14v2H3v-2Z"/></svg></button>
+      <div class="crumbs"><span>Comercial</span><span>/</span><b>Solicitudes</b></div>
+      <div class="spacer"></div>
+      <div class="input-wrap global-search">
+        <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M8.5 2a6.5 6.5 0 0 1 5.2 10.4l4.2 4.2-1.4 1.4-4.2-4.2A6.5 6.5 0 1 1 8.5 2Zm0 2a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9Z"/></svg>
+        <input class="input" placeholder="Buscar cliente, solicitud o documento" aria-label="Búsqueda global">
+      </div>
+      <!--__THEME_BUTTON__-->
+      <button class="btn btn-ghost btn-icon icon-btn" type="button" aria-label="Notificaciones"><svg viewBox="0 0 20 20" fill="currentColor"><path d="M10 2a5 5 0 0 0-5 5v3l-2 3v1h14v-1l-2-3V7a5 5 0 0 0-5-5Zm-2 14a2 2 0 0 0 4 0H8Z"/></svg><span class="dot"></span></button>
+    </header>
+
+    <main class="content">
+      <div class="page-head">
+        <div>
+          <h1>Solicitudes</h1>
+          <p>Créditos de vivienda asignados a ti, desde el borrador hasta el desembolso.</p>
+        </div>
+        <div class="spacer"></div>
+        <button class="btn btn-default" type="button"><svg viewBox="0 0 20 20" fill="currentColor"><path d="M9 3h2v8l3-3 1.4 1.4L10 14.8 4.6 9.4 6 8l3 3V3ZM3 15h14v2H3v-2Z"/></svg>Exportar CSV</button>
+        <button class="btn btn-primary" type="button"><svg viewBox="0 0 20 20" fill="currentColor"><path d="M9 3h2v6h6v2h-6v6H9v-6H3V9h6V3Z"/></svg>Nueva solicitud</button>
+      </div>
+
+      <div class="quick-wrap" id="quickWrap">
+      <button class="quick-arrow left" type="button" tabindex="-1" aria-hidden="true" data-dir="-1"><svg aria-hidden="true" viewBox="0 0 20 20" fill="currentColor"><path d="M12.7 4.3 7 10l5.7 5.7-1.4 1.4L4.2 10l7.1-7.1 1.4 1.4Z"/></svg></button>
+      <div class="quick" role="tablist" aria-label="Filtro rápido por estado" id="quick">
+        <button role="tab" aria-selected="true" data-filter="all">Todas <span class="count-n">48</span></button>
+        <button role="tab" aria-selected="false" data-filter="waiting">Esperando al comprador <span class="count-n">14</span></button>
+        <button role="tab" aria-selected="false" data-filter="review">En revisión <span class="count-n">7</span></button>
+        <button role="tab" aria-selected="false" data-filter="ready">Listas para radicar <span class="count-n">4</span></button>
+        <button role="tab" aria-selected="false" data-filter="bank">En el banco <span class="count-n">11</span></button>
+        <button role="tab" aria-selected="false" data-filter="closed">Cerradas <span class="count-n">12</span></button>
+      </div>
+      <button class="quick-arrow right" type="button" tabindex="-1" aria-hidden="true" data-dir="1"><svg aria-hidden="true" viewBox="0 0 20 20" fill="currentColor"><path d="M7.3 4.3 13 10l-5.7 5.7 1.4 1.4 7.1-7.1-7.1-7.1-1.4 1.4Z"/></svg></button>
+      </div>
+
+      <section class="panel" aria-label="Listado de solicitudes">
+        <div class="filters">
+          <div class="input-wrap search">
+            <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M8.5 2a6.5 6.5 0 0 1 5.2 10.4l4.2 4.2-1.4 1.4-4.2-4.2A6.5 6.5 0 1 1 8.5 2Zm0 2a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9Z"/></svg>
+            <input class="input" id="search" placeholder="Código, nombre o cédula" aria-label="Buscar en solicitudes por código, nombre o cédula">
+          </div>
+          <button class="btn btn-default filters-btn" type="button" id="filtersBtn" aria-controls="filterSet" aria-expanded="false"><svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M3 4h14v2l-5 5v5l-4 1v-6L3 6V4Z"/></svg><span id="filtersBtnLabel">Filtros</span></button>
+          <div class="filter-set" id="filterSet" role="group" aria-label="Filtros">
+          <div class="sheet-head"><b>Filtros</b><button class="btn btn-ghost btn-icon" type="button" data-close-filters aria-label="Cerrar filtros"><svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="m5.4 4 4.6 4.6L14.6 4 16 5.4 11.4 10l4.6 4.6-1.4 1.4-4.6-4.6L5.4 16 4 14.6 8.6 10 4 5.4 5.4 4Z"/></svg></button></div>
+          <select class="select" id="fBank" aria-label="Filtrar por banco"><option value="">Banco: todos</option><option>Bancolombia</option><option value="Fondo Nacional del Ahorro">FNA</option><option>Banco de Bogotá</option><option value="__none">Sin banco elegido</option></select>
+          <select class="select" id="fType" aria-label="Filtrar por tipo de crédito"><option value="">Tipo de crédito: todos</option><option>Crédito hipotecario</option><option>Leasing habitacional</option></select>
+          <select class="select" id="fPurpose" aria-label="Filtrar por finalidad"><option value="">Finalidad: todas</option><option>Vivienda nueva</option><option>Vivienda usada</option><option>Remodelación</option></select>
+          <div class="combo" id="advisorCombo">
+            <div class="input-wrap">
+              <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M10 10a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm-7 8a7 7 0 0 1 14 0H3Z"/></svg>
+              <input class="input" id="advisorInput" role="combobox" aria-expanded="false" aria-controls="advisorList" aria-autocomplete="list" aria-label="Filtrar por asesor" placeholder="Asesor: escribe un nombre" autocomplete="off">
+            </div>
+            <ul class="combo-list" id="advisorList" role="listbox" aria-label="Asesores" hidden></ul>
+          </div>
+          <button class="btn btn-ghost" type="button"><svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M9 3h2v6h6v2h-6v6H9v-6H3V9h6V3Z"/></svg>Más filtros</button>
+          <button class="btn btn-text" type="button" id="clearFilters" hidden>Limpiar</button>
+          <div class="sheet-foot"><button class="btn btn-default btn-lg" type="button" id="sheetClear">Limpiar</button><button class="btn btn-primary btn-lg" type="button" data-close-filters>Ver resultados</button></div>
+          </div>
+        </div>
+        <div class="fscrim" id="fscrim" data-close-filters></div>
+        <div class="chips">
+          <span class="tertiary">Desde "Más filtros":</span>
+          <span class="chip" id="dateChip">Actualizada: <b>últimos 30 días</b><button type="button" id="dateChipClear" aria-label="Quitar filtro de fecha">×</button></span>
+        </div>
+        <div class="bulk" id="bulk" role="region" aria-live="polite">
+          <b id="bulkCount">0 seleccionadas</b>
+          <button class="btn btn-default btn-sm" type="button">Reasignar asesor</button>
+          <button class="btn btn-default btn-sm" type="button">Exportar selección</button>
+          <div class="spacer"></div>
+          <button class="btn btn-text btn-sm" type="button" id="clearSel">Quitar selección</button>
+        </div>
+
+        <div class="scroll">
+          <table id="grid">
+            <thead>
+              <tr>
+                <th class="w-check stick"><input type="checkbox" class="checkbox" id="checkAll" aria-label="Seleccionar todas"></th>
+                <th class="sortable stick" aria-sort="none" data-key="code"><button class="sort" type="button">Código<span class="arrow" aria-hidden="true"></span></button></th>
+                <th class="sortable" aria-sort="none" data-key="name"><button class="sort" type="button">Titular<span class="arrow" aria-hidden="true"></span></button></th>
+                <th>Estado</th>
+                <th class="sortable right" aria-sort="none" data-key="amount"><button class="sort" type="button">Monto<span class="arrow" aria-hidden="true"></span></button></th>
+                <th>Expediente</th>
+                <th class="sortable" aria-sort="none" data-key="bank"><button class="sort" type="button">Banco<span class="arrow" aria-hidden="true"></span></button></th>
+                <th class="sortable" aria-sort="none" data-key="type"><button class="sort" type="button">Tipo de crédito<span class="arrow" aria-hidden="true"></span></button></th>
+                <th class="sortable" aria-sort="descending" data-key="updated"><button class="sort" type="button">Actualizada<span class="arrow" aria-hidden="true"></span></button></th>
+                <th aria-label="Acciones"></th>
+              </tr>
+            </thead>
+            <tbody id="rows"></tbody>
+          </table>
+          <div class="empty" id="empty">
+            <b>No hay solicitudes con estos filtros</b>
+            <p class="tertiary">Prueba con otro estado o limpia los filtros.</p>
+          </div>
+        </div>
+
+        <ul class="cards" id="cards" aria-label="Solicitudes"></ul>
+        <div class="foot">
+          <span id="range">Mostrando 1–10 de 48</span>
+          <div class="spacer"></div>
+          <label class="row tertiary">Por página <select class="select" style="width:auto;height:28px"><option>10</option><option>20</option><option>50</option></select></label>
+          <div class="pages">
+            <button class="btn btn-default btn-sm" type="button" aria-label="Página anterior" disabled>‹</button>
+            <button class="btn btn-default btn-sm current" type="button" aria-current="page">1</button>
+            <button class="btn btn-default btn-sm" type="button">2</button>
+            <button class="btn btn-default btn-sm" type="button">3</button>
+            <button class="btn btn-default btn-sm" type="button">4</button>
+            <button class="btn btn-default btn-sm" type="button">5</button>
+            <button class="btn btn-default btn-sm" type="button" aria-label="Página siguiente">›</button>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>
+
+
+<script>
+(function () {
+  // Datos de ejemplo. En la app real llegan de GET /applications; la etiqueta del estado viene de la API.
+  var data = [
+    { code: "SOL-000184", name: "Laura Gómez", extra: "+ 1 co-solicitante", purpose: "Vivienda nueva", bank: "Bancolombia", type: "Crédito hipotecario", amount: 294000000, pct: 100, status: "READY_TO_FILE", label: "Lista para radicar", group: "ready", advisor: "PR", updated: 12, when: "Hace 12 min", who: "por ti" },
+    { code: "SOL-000183", name: "Andrés Moreno", extra: "Titular", purpose: "Vivienda usada", bank: "Fondo Nacional del Ahorro", bankShort: "FNA", type: "Crédito hipotecario", amount: 180500000, pct: 54, status: "WAITING_DOCUMENTS", label: "Esperando documentos", group: "waiting", advisor: "PR", updated: 65, when: "Hace 1 h", who: "el comprador", flag: true },
+    { code: "SOL-000182", name: "Sofía Herrera", extra: "+ 1 co-solicitante", purpose: "Vivienda nueva", bank: "Banco de Bogotá", type: "Leasing habitacional", amount: 365000000, pct: 81, status: "DOCUMENTS_REVIEW", label: "Revisión documental", group: "review", advisor: "PR", updated: 140, when: "Hace 2 h", who: "el comprador" },
+    { code: "SOL-000181", name: "Diana Castro", extra: "+ 1 deudor solidario", purpose: "Vivienda nueva", bank: "Banco de Bogotá", type: "Crédito hipotecario", amount: 412000000, pct: 76, status: "DOCUMENTS_REVIEW", label: "Revisión documental", group: "review", advisor: "PR", updated: 1440, when: "Ayer", who: "por ti" },
+    { code: "SOL-000179", name: "Mateo Vargas", extra: "Titular", purpose: "Remodelación", bank: "Bancolombia", type: "Crédito hipotecario", amount: 85000000, pct: 22, status: "WAITING_BUYER_DATA", label: "Esperando datos del comprador", group: "waiting", advisor: "PR", updated: 2880, when: "Hace 2 días", who: "por ti", flag: true },
+    { code: "SOL-000178", name: "Valentina Ríos", extra: "+ 1 co-solicitante", purpose: "Vivienda usada", bank: "Bancolombia", type: "Leasing habitacional", amount: 238000000, pct: 100, status: "FILED", label: "Radicada", group: "bank", advisor: "PR", updated: 4320, when: "Hace 3 días", who: "por ti" },
+    { code: "SOL-000176", name: "Julián Pardo", extra: "Titular", purpose: "Vivienda nueva", bank: "Bancolombia", type: "Crédito hipotecario", amount: 255000000, pct: 100, status: "APPROVED", label: "Aprobada", group: "bank", advisor: "PR", updated: 5760, when: "8 nov", who: "por ti" },
+    { code: "SOL-000174", name: "Carolina Díaz", extra: "Titular", purpose: "Vivienda usada", bank: "Fondo Nacional del Ahorro", bankShort: "FNA", type: "Crédito hipotecario", amount: 152000000, pct: 100, status: "CREDIT_ANALYSIS", label: "Análisis de crédito", group: "bank", advisor: "PR", updated: 7200, when: "6 nov", who: "por ti" },
+    { code: "SOL-000171", name: "Felipe Ortiz", extra: "Titular", purpose: "Vivienda nueva", bank: "Banco de Bogotá", type: "Leasing habitacional", amount: 298000000, pct: 100, status: "REJECTED", label: "Rechazada", group: "closed", advisor: "PR", updated: 8640, when: "5 nov", who: "por ti" },
+    { code: "SOL-000170", name: "Camila Ruiz", extra: "Titular", purpose: "Vivienda nueva", bank: null, type: null, amount: null, pct: 8, status: "DRAFT", label: "Borrador", group: "waiting", advisor: "PR", updated: 9000, when: "5 nov", who: "por ti" }
+  ];
+  var tones = { DRAFT: "neutral", WAITING_BUYER_DATA: "warning", WAITING_DOCUMENTS: "warning", DOCUMENTS_REVIEW: "info", READY_TO_FILE: "accent", FILED: "info", CREDIT_ANALYSIS: "info", APPROVED: "success", REJECTED: "danger" };
+  var cop = new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 });
+  var state = { filter: "all", q: "", bank: "", type: "", purpose: "", sort: "updated", dir: "descending", selected: {} };
+  var tbody = document.getElementById("rows");
+
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+  // La completitud siempre va en el color de marca: el teal queda reservado para el estado "Lista para radicar".
+  function bar(r) { return '<div class="mini"><div class="bar"><i style="width:' + r.pct + '%"></i></div><span class="num">' + r.pct + " %</span></div>"; }
+  function flag(r) { return r.flag ? '<span class="flag" title="Sin actividad del comprador hace más de 3 días"><svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M10 2 1 18h18L10 2Zm-1 6h2v5H9V8Zm0 6h2v2H9v-2Z"/></svg><span class="sr-only">Sin actividad del comprador hace más de 3 días</span></span>' : ""; }
+  function render() {
+    var rows = data.filter(function (r) {
+      return (state.filter === "all" || r.group === state.filter) &&
+        (!state.q || (r.code + " " + r.name).toLowerCase().indexOf(state.q) >= 0) &&
+        (!state.bank || (state.bank === "__none" ? !r.bank : r.bank === state.bank)) &&
+        (!state.type || r.type === state.type) &&
+        (!state.purpose || r.purpose === state.purpose);
+    }).sort(function (a, b) {
+      var k = state.sort, va = a[k], vb = b[k];
+      if (va == null) return 1; if (vb == null) return -1;
+      var c = typeof va === "number" ? va - vb : String(va).localeCompare(String(vb), "es");
+      if (k === "updated") c = -c; // menor "hace" = más reciente
+      return state.dir === "ascending" ? c : -c;
+    });
+    tbody.innerHTML = rows.map(function (r) {
+      var sel = !!state.selected[r.code];
+      return '<tr class="' + (sel ? "selected" : "") + '" data-code="' + r.code + '">' +
+        '<td class="w-check stick"><input type="checkbox" class="checkbox rowcheck" aria-label="Seleccionar ' + r.code + '"' + (sel ? " checked" : "") + '></td>' +
+        '<td class="stick"><a class="code" href="solicitud.html">' + r.code + "</a></td>" +
+        '<td class="person"><b>' + esc(r.name) + "</b><span>" + esc(r.extra) + "</span></td>" +
+        '<td><span class="badge tone-' + (tones[r.status] || "neutral") + '">' + esc(r.label) + "</span>" + flag(r) + "</td>" +
+        '<td class="right num">' + (r.amount ? cop.format(r.amount) : '<span class="tertiary">—</span>') + "</td>" +
+        '<td>' + bar(r) + "</td>" +
+        '<td class="bank"' + (r.bank ? ' title="' + esc(r.bank) + '"' : "") + ">" + (r.bank ? esc(r.bankShort || r.bank) : '<span class="tertiary">Sin banco elegido</span>') + "</td>" +
+        '<td class="ctype"><b' + (r.type ? ">" + esc(r.type) : ' class="tertiary">Sin definir') + "</b><span>" + esc(r.purpose) + "</span></td>" +
+        '<td class="when">' + r.when + "</td>" +
+        '<td class="right"><button class="btn btn-ghost btn-icon btn-sm" type="button" aria-label="Más acciones para ' + r.code + '"><svg viewBox="0 0 20 20" fill="currentColor"><circle cx="10" cy="4" r="1.6"/><circle cx="10" cy="10" r="1.6"/><circle cx="10" cy="16" r="1.6"/></svg></button></td>' +
+        "</tr>";
+    }).join("");
+    document.getElementById("cards").innerHTML = rows.map(function (r) {
+      var sel = !!state.selected[r.code];
+      return '<li class="' + (sel ? "selected" : "") + '" data-code="' + r.code + '">' +
+        '<div class="c-top"><input type="checkbox" class="checkbox rowcheck" aria-label="Seleccionar ' + r.code + '"' + (sel ? " checked" : "") + '><a class="code" href="solicitud.html">' + r.code + '</a><span class="badge tone-' + (tones[r.status] || "neutral") + '">' + esc(r.label) + "</span>" + flag(r) + "</div>" +
+        '<div class="c-name">' + esc(r.name) + "<span>" + esc(r.extra) + "</span></div>" +
+        '<div class="c-meta">' + (r.bank ? esc(r.bankShort || r.bank) : "Sin banco elegido") + " · " + (r.type ? esc(r.type) : "Tipo sin definir") + " · " + esc(r.purpose) + "</div>" +
+        '<div class="c-bottom"><span class="num">' + (r.amount ? cop.format(r.amount) : "—") + '</span>' + bar(r) + '<span class="tertiary">' + r.when + "</span></div>" +
+        "</li>";
+    }).join("");
+    document.getElementById("empty").classList.toggle("show", rows.length === 0);
+    document.getElementById("range").textContent = rows.length ? "Mostrando 1–" + rows.length + " de " + (state.filter === "all" && !state.q && !activeCount() ? 48 : rows.length) : "Sin resultados";
+    var n = Object.keys(state.selected).filter(function (k) { return state.selected[k]; }).length;
+    document.getElementById("bulk").classList.toggle("show", n > 0);
+    document.getElementById("bulkCount").textContent = n + (n === 1 ? " seleccionada" : " seleccionadas");
+    var all = document.getElementById("checkAll");
+    all.checked = rows.length > 0 && rows.every(function (r) { return state.selected[r.code]; });
+    all.indeterminate = n > 0 && !all.checked;
+  }
+
+  document.getElementById("quick").addEventListener("click", function (e) {
+    var b = e.target.closest("button"); if (!b) return;
+    this.querySelectorAll("button").forEach(function (x) { x.setAttribute("aria-selected", String(x === b)); });
+    state.filter = b.dataset.filter; render();
+    b.scrollIntoView({ block: "nearest", inline: "nearest" });
+  });
+  // Desvanecido y flechas solo cuando hay pestañas fuera de la vista.
+  var quick = document.getElementById("quick"), quickWrap = document.getElementById("quickWrap");
+  function quickEdges() {
+    var max = quick.scrollWidth - quick.clientWidth;
+    quickWrap.classList.toggle("more-left", quick.scrollLeft > 2);
+    quickWrap.classList.toggle("more-right", quick.scrollLeft < max - 2);
+  }
+  quick.addEventListener("scroll", quickEdges, { passive: true });
+  window.addEventListener("resize", quickEdges);
+  quickWrap.querySelectorAll(".quick-arrow").forEach(function (a) {
+    a.addEventListener("click", function () { quick.scrollBy({ left: +a.dataset.dir * quick.clientWidth * 0.7 }); });
+  });
+  // Flechas del teclado entre pestañas (patrón ARIA de tabs).
+  quick.addEventListener("keydown", function (e) {
+    if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
+    var tabs = [].slice.call(quick.querySelectorAll("button")), i = tabs.indexOf(document.activeElement);
+    if (i < 0) return; e.preventDefault();
+    var next = tabs[(i + (e.key === "ArrowRight" ? 1 : -1) + tabs.length) % tabs.length];
+    next.focus(); next.click();
+  });
+  quickEdges();
+  // Filtros de banco, tipo de crédito y finalidad. En la app real las opciones vienen de los catálogos de la API.
+  // Los filtros visibles no se repiten como chips; solo los de "Más filtros" (fecha) llevan chip.
+  var selects = { fBank: "bank", fType: "type", fPurpose: "purpose" };
+  state.advisor = "pr"; state.date = true;
+  function activeCount() {
+    return ["bank", "type", "purpose"].filter(function (k) { return state[k]; }).length + (state.advisor !== "all" ? 1 : 0) + (state.date ? 1 : 0);
+  }
+  function syncFilters() {
+    var n = activeCount();
+    document.getElementById("clearFilters").hidden = n === 0;
+    document.getElementById("filtersBtnLabel").textContent = n ? "Filtros (" + n + ")" : "Filtros";
+    document.getElementById("dateChip").hidden = !state.date;
+    document.querySelector(".chips").hidden = !state.date;
+  }
+  Object.keys(selects).forEach(function (id) {
+    document.getElementById(id).addEventListener("change", function () { state[selects[id]] = this.value; syncFilters(); render(); });
+  });
+  document.getElementById("dateChipClear").addEventListener("click", function () { state.date = false; syncFilters(); render(); });
+  function clearAll() {
+    Object.keys(selects).forEach(function (id) { document.getElementById(id).value = ""; state[selects[id]] = ""; });
+    choose(advisors[0]); state.date = false; syncFilters(); render();
+  }
+  document.getElementById("clearFilters").addEventListener("click", clearAll);
+  document.getElementById("sheetClear").addEventListener("click", clearAll);
+  // Hoja de filtros en móvil.
+  var filterSet = document.getElementById("filterSet"), filtersBtn = document.getElementById("filtersBtn"), fscrim = document.getElementById("fscrim");
+  function setSheet(open) {
+    filterSet.classList.toggle("open", open); fscrim.classList.toggle("show", open);
+    filtersBtn.setAttribute("aria-expanded", String(open));
+    if (open) filterSet.querySelector("select").focus(); else filtersBtn.focus();
+  }
+  filtersBtn.addEventListener("click", function () { setSheet(true); });
+  document.querySelectorAll("[data-close-filters]").forEach(function (b) { b.addEventListener("click", function () { setSheet(false); }); });
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape" && filterSet.classList.contains("open")) setSheet(false); });
+  document.getElementById("search").addEventListener("input", function () { state.q = this.value.trim().toLowerCase(); render(); });
+  document.querySelectorAll("th.sortable").forEach(function (th) {
+    th.querySelector(".sort").addEventListener("click", function () {
+      var k = th.dataset.key;
+      state.dir = state.sort === k && state.dir === "descending" ? "ascending" : "descending";
+      state.sort = k;
+      document.querySelectorAll("th.sortable").forEach(function (x) { x.setAttribute("aria-sort", x === th ? state.dir : "none"); });
+      render();
+    });
+  });
+  tbody.addEventListener("click", function (e) {
+    var tr = e.target.closest("tr"); if (!tr) return;
+    if (e.target.classList.contains("rowcheck")) { state.selected[tr.dataset.code] = e.target.checked; render(); return; }
+    if (e.target.closest("button, a")) return;
+    location.href = "solicitud.html";
+  });
+  document.getElementById("cards").addEventListener("click", function (e) {
+    var li = e.target.closest("li"); if (!li) return;
+    if (e.target.classList.contains("rowcheck")) { state.selected[li.dataset.code] = e.target.checked; render(); return; }
+  });
+
+  // ---------- autocompletar de asesor ----------
+  // En la app real: GET /users?role=ADVISOR&search=... con debounce; aquí, datos de ejemplo.
+  var advisors = [
+    { id: "all", name: "Todos los asesores", initials: "∗", count: 186 },
+    { id: "pr", name: "Paula Rincón", initials: "PR", count: 48, me: true },
+    { id: "cm", name: "Carlos Méndez", initials: "CM", count: 31 },
+    { id: "ns", name: "Natalia Suárez", initials: "NS", count: 27 },
+    { id: "ji", name: "Jorge Ibáñez", initials: "JI", count: 22 },
+    { id: "lr", name: "Luisa Fernanda Rojas", initials: "LR", count: 19 },
+    { id: "so", name: "Sebastián Ortega", initials: "SO", count: 15 },
+    { id: "mp", name: "María Camila Peña", initials: "MP", count: 12 },
+    { id: "da", name: "Daniel Álvarez", initials: "DA", count: 12 }
+  ];
+  var input = document.getElementById("advisorInput"), list = document.getElementById("advisorList");
+  var active = -1, shown = [];
+  var norm = function (t) { return t.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase(); };
+  function highlight(name, q) {
+    if (!q) return esc(name);
+    var i = norm(name).indexOf(norm(q));
+    if (i < 0) return esc(name);
+    return esc(name.slice(0, i)) + "<mark>" + esc(name.slice(i, i + q.length)) + "</mark>" + esc(name.slice(i + q.length));
+  }
+  function openList() {
+    var q = input.value.trim();
+    shown = advisors.filter(function (a) { return !q || norm(a.name).indexOf(norm(q)) >= 0; });
+    active = shown.length ? 0 : -1;
+    list.innerHTML = shown.length ? shown.map(function (a, i) {
+      return '<li role="option" id="adv-' + a.id + '" aria-selected="' + (i === active) + '" data-i="' + i + '"><span class="avatar">' + a.initials + "</span><span>" + highlight(a.name, q) + (a.me ? ' <span class="tertiary">(tú)</span>' : "") + "</span><small>" + a.count + "</small></li>";
+    }).join("") : '<li class="none" role="option" aria-disabled="true">Ningún asesor coincide</li>';
+    list.hidden = false;
+    input.setAttribute("aria-expanded", "true");
+    input.setAttribute("aria-activedescendant", active >= 0 ? "adv-" + shown[active].id : "");
+  }
+  function closeList() { list.hidden = true; input.setAttribute("aria-expanded", "false"); input.removeAttribute("aria-activedescendant"); }
+  function move(d) {
+    if (!shown.length) return;
+    active = (active + d + shown.length) % shown.length;
+    list.querySelectorAll("li").forEach(function (li, i) { li.setAttribute("aria-selected", String(i === active)); if (i === active) li.scrollIntoView({ block: "nearest" }); });
+    input.setAttribute("aria-activedescendant", "adv-" + shown[active].id);
+  }
+  function choose(a) {
+    state.advisor = a.id;
+    if (a.id === "all") { input.value = ""; input.placeholder = "Asesor: todos"; }
+    else { input.value = a.name; }
+    closeList(); syncFilters();
+  }
+  input.addEventListener("focus", openList);
+  input.addEventListener("input", openList);
+  input.addEventListener("keydown", function (e) {
+    if (e.key === "ArrowDown") { e.preventDefault(); list.hidden ? openList() : move(1); }
+    else if (e.key === "ArrowUp") { e.preventDefault(); move(-1); }
+    else if (e.key === "Enter" && !list.hidden && active >= 0) { e.preventDefault(); choose(shown[active]); }
+    else if (e.key === "Escape") { closeList(); }
+  });
+  list.addEventListener("mousedown", function (e) { var li = e.target.closest("li[data-i]"); if (li) { e.preventDefault(); choose(shown[+li.dataset.i]); } });
+  input.addEventListener("blur", function () { setTimeout(closeList, 100); });
+  input.value = "Paula Rincón";
+
+  document.getElementById("checkAll").addEventListener("change", function () {
+    var on = this.checked;
+    tbody.querySelectorAll("tr").forEach(function (tr) { state.selected[tr.dataset.code] = on; });
+    render();
+  });
+  document.getElementById("clearSel").addEventListener("click", function () { state.selected = {}; render(); });
+
+  // Preseleccionar dos filas para mostrar la barra de acciones masivas.
+  state.selected["SOL-000183"] = true; state.selected["SOL-000179"] = true;
+  syncFilters();
+  render();
+
+})();
+</script>
+<script>
+/*__SHELL_JS__*/
+</script>
+</body>
+</html>

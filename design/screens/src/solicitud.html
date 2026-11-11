@@ -1,0 +1,512 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Umbral · SOL-000182</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/*__TOKENS_CSS__*/
+/*__BASE_CSS__*/
+
+.content { padding: var(--um-space-6); display: grid; gap: var(--um-space-5); align-content: start; max-width: 1148px; }
+.card { background: var(--um-bg-surface); border: 1px solid var(--um-border-default); border-radius: var(--um-radius-lg); }
+.card-h { display: flex; align-items: center; gap: var(--um-space-2); padding: var(--um-space-4) var(--um-space-5) 0; }
+.card-h h2 { margin: 0; font-size: var(--um-text-lg); line-height: var(--um-leading-lg); font-weight: var(--um-weight-semibold); }
+.card-b { padding: var(--um-space-4) var(--um-space-5) var(--um-space-5); }
+.label { font-size: var(--um-text-xs); color: var(--um-text-secondary); font-weight: var(--um-weight-medium); }
+
+/* encabezado */
+.back { display: inline-flex; align-items: center; gap: 4px; font-size: var(--um-text-sm); color: var(--um-text-secondary); }
+.head { padding: var(--um-space-5); display: grid; gap: var(--um-space-4); }
+.head-top { display: flex; flex-wrap: wrap; gap: var(--um-space-3); align-items: flex-start; }
+.title-row { display: flex; align-items: center; gap: var(--um-space-3); flex-wrap: wrap; }
+.title-row h1 { margin: 0; font-family: var(--um-font-mono); font-size: var(--um-text-3xl); line-height: var(--um-leading-3xl); font-weight: var(--um-weight-medium); }
+.subtitle { margin: 4px 0 0; color: var(--um-text-secondary); }
+.subtitle b { color: var(--um-text-primary); font-weight: var(--um-weight-medium); }
+.actions { display: flex; gap: var(--um-space-2); align-items: center; flex-wrap: wrap; }
+.action-col { display: grid; gap: 6px; justify-items: start; }
+.reason { margin: 0; font-size: var(--um-text-xs); color: var(--um-text-secondary); }
+.kpis { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: var(--um-space-4); padding-top: var(--um-space-4); border-top: 1px solid var(--um-border-default); }
+.kpi .v { font-size: var(--um-text-lg); line-height: var(--um-leading-lg); font-weight: var(--um-weight-semibold); margin-top: 2px; }
+.kpi .v small { display: block; }
+.kpi .v small { font-size: var(--um-text-xs); font-weight: var(--um-weight-regular); color: var(--um-text-tertiary); }
+.menu { position: relative; }
+.menu-list { position: absolute; right: 0; top: calc(100% + 4px); z-index: 15; min-width: 230px; margin: 0; padding: 4px; list-style: none; background: var(--um-bg-surface); border: 1px solid var(--um-border-default); border-radius: var(--um-radius-lg); box-shadow: var(--um-shadow-lg); }
+.menu-list button { width: 100%; text-align: left; border: 0; background: none; padding: 8px 10px; border-radius: var(--um-radius-md); cursor: pointer; font-size: var(--um-text-sm); }
+.menu-list button:hover { background: var(--um-bg-muted); }
+.menu-list .danger { color: var(--um-tone-danger-fg); }
+.menu-list hr { border: 0; border-top: 1px solid var(--um-border-default); margin: 4px 0; }
+
+/* línea de etapas */
+.steps { display: flex; list-style: none; margin: 0; padding: 0; overflow-x: auto; }
+.steps li { flex: 1; min-width: 110px; position: relative; padding-top: 26px; font-size: var(--um-text-xs); color: var(--um-text-tertiary); text-align: center; }
+.steps li::before { content: ""; position: absolute; top: 9px; left: 0; right: 0; height: 2px; background: var(--um-border-default); }
+.steps li:first-child::before { left: 50%; }
+.steps li:last-child::before { right: 50%; }
+.steps li.done::before, .steps li.current::before { background: var(--um-brand-primary); }
+.steps li.current::before { background: linear-gradient(90deg, var(--um-brand-primary) 50%, var(--um-border-default) 50%); }
+.steps .dot { position: absolute; top: 2px; left: 50%; transform: translateX(-50%); width: 16px; height: 16px; border-radius: 50%; background: var(--um-bg-surface); border: 2px solid var(--um-border-strong); display: grid; place-items: center; }
+.steps li.done .dot { background: var(--um-brand-primary); border-color: var(--um-brand-primary); color: var(--um-brand-on-primary); }
+.steps li.done .dot svg { width: 10px; height: 10px; }
+.steps li.current .dot { border-color: var(--um-brand-primary); box-shadow: 0 0 0 4px var(--um-brand-subtle); }
+.steps li.current .dot::after { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--um-brand-primary); }
+.steps li.done, .steps li.current { color: var(--um-text-primary); }
+.steps li.current { font-weight: var(--um-weight-semibold); }
+
+/* pestañas */
+.tabs { display: flex; gap: var(--um-space-1); border-bottom: 1px solid var(--um-border-default); overflow-x: auto; }
+.tabs button { border: 0; background: none; padding: var(--um-space-2) var(--um-space-3) 10px; cursor: pointer; color: var(--um-text-secondary); font-weight: var(--um-weight-medium); border-bottom: 2px solid transparent; margin-bottom: -1px; white-space: nowrap; display: inline-flex; gap: 6px; align-items: center; }
+.tabs button[aria-selected="true"] { color: var(--um-text-link); border-bottom-color: var(--um-brand-primary); }
+.tabs .n { font-size: var(--um-text-xs); font-weight: var(--um-weight-regular); color: var(--um-tone-warning-fg); font-variant-numeric: tabular-nums; }
+[role="tabpanel"][hidden] { display: none; }
+
+/* resumen */
+/* Una sola columna: las tarjetas van apiladas en todas las pantallas. */
+.grid-main { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--um-space-5); max-width: 1100px; }
+.col { display: grid; gap: var(--um-space-5); }
+.progress { height: 8px; border-radius: var(--um-radius-full); background: var(--um-bg-muted); overflow: hidden; }
+.progress > i { display: block; height: 100%; border-radius: inherit; background: var(--um-brand-primary); }
+.split { display: grid; grid-template-columns: 1fr 1fr; gap: var(--um-space-5); margin-top: var(--um-space-4); }
+.split b { font-variant-numeric: tabular-nums; }
+.checks { list-style: none; margin: var(--um-space-4) 0 0; padding: 0; display: grid; gap: 6px; font-size: var(--um-text-sm); }
+.checks li { display: flex; gap: var(--um-space-2); align-items: center; }
+.checks svg { width: 16px; height: 16px; flex: none; }
+.ok { color: var(--um-tone-success-fg); }
+.warn { color: var(--um-tone-warning-fg); }
+.eval-head { display: flex; align-items: center; gap: var(--um-space-3); }
+.bank-mark { width: 40px; height: 40px; border-radius: var(--um-radius-md); background: var(--um-brand-subtle); color: var(--um-text-link); display: grid; place-items: center; font-weight: var(--um-weight-bold); font-size: var(--um-text-sm); flex: none; }
+.rules { margin-top: var(--um-space-4); display: grid; gap: var(--um-space-2); }
+.rule { display: grid; grid-template-columns: auto 1fr auto; gap: var(--um-space-3); align-items: center; padding: 10px var(--um-space-3); border-radius: var(--um-radius-md); background: var(--um-bg-subtle); font-size: var(--um-text-sm); }
+.rule svg { width: 16px; height: 16px; }
+.rule small { display: block; color: var(--um-text-tertiary); font-size: var(--um-text-xs); }
+
+.dl { display: grid; grid-template-columns: minmax(140px, 220px) 1fr; gap: 8px var(--um-space-4); font-size: var(--um-text-sm); margin: 0; }
+.dl dt { color: var(--um-text-tertiary); }
+.dl dd { margin: 0; font-weight: var(--um-weight-medium); }
+.people { display: grid; gap: var(--um-space-3); }
+.person-row { display: flex; gap: var(--um-space-3); align-items: center; }
+.person-row b { display: block; font-weight: var(--um-weight-medium); }
+.person-row span { font-size: var(--um-text-xs); color: var(--um-text-tertiary); }
+.person-row .money { margin-left: auto; text-align: right; font-size: var(--um-text-sm); }
+.person-row .money span { display: block; }
+.timeline { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--um-space-4); }
+.timeline li { display: grid; grid-template-columns: 12px 1fr; gap: var(--um-space-3); font-size: var(--um-text-sm); position: relative; }
+.timeline li::before { content: ""; width: 10px; height: 10px; border-radius: 50%; background: var(--um-border-strong); margin-top: 5px; }
+.timeline li.info::before { background: var(--um-brand-primary); }
+.timeline li.danger::before { background: var(--um-tone-danger-fg); }
+.timeline li.success::before { background: var(--um-tone-success-fg); }
+.timeline li:not(:last-child)::after { content: ""; position: absolute; left: 4px; top: 18px; bottom: calc(-1 * var(--um-space-4) + 2px); width: 2px; background: var(--um-border-default); }
+.timeline small { display: block; color: var(--um-text-tertiary); font-size: var(--um-text-xs); margin-top: 2px; }
+.timeline q { quotes: none; display: block; margin-top: 4px; padding: 6px 10px; border-radius: var(--um-radius-md); background: var(--um-bg-subtle); color: var(--um-text-secondary); }
+
+/* documentos */
+.doc-group + .doc-group { margin-top: var(--um-space-6); }
+.doc-group h3 { margin: 0 0 var(--um-space-3); display: flex; align-items: center; gap: var(--um-space-2); font-size: var(--um-text-md); }
+.doc-group h3 .tertiary { font-weight: var(--um-weight-regular); }
+.slot { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; gap: var(--um-space-3); align-items: center; padding: 10px var(--um-space-4); border: 1px solid var(--um-border-default); border-radius: var(--um-radius-lg); background: var(--um-bg-surface); }
+.slot + .slot { margin-top: var(--um-space-2); }
+.slot .ico { width: 34px; height: 34px; border-radius: var(--um-radius-md); display: grid; place-items: center; background: var(--um-bg-muted); color: var(--um-text-secondary); }
+.slot .ico svg { width: 16px; height: 16px; }
+.slot .t { font-weight: var(--um-weight-medium); }
+.slot .s { font-size: var(--um-text-xs); color: var(--um-text-tertiary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.slot.empty { border-style: dashed; background: var(--um-bg-subtle); }
+.slot .note { grid-column: 2 / -1; font-size: var(--um-text-sm); padding: 6px 10px; border-radius: var(--um-radius-md); }
+.group-tag { font-size: var(--um-text-xs); color: var(--um-text-tertiary); border: 1px dashed var(--um-border-strong); border-radius: var(--um-radius-full); padding: 0 8px; margin-left: 6px; }
+
+/* panel lateral de revisión */
+.drawer-scrim { position: fixed; inset: 0; background: var(--um-bg-overlay); z-index: 40; display: none; }
+.drawer-scrim.show { display: block; }
+.drawer { position: fixed; top: 0; right: 0; bottom: 0; width: min(520px, 100%); background: var(--um-bg-surface); z-index: 41; box-shadow: var(--um-shadow-lg); display: flex; flex-direction: column; transform: translateX(100%); visibility: hidden; transition: transform 0.2s ease, visibility 0s linear 0.2s; }
+.drawer.open { visibility: visible; transition-delay: 0s; transform: none; }
+.drawer header { display: flex; align-items: center; gap: var(--um-space-2); padding: var(--um-space-4) var(--um-space-5); border-bottom: 1px solid var(--um-border-default); }
+.drawer header h2 { margin: 0; font-size: var(--um-text-lg); }
+.drawer .body { flex: 1; overflow-y: auto; padding: var(--um-space-5); display: grid; gap: var(--um-space-5); align-content: start; }
+.drawer footer { padding: var(--um-space-3) var(--um-space-5); border-top: 1px solid var(--um-border-default); display: flex; gap: var(--um-space-2); justify-content: flex-end; }
+.preview { aspect-ratio: 16 / 9; border-radius: var(--um-radius-lg); border: 1px solid var(--um-border-default); background: var(--um-bg-muted); display: grid; place-items: center; position: relative; overflow: hidden; }
+.paper { width: 42%; aspect-ratio: 8.5 / 11; background: var(--um-bg-surface); box-shadow: var(--um-shadow-md); border-radius: 2px; padding: 8% 7%; display: grid; gap: 6%; align-content: start; transform: translateY(14%); }
+.paper i { display: block; height: 6px; border-radius: 3px; background: var(--um-bg-muted); }
+.paper i.h { height: 10px; width: 60%; background: var(--um-border-strong); }
+.preview .open-file { position: absolute; top: var(--um-space-3); right: var(--um-space-3); }
+.decision { display: grid; grid-template-columns: 1fr 1fr; gap: var(--um-space-2); }
+.decision label { display: flex; gap: var(--um-space-2); align-items: center; padding: 10px var(--um-space-3); border: 1px solid var(--um-border-strong); border-radius: var(--um-radius-md); cursor: pointer; font-weight: var(--um-weight-medium); }
+.decision input { accent-color: var(--um-brand-primary); margin: 0; }
+.decision label:has(input:checked) { border-color: var(--um-brand-primary); background: var(--um-brand-subtle); }
+.decision label.reject:has(input:checked) { border-color: var(--um-tone-danger-fg); background: var(--um-tone-danger-bg); }
+textarea.input { height: auto; min-height: 76px; padding: 8px var(--um-space-3); resize: vertical; }
+.reject-fields[hidden] { display: none; }
+.reject-fields { display: grid; gap: var(--um-space-4); }
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: var(--um-space-3); }
+
+@media (max-width: 1180px) { .kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 860px) {
+  .content { padding: var(--um-space-4); }
+  .head { padding: var(--um-space-4); }
+  .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .actions { width: 100%; }
+  .actions .btn-primary { flex: 1; }
+  .action-col { width: 100%; justify-items: stretch; }
+  .actions .btn:not(.btn-icon) { flex: 1 1 auto; }
+  .dl { grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); }
+  .split { grid-template-columns: 1fr; gap: var(--um-space-3); }
+  .slot { grid-template-columns: auto minmax(0, 1fr) auto; }
+  .slot .badge { grid-column: 2; justify-self: start; }
+  .slot .act { grid-row: 1; grid-column: 3; }
+  .two { grid-template-columns: 1fr; }
+}
+@media (prefers-reduced-motion: reduce) { .drawer { transition: none; } }
+</style>
+</head>
+<body>
+<div class="app">
+  <!--__SIDEBAR__-->
+
+  <div>
+    <header class="topbar">
+      <button class="btn btn-ghost btn-icon menu-btn" id="menuToggle" type="button" aria-label="Abrir menú" aria-controls="sideNav" aria-expanded="false"><svg viewBox="0 0 20 20" fill="currentColor"><path d="M3 5h14v2H3V5Zm0 4h14v2H3V9Zm0 4h14v2H3v-2Z"/></svg></button>
+      <div class="crumbs"><span>Comercial</span><span>/</span><a href="solicitudes.html">Solicitudes</a><span>/</span><b>SOL-000182</b></div>
+      <div class="spacer"></div>
+      <!--__THEME_BUTTON__-->
+      <button class="btn btn-ghost btn-icon icon-btn" type="button" aria-label="Notificaciones"><svg viewBox="0 0 20 20" fill="currentColor"><path d="M10 2a5 5 0 0 0-5 5v3l-2 3v1h14v-1l-2-3V7a5 5 0 0 0-5-5Zm-2 14a2 2 0 0 0 4 0H8Z"/></svg><span class="dot"></span></button>
+    </header>
+
+    <main class="content">
+      <a class="back" href="solicitudes.html"><svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="m12.6 4 1.4 1.4L9.4 10l4.6 4.6-1.4 1.4-6-6 6-6Z"/></svg>Volver a solicitudes</a>
+
+      <!-- encabezado -->
+      <section class="card head" aria-labelledby="appTitle">
+        <div class="head-top">
+          <div>
+            <div class="title-row">
+              <h1 id="appTitle">SOL-000182</h1>
+              <span class="badge tone-info">Revisión documental</span>
+            </div>
+            <p class="subtitle"><b>Sofía Herrera</b> y Daniel Mejía (co-solicitante) · Vivienda nueva · Torres del Parque, etapa 2</p>
+          </div>
+          <div class="spacer"></div>
+          <div class="action-col">
+          <div class="actions">
+            <button class="btn btn-default" type="button"><svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M11 3h6v6h-2V6.4l-6.3 6.3-1.4-1.4L13.6 5H11V3ZM3 5h6v2H5v8h8v-4h2v6H3V5Z"/></svg>Enviar enlace al comprador</button>
+            <!-- Mientras falten documentos, la acción principal es revisarlos; marcar como lista queda deshabilitado con la razón visible. -->
+            <button class="btn btn-default" type="button" id="readyBtn" disabled aria-describedby="readyReason">Marcar lista para radicar</button>
+            <button class="btn btn-primary" type="button" id="reviewNext" data-review="Certificado laboral|Sofía Herrera · Titular|certificado-laboral.pdf|412 KB|30">Revisar 3 documentos</button>
+            <div class="menu">
+              <button class="btn btn-default btn-icon" type="button" id="moreBtn" aria-haspopup="menu" aria-expanded="false" aria-label="Más acciones"><svg viewBox="0 0 20 20" fill="currentColor"><circle cx="4" cy="10" r="1.6"/><circle cx="10" cy="10" r="1.6"/><circle cx="16" cy="10" r="1.6"/></svg></button>
+              <ul class="menu-list" id="moreMenu" role="menu" hidden>
+                <li role="none"><button role="menuitem" type="button">Devolver a datos del comprador</button></li>
+                <li role="none"><button role="menuitem" type="button">Evaluar reglas del banco</button></li>
+                <li role="none"><button role="menuitem" type="button">Reasignar asesor</button></li>
+                <li role="none"><hr></li>
+                <li role="none"><button role="menuitem" type="button" class="danger">Registrar desistimiento</button></li>
+                <li role="none"><button role="menuitem" type="button" class="danger">Cancelar solicitud</button></li>
+              </ul>
+            </div>
+          </div>
+            <p class="reason" id="readyReason">Para marcarla lista faltan 3 documentos por revisar, 2 por cargar y 1 rechazado.</p>
+          </div>
+        </div>
+        <div class="kpis">
+          <div class="kpi"><div class="label">Monto solicitado</div><div class="v num">$ 365.000.000</div></div>
+          <div class="kpi"><div class="label">Valor del inmueble</div><div class="v num">$ 520.000.000</div></div>
+          <div class="kpi"><div class="label">Financiación</div><div class="v num">70,2 % <small>del valor</small></div></div>
+          <div class="kpi"><div class="label">Banco</div><div class="v">Banco de Bogotá <small>Leasing habitacional</small></div></div>
+          <div class="kpi"><div class="label">Plazo</div><div class="v num">240 <small>meses</small></div></div>
+          <div class="kpi"><div class="label">Origen</div><div class="v">Broker <small>Andrés Cárdenas</small></div></div>
+        </div>
+        <ol class="steps" aria-label="Etapas de la solicitud">
+          <li class="done"><span class="dot"><svg viewBox="0 0 20 20" fill="currentColor"><path d="M8 13.2 4.8 10l-1.4 1.4L8 16l9-9-1.4-1.4L8 13.2Z"/></svg></span>Datos del comprador</li>
+          <li class="done"><span class="dot"><svg viewBox="0 0 20 20" fill="currentColor"><path d="M8 13.2 4.8 10l-1.4 1.4L8 16l9-9-1.4-1.4L8 13.2Z"/></svg></span>Carga de documentos</li>
+          <li class="current" aria-current="step"><span class="dot"></span>Revisión documental</li>
+          <li><span class="dot"></span>Lista para radicar</li>
+          <li><span class="dot"></span>Radicada</li>
+          <li><span class="dot"></span>Análisis del banco</li>
+          <li><span class="dot"></span>Aprobada</li>
+          <li><span class="dot"></span>Desembolsada</li>
+        </ol>
+      </section>
+
+      <div class="tabs" role="tablist" aria-label="Secciones de la solicitud" id="tabs">
+        <button role="tab" aria-selected="true" aria-controls="p-resumen" id="t-resumen">Resumen</button>
+        <button role="tab" aria-selected="false" aria-controls="p-docs" id="t-docs">Documentos <span class="n">6 pendientes</span></button>
+        <button role="tab" aria-selected="false" aria-controls="p-hist" id="t-hist">Historial</button>
+      </div>
+
+      <!-- ======= RESUMEN ======= -->
+      <section role="tabpanel" id="p-resumen" aria-labelledby="t-resumen">
+        <div class="grid-main">
+          <div class="col">
+            <article class="card">
+              <div class="card-h"><h2>Completitud del expediente</h2><div class="spacer"></div><span class="muted num" style="white-space:nowrap">81 % en total</span></div>
+              <div class="card-b">
+                <div class="split" style="margin-top:0">
+                  <div><div class="row"><span class="muted">Datos</span><div class="spacer"></div><b>100 %</b></div><div class="progress" style="margin-top:6px"><i style="width:100%"></i></div></div>
+                  <div><div class="row"><span class="muted">Documentos</span><div class="spacer"></div><b>10 de 16 · 62 %</b></div><div class="progress" style="margin-top:6px"><i style="width:62%"></i></div></div>
+                </div>
+                <ul class="checks">
+                  <li><svg class="ok" viewBox="0 0 20 20" fill="currentColor"><path d="M10 1a9 9 0 1 0 0 18 9 9 0 0 0 0-18Zm-1.2 13L4.5 9.7l1.4-1.4 2.9 2.9 5.3-5.3 1.4 1.4-6.7 6.7Z"/></svg>Datos personales y financieros confirmados por el comprador</li>
+                  <li><svg class="ok" viewBox="0 0 20 20" fill="currentColor"><path d="M10 1a9 9 0 1 0 0 18 9 9 0 0 0 0-18Zm-1.2 13L4.5 9.7l1.4-1.4 2.9 2.9 5.3-5.3 1.4 1.4-6.7 6.7Z"/></svg>Banco elegido y evaluación vigente sin bloqueos</li>
+                  <li><svg class="warn" viewBox="0 0 20 20" fill="currentColor"><path d="M10 2 1 18h18L10 2Zm-1 6h2v5H9V8Zm0 6h2v2H9v-2Z"/></svg>3 documentos por revisar, 2 pendientes de carga y 1 rechazado</li>
+                </ul>
+              </div>
+            </article>
+
+            <article class="card">
+              <div class="card-h"><h2>Por revisar</h2><div class="spacer"></div><button class="btn btn-text btn-sm" type="button" data-goto="t-docs">Ver todos los documentos</button></div>
+              <div class="card-b">
+                <div class="slot">
+                  <div class="ico"><svg viewBox="0 0 20 20" fill="currentColor"><path d="M5 2h7l4 4v12H5V2Zm7 1.5V7h3.5L12 3.5Z"/></svg></div>
+                  <div><div class="t">Certificado laboral</div><div class="s">Sofía Herrera · certificado-laboral.pdf · hace 3 h</div></div>
+                  <button class="btn btn-default btn-sm act" type="button" data-review="Certificado laboral|Sofía Herrera · Titular|certificado-laboral.pdf|412 KB|30">Revisar</button>
+                </div>
+                <div class="slot">
+                  <div class="ico"><svg viewBox="0 0 20 20" fill="currentColor"><path d="M5 2h7l4 4v12H5V2Zm7 1.5V7h3.5L12 3.5Z"/></svg></div>
+                  <div><div class="t">Extracto bancario 1 de 3</div><div class="s">Sofía Herrera · extracto-agosto.pdf · hace 3 h</div></div>
+                  <button class="btn btn-default btn-sm act" type="button" data-review="Extracto bancario 1 de 3|Sofía Herrera · Titular|extracto-agosto.pdf|1,1 MB|">Revisar</button>
+                </div>
+                <div class="slot">
+                  <div class="ico"><svg viewBox="0 0 20 20" fill="currentColor"><path d="M5 2h7l4 4v12H5V2Zm7 1.5V7h3.5L12 3.5Z"/></svg></div>
+                  <div><div class="t">Cédula del co-solicitante</div><div class="s">Daniel Mejía · cedula-daniel.jpg · hace 5 h</div></div>
+                  <button class="btn btn-default btn-sm act" type="button" data-review="Documento de identidad|Daniel Mejía · Co-solicitante|cedula-daniel.jpg|860 KB|">Revisar</button>
+                </div>
+              </div>
+            </article>
+
+            <article class="card">
+              <div class="card-h"><h2>Evaluación del banco</h2><div class="spacer"></div><span class="badge tone-success">Elegible</span></div>
+              <div class="card-b">
+                <div class="eval-head">
+                  <div class="bank-mark" aria-hidden="true">BdB</div>
+                  <div><b>Banco de Bogotá · Leasing habitacional</b><div class="tertiary">Evaluada hace 2 h · vigente para la versión actual</div></div>
+                </div>
+                <div class="rules">
+                  <div class="rule"><svg class="ok" viewBox="0 0 20 20" fill="currentColor"><path d="M10 1a9 9 0 1 0 0 18 9 9 0 0 0 0-18Zm-1.2 13L4.5 9.7l1.4-1.4 2.9 2.9 5.3-5.3 1.4 1.4-6.7 6.7Z"/></svg><div>Monto dentro del rango del producto<small>Regla del sistema · PRODUCT_AMOUNT_RANGE</small></div><span class="tertiary">Cumple</span></div>
+                  <div class="rule"><svg class="ok" viewBox="0 0 20 20" fill="currentColor"><path d="M10 1a9 9 0 1 0 0 18 9 9 0 0 0 0-18Zm-1.2 13L4.5 9.7l1.4-1.4 2.9 2.9 5.3-5.3 1.4 1.4-6.7 6.7Z"/></svg><div>Financiación máxima del 70 % del valor<small>Regla del banco · v2</small></div><span class="tertiary">Cumple</span></div>
+                  <div class="rule"><svg class="warn" viewBox="0 0 20 20" fill="currentColor"><path d="M10 2 1 18h18L10 2Zm-1 6h2v5H9V8Zm0 6h2v2H9v-2Z"/></svg><div>Ingreso del hogar cercano al mínimo del producto<small>Aviso · no bloquea la radicación</small></div><span class="tertiary">Aviso</span></div>
+                </div>
+              </div>
+            </article>
+          </div>
+
+          <div class="col">
+            <article class="card">
+              <div class="card-h"><h2>Participantes</h2><div class="spacer"></div><button class="btn btn-text btn-sm" type="button">Agregar</button></div>
+              <div class="card-b people">
+                <div class="person-row"><span class="avatar">SH</span><div><b>Sofía Herrera</b><span>Titular · Empleada · Perfil confirmado</span></div><div class="money"><b class="num">$ 7.800.000</b><span class="tertiary">ingreso mensual</span></div></div>
+                <div class="person-row"><span class="avatar">DM</span><div><b>Daniel Mejía</b><span>Co-solicitante · Independiente · Perfil confirmado</span></div><div class="money"><b class="num">$ 4.200.000</b><span class="tertiary">ingreso mensual</span></div></div>
+                <dl class="dl" style="padding-top:var(--um-space-3);border-top:1px solid var(--um-border-default)">
+                  <dt>Ingreso del hogar</dt><dd class="num">$ 12.000.000</dd>
+                  <dt>Gastos y deudas del hogar</dt><dd class="num">$ 4.350.000</dd>
+                </dl>
+              </div>
+            </article>
+
+            <article class="card">
+              <div class="card-h"><h2>Inmueble</h2></div>
+              <div class="card-b">
+                <dl class="dl">
+                  <dt>Proyecto</dt><dd>Torres del Parque, etapa 2</dd>
+                  <dt>Unidad</dt><dd>Apartamento 1204</dd>
+                  <dt>Ciudad</dt><dd>Floridablanca, Santander</dd>
+                  <dt>Condición</dt><dd>Nueva · sobre planos</dd>
+                  <dt>Valor comercial</dt><dd class="num">$ 520.000.000</dd>
+                </dl>
+              </div>
+            </article>
+
+            <article class="card">
+              <div class="card-h"><h2>Acceso del comprador</h2></div>
+              <div class="card-b">
+                <dl class="dl">
+                  <dt>Enlace</dt><dd><span class="badge tone-success">Usado</span></dd>
+                  <dt>Sesión</dt><dd>Activa · vence en 21 h</dd>
+                  <dt>Consentimientos</dt><dd class="ok">2 de 2 aceptados</dd>
+                  <dt>Última actividad</dt><dd>Hace 3 h</dd>
+                </dl>
+              </div>
+            </article>
+
+            <article class="card">
+              <div class="card-h"><h2>Actividad reciente</h2><div class="spacer"></div><button class="btn btn-text btn-sm" type="button" data-goto="t-hist">Ver historial</button></div>
+              <div class="card-b">
+                <ul class="timeline">
+                  <li class="info"><div><b>Sofía Herrera</b> cargó 2 documentos<small>Hace 3 h · portal del comprador</small></div></li>
+                  <li class="danger"><div><b>Paula Rincón</b> rechazó el desprendible de nómina 2 de 3<small>Ayer, 4:12 p. m.</small><q>Ilegible: la foto está borrosa. Sube una imagen nítida o el PDF.</q></div></li>
+                  <li class="info"><div>Pasó a <b>Revisión documental</b><small>Ayer, 4:05 p. m. · Paula Rincón</small></div></li>
+                </ul>
+              </div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <!-- ======= DOCUMENTOS ======= -->
+      <section role="tabpanel" id="p-docs" aria-labelledby="t-docs" hidden>
+        <div class="card"><div class="card-b" style="padding-top:var(--um-space-5)">
+          <div class="doc-group">
+            <h3><span class="avatar" style="width:24px;height:24px;font-size:10px">SH</span>Sofía Herrera <span class="tertiary">· Titular · Empleada</span></h3>
+            <div class="slot"><div class="ico"><svg viewBox="0 0 20 20" fill="currentColor"><path d="M5 2h7l4 4v12H5V2Zm7 1.5V7h3.5L12 3.5Z"/></svg></div><div><div class="t">Documento de identidad</div><div class="s">cedula-sofia.pdf · 1,2 MB · aprobado por Paula R.</div></div><span class="badge tone-success">Aprobado</span><button class="btn btn-ghost btn-sm act" type="button" data-view="cedula-sofia.pdf|pdf|2|1,2 MB">Ver</button></div>
+            <div class="slot"><div class="ico"><svg viewBox="0 0 20 20" fill="currentColor"><path d="M5 2h7l4 4v12H5V2Zm7 1.5V7h3.5L12 3.5Z"/></svg></div><div><div class="t">Certificado laboral</div><div class="s">certificado-laboral.pdf · 412 KB · máximo 30 días de expedido</div></div><span class="badge tone-info">Cargado</span><button class="btn btn-default btn-sm act" type="button" data-review="Certificado laboral|Sofía Herrera · Titular|certificado-laboral.pdf|412 KB|30">Revisar</button></div>
+            <div class="slot"><div class="ico"><svg viewBox="0 0 20 20" fill="currentColor"><path d="M5 2h7l4 4v12H5V2Zm7 1.5V7h3.5L12 3.5Z"/></svg></div><div><div class="t">Desprendible de nómina 1 de 3</div><div class="s">nomina-julio.pdf · 380 KB</div></div><span class="badge tone-success">Aprobado</span><button class="btn btn-ghost btn-sm act" type="button" data-view="nomina-julio.pdf|pdf|1|380 KB">Ver</button></div>
+            <div class="slot"><div class="ico"><svg viewBox="0 0 20 20" fill="currentColor"><path d="M5 2h7l4 4v12H5V2Zm7 1.5V7h3.5L12 3.5Z"/></svg></div><div><div class="t">Desprendible de nómina 2 de 3</div><div class="s">nomina-agosto.jpg · 840 KB</div></div><span class="badge tone-danger">Rechazado</span><button class="btn btn-ghost btn-sm act" type="button" data-view="nomina-agosto.jpg|image|1|840 KB">Ver</button><div class="note tone-danger">Mensaje al comprador: Ilegible, la foto está borrosa. Sube una imagen nítida o el PDF.</div></div>
+            <div class="slot"><div class="ico"><svg viewBox="0 0 20 20" fill="currentColor"><path d="M5 2h7l4 4v12H5V2Zm7 1.5V7h3.5L12 3.5Z"/></svg></div><div><div class="t">Desprendible de nómina 3 de 3</div><div class="s">nomina-septiembre.pdf · 402 KB</div></div><span class="badge tone-success">Aprobado</span><button class="btn btn-ghost btn-sm act" type="button" data-view="nomina-septiembre.pdf|pdf|1|402 KB">Ver</button></div>
+            <div class="slot"><div class="ico"><svg viewBox="0 0 20 20" fill="currentColor"><path d="M5 2h7l4 4v12H5V2Zm7 1.5V7h3.5L12 3.5Z"/></svg></div><div><div class="t">Extracto bancario 1 de 3</div><div class="s">extracto-agosto.pdf · 1,1 MB</div></div><span class="badge tone-info">Cargado</span><button class="btn btn-default btn-sm act" type="button" data-review="Extracto bancario 1 de 3|Sofía Herrera · Titular|extracto-agosto.pdf|1,1 MB|">Revisar</button></div>
+            <div class="slot empty"><div class="ico"><svg viewBox="0 0 20 20" fill="currentColor"><path d="M9 3h2v6h6v2h-6v6H9v-6H3V9h6V3Z"/></svg></div><div><div class="t">Extracto bancario 2 de 3</div><div class="s">Pendiente de carga por el comprador</div></div><span class="badge tone-neutral">Pendiente</span><button class="btn btn-ghost btn-sm act" type="button">Exonerar</button></div>
+            <div class="slot"><div class="ico"><svg viewBox="0 0 20 20" fill="currentColor"><path d="M5 2h7l4 4v12H5V2Zm7 1.5V7h3.5L12 3.5Z"/></svg></div><div><div class="t">Certificado de ingresos y retenciones <span class="group-tag">o declaración de renta</span></div><div class="s">ingresos-2025.pdf · 290 KB</div></div><span class="badge tone-success">Aprobado</span><button class="btn btn-ghost btn-sm act" type="button" data-view="ingresos-2025.pdf|pdf|1|290 KB">Ver</button></div>
+          </div>
+
+          <div class="doc-group">
+            <h3><span class="avatar" style="width:24px;height:24px;font-size:10px">DM</span>Daniel Mejía <span class="tertiary">· Co-solicitante · Independiente</span></h3>
+            <div class="slot"><div class="ico"><svg viewBox="0 0 20 20" fill="currentColor"><path d="M5 2h7l4 4v12H5V2Zm7 1.5V7h3.5L12 3.5Z"/></svg></div><div><div class="t">Documento de identidad</div><div class="s">cedula-daniel.jpg · 860 KB</div></div><span class="badge tone-info">Cargado</span><button class="btn btn-default btn-sm act" type="button" data-review="Documento de identidad|Daniel Mejía · Co-solicitante|cedula-daniel.jpg|860 KB|">Revisar</button></div>
+            <div class="slot"><div class="ico"><svg viewBox="0 0 20 20" fill="currentColor"><path d="M5 2h7l4 4v12H5V2Zm7 1.5V7h3.5L12 3.5Z"/></svg></div><div><div class="t">Soporte de actividad e ingresos</div><div class="s">contrato-servicios.pdf · 2,3 MB</div></div><span class="badge tone-success">Aprobado</span><button class="btn btn-ghost btn-sm act" type="button" data-view="contrato-servicios.pdf|pdf|2|2,3 MB">Ver</button></div>
+            <div class="slot empty"><div class="ico"><svg viewBox="0 0 20 20" fill="currentColor"><path d="M9 3h2v6h6v2h-6v6H9v-6H3V9h6V3Z"/></svg></div><div><div class="t">Extracto bancario 1 de 3</div><div class="s">Pendiente de carga por el comprador</div></div><span class="badge tone-neutral">Pendiente</span><button class="btn btn-ghost btn-sm act" type="button">Exonerar</button></div>
+          </div>
+
+          <div class="doc-group">
+            <h3><span class="avatar" style="width:24px;height:24px;font-size:10px"><svg width="12" height="12" viewBox="0 0 20 20" fill="currentColor"><path d="M10 2 2 8v10h5v-6h6v6h5V8l-8-6Z"/></svg></span>Solicitud <span class="tertiary">· Inmueble y trámite</span></h3>
+            <div class="slot"><div class="ico"><svg viewBox="0 0 20 20" fill="currentColor"><path d="M5 2h7l4 4v12H5V2Zm7 1.5V7h3.5L12 3.5Z"/></svg></div><div><div class="t">Promesa de compraventa</div><div class="s">promesa-apto-1204.pdf · 3,4 MB</div></div><span class="badge tone-success">Aprobado</span><button class="btn btn-ghost btn-sm act" type="button" data-view="promesa-apto-1204.pdf|pdf|2|3,4 MB">Ver</button></div>
+            <div class="slot"><div class="ico"><svg viewBox="0 0 20 20" fill="currentColor"><path d="M5 2h7l4 4v12H5V2Zm7 1.5V7h3.5L12 3.5Z"/></svg></div><div><div class="t">Certificado de tradición y libertad</div><div class="s">No aplica: inmueble sobre planos</div></div><span class="badge tone-accent">Exonerado</span><span class="tertiary act">Sin archivo</span></div>
+          </div>
+        </div></div>
+      </section>
+
+      <!-- ======= HISTORIAL ======= -->
+      <section role="tabpanel" id="p-hist" aria-labelledby="t-hist" hidden>
+        <div class="card"><div class="card-b" style="padding-top:var(--um-space-5)">
+          <ul class="timeline">
+            <li class="info"><div><b>Sofía Herrera</b> cargó el certificado laboral y el extracto bancario 1 de 3<small>Hoy, 9:40 a. m. · portal del comprador</small></div></li>
+            <li class="danger"><div><b>Paula Rincón</b> rechazó el desprendible de nómina 2 de 3<small>Ayer, 4:12 p. m.</small><q>Ilegible: la foto está borrosa. Sube una imagen nítida o el PDF.</q></div></li>
+            <li class="info"><div>Pasó de <b>Esperando documentos</b> a <b>Revisión documental</b><small>Ayer, 4:05 p. m. · Paula Rincón · versión 14</small></div></li>
+            <li class="success"><div>Evaluación de <b>Banco de Bogotá</b>: elegible, 1 aviso<small>Ayer, 3:58 p. m. · automática al confirmar la financiación</small></div></li>
+            <li><div><b>Sofía Herrera</b> aceptó el tratamiento de datos y la autorización del co-solicitante<small>12 nov, 7:22 p. m. · portal del comprador</small></div></li>
+            <li class="info"><div>Pasó de <b>Esperando datos del comprador</b> a <b>Esperando documentos</b><small>12 nov, 7:30 p. m. · Paula Rincón</small></div></li>
+            <li><div><b>Andrés Cárdenas</b> envió el enlace de acceso al comprador<small>12 nov, 11:05 a. m. · por correo</small></div></li>
+            <li><div>Solicitud creada desde la oportunidad <b>OPP-000431</b><small>12 nov, 10:48 a. m. · Paula Rincón</small></div></li>
+          </ul>
+        </div></div>
+      </section>
+    </main>
+  </div>
+</div>
+
+<!-- panel de revisión -->
+<div class="drawer-scrim" id="drawerScrim"></div>
+<aside class="drawer" id="drawer" role="dialog" aria-modal="true" aria-labelledby="drawerTitle" aria-hidden="true">
+  <header>
+    <div><div class="tertiary" id="dHolder">Sofía Herrera · Titular</div><h2 id="drawerTitle">Certificado laboral</h2></div>
+    <div class="spacer"></div>
+    <button class="btn btn-ghost btn-icon" type="button" id="drawerClose" aria-label="Cerrar"><svg viewBox="0 0 20 20" fill="currentColor"><path d="m5.4 4 4.6 4.6L14.6 4 16 5.4 11.4 10l4.6 4.6-1.4 1.4-4.6-4.6L5.4 16 4 14.6 8.6 10 4 5.4 5.4 4Z"/></svg></button>
+  </header>
+  <div class="body">
+    <div class="preview">
+      <div class="paper" aria-hidden="true"><i class="h"></i><i></i><i></i><i style="width:80%"></i><i></i><i style="width:55%"></i></div>
+      <button class="btn btn-default btn-sm open-file" type="button" id="openFile" data-view="certificado-laboral.pdf|pdf|1|412 KB">Abrir en el visor</button>
+    </div>
+    <dl class="dl">
+      <dt>Archivo</dt><dd id="dFile">certificado-laboral.pdf</dd>
+      <dt>Tamaño</dt><dd id="dSize">412 KB</dd>
+      <dt>Cargado</dt><dd>Hace 3 h · por el comprador</dd>
+      <dt>Análisis antivirus</dt><dd><span class="badge tone-success">Limpio</span></dd>
+    </dl>
+    <div class="two">
+      <div class="field"><label for="docDate">Fecha del documento</label><input class="input" id="docDate" type="date" value="2026-11-02"><span class="help" id="dValidity">Vigencia de 30 días: vence el 2 de diciembre.</span></div>
+    </div>
+    <fieldset style="border:0;padding:0;margin:0;display:grid;gap:var(--um-space-2)">
+      <legend class="field" style="padding:0;margin-bottom:var(--um-space-2)"><b style="font-size:var(--um-text-sm)">Decisión</b></legend>
+      <div class="decision">
+        <label><input type="radio" name="decision" value="approve" checked> Aprobar</label>
+        <label class="reject"><input type="radio" name="decision" value="reject"> Rechazar</label>
+      </div>
+    </fieldset>
+    <div class="reject-fields" id="rejectFields" hidden>
+      <div class="field"><label for="reason">Motivo</label><select class="select" id="reason"><option>Ilegible</option><option>Incompleto</option><option>Desactualizado</option><option>Documento equivocado</option><option>Los datos no coinciden</option><option>Otro</option></select><span class="help">Los motivos vienen del catálogo; el administrador los edita.</span></div>
+      <div class="field"><label for="buyerMsg">Mensaje para el comprador</label><textarea class="input" id="buyerMsg" placeholder="Explícale qué debe corregir. Lo verá en su portal y por correo."></textarea></div>
+    </div>
+    <div class="field"><label for="internal">Nota interna <span class="tertiary">(opcional, el comprador no la ve)</span></label><textarea class="input" id="internal" placeholder="Solo para el equipo."></textarea></div>
+  </div>
+  <footer>
+    <button class="btn btn-default" type="button" id="drawerCancel">Cancelar</button>
+    <button class="btn btn-primary" type="button" id="drawerSave">Aprobar documento</button>
+  </footer>
+</aside>
+
+<script>
+(function () {
+  // pestañas
+  var tabs = Array.prototype.slice.call(document.querySelectorAll("#tabs [role=tab]"));
+  function select(t) {
+    tabs.forEach(function (x) { var on = x === t; x.setAttribute("aria-selected", String(on)); document.getElementById(x.getAttribute("aria-controls")).hidden = !on; });
+  }
+  tabs.forEach(function (t, i) {
+    t.addEventListener("click", function () { select(t); });
+    t.addEventListener("keydown", function (e) {
+      if (e.key === "ArrowRight" || e.key === "ArrowLeft") { var n = tabs[(i + (e.key === "ArrowRight" ? 1 : tabs.length - 1)) % tabs.length]; n.focus(); select(n); }
+    });
+  });
+  document.querySelectorAll("[data-goto]").forEach(function (b) { b.addEventListener("click", function () { var t = document.getElementById(b.dataset.goto); select(t); t.focus(); }); });
+
+  // menú de más acciones
+  var more = document.getElementById("moreBtn"), menu = document.getElementById("moreMenu");
+  more.addEventListener("click", function (e) { e.stopPropagation(); var o = menu.hidden; menu.hidden = !o; more.setAttribute("aria-expanded", String(o)); });
+  document.addEventListener("click", function () { menu.hidden = true; more.setAttribute("aria-expanded", "false"); });
+
+  // panel de revisión
+  var drawer = document.getElementById("drawer"), scrim = document.getElementById("drawerScrim"), lastFocus = null;
+  var save = document.getElementById("drawerSave"), rej = document.getElementById("rejectFields");
+  function openDrawer(spec, from) {
+    var p = spec.split("|");
+    document.getElementById("drawerTitle").textContent = p[0];
+    document.getElementById("dHolder").textContent = p[1];
+    document.getElementById("dFile").textContent = p[2];
+    document.getElementById("dSize").textContent = p[3];
+    document.getElementById("openFile").dataset.view = p[2] + "|" + (/\.(jpg|png)$/i.test(p[2]) ? "image" : "pdf") + "|1|" + p[3];
+    document.getElementById("dValidity").textContent = p[4] ? "Vigencia de " + p[4] + " días: vence el 2 de diciembre." : "Este documento no tiene vigencia configurada.";
+    lastFocus = from; drawer.classList.add("open"); scrim.classList.add("show"); drawer.setAttribute("aria-hidden", "false");
+    document.getElementById("drawerClose").focus();
+  }
+  function closeDrawer() { drawer.classList.remove("open"); scrim.classList.remove("show"); drawer.setAttribute("aria-hidden", "true"); if (lastFocus) lastFocus.focus(); }
+  document.querySelectorAll("[data-review]").forEach(function (b) { b.addEventListener("click", function () { openDrawer(b.dataset.review, b); }); });
+  ["drawerClose", "drawerCancel"].forEach(function (id) { document.getElementById(id).addEventListener("click", closeDrawer); });
+  save.addEventListener("click", function () {
+    var reject = document.querySelector("input[name=decision][value=reject]").checked;
+    var name = document.getElementById("drawerTitle").textContent;
+    if (reject && !document.getElementById("buyerMsg").value.trim()) {
+      UmToast.show({ tone: "danger", title: "Falta el mensaje para el comprador", message: "Al rechazar un documento, explícale al comprador qué debe corregir." });
+      document.getElementById("buyerMsg").focus();
+      return;
+    }
+    closeDrawer();
+    if (reject) UmToast.show({ tone: "warning", title: name + " rechazado", message: "Le avisamos al comprador por el portal y por correo para que lo reemplace." });
+    else UmToast.show({ tone: "success", title: name + " aprobado", message: "Quedan 5 documentos por cumplir en el expediente.", action: { label: "Deshacer", onClick: function () { UmToast.show({ tone: "info", title: "Aprobación deshecha", message: "El documento volvió a quedar por revisar." }); } } });
+  });
+  scrim.addEventListener("click", closeDrawer);
+  document.addEventListener("keydown", function (e) {
+    if (!drawer.classList.contains("open")) return;
+    if (e.key === "Escape") { closeDrawer(); return; }
+    if (e.key !== "Tab") return;
+    // Mantener el foco dentro del panel mientras está abierto (aria-modal).
+    var f = [].filter.call(drawer.querySelectorAll("button, input, textarea, select, a[href], [tabindex]:not([tabindex='-1'])"), function (el) { return !el.disabled && el.offsetParent !== null; });
+    if (!f.length) return;
+    if (e.shiftKey && document.activeElement === f[0]) { e.preventDefault(); f[f.length - 1].focus(); }
+    else if (!e.shiftKey && document.activeElement === f[f.length - 1]) { e.preventDefault(); f[0].focus(); }
+  });
+  document.querySelectorAll("input[name=decision]").forEach(function (r) {
+    r.addEventListener("change", function () {
+      var reject = r.value === "reject" && r.checked;
+      rej.hidden = !reject;
+      save.textContent = reject ? "Rechazar documento" : "Aprobar documento";
+      save.className = reject ? "btn btn-danger btn-solid" : "btn btn-primary";
+    });
+  });
+})();
+</script>
+<!--__VIEWER__-->
+<script>
+/*__SHELL_JS__*/
+</script>
+<script>
+/*__VIEWER_JS__*/
+</script>
+</body>
+</html>

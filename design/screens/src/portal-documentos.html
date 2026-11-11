@@ -1,0 +1,407 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Umbral · Tus documentos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/*__TOKENS_CSS__*/
+/*__BASE_CSS__*/
+
+/* Portal del comprador: web con lista + detalle; en móvil, lista y detalle a pantalla completa. */
+.top { position: sticky; top: 0; z-index: 20; background: var(--um-bg-surface); border-bottom: 1px solid var(--um-border-default); }
+.top-inner { max-width: 1200px; margin: 0 auto; display: flex; align-items: center; gap: var(--um-space-2); padding: var(--um-space-3) var(--um-space-5); }
+.top .logo { font-size: var(--um-text-lg); }
+.top nav { display: flex; gap: var(--um-space-1); margin-left: var(--um-space-6); }
+.top nav a { padding: 8px var(--um-space-3); border-radius: var(--um-radius-md); color: var(--um-text-secondary); font-weight: var(--um-weight-medium); text-decoration: none; display: inline-flex; gap: 6px; align-items: center; }
+.top nav a:hover { background: var(--um-bg-muted); color: var(--um-text-primary); }
+.top nav a[aria-current="page"] { color: var(--um-text-link); background: var(--um-brand-subtle); }
+.top nav .n { font-size: var(--um-text-xs); font-weight: var(--um-weight-semibold); background: var(--um-tone-danger-solid); color: var(--um-tone-danger-on-solid); border-radius: var(--um-radius-full); padding: 0 6px; line-height: 18px; font-variant-numeric: tabular-nums; }
+.top .avatar { width: 34px; height: 34px; background: var(--um-brand-subtle); color: var(--um-text-link); }
+.who-chip { display: flex; flex-direction: column; line-height: 1.2; font-size: var(--um-text-sm); }
+.who-chip span { font-size: var(--um-text-xs); color: var(--um-text-tertiary); }
+
+.wrap { max-width: 1200px; margin: 0 auto; padding: var(--um-space-6) var(--um-space-5) var(--um-space-12); }
+.page-h { display: flex; flex-wrap: wrap; gap: var(--um-space-4); align-items: flex-end; margin-bottom: var(--um-space-5); }
+.page-h h1 { margin: 0; font-size: var(--um-text-3xl); line-height: var(--um-leading-3xl); letter-spacing: -0.01em; font-weight: var(--um-weight-semibold); }
+.page-h p { margin: 4px 0 0; color: var(--um-text-secondary); }
+.overall { min-width: 260px; }
+.overall .row { font-size: var(--um-text-sm); }
+.progress { height: 8px; border-radius: var(--um-radius-full); background: var(--um-bg-muted); overflow: hidden; margin-top: 6px; }
+.progress > i { display: block; height: 100%; width: 100%; background: var(--um-brand-primary); border-radius: inherit; transform-origin: left; transition: transform 0.3s; }
+
+.layout { display: grid; grid-template-columns: 400px minmax(0, 1fr); gap: var(--um-space-5); align-items: start; }
+
+/* lista */
+.listcol { background: var(--um-bg-surface); border: 1px solid var(--um-border-default); border-radius: var(--um-radius-xl); overflow: hidden; }
+.filters { display: flex; gap: 6px; padding: var(--um-space-3); border-bottom: 1px solid var(--um-border-default); overflow-x: auto; }
+.filters button { border: 1px solid var(--um-border-strong); background: var(--um-bg-surface); border-radius: var(--um-radius-full); height: 30px; padding: 0 12px; font-size: var(--um-text-sm); cursor: pointer; white-space: nowrap; color: var(--um-text-secondary); }
+.filters button[aria-pressed="true"] { background: var(--um-brand-subtle); border-color: var(--um-tone-info-border); color: var(--um-text-link); font-weight: var(--um-weight-medium); }
+.filters .c { opacity: 0.75; margin-left: 4px; }
+.grp { padding: var(--um-space-3) var(--um-space-4) var(--um-space-1); font-size: var(--um-text-xs); color: var(--um-text-secondary); font-weight: var(--um-weight-medium); }
+.items { list-style: none; margin: 0; padding: 0 var(--um-space-2) var(--um-space-2); }
+.item { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: var(--um-space-3); align-items: center; padding: 10px var(--um-space-2); border-radius: var(--um-radius-md); cursor: pointer; border: 1px solid transparent; width: 100%; text-align: left; background: none; }
+.item:hover { background: var(--um-bg-subtle); }
+.item[aria-current="true"] { background: var(--um-brand-subtle); border-color: var(--um-tone-info-border); }
+.item .st { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; }
+.item .st svg { width: 16px; height: 16px; }
+.item b { display: block; font-size: var(--um-text-md); font-weight: var(--um-weight-medium); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.item small { display: block; font-size: var(--um-text-xs); color: var(--um-text-tertiary); }
+.item .chev { color: var(--um-text-tertiary); width: 16px; height: 16px; }
+
+/* detalle */
+.detail { background: var(--um-bg-surface); border: 1px solid var(--um-border-default); border-radius: var(--um-radius-xl); position: sticky; top: 84px; }
+.d-head { display: flex; align-items: flex-start; gap: var(--um-space-3); padding: var(--um-space-5) var(--um-space-6) var(--um-space-4); border-bottom: 1px solid var(--um-border-default); }
+.d-head h2 { margin: 0; font-size: var(--um-text-2xl); line-height: var(--um-leading-2xl); font-weight: var(--um-weight-semibold); }
+.d-head .who { font-size: var(--um-text-sm); color: var(--um-text-tertiary); margin-top: 2px; }
+.d-back { display: none; }
+.d-body { padding: var(--um-space-5) var(--um-space-6) var(--um-space-6); display: grid; gap: var(--um-space-5); }
+.req { list-style: none; margin: 0; padding: var(--um-space-3) var(--um-space-4); border-radius: var(--um-radius-lg); background: var(--um-bg-subtle); display: grid; gap: 6px; font-size: var(--um-text-sm); color: var(--um-text-secondary); }
+.req li { display: flex; gap: var(--um-space-2); }
+.req svg { width: 16px; height: 16px; flex: none; margin-top: 2px; }
+.msg { display: flex; gap: var(--um-space-3); padding: var(--um-space-3) var(--um-space-4); border-radius: var(--um-radius-lg); border: 1px solid; font-size: var(--um-text-sm); }
+.msg svg { width: 18px; height: 18px; flex: none; margin-top: 1px; }
+.msg b { display: block; }
+.msg p { margin: 2px 0 0; color: var(--um-text-primary); }
+
+.file { display: grid; grid-template-columns: 88px minmax(0, 1fr); gap: var(--um-space-4); padding: var(--um-space-3); border: 1px solid var(--um-border-default); border-radius: var(--um-radius-lg); align-items: center; }
+.thumb { width: 88px; height: 110px; border-radius: var(--um-radius-md); background: var(--um-bg-muted); display: grid; place-items: center; cursor: pointer; border: 1px solid var(--um-border-default); overflow: hidden; padding: 0; }
+.thumb .mini-page { width: 62px; height: 80px; background: #fff; border-radius: 2px; box-shadow: var(--um-shadow-sm); padding: 8px 7px; display: grid; gap: 5px; align-content: start; }
+.thumb .mini-page i { display: block; height: 3px; border-radius: 2px; background: #E3E8EE; }
+.thumb .mini-page i:first-child { width: 60%; height: 5px; background: #C9D2DC; }
+.thumb.photo { background: linear-gradient(135deg, #5b6470, #39404a); }
+.thumb.photo .mini-page { transform: rotate(-5deg); filter: blur(0.4px); }
+.thumb img { width: 100%; height: 100%; object-fit: cover; }
+.file .meta b { display: block; word-break: break-all; }
+.file .meta small { display: block; color: var(--um-text-tertiary); font-size: var(--um-text-sm); }
+.file .meta .row { margin-top: var(--um-space-3); }
+.scan { display: inline-flex; align-items: center; gap: 4px; font-size: var(--um-text-xs); color: var(--um-tone-success-fg); margin-top: 4px; }
+.scan svg { width: 13px; height: 13px; }
+
+.drop { border: 2px dashed var(--um-border-strong); border-radius: var(--um-radius-xl); padding: var(--um-space-8) var(--um-space-4); text-align: center; background: var(--um-bg-subtle); display: grid; gap: var(--um-space-2); justify-items: center; transition: background 0.15s, border-color 0.15s; cursor: pointer; }
+.drop:hover, .drop.over { border-color: var(--um-brand-primary); background: var(--um-brand-subtle); }
+.drop .big-ico { width: 48px; height: 48px; border-radius: 50%; display: grid; place-items: center; background: var(--um-bg-surface); color: var(--um-text-link); border: 1px solid var(--um-border-default); }
+.drop .big-ico svg { width: 24px; height: 24px; }
+.drop b { font-size: var(--um-text-lg); }
+.drop .muted { font-size: var(--um-text-sm); }
+.mobile-pick { display: none; grid-template-columns: 1fr 1fr; gap: var(--um-space-3); }
+.mobile-pick button { height: 84px; border-radius: var(--um-radius-lg); display: grid; place-items: center; align-content: center; gap: 6px; font-weight: var(--um-weight-medium); cursor: pointer; }
+.mobile-pick svg { width: 24px; height: 24px; }
+.mobile-pick .primary { background: var(--um-brand-primary); color: var(--um-brand-on-primary); border: 0; }
+.mobile-pick .secondary { background: var(--um-bg-surface); border: 1px solid var(--um-border-strong); color: var(--um-text-primary); }
+.uploading { display: grid; gap: var(--um-space-2); padding: var(--um-space-4); border-radius: var(--um-radius-lg); border: 1px solid var(--um-border-default); }
+.uploading .bar { height: 8px; border-radius: 4px; background: var(--um-bg-muted); overflow: hidden; }
+.uploading .bar i { display: block; height: 100%; width: 0; background: var(--um-brand-primary); transition: width 0.25s; }
+.uploading p { margin: 0; font-size: var(--um-text-sm); color: var(--um-text-secondary); }
+.date-field { max-width: 320px; }
+.prev-file { margin: 0; display: flex; align-items: center; gap: var(--um-space-2); font-size: var(--um-text-sm); color: var(--um-text-secondary); flex-wrap: wrap; }
+.prev-file svg { width: 16px; height: 16px; flex: none; }
+.prev-file span { word-break: break-all; }
+.lock { display: flex; gap: var(--um-space-2); font-size: var(--um-text-sm); color: var(--um-text-secondary); align-items: flex-start; }
+.lock svg { width: 16px; height: 16px; flex: none; margin-top: 2px; }
+details.versions { border-top: 1px solid var(--um-border-default); padding-top: var(--um-space-4); }
+details.versions summary { cursor: pointer; font-size: var(--um-text-sm); color: var(--um-text-link); font-weight: var(--um-weight-medium); }
+details.versions ol { margin: var(--um-space-3) 0 0; padding: 0; list-style: none; display: grid; gap: var(--um-space-2); font-size: var(--um-text-sm); }
+details.versions li { display: flex; gap: var(--um-space-3); align-items: center; padding: 8px var(--um-space-3); border-radius: var(--um-radius-md); background: var(--um-bg-subtle); }
+details.versions li span { color: var(--um-text-tertiary); }
+
+.tabbar { display: none; }
+
+@media (max-width: 900px) {
+  .top nav, .who-chip { display: none; }
+  .top-inner { padding: var(--um-space-3) var(--um-space-4); }
+  .wrap { padding: var(--um-space-5) var(--um-space-4) calc(96px + env(safe-area-inset-bottom)); }
+  .layout { grid-template-columns: 1fr; }
+  .overall { min-width: 0; width: 100%; }
+  /* en móvil el detalle se abre a pantalla completa */
+  .detail { position: fixed; inset: 0; z-index: 30; border-radius: 0; border: 0; overflow-y: auto; display: none; top: 0; }
+  .detail.open { display: block; }
+  .d-head { position: sticky; top: 0; background: var(--um-bg-surface); z-index: 1; padding: var(--um-space-3) var(--um-space-4); align-items: center; }
+  .d-head h2 { font-size: var(--um-text-xl); line-height: var(--um-leading-xl); }
+  .d-back { display: inline-flex; }
+  .d-body { padding: var(--um-space-4) var(--um-space-4) var(--um-space-8); }
+  .drop { display: none; }
+  .mobile-pick { display: grid; }
+  .item[aria-current="true"] { background: none; border-color: transparent; }
+  .tabbar { position: fixed; bottom: 0; left: 0; right: 0; z-index: 20; display: grid; grid-template-columns: repeat(3, 1fr); background: var(--um-bg-surface); border-top: 1px solid var(--um-border-default); padding-bottom: env(safe-area-inset-bottom); }
+  .tabbar a { display: grid; justify-items: center; gap: 2px; padding: 10px 0 8px; font-size: 12px; color: var(--um-text-tertiary); text-decoration: none; position: relative; }
+  .tabbar a svg { width: 22px; height: 22px; }
+  .tabbar a[aria-current="page"] { color: var(--um-text-link); font-weight: var(--um-weight-semibold); }
+  .tabbar .badge-n { position: absolute; top: 6px; left: calc(50% + 6px); min-width: 18px; height: 18px; border-radius: 9px; background: var(--um-tone-danger-solid); color: var(--um-tone-danger-on-solid); font-size: var(--um-text-xs); display: grid; place-items: center; padding: 0 5px; font-weight: 600; }
+}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="top-inner">
+    <span class="logo">
+      <svg width="28" height="28" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="7" fill="var(--um-brand-primary)"/><path d="M10 25V15a6 6 0 0 1 12 0v10" fill="none" stroke="var(--um-brand-on-primary)" stroke-width="2.6" stroke-linecap="round"/><path d="M7 25.5h18" stroke="var(--um-accent-default)" stroke-width="2.6" stroke-linecap="round"/></svg>
+      Umbral
+    </span>
+    <nav aria-label="Portal">
+      <a href="portal.html">Inicio</a>
+      <a href="portal-documentos.html" aria-current="page">Documentos <span class="n" id="navCount">3</span></a>
+      <a href="#">Avisos</a>
+    </nav>
+    <span class="spacer"></span>
+    <!--__THEME_BUTTON__-->
+    <div class="who-chip"><b>Sofía Herrera</b><span>SOL-000182</span></div>
+    <span class="avatar" role="img" aria-label="Sofía Herrera">SH</span>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="page-h">
+    <div>
+      <h1>Tus documentos</h1>
+      <p id="summary">Te faltan 3 documentos. Tu asesora revisa los demás.</p>
+    </div>
+    <div class="spacer"></div>
+    <div class="overall">
+      <div class="row"><span class="muted">Documentos listos</span><span class="spacer"></span><b class="num" id="readyCount">10 de 16</b></div>
+      <div class="progress" role="img" aria-label="10 de 16 documentos listos"><i id="readyBar" style="transform:scaleX(0.625)"></i></div>
+    </div>
+  </div>
+
+  <div class="layout">
+    <section class="listcol" aria-label="Lista de documentos">
+      <div class="filters" role="group" aria-label="Filtrar documentos" id="filters">
+        <button type="button" aria-pressed="false" data-f="all">Todos<span class="c" data-c="all"></span></button>
+        <button type="button" aria-pressed="true" data-f="todo">Te faltan<span class="c" data-c="todo"></span></button>
+        <button type="button" aria-pressed="false" data-f="review">En revisión<span class="c" data-c="review"></span></button>
+        <button type="button" aria-pressed="false" data-f="done">Listos<span class="c" data-c="done"></span></button>
+      </div>
+      <div id="list"></div>
+    </section>
+
+    <section class="detail" id="detail" aria-live="polite" aria-labelledby="dTitle"></section>
+  </div>
+</main>
+
+<nav class="tabbar" aria-label="Navegación del portal">
+  <a href="portal.html"><svg viewBox="0 0 20 20" fill="currentColor"><path d="M10 2 2 8v10h5v-6h6v6h5V8l-8-6Z"/></svg>Inicio</a>
+  <a href="portal-documentos.html" aria-current="page"><svg viewBox="0 0 20 20" fill="currentColor"><path d="M5 2h7l4 4v12H5V2Zm2 7v2h7V9H7Zm0 4v2h7v-2H7Z"/></svg>Documentos<span class="badge-n" id="tabCount">3</span></a>
+  <a href="#"><svg viewBox="0 0 20 20" fill="currentColor"><path d="M10 2a5 5 0 0 0-5 5v3l-2 3v1h14v-1l-2-3V7a5 5 0 0 0-5-5Zm-2 14a2 2 0 0 0 4 0H8Z"/></svg>Avisos</a>
+</nav>
+
+<input type="file" id="filePick" accept="application/pdf,image/jpeg,image/png" hidden>
+<input type="file" id="camPick" accept="image/*" capture="environment" hidden>
+
+<!--__VIEWER__-->
+
+<script>
+(function () {
+  // Datos de ejemplo. En la app real vienen de GET /buyer/applications/{id}/document-slots.
+  // Reglas del backend: el comprador sube o reemplaza en PENDIENTE, CARGADO o RECHAZADO; APROBADO y EXONERADO quedan bloqueados.
+  var MAX = 10 * 1024 * 1024, TYPES = ["application/pdf", "image/jpeg", "image/png"];
+  var groups = [
+    { id: "sofia", label: "Sofía Herrera · tú", short: "Sofía Herrera" },
+    { id: "daniel", label: "Daniel Mejía · co-solicitante", short: "Daniel Mejía" },
+    { id: "app", label: "Inmueble y trámite", short: "Solicitud" }
+  ];
+  var docs = [
+    { id: 1, g: "sofia", name: "Documento de identidad", st: "APPROVED", file: { name: "cedula-sofia.pdf", size: "1,2 MB", kind: "pdf", pages: 2, when: "10 nov" }, v: 1 },
+    { id: 2, g: "sofia", name: "Certificado laboral", st: "UPLOADED", file: { name: "certificado-laboral.pdf", size: "412 KB", kind: "pdf", pages: 1, when: "hace 3 h" }, v: 1, validity: "Debe tener máximo 30 días de expedido.", date: "2026-11-02" },
+    { id: 3, g: "sofia", name: "Desprendible de nómina 1 de 3", st: "APPROVED", file: { name: "nomina-julio.pdf", size: "380 KB", kind: "pdf", pages: 1, when: "10 nov" }, v: 1 },
+    { id: 4, g: "sofia", name: "Desprendible de nómina 2 de 3", st: "REJECTED", file: { name: "nomina-agosto.jpg", size: "840 KB", kind: "image", pages: 1, when: "10 nov" }, v: 1, reason: "Ilegible", msg: "La foto está borrosa. Sube una imagen nítida o el PDF.", period: "Agosto" },
+    { id: 5, g: "sofia", name: "Desprendible de nómina 3 de 3", st: "APPROVED", file: { name: "nomina-septiembre.pdf", size: "402 KB", kind: "pdf", pages: 1, when: "10 nov" }, v: 1 },
+    { id: 6, g: "sofia", name: "Extracto bancario 1 de 3", st: "UPLOADED", file: { name: "extracto-agosto.pdf", size: "1,1 MB", kind: "pdf", pages: 3, when: "hace 3 h" }, v: 2 },
+    { id: 7, g: "sofia", name: "Extracto bancario 2 de 3", st: "PENDING", v: 0, period: "Últimos 3 meses" },
+    { id: 8, g: "sofia", name: "Extracto bancario 3 de 3", st: "APPROVED", file: { name: "extracto-octubre.pdf", size: "980 KB", kind: "pdf", pages: 3, when: "11 nov" }, v: 1 },
+    { id: 9, g: "sofia", name: "Certificado de ingresos o declaración de renta", st: "APPROVED", file: { name: "ingresos-2025.pdf", size: "290 KB", kind: "pdf", pages: 1, when: "10 nov" }, v: 1 },
+    { id: 10, g: "daniel", name: "Documento de identidad", st: "UPLOADED", file: { name: "cedula-daniel.jpg", size: "860 KB", kind: "image", pages: 1, when: "hace 5 h" }, v: 1 },
+    { id: 11, g: "daniel", name: "Soporte de actividad e ingresos", st: "APPROVED", file: { name: "contrato-servicios.pdf", size: "2,3 MB", kind: "pdf", pages: 2, when: "11 nov" }, v: 1 },
+    { id: 12, g: "daniel", name: "Extracto bancario 1 de 3", st: "PENDING", v: 0, period: "Últimos 3 meses" },
+    { id: 13, g: "daniel", name: "Extracto bancario 2 de 3", st: "APPROVED", file: { name: "extracto-dm-sep.pdf", size: "760 KB", kind: "pdf", pages: 2, when: "11 nov" }, v: 1 },
+    { id: 14, g: "daniel", name: "Extracto bancario 3 de 3", st: "APPROVED", file: { name: "extracto-dm-oct.pdf", size: "810 KB", kind: "pdf", pages: 2, when: "11 nov" }, v: 1 },
+    { id: 15, g: "app", name: "Promesa de compraventa", st: "APPROVED", file: { name: "promesa-apto-1204.pdf", size: "3,4 MB", kind: "pdf", pages: 6, when: "10 nov" }, v: 1 },
+    { id: 16, g: "app", name: "Certificado de tradición y libertad", st: "WAIVED", v: 0, waived: "No aplica: el inmueble es sobre planos." }
+  ];
+  // Etiquetas pensadas para el comprador. En la app real llegan de la API (etiqueta pública del estado del slot);
+  // el frontend solo elige el tono e ícono a partir del código, nunca escribe estas etiquetas.
+  var STATUS = {
+    PENDING: { label: "Te falta", tone: "warning", icon: '<path d="M9 3h2v6h6v2h-6v6H9v-6H3V9h6V3Z"/>' },
+    REJECTED: { label: "Corrígelo", tone: "danger", icon: '<path d="M10 1a9 9 0 1 0 0 18 9 9 0 0 0 0-18Zm-1 4h2v6H9V5Zm0 8h2v2H9v-2Z"/>' },
+    UPLOADED: { label: "En revisión", tone: "info", icon: '<path d="M10 1a9 9 0 1 0 0 18 9 9 0 0 0 0-18Zm1 4v5.4l3.3 2-1 1.7L9 11.5V5h2Z"/>' },
+    APPROVED: { label: "Aprobado", tone: "success", icon: '<path d="M10 1a9 9 0 1 0 0 18 9 9 0 0 0 0-18Zm-1.2 13L4.5 9.7l1.4-1.4 2.9 2.9 5.3-5.3 1.4 1.4-6.7 6.7Z"/>' },
+    WAIVED: { label: "No aplica", tone: "accent", icon: '<path d="M10 1a9 9 0 1 0 0 18 9 9 0 0 0 0-18ZM5 9h10v2H5V9Z"/>' }
+  };
+  var bucket = function (d) { return d.st === "PENDING" || d.st === "REJECTED" ? "todo" : d.st === "UPLOADED" ? "review" : "done"; };
+  var state = { filter: "todo", sel: 4, uploading: null };
+  var listEl = document.getElementById("list"), detailEl = document.getElementById("detail");
+  var esc = function (s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); };
+  var byId = function (id) { return docs.filter(function (d) { return d.id === id; })[0]; };
+  var isMobile = function () { return window.matchMedia("(max-width: 900px)").matches; };
+  var icon = function (p, cls) { return '<svg class="' + (cls || "") + '" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">' + p + "</svg>"; };
+
+  function counts() {
+    var c = { all: docs.length, todo: 0, review: 0, done: 0 };
+    docs.forEach(function (d) { c[bucket(d)]++; });
+    document.querySelectorAll("[data-c]").forEach(function (s) { s.textContent = c[s.dataset.c]; });
+    document.getElementById("readyCount").textContent = c.done + " de " + c.all;
+    document.getElementById("readyBar").style.transform = "scaleX(" + (c.done / c.all) + ")";
+    document.getElementById("readyBar").parentNode.setAttribute("aria-label", c.done + " de " + c.all + " documentos listos");
+    document.getElementById("navCount").textContent = c.todo; document.getElementById("tabCount").textContent = c.todo;
+    document.getElementById("navCount").hidden = document.getElementById("tabCount").hidden = c.todo === 0;
+    document.getElementById("summary").textContent = c.todo ? "Te faltan " + c.todo + (c.todo === 1 ? " documento" : " documentos") + ". Tu asesora revisa los demás." : "Subiste todo. Tu asesora está revisando tus documentos.";
+  }
+
+  function renderList() {
+    var html = "";
+    groups.forEach(function (g) {
+      var items = docs.filter(function (d) { return d.g === g.id && (state.filter === "all" || bucket(d) === state.filter); });
+      if (!items.length) return;
+      html += '<div class="grp">' + esc(g.label) + '</div><ul class="items">';
+      items.forEach(function (d) {
+        var s = STATUS[d.st];
+        var sub = d.st === "PENDING" ? (d.period || "Pendiente") : d.st === "WAIVED" ? "No necesitas subirlo" : d.file.name;
+        html += '<li><button class="item" type="button" data-id="' + d.id + '" aria-current="' + (d.id === state.sel) + '">' +
+          '<span class="st tone-' + s.tone + '">' + icon(s.icon) + "</span>" +
+          "<span><b>" + esc(d.name) + "</b><small>" + s.label + " · " + esc(sub) + "</small></span>" +
+          icon('<path d="m7.4 4 6 6-6 6L6 14.6l4.6-4.6L6 5.4 7.4 4Z"/>', "chev") + "</button></li>";
+      });
+      html += "</ul>";
+    });
+    listEl.innerHTML = html || '<p class="tertiary" style="padding:24px;text-align:center">No hay documentos en este grupo.</p>';
+  }
+
+  function fileCard(d, actions) {
+    var f = d.file;
+    var thumb = f.url && f.kind === "image" ? '<img alt="" src="' + f.url + '">' : '<span class="mini-page"><i></i><i></i><i></i><i style="width:70%"></i><i></i></span>';
+    return '<div class="file"><button class="thumb' + (f.kind === "image" && !f.url ? " photo" : "") + '" type="button" data-open aria-label="Ver ' + esc(f.name) + '">' + thumb + "</button>" +
+      '<div class="meta"><b>' + esc(f.name) + "</b><small>" + esc(f.size) + " · subido " + esc(f.when) + (d.v > 1 ? " · versión " + d.v : "") + "</small>" +
+      (d.st !== "REJECTED" ? '<span class="scan">' + icon('<path d="M10 1 3 4v5c0 4.5 3 8.5 7 10 4-1.5 7-5.5 7-10V4l-7-3Zm-1.2 12L5.5 9.7l1.4-1.4 1.9 1.9 4.3-4.3 1.4 1.4-5.7 5.7Z"/>') + "Archivo revisado: es seguro</span>" : "") +
+      '<div class="row">' + actions + "</div></div></div>";
+  }
+
+  function dropzone(d, replacing) {
+    return (replacing ? "" : "") +
+      '<div class="drop" id="drop" tabindex="0" role="button" aria-label="Subir archivo: arrastra o elige un archivo">' +
+      '<span class="big-ico">' + icon('<path d="M10 2 5 7l1.4 1.4L9 5.8V13h2V5.8l2.6 2.6L15 7l-5-5ZM3 15h14v3H3v-3Z"/>') + "</span>" +
+      "<b>" + (replacing ? "Arrastra aquí la versión nueva" : "Arrastra aquí tu documento") + "</b>" +
+      '<span class="muted">o <span style="color:var(--um-text-link);font-weight:600">elígelo de tu computador</span></span>' +
+      '<span class="tertiary">PDF, JPG o PNG · hasta 10 MB</span></div>' +
+      '<div class="mobile-pick"><button class="primary" type="button" data-cam>' + icon('<path d="M7.5 3 6 5H4a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2l-1.5-2h-5ZM10 7.5a3.5 3.5 0 1 1 0 7 3.5 3.5 0 0 1 0-7Z"/>') + "Tomar foto</button>" +
+      '<button class="secondary" type="button" data-pick>' + icon('<path d="M5 2h7l4 4v12H5V2Zm4 7v3H6v2h3v3h2v-3h3v-2h-3V9H9Z"/>') + "Elegir archivo</button></div>" +
+      '<div class="field date-field"><label for="docDate">Fecha del documento <span class="tertiary">(opcional)</span></label><input class="input" type="date" id="docDate"' + (d.date ? ' value="' + d.date + '"' : "") + '><span class="help">Expedición o periodo que cubre.</span></div>';
+  }
+
+  function renderDetail() {
+    var d = byId(state.sel); if (!d) { detailEl.innerHTML = ""; return; }
+    var s = STATUS[d.st], g = groups.filter(function (x) { return x.id === d.g; })[0];
+    var body = "";
+    var reqs = '<ul class="req">' +
+      '<li>' + icon('<path d="M5 2h7l4 4v12H5V2Zm7 1.5V7h3.5L12 3.5Z"/>') + "PDF, JPG o PNG, de hasta 10 MB.</li>" +
+      (d.validity ? '<li>' + icon('<path d="M10 1a9 9 0 1 0 0 18 9 9 0 0 0 0-18Zm1 4v5.4l3.3 2-1 1.7L9 11.5V5h2Z"/>') + esc(d.validity) + "</li>" : "") +
+      (d.period ? '<li>' + icon('<path d="M6 2v2H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V5a1 1 0 0 0-1-1h-2V2h-2v2H8V2H6ZM5 8h10v8H5V8Z"/>') + "Periodo: " + esc(d.period) + ".</li>" : "") +
+      '<li>' + icon('<path d="M10 2a6 6 0 0 0-6 6c0 4.5 6 10 6 10s6-5.5 6-10a6 6 0 0 0-6-6Zm0 8a2 2 0 1 1 0-4 2 2 0 0 1 0 4Z"/>') + "Si es una foto: buena luz, sin reflejos y que se lean todos los datos.</li></ul>";
+
+    if (state.uploading === d.id) {
+      body = '<div class="uploading" aria-live="polite"><b id="upName">Subiendo…</b><div class="bar"><i id="upBar"></i></div><p id="upText">Enviando el archivo</p></div>';
+    } else if (d.st === "PENDING") {
+      body = reqs + dropzone(d, false);
+    } else if (d.st === "REJECTED") {
+      body = '<div class="msg tone-danger">' + icon(STATUS.REJECTED.icon) + "<div><b>Tu asesora pidió corregirlo · " + esc(d.reason) + "</b><p>" + esc(d.msg) + "</p></div></div>" +
+        '<p class="prev-file">' + icon('<path d="M5 2h7l4 4v12H5V2Zm7 1.5V7h3.5L12 3.5Z"/>') + "<span>" + esc(d.file.name) + '</span><button class="btn btn-text btn-sm" type="button" data-open>Ver el que subiste</button></p>' + reqs + dropzone(d, true);
+    } else if (d.st === "UPLOADED") {
+      body = fileCard(d, '<button class="btn btn-default btn-sm" type="button" data-open>Ver</button><button class="btn btn-default btn-sm" type="button" data-replace>Reemplazar</button>') +
+        '<div class="lock">' + icon('<path d="M10 1a9 9 0 1 0 0 18 9 9 0 0 0 0-18Zm-1 4h2v2H9V5Zm0 4h2v6H9V9Z"/>') + "Puedes reemplazarlo mientras tu asesora no lo haya revisado. Si subes otro, ella revisará el más reciente.</div>" +
+        '<div id="replaceZone" hidden>' + reqs + dropzone(d, true) + "</div>";
+    } else if (d.st === "APPROVED") {
+      body = fileCard(d, '<button class="btn btn-default btn-sm" type="button" data-open>Ver</button>') +
+        '<div class="lock">' + icon('<path d="M6 8V6a4 4 0 1 1 8 0v2h1a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1h1Zm2 0h4V6a2 2 0 1 0-4 0v2Z"/>') + "Ya fue aprobado y no se puede cambiar. Si necesitas corregirlo, escríbele a tu asesora.</div>";
+    } else {
+      body = '<div class="msg tone-accent">' + icon(STATUS.WAIVED.icon) + "<div><b>No necesitas subir este documento</b><p>" + esc(d.waived) + "</p></div></div>";
+    }
+    if (d.v > 1 && state.uploading !== d.id) {
+      body += '<details class="versions"><summary>Ver versiones anteriores (' + (d.v - 1) + ')</summary><ol><li><b>Versión ' + d.v + '</b><span>actual · ' + esc(d.file.name) + '</span></li><li>Versión ' + (d.v - 1) + '<span>reemplazada · 9 nov</span></li></ol></details>';
+    }
+    detailEl.innerHTML = '<header class="d-head"><button class="btn btn-ghost btn-icon d-back" type="button" data-back aria-label="Volver a la lista">' + icon('<path d="m12.6 4 1.4 1.4L9.4 10l4.6 4.6-1.4 1.4-6-6 6-6Z"/>') + "</button>" +
+      '<div style="min-width:0"><h2 id="dTitle">' + esc(d.name) + '</h2><div class="who">' + esc(g.short) + "</div></div><span class=\"spacer\"></span><span class=\"badge tone-" + s.tone + '">' + s.label + "</span></header>" +
+      '<div class="d-body">' + body + "</div>";
+    bindDetail(d);
+  }
+
+  function validate(file) {
+    if (TYPES.indexOf(file.type) < 0) return { title: "Ese tipo de archivo no se puede subir", message: "“" + file.name + "” no es PDF, JPG ni PNG. Si es un documento de Word, guárdalo como PDF." };
+    if (file.size > MAX) return { title: "El archivo pesa más de 10 MB", message: "“" + file.name + "” pesa " + (file.size / 1048576).toFixed(1).replace(".", ",") + " MB. Si es una foto, tómala con menos resolución; si es PDF, compártelo comprimido." };
+    return null;
+  }
+  function fmtSize(b) { return b >= 1048576 ? (b / 1048576).toFixed(1).replace(".", ",") + " MB" : Math.max(1, Math.round(b / 1024)) + " KB"; }
+
+  function upload(d, file) {
+    var err = file && validate(file);
+    if (err) { UmToast.show({ tone: "danger", title: err.title, message: err.message }); return; }
+    var name = file ? file.name : (d.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") + ".pdf");
+    var replacing = !!d.file;
+    state.uploading = d.id; renderDetail();
+    document.getElementById("upName").textContent = name;
+    var pct = 0, bar = document.getElementById("upBar"), txt = document.getElementById("upText");
+    // Simulación: subida -> análisis antivirus -> cargado. Si el navegador está sin conexión, falla con opción de reintentar.
+    var t = setInterval(function () {
+      pct += 20; bar.style.width = Math.min(pct, 100) + "%";
+      if (pct === 60 && !navigator.onLine) {
+        clearInterval(t); state.uploading = null; renderDetail();
+        UmToast.show({ tone: "danger", title: "No pudimos subir el documento", message: "Parece que no tienes conexión. Tu archivo no se guardó.", action: { label: "Reintentar", onClick: function () { upload(d, file); } } });
+        return;
+      }
+      if (pct === 100) txt.textContent = "Revisando que el archivo sea seguro…";
+      if (pct >= 140) {
+        clearInterval(t);
+        d.file = { name: name, size: file ? fmtSize(file.size) : "520 KB", kind: (file ? file.type : "application/pdf").indexOf("image") === 0 ? "image" : "pdf", pages: 1, when: "ahora", url: file ? URL.createObjectURL(file) : null };
+        d.v = (d.v || 0) + 1; d.st = "UPLOADED"; state.uploading = null;
+        counts(); renderList(); renderDetail();
+        UmToast.show({ tone: "success", title: replacing ? "Documento reemplazado" : "Documento subido", message: d.name + ": tu asesora lo revisará pronto. Te avisamos si hay que corregir algo.", action: { label: "Ver", onClick: function () { UmViewer.open({ name: d.file.name, kind: d.file.kind, pages: 1, size: d.file.size, url: d.file.url }); } } });
+      }
+    }, 300);
+  }
+
+  var pickFor = null;
+  function bindDetail(d) {
+    detailEl.querySelectorAll("[data-open]").forEach(function (b) { b.addEventListener("click", function () { UmViewer.open({ name: d.file.name, kind: d.file.kind, pages: d.file.pages, size: d.file.size, url: d.file.url }, b); }); });
+    var back = detailEl.querySelector("[data-back]"); if (back) back.addEventListener("click", function () { detailEl.classList.remove("open"); var it = listEl.querySelector('[data-id="' + d.id + '"]'); if (it) it.focus(); });
+    var rep = detailEl.querySelector("[data-replace]"); if (rep) rep.addEventListener("click", function () { var z = document.getElementById("replaceZone"); z.hidden = !z.hidden; rep.textContent = z.hidden ? "Reemplazar" : "Cancelar reemplazo"; });
+    var drop = document.getElementById("drop");
+    if (drop) {
+      var pick = function () { pickFor = d; document.getElementById("filePick").click(); };
+      drop.addEventListener("click", pick);
+      drop.addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pick(); } });
+      ["dragenter", "dragover"].forEach(function (ev) { drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.add("over"); }); });
+      ["dragleave", "drop"].forEach(function (ev) { drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.remove("over"); }); });
+      drop.addEventListener("drop", function (e) { var f = e.dataTransfer.files[0]; if (f) upload(d, f); });
+    }
+    var pk = detailEl.querySelector("[data-pick]"); if (pk) pk.addEventListener("click", function () { pickFor = d; document.getElementById("filePick").click(); });
+    var cam = detailEl.querySelector("[data-cam]"); if (cam) cam.addEventListener("click", function () { pickFor = d; document.getElementById("camPick").click(); });
+  }
+  ["filePick", "camPick"].forEach(function (id) {
+    var inp = document.getElementById(id);
+    inp.addEventListener("change", function () { if (inp.files[0] && pickFor) upload(pickFor, inp.files[0]); inp.value = ""; });
+  });
+
+  listEl.addEventListener("click", function (e) {
+    var b = e.target.closest(".item"); if (!b) return;
+    state.sel = +b.dataset.id; renderList(); renderDetail();
+    if (isMobile()) { detailEl.classList.add("open"); var bk = detailEl.querySelector("[data-back]"); if (bk) bk.focus(); }
+  });
+  document.getElementById("filters").addEventListener("click", function (e) {
+    var b = e.target.closest("button"); if (!b) return;
+    state.filter = b.dataset.f;
+    this.querySelectorAll("button").forEach(function (x) { x.setAttribute("aria-pressed", String(x === b)); });
+    renderList();
+  });
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape" && detailEl.classList.contains("open") && !document.getElementById("viewer").classList.contains("open")) detailEl.classList.remove("open"); });
+
+  counts(); renderList(); renderDetail();
+})();
+</script>
+<script>
+/*__SHELL_JS__*/
+</script>
+<script>
+/*__VIEWER_JS__*/
+</script>
+</body>
+</html>
