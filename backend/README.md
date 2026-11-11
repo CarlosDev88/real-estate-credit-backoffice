@@ -151,6 +151,44 @@ docker compose exec backend python manage.py spectacular --settings config.setti
 - CI regenerates the contract after the tests and fails if it differs from the committed file (`OpenAPI contract is up to date` step).
 - In Git Bash, prefix the command with `MSYS_NO_PATHCONV=1`; otherwise Git Bash rewrites `/contracts` as a Windows path.
 
+## CI Report
+
+The `Lint, types and tests` job in [`backend.yml`](../.github/workflows/backend.yml) is the required check for `master`. It runs Ruff (lint and format), Mypy, the migrations check, the tests, coverage (minimum 95 %, set by `CI_COVERAGE_MIN`), and the OpenAPI contract check. Every check runs even when an earlier one fails, so the report shows all the problems at once. The final `CI gate` step fails the job if any check failed or the dependencies could not be installed. Pytest warnings never fail it.
+
+Each check writes its output to `backend/.ci-report/` (ignored by Git), and [`scripts/ci_report.py`](scripts/ci_report.py) turns those outputs into a Markdown report. The script uses only the standard library and never fails the job. The report is published in four places:
+
+- **Pull request comment:** a single comment per pull request, marked `<!-- ci-report:backend -->` and updated on every push. It is posted only for pull requests from branches of this repository.
+- **Run summary:** the summary page of the run in Actions shows the same report.
+- **Artifact:** `ci-report-backend` keeps `.ci-report/` for 7 days: JUnit, `coverage.xml`, the tool outputs, and the regenerated contract.
+- **Annotations:** Ruff and Mypy errors are annotated on their lines in the pull request's "Files changed" tab.
+
+Each row of the report has one of these statuses:
+
+| Status | Meaning |
+| --- | --- |
+| ✅ | Passed. |
+| ⚠️ | Passed with warnings. Only pytest warnings use this status, and they never block. |
+| ❌ | Failed. The details are in a collapsible block of up to 50 lines, followed by a link to the full log if there is more. |
+| ⏭️ | Did not run, for example because dependency installation failed. |
+
+- **Coverage after failed tests:** coverage runs even when tests fail, as long as there is coverage data. The row then says `con tests fallidos`. The details list the five least-covered modules, excluding migrations.
+- **OpenAPI contract:** schema warnings fail the contract check (`--fail-on-warn`). An outdated contract lists the routes and schemas that changed.
+- **Pytest warnings:** the `pytest_warning_recorded` hook in `tests/conftest.py` collects them only when `CI_REPORT_DIR` is set, and writes them once at the end of the session.
+- **Language:** the report text is in Spanish.
+
+To preview the tests, coverage, and warnings rows locally (checks that are not run show ⏭️):
+
+```powershell
+docker compose exec -T -e CI_REPORT_DIR=.ci-report backend sh -c '
+  mkdir -p .ci-report
+  if pytest -q --cov=apps --cov=scripts --cov-report=xml:.ci-report/coverage.xml --junit-xml=.ci-report/pytest.xml; then t=success; else t=failure; fi
+  if python -m coverage report --format=total --precision=2 --fail-under=95; then c=success; else c=failure; fi
+  OUTCOME_TESTS=$t OUTCOME_COVERAGE=$c python scripts/ci_report.py
+'
+```
+
+The report is written to `.ci-report/report.md`.
+
 ## Document Dossier
 
 Each application gets a document checklist built from the published document requirements (API §19): one **slot** per expected file, for the application itself (property and legalization documents) or for each participant according to role and employment profile. The checklist is recalculated in the same transaction whenever the product, purpose, property condition, participants, or employment profile change; slots that stop applying are retired, never deleted, and keep their versions.
@@ -483,6 +521,7 @@ backend/
 │   ├── catalogs/         # Catalogs, workflow transitions, and frontend metadata
 │   └── partners/         # Construction partners, memberships, and projects
 ├── config/               # Settings, URLs, error format, request id, health, and OpenAPI
+├── scripts/              # Support scripts (CI report)
 ├── tests/                # Pytest suite
 ├── Dockerfile
 ├── docker-compose.yml
