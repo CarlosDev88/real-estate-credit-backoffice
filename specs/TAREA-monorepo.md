@@ -66,17 +66,19 @@ docker compose up -d
 ```
 
 ## Parte 3: contrato OpenAPI y README
-1. **`contracts/openapi.json`**: generarlo desde `backend/` con:
+1. **`contracts/openapi.json`**: generarlo desde `backend/`. En local no hay venv: se genera dentro del contenedor, así que el servicio `backend` del compose monta `../contracts:/contracts`.
    ```
-   python manage.py spectacular --file ../contracts/openapi.json --validate --fail-on-warn
+   docker compose exec backend python manage.py spectacular --settings config.settings.test --format openapi-json --file /contracts/openapi.json --validate --fail-on-warn
    ```
-   Formato JSON con indentación estable, para que el diff sea legible.
-2. **Paso nuevo en `backend.yml`**, después de los tests: regenerar el contrato y fallar si cambió sin commitear.
+   - `--format openapi-json` es obligatorio: `--file` no elige el formato por la extensión, y sin el flag el archivo sale en YAML. El renderer JSON usa indentación de 4 espacios y la salida es estable entre corridas, así que el diff es legible.
+   - `--settings config.settings.test` es obligatorio: los nombres de las cookies en `securitySchemes` dependen de `AUTH_COOKIE_SECURE` (`app_access` con `local`, `__Host-app_access` con `test`). El CI usa `test`; generarlo con `local` haría fallar siempre el chequeo. Con `test`, el contrato documenta los nombres de producción.
+   - En Git Bash hay que anteponer `MSYS_NO_PATHCONV=1`, o reescribe `/contracts` como ruta de Windows.
+2. **Paso nuevo en `backend.yml`** (`OpenAPI contract is up to date`), después de los tests: regenerar el contrato y fallar si cambió sin commitear.
    ```
-   python manage.py spectacular --file ../contracts/openapi.json --validate --fail-on-warn
+   python manage.py spectacular --settings config.settings.test --format openapi-json --file ../contracts/openapi.json --validate --fail-on-warn
    git diff --exit-code ../contracts/openapi.json
    ```
-   Así, todo PR que cambie la API trae su contrato actualizado, y el frontend nunca trabaja contra un contrato viejo.
+   Así, todo PR que cambie la API trae su contrato actualizado, y el frontend nunca trabaja contra un contrato viejo. Desde `/app`, `../contracts` es `/contracts`, así que el comando local y el del CI escriben en el mismo archivo.
 3. **`README.md` de la raíz**: qué es el proyecto, la estructura de carpetas, cómo levantar el backend y enlaces a `backend/README.md`, `design/README.md`, `docs/` y `specs/`.
    El contenido técnico actual del backend pasa a **`backend/README.md`**, con los comandos desde `backend/`.
 4. Las specs viejas (`specs/TAREA-*.md`) **no se reescriben**: son historia y sus rutas eran válidas cuando se hicieron.

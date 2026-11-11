@@ -9,3 +9,8 @@ htmlcov/
 .coverage
 staticfiles/
 media/
+
+# Frontend
+frontend/node_modules/
+frontend/.next/
+frontend/playwright-report/

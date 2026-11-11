@@ -15,6 +15,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
+    defaults:
+      run:
+        working-directory: backend
+
     services:
       postgres:
         image: postgres:16-alpine
@@ -46,6 +50,7 @@ jobs:
         with:
           python-version: "3.11"
           cache: pip
+          cache-dependency-path: backend/requirements.txt
 
       - name: Install dependencies
         run: pip install -r requirements.txt
@@ -64,3 +69,9 @@ jobs:
 
       - name: Tests
         run: pytest --cov=apps --cov-report=term-missing --cov-fail-under=95
+
+      # Si la API cambió, el PR debe traer el contrato regenerado (lo consume el frontend).
+      - name: OpenAPI contract is up to date
+        run: |
+          python manage.py spectacular --settings config.settings.test --format openapi-json --file ../contracts/openapi.json --validate --fail-on-warn
+          git diff --exit-code ../contracts/openapi.json
