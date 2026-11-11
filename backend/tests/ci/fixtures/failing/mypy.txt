@@ -1,0 +1,4 @@
+@BASE@/apps/crm/services.py:57: error: Incompatible return value type (got "int", expected "str")  [return-value]
+@BASE@/apps/documents/views.py:120: error: Item "None" of "User | None" has no attribute "email"  [union-attr]
+@BASE@/apps/documents/views.py:120: note: See https://mypy.rtfd.io/en/stable/kinds_of_types.html#optional-types
+Found 2 errors in 2 files (checked 262 source files)

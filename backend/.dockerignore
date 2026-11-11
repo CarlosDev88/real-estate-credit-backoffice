@@ -11,5 +11,6 @@ __pycache__
 .ruff_cache
 htmlcov
 .coverage
+.ci-report
 staticfiles
 media

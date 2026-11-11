@@ -1,0 +1,34 @@
+[
+  {
+    "category": "DeprecationWarning",
+    "message": "datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version.",
+    "filename": "@BASE@/apps/identity/tokens.py",
+    "lineno": 41,
+    "nodeid": "tests/identity/test_tokens.py::test_issue_access_token",
+    "when": "runtest"
+  },
+  {
+    "category": "DeprecationWarning",
+    "message": "datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version.",
+    "filename": "@BASE@/apps/identity/tokens.py",
+    "lineno": 41,
+    "nodeid": "tests/identity/test_tokens.py::test_refresh_rotates",
+    "when": "runtest"
+  },
+  {
+    "category": "DeprecationWarning",
+    "message": "pkg_resources is deprecated as an API.",
+    "filename": "/usr/local/lib/python3.11/site-packages/celery/utils/imports.py",
+    "lineno": 7,
+    "nodeid": "",
+    "when": "collect"
+  },
+  {
+    "category": "RuntimeWarning",
+    "message": "DateTimeField Application.created_at received a naive datetime (2026-01-01 00:00:00) while time zone support is active.",
+    "filename": "/usr/local/lib/python3.11/site-packages/django/db/models/fields/__init__.py",
+    "lineno": 1665,
+    "nodeid": "tests/applications/test_list.py::test_filters_by_date",
+    "when": "runtest"
+  }
+]

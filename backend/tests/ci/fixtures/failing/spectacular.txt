@@ -1,0 +1,8 @@
+/app/apps/crm/serializers.py:41: Warning [ClientViewSet > ClientSerializer]: unable to resolve type hint for function "full_name". Consider using a type hint or @extend_schema_field. Defaulting to string.
+/app/apps/crm/views.py:88: Warning [OpportunityViewSet]: could not derive type of path parameter "client_id" because model "crm.Opportunity" contained no such field. Consider annotating parameter with @extend_schema. Defaulting to "string".
+
+Schema generation summary:
+Warnings: 3 (2 unique)
+Errors:   0 (0 unique)
+
+SchemaGenerationError: Failing as requested due to warnings

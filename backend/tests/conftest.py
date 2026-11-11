@@ -1,3 +1,4 @@
+import warnings
 from collections.abc import Callable, Iterator
 from typing import Any
 
@@ -7,7 +8,23 @@ from rest_framework.test import APIClient
 
 from apps.documents.storage import MemoryStorage, get_storage
 from apps.identity.models import Permission, Role, RolePermission, User, UserRole
+from scripts.ci_report import WarningRecorder
 from tests.helpers import DEFAULT_PASSWORD, login
+
+# En CI (CI_REPORT_DIR definida) se guardan los warnings para el reporte del PR.
+_warning_recorder = WarningRecorder.from_env()
+
+
+def pytest_warning_recorded(
+    warning_message: warnings.WarningMessage, when: str, nodeid: str
+) -> None:
+    if _warning_recorder is not None:
+        _warning_recorder.record(warning_message, nodeid=nodeid, when=when)
+
+
+def pytest_sessionfinish() -> None:
+    if _warning_recorder is not None:
+        _warning_recorder.write()
 
 
 @pytest.fixture(autouse=True)
