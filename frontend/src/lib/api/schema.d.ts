@@ -482,6 +482,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/applications/quick-filters": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Pestañas rápidas del listado con sus conteos
+         * @description Cada pestaña con los estados que agrupa y cuántas solicitudes tiene, en el orden del listado. Cuenta solo lo que el actor puede ver (asesor: lo asignado; broker: lo que originó; administrador: todo) y aplica los mismos filtros y la misma búsqueda del listado, para que el número coincida con lo que se ve al elegir la pestaña. Ignora `status`, `quick_filter`, la paginación y el orden. Los conteos salen de una sola consulta. Cada estado está en exactamente una pestaña, así que la suma de las demás es igual a `all`.
+         */
+        get: operations["applications_quick_filters"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/change-password": {
         parameters: {
             query?: never;
@@ -2681,11 +2701,26 @@ export interface components {
             readonly id: string;
             readonly code: string;
             readonly status: components["schemas"]["ApplicationStatusEnum"];
+            readonly status_label: string;
             /** Format: uuid */
             readonly opportunity_id: string;
             readonly applicant: components["schemas"]["ApplicantRef"];
+            readonly participants_summary: components["schemas"]["ParticipantsSummary"];
             readonly purpose: components["schemas"]["CatalogItemRef"];
             readonly bank_product: components["schemas"]["BankProductRef"] | null;
+            /** @description Monto solicitado de la financiación; `null` si aún no hay financiación. */
+            readonly requested_amount_cop: number | null;
+            /** @description Completitud guardada (0 a 100), la misma regla de `/completeness`. `null` si todavía no se calculó. */
+            readonly completeness_pct: number | null;
+            /** @description Solo en `READY_TO_FILE`: `true` si ya no cumple la guarda (documento rechazado, reabierto, vencido o versión nueva), `false` si cumple. `null` en los demás estados o sin valor calculado. */
+            readonly ready_to_file_blocked: boolean | null;
+            /**
+             * Format: date-time
+             * @description Última vez que el comprador usó el portal en esta solicitud; `null` si nunca entró. Sirve para el texto del aviso de inactividad.
+             */
+            readonly last_buyer_activity_at: string | null;
+            /** @description Solo en la pestaña `waiting` (esperando al comprador): `true` si la última actividad del comprador (o, si nunca entró, el inicio de la etapa) tiene más de `BUYER_INACTIVITY_DAYS` días (3), `false` si no. `null` en los demás estados. */
+            readonly buyer_inactive: boolean | null;
             readonly assigned_advisor: components["schemas"]["UserRef"];
             readonly origin: components["schemas"]["CatalogItemRef"];
             readonly project: {
@@ -2735,11 +2770,26 @@ export interface components {
             readonly id: string;
             readonly code: string;
             readonly status: components["schemas"]["ApplicationStatusEnum"];
+            readonly status_label: string;
             /** Format: uuid */
             readonly opportunity_id: string;
             readonly applicant: components["schemas"]["ApplicantRef"];
+            readonly participants_summary: components["schemas"]["ParticipantsSummary"];
             readonly purpose: components["schemas"]["CatalogItemRef"];
             readonly bank_product: components["schemas"]["BankProductRef"] | null;
+            /** @description Monto solicitado de la financiación; `null` si aún no hay financiación. */
+            readonly requested_amount_cop: number | null;
+            /** @description Completitud guardada (0 a 100), la misma regla de `/completeness`. `null` si todavía no se calculó. */
+            readonly completeness_pct: number | null;
+            /** @description Solo en `READY_TO_FILE`: `true` si ya no cumple la guarda (documento rechazado, reabierto, vencido o versión nueva), `false` si cumple. `null` en los demás estados o sin valor calculado. */
+            readonly ready_to_file_blocked: boolean | null;
+            /**
+             * Format: date-time
+             * @description Última vez que el comprador usó el portal en esta solicitud; `null` si nunca entró. Sirve para el texto del aviso de inactividad.
+             */
+            readonly last_buyer_activity_at: string | null;
+            /** @description Solo en la pestaña `waiting` (esperando al comprador): `true` si la última actividad del comprador (o, si nunca entró, el inicio de la etapa) tiene más de `BUYER_INACTIVITY_DAYS` días (3), `false` si no. `null` en los demás estados. */
+            readonly buyer_inactive: boolean | null;
             readonly assigned_advisor: components["schemas"]["UserRef"];
             readonly origin: components["schemas"]["CatalogItemRef"];
             readonly project: {
@@ -2875,6 +2925,7 @@ export interface components {
             readonly id: string;
             readonly code: string;
             readonly name: string;
+            readonly short_name: string;
             readonly tax_id: string;
             readonly status: components["schemas"]["PartnerStatusEnum"];
             readonly operational_notes: string;
@@ -2892,6 +2943,8 @@ export interface components {
             code: string;
             name: string;
             /** @default  */
+            short_name: string;
+            /** @default  */
             tax_id: string;
             /** @default  */
             operational_notes: string;
@@ -2901,6 +2954,7 @@ export interface components {
             readonly id: string;
             readonly code: string;
             readonly name: string;
+            readonly short_name: string;
             readonly tax_id: string;
             readonly status: components["schemas"]["PartnerStatusEnum"];
             readonly operational_notes: string;
@@ -3019,7 +3073,9 @@ export interface components {
             id: string;
             code: string;
             name: string;
-            bank: components["schemas"]["NamedRef"];
+            /** @description Tipo de crédito (catálogo `bank_product_type`). */
+            product_type: components["schemas"]["CatalogItemRef"];
+            bank: components["schemas"]["BankRef"];
         };
         BankProductSummary: {
             /** Format: uuid */
@@ -3033,6 +3089,8 @@ export interface components {
             id: string;
             code: string;
             name: string;
+            /** @description Nombre corto para listados; vacío si no tiene (se muestra `name`). */
+            short_name: string;
         };
         /** @description Evaluación guardada. ``context["application"]`` decide ``is_current``. */
         BankRuleEvaluation: {
@@ -5152,6 +5210,11 @@ export interface components {
          * @enum {string}
          */
         ParticipantRoleEnum: "PRIMARY" | "CO_APPLICANT" | "SOLIDARY_DEBTOR";
+        /** @description Participantes activos además del titular, para el texto "+ 1 co-solicitante". */
+        ParticipantsSummary: {
+            co_applicants: number;
+            solidary_debtors: number;
+        };
         Partner: {
             /** Format: uuid */
             readonly id: string;
@@ -5282,6 +5345,7 @@ export interface components {
         /** @description El código no se edita: es estable. */
         PatchedBankUpdateRequest: {
             name?: string;
+            short_name?: string;
             tax_id?: string;
             operational_notes?: string;
         };
@@ -5638,6 +5702,15 @@ export interface components {
             is_owned_by_applicant?: boolean | null;
             /** @default  */
             ownership_notes: string;
+        };
+        /** @description Pestaña rápida del listado con su conteo dentro del alcance del actor. */
+        QuickFilter: {
+            /** @description Valor de `quick_filter` en el listado. */
+            code: string;
+            label: string;
+            /** @description Estados que agrupa; vacío en `all`. */
+            statuses: components["schemas"]["ApplicationStatusEnum"][];
+            count: number;
         };
         /**
          * @description Serializer que rechaza campos no declarados (``additionalProperties: false``).
@@ -6302,16 +6375,20 @@ export interface operations {
                 bank_id?: string;
                 /** @description Qué campo usar para ordenar los resultados. */
                 ordering?: string;
-                /** @description Código `lead_origin`. */
+                /** @description Código `lead_origin`. Uno que no existe responde `400`. */
                 origin?: string;
                 /** @description Un número de página dentro del conjunto de resultados paginado. */
                 page?: number;
                 /** @description Número de resultados a devolver por página. */
                 page_size?: number;
                 product_id?: string;
+                /** @description Tipo de crédito: código `bank_product_type`. Uno que no existe responde `400`. */
+                product_type?: string;
                 project_id?: string;
-                /** @description Código `loan_purpose`. */
+                /** @description Código `loan_purpose`. Uno que no existe responde `400`. */
                 purpose?: string;
+                /** @description Pestaña rápida (`/applications/quick-filters`). `all` no filtra; junto con `status` se aplican los dos. Un código desconocido responde `400`. */
+                quick_filter?: "all" | "bank" | "closed" | "draft" | "ready" | "review" | "waiting";
                 /** @description Un término de búsqueda. */
                 search?: string;
                 status?: "APPROVED" | "BANK_OBSERVATION" | "CANCELLED" | "CREDIT_ANALYSIS" | "DISBURSED" | "DOCUMENTS_REVIEW" | "DRAFT" | "EXTERNAL_CREDIT_APPROVED" | "FILED" | "FILING_VALIDATION" | "LEGALIZATION" | "OWN_FUNDS" | "READY_TO_FILE" | "REJECTED" | "WAITING_BUYER_DATA" | "WAITING_DOCUMENTS" | "WITHDRAWN";
@@ -7861,6 +7938,56 @@ export interface operations {
             };
             /** @description STALE_VERSION, APPLICATION_CLOSED o INVALID_STATE_TRANSITION */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    applications_quick_filters: {
+        parameters: {
+            query?: {
+                advisor_id?: string;
+                bank_id?: string;
+                /** @description Código `lead_origin`. Uno que no existe responde `400`. */
+                origin?: string;
+                product_id?: string;
+                /** @description Tipo de crédito: código `bank_product_type`. Uno que no existe responde `400`. */
+                product_type?: string;
+                project_id?: string;
+                /** @description Código `loan_purpose`. Uno que no existe responde `400`. */
+                purpose?: string;
+                /** @description Un término de búsqueda. */
+                search?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuickFilter"][];
+                };
+            };
+            /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description PERMISSION_DENIED o CSRF_FAILED */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
