@@ -177,7 +177,8 @@ Las cookies de sesión usan `HttpOnly`, `Secure`, `SameSite=Lax` y `Path=/`. La 
 | `CONSENT_NOT_EFFECTIVE` | La versión del consentimiento no está vigente: futura, retirada o reemplazada (`422`). |
 | `CONSENT_NOT_ACCEPTED` | Retiro de un consentimiento que nunca se aceptó (`409`). |
 | `PARTICIPANT_INACTIVE` | Edición de un participante retirado; hay que agregarlo de nuevo (`409`). |
-| `APPLICATION_NOT_READY` | No cumple `READY_TO_FILE` o no se puede pedir el paquete para radicar (`422`); `details` trae `BANK_PRODUCT_REQUIRED`, `BANK_RULE_BLOCKED`, `DOCUMENT_PENDING`, `DOCUMENT_EXPIRED` y `DOCUMENTS_NOT_CONFIGURED` según el caso (el paquete, solo los tres documentales). |
+| `APPLICATION_NOT_READY` | No cumple `READY_TO_FILE` o no se puede pedir el paquete para radicar (`422`); `details` trae `BANK_PRODUCT_REQUIRED`, `BANK_RULE_BLOCKED`, `DOCUMENT_PENDING`, `DOCUMENT_EXPIRED` y `DOCUMENTS_NOT_CONFIGURED` según el caso (el paquete, solo los tres documentales). `MARK_READY_TO_REFILE` agrega `BANK_OBSERVATION_OPEN`. |
+| `BANK_OBSERVATION_OPEN` | En `details` de `APPLICATION_NOT_READY` al volver a `READY_TO_FILE` desde `BANK_OBSERVATION`: el banco observó el documento y la observación sigue abierta hasta que el asesor aprueba una versión nueva; `resource_id` es el slot. |
 | `DOCUMENT_PENDING` | En `details` de `APPLICATION_NOT_READY`: un documento obligatorio, o un grupo alternativo, sin aprobar ni exonerar; `resource_id` es el slot (el primero del grupo). |
 | `DOCUMENTS_NOT_CONFIGURED` | En `details` de `APPLICATION_NOT_READY`: la solicitud no tiene documentos obligatorios; una lista vacía no se da por cumplida. |
 | `BANK_RULE_BLOCKED` | Regla bancaria bloqueante incumplida o sin datos para decidir. |

@@ -6033,6 +6033,8 @@ export interface components {
             readonly guard_code: string | null;
             readonly roles: string[];
             readonly is_active: boolean;
+            /** @description La ejecuta solo el servicio de su módulo (radicación o respuesta del banco): `POST /status-transitions` la rechaza y no sale en las acciones disponibles. */
+            readonly system_only: boolean;
             /** Format: date-time */
             readonly created_at: string;
             /** Format: date-time */

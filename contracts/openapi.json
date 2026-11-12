@@ -26943,6 +26943,11 @@
                         "type": "boolean",
                         "readOnly": true
                     },
+                    "system_only": {
+                        "type": "boolean",
+                        "readOnly": true,
+                        "description": "La ejecuta solo el servicio de su módulo (radicación o respuesta del banco): `POST /status-transitions` la rechaza y no sale en las acciones disponibles."
+                    },
                     "created_at": {
                         "type": "string",
                         "format": "date-time",
@@ -26965,6 +26970,7 @@
                     "label",
                     "required_permission",
                     "roles",
+                    "system_only",
                     "to_status",
                     "updated_at"
                 ]

@@ -33,6 +33,10 @@ class WorkflowTransition(models.Model):
     guard_code = models.CharField(max_length=80, blank=True)
     # Se crea inactiva; solo quien tiene `workflow.publish` la habilita.
     is_active = models.BooleanField(default=False)
+    # True: solo la ejecuta el servicio de su módulo (por ejemplo, la radicación o una
+    # respuesta del banco). `POST /status-transitions` la rechaza (`409`) y las acciones
+    # disponibles no la listan.
+    system_only = models.BooleanField(default=False, db_default=False)
 
     roles: "models.ManyToManyField[Role, WorkflowTransitionRole]" = models.ManyToManyField(
         "identity.Role",

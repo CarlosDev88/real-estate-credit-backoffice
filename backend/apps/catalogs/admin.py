@@ -38,8 +38,8 @@ class WorkflowTransitionRoleInline(admin.TabularInline):
 
 @admin.register(WorkflowTransition)
 class WorkflowTransitionAdmin(admin.ModelAdmin):
-    list_display = ["code", "flow_type", "from_status", "to_status", "is_active"]
-    list_filter = ["flow_type", "is_active"]
+    list_display = ["code", "flow_type", "from_status", "to_status", "is_active", "system_only"]
+    list_filter = ["flow_type", "is_active", "system_only"]
     search_fields = ["code", "label"]
     readonly_fields = ["created_at", "updated_at"]
     inlines = [WorkflowTransitionRoleInline]

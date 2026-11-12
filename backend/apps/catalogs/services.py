@@ -347,7 +347,7 @@ def set_transition_active(transition: WorkflowTransition, *, active: bool) -> Wo
 
 
 def available_transitions(
-    user: User, *, flow_type: str, from_status: str
+    user: User, *, flow_type: str, from_status: str, system_only: bool = False
 ) -> QuerySet[WorkflowTransition]:
     """Transiciones activas que ``user`` puede ejecutar desde ``from_status``.
 
@@ -355,9 +355,12 @@ def available_transitions(
     necesita figurar en la lista) y, si existe, el permiso requerido. Una transición
     sin roles solo está disponible para `ADMIN`. Las guardas no se evalúan aquí: las
     evalúa el módulo dueño del flujo.
+
+    Por omisión solo devuelve las manuales; con ``system_only``, solo las que ejecuta
+    el servicio de un módulo (por ejemplo, la radicación).
     """
     transitions = WorkflowTransition.objects.filter(
-        flow_type=flow_type, from_status=from_status, is_active=True
+        flow_type=flow_type, from_status=from_status, is_active=True, system_only=system_only
     ).select_related("required_permission")
 
     if user.is_superuser:
@@ -377,7 +380,12 @@ def available_transitions(
 
 
 def resolve_transition(
-    user: User, *, flow_type: str, from_status: str, to_status: str
+    user: User,
+    *,
+    flow_type: str,
+    from_status: str,
+    to_status: str,
+    system_only: bool = False,
 ) -> WorkflowTransition:
     """Devuelve la transición que ``user`` puede ejecutar de ``from_status`` a ``to_status``.
 
@@ -385,17 +393,27 @@ def resolve_transition(
       `409 INVALID_STATE_TRANSITION`.
     - Si existe, pero el usuario no tiene el rol o el permiso: `403`.
 
+    Por omisión solo considera las manuales: una de sistema (``system_only``) responde
+    `409 INVALID_STATE_TRANSITION`, como si no existiera. El servicio de su módulo la
+    resuelve con ``system_only=True``.
+
     Las guardas las evalúa el módulo dueño del flujo después de esta llamada.
     """
     transition = (
-        available_transitions(user, flow_type=flow_type, from_status=from_status)
+        available_transitions(
+            user, flow_type=flow_type, from_status=from_status, system_only=system_only
+        )
         .filter(to_status=to_status)
         .first()
     )
     if transition is not None:
         return transition
     configured = WorkflowTransition.objects.filter(
-        flow_type=flow_type, from_status=from_status, to_status=to_status, is_active=True
+        flow_type=flow_type,
+        from_status=from_status,
+        to_status=to_status,
+        is_active=True,
+        system_only=system_only,
     ).exists()
     if configured:
         raise PermissionDenied()

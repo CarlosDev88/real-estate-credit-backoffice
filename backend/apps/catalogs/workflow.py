@@ -78,6 +78,10 @@ TRANSITION_GUARDS: dict[str, dict[str, str]] = {
             "Banco y producto seleccionados, y todos los documentos obligatorios "
             "aprobados o exonerados."
         ),
+        "APPLICATION_READY_TO_REFILE": (
+            "Lo mismo que APPLICATION_READY_TO_FILE y, además, ninguna observación del "
+            "banco sin resolver."
+        ),
     },
     FlowType.PROJECT: {},
 }

@@ -90,6 +90,7 @@ from apps.crm.services import (
 )
 from apps.documents.slots import sync_slots
 from apps.documents.verification import DossierCheck, check_dossier
+from apps.filings.observations import open_observation_problems
 from apps.identity.models import BuyerSession, User
 from apps.partners.models import Project
 from apps.partners.services import ensure_project_accepts_opportunities, projects_visible_to
@@ -1120,6 +1121,10 @@ def preview_products(
 # --------------------------------------------------------------------------------------
 
 READY_TO_FILE_GUARD = "APPLICATION_READY_TO_FILE"
+# La de `MARK_READY_TO_REFILE` (paso 11): la misma y, además, ninguna observación del
+# banco sin resolver.
+READY_TO_REFILE_GUARD = "APPLICATION_READY_TO_REFILE"
+READY_GUARDS = (READY_TO_FILE_GUARD, READY_TO_REFILE_GUARD)
 # Cierres que exigen `reason_code`.
 REASON_REQUIRED_STATUSES: tuple[str, ...] = (
     ApplicationStatus.CANCELLED,
@@ -1317,7 +1322,10 @@ def transition_application(
       dos últimos, la modalidad de financiación correspondiente
       (``422 FINANCING_MODE_MISMATCH``).
     - La guarda `APPLICATION_READY_TO_FILE` responde ``422 APPLICATION_NOT_READY`` con
-      todos los motivos en ``details``.
+      todos los motivos en ``details``. `APPLICATION_READY_TO_REFILE` agrega un
+      ``BANK_OBSERVATION_OPEN`` por cada documento con una observación del banco abierta.
+    - Las transiciones de sistema (``system_only``) no se ejecutan por aquí
+      (``409 INVALID_STATE_TRANSITION``).
     """
     if to_status == ApplicationStatus.WITHDRAWN:
         raise ValidationError(
@@ -1334,10 +1342,12 @@ def transition_application(
             actor, flow_type=FlowType.APPLICATION, from_status=locked.status, to_status=to_status
         )
         _ensure_financing_mode(locked, to_status)
-        if transition.guard_code == READY_TO_FILE_GUARD:
+        if transition.guard_code in READY_GUARDS:
             # Solicitud y después todos sus slots vigentes, en orden (decisión 22).
             dossier = check_dossier(locked, lock=True)
             problems = ready_to_file_problems(locked, dossier=dossier, evaluate_as=actor)
+        if transition.guard_code == READY_TO_REFILE_GUARD:
+            problems.extend(open_observation_problems(locked.pk))
         if not problems:
             change = _apply_status_change(actor, locked, transition, reason=reason, comment=comment)
     if problems:
