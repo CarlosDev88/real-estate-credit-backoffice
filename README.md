@@ -68,6 +68,7 @@ The frontend has its own workflow, [`frontend.yml`](.github/workflows/frontend.y
 ## Documentation
 
 - [`backend/README.md`](backend/README.md): backend setup, services, commands, and conventions.
+- [`frontend/README.md`](frontend/README.md): frontend setup, commands, folders, and conventions.
 - [`design/README.md`](design/README.md): Umbral design system, tokens, and mockups.
 - [`docs/`](docs/): requirements, data model, ERD, PostgreSQL schema, and REST API.
 - [`specs/`](specs/): implementation tasks. Older specs keep the paths that were valid when they were written (before the monorepo, backend files lived at the root).

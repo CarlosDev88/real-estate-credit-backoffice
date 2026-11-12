@@ -187,7 +187,7 @@ git worktree add ..\wt-front-portal -b feat/front-portal
 Cada agente se abre en su carpeta. Al terminar: `git worktree remove ..\wt-front-backoffice` (y lo mismo con el otro).
 
 ## Brechas del backend vistas en los mockups
-Se resuelven en `TAREA-applications-listado.md`. Mientras tanto, se simulan con MSW.
+Las cuatro primeras se resuelven en `TAREA-applications-listado.md`; mientras tanto, se simulan con MSW. Al cierre de F0 ese PR todavía no estaba en `master`: se marcan como resueltas cuando se fusione. Las demás quedan para la tarea de "brechas".
 - Tipo de crédito (`bank_product_type`) en el listado, y filtro por tipo.
 - Monto solicitado, completitud y número de co-solicitantes en cada fila.
 - Conteos de las pestañas del listado y qué estados agrupa cada una (no los puede definir el frontend).
