@@ -675,7 +675,8 @@ Respuesta reducida:
 
 | Método | Ruta | Permiso | Entrada / filtros | Respuesta |
 | --- | --- | --- | --- | --- |
-| `GET` | `/applications` | `applications.read` | `status`, `bank_id`, `product_id`, `purpose`, `product_type`, `advisor_id`, `project_id`, `origin`, `search`, `ordering` | Solicitudes según alcance. |
+| `GET` | `/applications` | `applications.read` | `status`, `quick_filter`, `bank_id`, `product_id`, `purpose`, `product_type`, `advisor_id`, `project_id`, `origin`, `search`, `ordering` | Solicitudes según alcance. |
+| `GET` | `/applications/quick-filters` | `applications.read` | Los filtros del listado, salvo `status` y `quick_filter` | Pestañas rápidas con sus conteos dentro del alcance. |
 | `POST` | `/applications` | `applications.create` | Oportunidad, finalidad, asesor e inmueble inicial | Solicitud `DRAFT`. |
 | `GET` | `/applications/{application_id}` | `applications.read` | `include` permitido | Expediente según rol. |
 | `PATCH` | `/applications/{application_id}` | `applications.update` | Campos editables no relacionados con estado | Solicitud actualizada. |
@@ -693,7 +694,23 @@ Listado `GET /applications`:
 - **Orden:** `created_at` (por omisión, descendente), `updated_at`, `status`, `code`, `requested_amount`, `bank_name` y `applicant_name` (nombres y apellidos del titular). Las filas sin monto o sin banco van al final en los dos sentidos. Otro campo responde `400`.
 - **Cada fila (administrador y asesor)** trae además `status_label`, `bank_product.product_type` (`{code, label}`), `requested_amount_cop` (`null` si aún no hay financiación) y `participants_summary` (`{co_applicants, solidary_debtors}`, solo participantes activos). El número de consultas no crece con las filas.
 - **Completitud en la fila:** `completeness_pct` (0 a 100, o `null` si todavía no se calculó; el frontend muestra "—") y `ready_to_file_blocked` (`true` si la solicitud está en `READY_TO_FILE` y ya no cumple la guarda, `false` si cumple, `null` en otro estado o sin valor). Es un valor guardado con la misma regla de `/completeness`: se recalcula después de cada cambio de datos, de estado, de la evaluación bancaria y del expediente, y con el comando `refresh_application_completeness`, que cubre lo que cambia con el tiempo (documentos que vencen, reglas o requisitos nuevos). `/completeness` sigue calculando en vivo.
-- **El broker** recibe el mismo resumen de siempre, sin montos ni participantes.
+- **Actividad del comprador en la fila:** `last_buyer_activity_at` (la última vez que el comprador usó el portal en esa solicitud; `null` si nunca entró) y `buyer_inactive` (solo en la pestaña `waiting`: `true` si esa actividad, o el inicio de la etapa si nunca entró, tiene más de 3 días; `false` si no; `null` en los demás estados). El frontend arma el texto del aviso con `last_buyer_activity_at`.
+- **El broker** recibe el mismo resumen de siempre, sin montos, participantes, completitud ni actividad del comprador.
+
+Pestañas rápidas (`quick_filter` y `GET /applications/quick-filters`), una configuración fija del backend en la que cada estado está en exactamente una pestaña:
+
+| `code` | Etiqueta | Estados |
+| --- | --- | --- |
+| `all` | Todas | Todos |
+| `draft` | Borradores | `DRAFT` |
+| `waiting` | Esperando al comprador | `WAITING_BUYER_DATA`, `WAITING_DOCUMENTS` |
+| `review` | En revisión | `DOCUMENTS_REVIEW` |
+| `ready` | Listas para radicar | `READY_TO_FILE` |
+| `bank` | En el banco | `FILED`, `FILING_VALIDATION`, `CREDIT_ANALYSIS`, `BANK_OBSERVATION`, `APPROVED`, `LEGALIZATION` |
+| `closed` | Cerradas | `DISBURSED`, `REJECTED`, `EXTERNAL_CREDIT_APPROVED`, `OWN_FUNDS`, `WITHDRAWN`, `CANCELLED` |
+
+- `quick_filter=<code>` en el listado: `all` no filtra; junto con `status` se aplican los dos; un código desconocido responde `400 VALIDATION_ERROR` (`details[].field = "quick_filter"`).
+- `GET /applications/quick-filters` responde un arreglo sin paginar, en el orden de la tabla: `[{code, label, statuses, count}]`. Cuenta solo lo que el actor ve (asesor: lo asignado; broker: lo que originó; administrador: todo) y aplica los mismos filtros y la misma búsqueda del listado, para que cada número coincida con lo que se ve al elegir la pestaña. Ignora `status`, `quick_filter`, la paginación y el orden. Los conteos salen de una sola consulta.
 
 `POST /applications` requiere `Idempotency-Key`:
 

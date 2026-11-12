@@ -212,6 +212,9 @@ BUYER_ACCESS_LINK_MAX_HOURS = env.int("BUYER_ACCESS_LINK_MAX_HOURS", default=168
 BUYER_SESSION_LIFETIME = timedelta(hours=env.int("BUYER_SESSION_HOURS", default=24))
 # Página del portal de compradores que recibe `?token=` y lo consume.
 BUYER_ACCESS_URL = env("BUYER_ACCESS_URL", default="http://localhost:3000/acceso")
+# Aviso del listado: una solicitud que espera al comprador está inactiva si su última
+# actividad en el portal (o, si nunca entró, el inicio de la etapa) tiene más de estos días.
+BUYER_INACTIVITY_DAYS = 3
 
 # --- Metadatos para el frontend (sección 9) ------------------------------------------
 # Catálogos grandes que no viajan en /metadata/bootstrap; se piden con

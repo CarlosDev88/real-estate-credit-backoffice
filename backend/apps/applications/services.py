@@ -147,6 +147,17 @@ def _active_participants(role: str) -> Coalesce:
     return Coalesce(Subquery(count), 0)
 
 
+def _last_buyer_activity() -> Subquery:
+    """El ``last_seen_at`` más reciente de las sesiones del comprador en la solicitud, como
+    subconsulta: sin consultas por fila. Nulo si nunca entró al portal."""
+    latest = (
+        BuyerSession.objects.filter(application=OuterRef("pk"), last_seen_at__isnull=False)
+        .order_by("-last_seen_at")
+        .values("last_seen_at")[:1]
+    )
+    return Subquery(latest)
+
+
 def applications_queryset() -> QuerySet[CreditApplication]:
     """Solicitudes con lo que muestran el listado y el detalle, en una sola consulta."""
     return CreditApplication.objects.select_related(
@@ -165,6 +176,7 @@ def applications_queryset() -> QuerySet[CreditApplication]:
     ).annotate(
         co_applicants_count=_active_participants(ParticipantRole.CO_APPLICANT),
         solidary_debtors_count=_active_participants(ParticipantRole.SOLIDARY_DEBTOR),
+        last_buyer_activity_at=_last_buyer_activity(),
     )
 
 

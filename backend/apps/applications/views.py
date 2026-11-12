@@ -5,7 +5,7 @@ historial, acciones disponibles y completitud (§16 y §9) y
 
 from typing import Any, cast
 
-from django.db.models import CharField, F, QuerySet, Value
+from django.db.models import CharField, Count, F, Q, QuerySet, Value
 from django.db.models.functions import Concat
 from django.http import Http404
 from django.shortcuts import get_object_or_404
@@ -27,6 +27,12 @@ from apps.applications.models import (
     FinancingPreference,
     IncomeSource,
     Property,
+)
+from apps.applications.quick_filters import (
+    ALL,
+    QUICK_FILTER_CODES,
+    QUICK_FILTERS,
+    QUICK_FILTERS_BY_CODE,
 )
 from apps.applications.serializers import (
     DETAIL_INCLUDES,
@@ -52,6 +58,7 @@ from apps.applications.serializers import (
     ParticipantCreateSerializer,
     ParticipantUpdateSerializer,
     PropertySerializer,
+    QuickFilterSerializer,
     StatusChangeSerializer,
     StatusHistorySerializer,
     StatusTransitionSerializer,
@@ -86,6 +93,13 @@ IF_MATCH = OpenApiParameter(
     description='Versión de la solicitud que se editó, tal como llegó en `ETag` (`"3"`).',
 )
 STATUS_PARAM = OpenApiParameter("status", OpenApiTypes.STR, enum=ApplicationStatus.values)
+QUICK_FILTER_PARAM = OpenApiParameter(
+    "quick_filter",
+    OpenApiTypes.STR,
+    enum=QUICK_FILTER_CODES,
+    description="Pestaña rápida (`/applications/quick-filters`). `all` no filtra; junto con "
+    "`status` se aplican los dos. Un código desconocido responde `400`.",
+)
 INCLUDE_PARAM = OpenApiParameter(
     "include",
     OpenApiTypes.STR,
@@ -149,6 +163,59 @@ CATALOG_FILTERS = (
     ("origin", "lead_origin", "opportunity__origin_item__code"),
     ("product_type", "bank_product_type", "bank_product__product_type_item__code"),
 )
+# Filtros por id del listado: parámetro y campo.
+UUID_FILTERS = (
+    ("bank_id", "bank_product__bank_id"),
+    ("product_id", "bank_product_id"),
+    ("advisor_id", "assigned_advisor_id"),
+    ("project_id", "financed_property__project_id"),
+)
+APPLICATION_SEARCH_FIELDS = [
+    "code",
+    "opportunity__client__first_names",
+    "opportunity__client__last_names",
+    "opportunity__client__document_number",
+]
+
+
+def _filtered_applications(view: "ApplicationView") -> QuerySet[CreditApplication]:
+    """Solicitudes visibles para el actor con los filtros del listado que no son de
+    estado (los comparten el listado y las pestañas). La búsqueda la agrega
+    ``SearchFilter``."""
+    applications = services.applications_visible_to(view.actor)
+    for param, field in UUID_FILTERS:
+        value = parse_uuid_param(view.request, param)
+        if value:
+            applications = applications.filter(**{field: value})
+    for param, catalog_code, field in CATALOG_FILTERS:
+        code = _catalog_param(view.request, param, catalog_code)
+        if code:
+            applications = applications.filter(**{field: code})
+    return applications
+
+
+LIST_FILTER_PARAMETERS = [
+    OpenApiParameter("bank_id", OpenApiTypes.UUID),
+    OpenApiParameter("product_id", OpenApiTypes.UUID),
+    OpenApiParameter(
+        "purpose",
+        OpenApiTypes.STR,
+        description="Código `loan_purpose`. Uno que no existe responde `400`.",
+    ),
+    OpenApiParameter(
+        "product_type",
+        OpenApiTypes.STR,
+        description="Tipo de crédito: código `bank_product_type`. Uno que no existe "
+        "responde `400`.",
+    ),
+    OpenApiParameter("advisor_id", OpenApiTypes.UUID),
+    OpenApiParameter("project_id", OpenApiTypes.UUID),
+    OpenApiParameter(
+        "origin",
+        OpenApiTypes.STR,
+        description="Código `lead_origin`. Uno que no existe responde `400`.",
+    ),
+]
 
 
 def _include_param(request: Request) -> frozenset[str]:
@@ -194,12 +261,7 @@ def _detail_response(
 class ApplicationListView(ApplicationView):
     required_permissions = {"GET": "applications.read", "POST": "applications.create"}
     filter_backends = [SearchFilter, StrictOrderingFilter]
-    search_fields = [
-        "code",
-        "opportunity__client__first_names",
-        "opportunity__client__last_names",
-        "opportunity__client__document_number",
-    ]
+    search_fields = APPLICATION_SEARCH_FIELDS
     ordering_fields = [
         "created_at",
         "updated_at",
@@ -214,23 +276,16 @@ class ApplicationListView(ApplicationView):
     ordering_nulls_last = True
 
     def get_queryset(self) -> QuerySet[CreditApplication]:
-        applications = services.applications_visible_to(self.actor)
+        applications = _filtered_applications(self)
         application_status = _choice_param(self.request, "status", ApplicationStatus.values)
         if application_status:
             applications = applications.filter(status=application_status)
-        for param, field in (
-            ("bank_id", "bank_product__bank_id"),
-            ("product_id", "bank_product_id"),
-            ("advisor_id", "assigned_advisor_id"),
-            ("project_id", "financed_property__project_id"),
-        ):
-            value = parse_uuid_param(self.request, param)
-            if value:
-                applications = applications.filter(**{field: value})
-        for param, catalog_code, field in CATALOG_FILTERS:
-            code = _catalog_param(self.request, param, catalog_code)
-            if code:
-                applications = applications.filter(**{field: code})
+        # Pestaña rápida: junto con `status` se aplican los dos.
+        quick_code = _choice_param(self.request, "quick_filter", QUICK_FILTER_CODES)
+        if quick_code and quick_code != ALL:
+            applications = applications.filter(
+                status__in=QUICK_FILTERS_BY_CODE[quick_code].statuses
+            )
         # Campos de orden con nombre propio.
         return applications.annotate(
             requested_amount=F("financing__requested_amount_cop"),
@@ -253,26 +308,8 @@ class ApplicationListView(ApplicationView):
         ),
         parameters=[
             STATUS_PARAM,
-            OpenApiParameter("bank_id", OpenApiTypes.UUID),
-            OpenApiParameter("product_id", OpenApiTypes.UUID),
-            OpenApiParameter(
-                "purpose",
-                OpenApiTypes.STR,
-                description="Código `loan_purpose`. Uno que no existe responde `400`.",
-            ),
-            OpenApiParameter(
-                "product_type",
-                OpenApiTypes.STR,
-                description="Tipo de crédito: código `bank_product_type`. Uno que no existe "
-                "responde `400`.",
-            ),
-            OpenApiParameter("advisor_id", OpenApiTypes.UUID),
-            OpenApiParameter("project_id", OpenApiTypes.UUID),
-            OpenApiParameter(
-                "origin",
-                OpenApiTypes.STR,
-                description="Código `lead_origin`. Uno que no existe responde `400`.",
-            ),
+            QUICK_FILTER_PARAM,
+            *LIST_FILTER_PARAMETERS,
         ],
         responses={200: ApplicationSerializer(many=True), **COMMON_ERRORS},
     )
@@ -327,6 +364,55 @@ class ApplicationListView(ApplicationView):
             ),
             created.version,
         )
+
+
+class ApplicationQuickFiltersView(ApplicationView):
+    """Pestañas rápidas con sus conteos (precisión B). El broker también las ve: solo
+    conteos, dentro de su alcance."""
+
+    required_permissions = {"GET": "applications.read"}
+    filter_backends = [SearchFilter]
+    search_fields = APPLICATION_SEARCH_FIELDS
+    # Lista corta y fija: un arreglo sin paginar, como `/available-actions`.
+    pagination_class = None
+
+    @extend_schema(
+        tags=[APPLICATIONS_TAG],
+        operation_id="applications_quick_filters",
+        summary="Pestañas rápidas del listado con sus conteos",
+        description=(
+            "Cada pestaña con los estados que agrupa y cuántas solicitudes tiene, en el "
+            "orden del listado. Cuenta solo lo que el actor puede ver (asesor: lo asignado; "
+            "broker: lo que originó; administrador: todo) y aplica los mismos filtros y la "
+            "misma búsqueda del listado, para que el número coincida con lo que se ve al "
+            "elegir la pestaña. Ignora `status`, `quick_filter`, la paginación y el orden. "
+            "Los conteos salen de una sola consulta. Cada estado está en exactamente una "
+            "pestaña, así que la suma de las demás es igual a `all`."
+        ),
+        parameters=LIST_FILTER_PARAMETERS,
+        responses={200: QuickFilterSerializer(many=True), **COMMON_ERRORS},
+    )
+    def get(self, request: Request) -> Response:
+        applications = self.filter_queryset(_filtered_applications(self))
+        # Una sola consulta: un conteo por pestaña sobre las mismas solicitudes.
+        counts = CreditApplication.objects.filter(pk__in=applications.values("pk")).aggregate(
+            **{
+                quick.code: Count("pk", filter=Q(status__in=quick.statuses))
+                if quick.statuses
+                else Count("pk")
+                for quick in QUICK_FILTERS
+            }
+        )
+        data = [
+            {
+                "code": quick.code,
+                "label": quick.label,
+                "statuses": list(quick.statuses),
+                "count": counts[quick.code],
+            }
+            for quick in QUICK_FILTERS
+        ]
+        return Response(QuickFilterSerializer(data, many=True).data)
 
 
 class ApplicationDetailView(ApplicationView):

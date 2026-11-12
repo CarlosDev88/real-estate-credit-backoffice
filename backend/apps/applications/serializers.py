@@ -1,8 +1,9 @@
 import uuid
 from collections.abc import Mapping
-from datetime import date
+from datetime import date, datetime, timedelta
 from typing import Any, cast
 
+from django.conf import settings
 from django.utils import timezone
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
@@ -26,6 +27,7 @@ from apps.applications.models import (
     ParticipantRole,
     Property,
 )
+from apps.applications.quick_filters import WAITING_STATUSES
 from apps.banking.models import BankProduct
 from apps.banking.rule_engine import Outcome
 from apps.banking.serializers import BankRefSerializer
@@ -44,7 +46,7 @@ from apps.crm.serializers import (
 )
 from apps.crm.validators import mask_document_number
 from apps.documents.models import SlotStatus
-from apps.identity.models import User
+from apps.identity.models import BuyerSession, User
 from config.serializers import ErrorDetailSerializer, StrictSerializer
 
 __all__ = [
@@ -293,6 +295,15 @@ class ApplicationSerializer(serializers.ModelSerializer):
         "rechazado, reabierto, vencido o versión nueva), `false` si cumple. `null` en los "
         "demás estados o sin valor calculado."
     )
+    last_buyer_activity_at = serializers.SerializerMethodField(
+        help_text="Última vez que el comprador usó el portal en esta solicitud; `null` si "
+        "nunca entró. Sirve para el texto del aviso de inactividad."
+    )
+    buyer_inactive = serializers.SerializerMethodField(
+        help_text="Solo en la pestaña `waiting` (esperando al comprador): `true` si la última "
+        "actividad del comprador (o, si nunca entró, el inicio de la etapa) tiene más de "
+        "`BUYER_INACTIVITY_DAYS` días (3), `false` si no. `null` en los demás estados."
+    )
     assigned_advisor = UserRefSerializer(read_only=True)
     origin = CatalogItemRefSerializer(source="opportunity.origin_item", read_only=True)
     project = serializers.SerializerMethodField()
@@ -315,6 +326,8 @@ class ApplicationSerializer(serializers.ModelSerializer):
             "requested_amount_cop",
             "completeness_pct",
             "ready_to_file_blocked",
+            "last_buyer_activity_at",
+            "buyer_inactive",
             "assigned_advisor",
             "origin",
             "project",
@@ -335,6 +348,33 @@ class ApplicationSerializer(serializers.ModelSerializer):
             return None
         return {"id": str(prop.project.pk), "name": prop.project.name}
 
+    @staticmethod
+    def _last_buyer_activity(obj: CreditApplication) -> datetime | None:
+        """Lee la anotación de ``services.applications_queryset``; si la instancia no la
+        trae, la consulta."""
+        if hasattr(obj, "last_buyer_activity_at"):
+            return cast(datetime | None, obj.last_buyer_activity_at)
+        return (
+            BuyerSession.objects.filter(application=obj, last_seen_at__isnull=False)
+            .order_by("-last_seen_at")
+            .values_list("last_seen_at", flat=True)
+            .first()
+        )
+
+    @extend_schema_field(serializers.DateTimeField(allow_null=True))
+    def get_last_buyer_activity_at(self, obj: CreditApplication) -> str | None:
+        activity = self._last_buyer_activity(obj)
+        # Mismo formato y zona horaria que los demás campos de fecha de la API.
+        return None if activity is None else serializers.DateTimeField().to_representation(activity)
+
+    @extend_schema_field(serializers.BooleanField(allow_null=True))
+    def get_buyer_inactive(self, obj: CreditApplication) -> bool | None:
+        """Con la anotación y los campos de la fila, sin consultas (precisión C)."""
+        if obj.status not in WAITING_STATUSES:
+            return None
+        reference = self._last_buyer_activity(obj) or obj.current_stage_started_at
+        return timezone.now() - reference > timedelta(days=settings.BUYER_INACTIVITY_DAYS)
+
     @extend_schema_field(serializers.BooleanField(allow_null=True))
     def get_ready_to_file_blocked(self, obj: CreditApplication) -> bool | None:
         """Con los campos de la fila, sin consultas."""
@@ -353,6 +393,18 @@ class ApplicationSerializer(serializers.ModelSerializer):
             co_applicants = active.filter(role=ParticipantRole.CO_APPLICANT).count()
             solidary_debtors = active.filter(role=ParticipantRole.SOLIDARY_DEBTOR).count()
         return {"co_applicants": co_applicants, "solidary_debtors": solidary_debtors}
+
+
+class QuickFilterSerializer(serializers.Serializer):
+    """Pestaña rápida del listado con su conteo dentro del alcance del actor."""
+
+    code = serializers.CharField(help_text="Valor de `quick_filter` en el listado.")
+    label = serializers.CharField()  # type: ignore[assignment]
+    statuses = serializers.ListField(
+        child=serializers.ChoiceField(choices=ApplicationStatus.choices),
+        help_text="Estados que agrupa; vacío en `all`.",
+    )
+    count = serializers.IntegerField()
 
 
 class ApplicationSummarySerializer(serializers.ModelSerializer):

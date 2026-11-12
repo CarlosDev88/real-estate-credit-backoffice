@@ -122,6 +122,15 @@ Las mismas de siempre:
 - **Imports locales de `schedule_completeness_refresh`** en `documents` (carga, análisis, revisión y slots) y en `bank_evaluation`: `services` importa esos módulos al cargarse.
 - **Prueba existente ajustada:** `test_a_clean_scan_leaves_the_version_in_review` contaba exactamente un `on_commit` en la carga. Ahora comprueba que el análisis se encola una sola vez; los demás `on_commit` son los refrescos.
 
+### Parte 4: decisiones de implementación
+- **Forma de `/applications/quick-filters`:** un arreglo JSON plano, como `/available-actions` (la convención del proyecto para listas sin paginar), con `pagination_class = None`. Sin eso, el OpenAPI lo documentaba como `PaginatedQuickFilterList`.
+- **Filtros compartidos:** `_filtered_applications` aplica el alcance y los filtros por id y por catálogo, y la búsqueda la agrega `SearchFilter` con los mismos `search_fields`. Así el listado y las pestañas no pueden divergir. El listado suma encima `status` y `quick_filter`. Los parámetros del OpenAPI también se comparten (`LIST_FILTER_PARAMETERS`).
+- **Conteos:** un solo `aggregate` sobre `CreditApplication.objects.filter(pk__in=<filtradas>)`. Así no arrastra las anotaciones del listado y sigue siendo una sola consulta.
+- **`quick_filter` inválido:** usa el mismo `_choice_param` que `status`, con el mensaje "Valor no permitido. Opciones: …".
+- **`last_buyer_activity_at`:** es una anotación de `applications_queryset()`, así que sale también en el detalle y en la lista del cliente. Si la instancia no la trae, se consulta. Se serializa con `DateTimeField`, con el mismo formato y la misma zona horaria que las demás fechas.
+- **`buyer_inactive`:** "más de 3 días" es estricto: con exactamente 3 días es `false`. Las sesiones que nunca se usaron (`last_seen_at` nulo) no cuentan como actividad.
+- **`WAITING_STATUSES`** sale de la misma tabla de pestañas: si la pestaña `waiting` cambia, el aviso la sigue.
+
 ## Plan detallado de las partes que faltan
 Partes 1 y 2 hechas (campos del listado, filtros y `short_name`). Faltan la 3, la 4 y el cierre. Todo lo de abajo ya está decidido: no se pregunta.
 
