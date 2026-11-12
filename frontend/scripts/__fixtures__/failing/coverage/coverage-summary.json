@@ -1,0 +1,8 @@
+{"total":{"lines":{"total":1000,"covered":652,"skipped":0,"pct":65.2},"statements":{"total":1000,"covered":650,"skipped":0,"pct":65},"functions":{"total":200,"covered":120,"skipped":0,"pct":60},"branches":{"total":400,"covered":250,"skipped":0,"pct":62.5}},
+"/repo/frontend/src/components/ui/app-shell.tsx":{"lines":{"total":120,"covered":0,"skipped":0,"pct":0}},
+"/repo/frontend/src/components/ui/pdf-loader.ts":{"lines":{"total":12,"covered":0,"skipped":0,"pct":0}},
+"/repo/frontend/src/providers/toast.tsx":{"lines":{"total":30,"covered":6,"skipped":0,"pct":20}},
+"/repo/frontend/src/lib/theme/theme.ts":{"lines":{"total":20,"covered":10,"skipped":0,"pct":50}},
+"/repo/frontend/src/lib/api/fetch.ts":{"lines":{"total":40,"covered":36,"skipped":0,"pct":90}},
+"/repo/frontend/src/lib/format/index.ts":{"lines":{"total":60,"covered":60,"skipped":0,"pct":100}},
+"/repo/frontend/src/lib/navigation/types.ts":{"lines":{"total":0,"covered":0,"skipped":0,"pct":100}}}

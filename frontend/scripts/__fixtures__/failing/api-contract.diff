@@ -1,0 +1,49 @@
+--- a/frontend/src/lib/api/schema.d.ts
++++ b/frontend/src/lib/api/schema.d.ts
+@@ -6,12 +6,12 @@
+         get: operations["auth_me"];
+         put?: never;
+     };
+-    "/api/v1/old": {
++    "/api/v1/new": {
+         parameters: {
+             query?: never;
+         };
+-        get: operations["old_list"];
+-        post?: never;
++        get?: never;
++        post: operations["new_create"];
+     };
+ }
+ export type webhooks = Record<string, never>;
+@@ -19,11 +19,12 @@
+     schemas: {
+         Me: {
+             id: string;
++            name: string;
+         };
+-        Old: {
+-            x: number;
++        NewThing: {
++            y: string;
+         };
+-        Status: "A" | "B";
++        Status: "A" | "B" | "C";
+     };
+     responses: never;
+ }
+@@ -32,11 +33,12 @@
+     auth_me: {
+         responses: {
+             200: components["schemas"]["Me"];
++            401: never;
+         };
+     };
+-    old_list: {
++    new_create: {
+         responses: {
+-            200: never;
++            201: components["schemas"]["NewThing"];
+         };
+     };
+ }

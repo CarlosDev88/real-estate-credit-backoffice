@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<testsuites name="vitest tests" tests="3" failures="0" errors="0" time="12.5">
+    <testsuite name="src/lib/format/format.test.ts" tests="3" failures="0" errors="0" skipped="0" time="0.2">
+        <testcase classname="src/lib/format/format.test.ts" name="montos &gt; formatea COP" time="0.01">
+        </testcase>
+        <testcase classname="src/lib/format/format.test.ts" name="montos &gt; porcentaje" time="0.01">
+        </testcase>
+        <testcase classname="src/lib/format/format.test.ts" name="fechas &gt; Bogotá" time="0.01">
+        </testcase>
+    </testsuite>
+</testsuites>

@@ -1,0 +1,6 @@
+$ next typegen && tsc --noEmit
+Generating route types...
+✓ Types generated successfully
+src/components/ui/money.tsx(48,58): error TS2367: This comparison appears to be unintentional because the types 'number' and 'string' have no overlap.
+src/lib/api/session.ts(142,3): error TS2322: Type 'Promise<boolean> | null' is not assignable to type 'Promise<boolean>'.
+[ELIFECYCLE] Command failed with exit code 2.

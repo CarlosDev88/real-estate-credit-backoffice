@@ -14,6 +14,8 @@ export const lightTheme: ThemeConfig = {
     "colorTextSecondary": "#4B5561",
     "colorTextTertiary": "#5E6A77",
     "colorTextDisabled": "#8B98A6",
+    "colorTextPlaceholder": "#5E6A77",
+    "colorTextLightSolid": "#FFFFFF",
     "colorBgLayout": "#F4F6F8",
     "colorBgContainer": "#FFFFFF",
     "colorBgElevated": "#FFFFFF",
@@ -52,6 +54,14 @@ export const lightTheme: ThemeConfig = {
       "cellPaddingBlock": 10,
       "cellPaddingInline": 12
     },
+    "Button": {
+      "colorPrimary": "#1F4E91",
+      "colorPrimaryHover": "#193F75",
+      "colorPrimaryActive": "#14325C",
+      "primaryColor": "#FFFFFF",
+      "colorError": "#9E2F2A",
+      "dangerColor": "#FFFFFF"
+    },
     "Card": {
       "headerFontSize": 16
     },
@@ -75,6 +85,8 @@ export const darkTheme: ThemeConfig = {
     "colorTextSecondary": "#A8B3BF",
     "colorTextTertiary": "#8B98A6",
     "colorTextDisabled": "#66727F",
+    "colorTextPlaceholder": "#8B98A6",
+    "colorTextLightSolid": "#0D1117",
     "colorBgLayout": "#0D1117",
     "colorBgContainer": "#151A21",
     "colorBgElevated": "#151A21",
@@ -112,6 +124,14 @@ export const darkTheme: ThemeConfig = {
       "borderColor": "#2C343E",
       "cellPaddingBlock": 10,
       "cellPaddingInline": 12
+    },
+    "Button": {
+      "colorPrimary": "#5B8DD6",
+      "colorPrimaryHover": "#7FA7DB",
+      "colorPrimaryActive": "#ADC8EA",
+      "primaryColor": "#0D1117",
+      "colorError": "#EF6B64",
+      "dangerColor": "#0D1117"
     },
     "Card": {
       "headerFontSize": 16

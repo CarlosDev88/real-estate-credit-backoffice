@@ -93,10 +93,30 @@ Default services (simple mode):
 
 | Service | Local address | Purpose |
 | --- | --- | --- |
+| Frontend (Next.js) | http://localhost:3000 | Backoffice and buyer portal (production build). Forwards `/api/v1/*` to the backend. |
 | Django backend | http://localhost:8000 | API and documentation. Applies migrations and creates the cache table on every start. |
 | PostgreSQL | `localhost:5433` | Local development database, also the shared cache used by rate limits. |
 
 Uploaded documents and filing packages are stored in the `mvp_credit_documents_data` volume. Redis, SeaweedFS, the Celery worker, and ClamAV belong to the `full` profile.
+
+### Demo and Frontend Development
+
+The `frontend` container is built from the repository root (`frontend/Dockerfile`), because the app imports the design tokens from `design/generated/`. Next.js fixes the `/api/v1/*` rewrite when it builds, so the backend address goes in as a build argument (`API_ORIGIN=http://backend:8000` in `docker-compose.yml`), not at runtime.
+
+- **Demo:** `docker compose up -d --build` and open http://localhost:3000. After changing frontend code, rebuild it with `docker compose up -d --build frontend`.
+- **Frontend development:** start only the backend side with `docker compose up -d postgres backend`, then run `pnpm dev` in `frontend/` (http://localhost:3000, with hot reload). The `frontend` container would take the same port: stop it first with `docker compose stop frontend`.
+
+The rewrite reaches Django with the host `backend`, so `DJANGO_ALLOWED_HOSTS` in `.env` must include it (`.env.example` already does). Without it, every `/api/v1/*` call through the frontend answers `400` and the backend log shows `DisallowedHost`. The browser origin is still `http://localhost:3000`, which `CSRF_TRUSTED_ORIGINS` already allows.
+
+### Test User
+
+The database starts without users. To log in from the frontend, create an internal user with a role, for example an advisor (replace the email and the password):
+
+```powershell
+docker compose exec backend python manage.py shell -c "from apps.identity.models import Role, User, UserRole; u = User.objects.create_user('advisor@example.com', '<a long password>', first_name='Test', last_name='Advisor'); UserRole.objects.create(user=u, role=Role.objects.get(code='ADVISOR'))"
+```
+
+The frontend end-to-end checks read that user from `frontend/.env.local` (`E2E_USER_EMAIL` and `E2E_USER_PASSWORD`), which is never committed. The login locks for 15 minutes after 5 failed attempts per email and IP.
 
 ### Local Modes
 
@@ -104,7 +124,7 @@ Uploaded documents and filing packages are stored in the `mvp_credit_documents_d
 
 | | Simple (default) | Full (`full` profile) |
 | --- | --- | --- |
-| Containers | `postgres`, `backend` | Also `redis`, `seaweedfs`, `storage-init`, `worker`, and `clamav`. |
+| Containers | `postgres`, `backend`, `frontend` | Also `redis`, `seaweedfs`, `storage-init`, `worker`, and `clamav`. |
 | Documents | Disk, in the `mvp_credit_documents_data` volume (`DOCUMENT_STORAGE_BACKEND=filesystem`). | SeaweedFS, through the S3 API (`s3`). |
 | Downloads | Signed backend URL: `/api/v1/storage/objects/{token}`. | Presigned S3 URL (`http://localhost:8333`). |
 | Cache (rate limits) | PostgreSQL table (`CACHE_BACKEND=database`). | Redis (`redis`). |
