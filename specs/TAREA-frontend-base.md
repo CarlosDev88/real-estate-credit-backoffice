@@ -346,6 +346,17 @@ _(se completan al resolver las ambigüedades de cada fase)_
 - Los *fixtures* (`scripts/__fixtures__/`) quedan fuera de Prettier, ESLint y `tsconfig`: Prettier cambiaría la indentación de 4 espacios del `schema.d.ts`, que es lo que lee el script.
 - **Pendiente:** el escaneo de dependencias en cada PR que pide REQ §10.5 no está en la parte 6.
 
+**Contenedor (parte 7):** se sigue el "Plan detallado". Además, lo que decidió el agente:
+- Imagen base `node:24.22.2-alpine`: la 24.22.3 tenía dos días, y se aplica el mismo criterio de antigüedad que con los paquetes.
+- La etapa `run` arranca con `pnpm start` y copia el frontend completo, con `node_modules`. La imagen pesa unos 1,5 GB. **Pendiente:** `output: "standalone"` para achicarla.
+- pnpm se descarga al construir la imagen (`RUN pnpm --version` como `node`), así el contenedor no necesita red al arrancar.
+- Hizo falta `backend` en `DJANGO_ALLOWED_HOSTS`, porque el rewrite llega a Django con ese host. Carlos lo agregó en `backend/.env` y en `backend/.env.example`. `CSRF_TRUSTED_ORIGINS` no cambia.
+- Verificación desde el worktree:
+  - El `.env` existe solo en la carpeta principal y los dos compose comparten el nombre de proyecto.
+  - Por eso se levantó solo `frontend`, con `--no-deps`, `--project-directory` en la carpeta principal y un *override* temporal que apunta el build al worktree.
+  - El backend no se recreó, y al final se quitó el contenedor `frontend`.
+- `backend/README.md` explica cómo crear el usuario de prueba con un comando de `manage.py shell` (sin la contraseña real).
+
 **Saltos de línea:** los archivos de `frontend/` van en LF (Prettier `endOfLine: "lf"`), y se verifica con `git ls-files --eol`.
 
 ## Plan detallado de lo que falta en F0
