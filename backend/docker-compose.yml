@@ -24,7 +24,14 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    command: python manage.py runserver 0.0.0.0:8000
+    # Antes de servir: migraciones y tabla de la caché (las dos se pueden repetir sin
+    # efecto) y una línea en el log con el modo de los servicios. Si una migración
+    # falla, el backend no arranca.
+    command: >-
+      sh -c "python manage.py migrate --noinput
+      && python manage.py createcachetable
+      && python manage.py describe_local_services
+      && exec python manage.py runserver 0.0.0.0:8000"
     env_file:
       - .env
     ports:
@@ -33,22 +40,32 @@ services:
       - .:/app
       # Contrato OpenAPI del monorepo: desde /app, `../contracts` es esta carpeta.
       - ../contracts:/contracts
+      # Documentos del modo local simple (DOCUMENT_STORAGE_BACKEND=filesystem).
+      - mvp_credit_documents_data:/data/documents
     depends_on:
       postgres:
         condition: service_healthy
+      # Solo existen con el perfil `full`; sin él, estas dependencias se ignoran.
       redis:
         condition: service_healthy
+        required: false
       storage-init:
         condition: service_completed_successfully
+        required: false
     networks:
       - mvp_credit_network
 
-  # Almacenamiento de documentos compatible con S3 (SeaweedFS). Arranca siempre: la API
-  # guarda ahí las cargas del comprador. En producción se reemplaza por S3 real con solo
-  # cambiar las variables DOCUMENT_STORAGE_*. MinIO se descartó: su edición comunitaria
-  # ya no publica imágenes. SeaweedFS no implementa SSE: DOCUMENT_STORAGE_SSE va vacío.
+  # --- Perfil `full`: la arquitectura asíncrona real (docker compose --profile full up) ---
+  # Requiere el bloque "Full" de .env. Sin el perfil, el backend usa disco, la caché en
+  # PostgreSQL y tareas en el mismo proceso.
+
+  # Almacenamiento de documentos compatible con S3 (SeaweedFS). En producción se
+  # reemplaza por S3 real con solo cambiar las variables DOCUMENT_STORAGE_*. MinIO se
+  # descartó: su edición comunitaria ya no publica imágenes. SeaweedFS no implementa SSE:
+  # DOCUMENT_STORAGE_SSE va vacío.
   seaweedfs:
     image: chrislusf/seaweedfs:3.85
+    profiles: ["full"]
     environment:
       S3_ACCESS_KEY: ${DOCUMENT_STORAGE_ACCESS_KEY_ID:-}
       S3_SECRET_KEY: ${DOCUMENT_STORAGE_SECRET_ACCESS_KEY:-}
@@ -83,6 +100,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    profiles: ["full"]
     command: python manage.py init_document_storage
     env_file:
       - .env
@@ -95,9 +113,10 @@ services:
     networks:
       - mvp_credit_network
 
-  # Redis arranca siempre: lo usan los límites de consumo de la autenticación.
+  # Caché de los límites de consumo y broker de Celery en el modo `full`.
   redis:
     image: redis:7-alpine
+    profiles: ["full"]
     command: redis-server --appendonly yes
     volumes:
       - mvp_credit_redis_data:/data
@@ -113,7 +132,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    profiles: ["async"]
+    profiles: ["full"]
     command: celery -A config worker --loglevel=INFO
     env_file:
       - .env
@@ -137,7 +156,7 @@ services:
   # las firmas con freshclam; la primera vez puede tardar varios minutos.
   clamav:
     image: clamav/clamav:1.4.3
-    profiles: ["async"]
+    profiles: ["full"]
     volumes:
       - mvp_credit_clamav_data:/var/lib/clamav
     healthcheck:
@@ -158,6 +177,8 @@ volumes:
     name: mvp_credit_seaweedfs_data
   mvp_credit_clamav_data:
     name: mvp_credit_clamav_data
+  mvp_credit_documents_data:
+    name: mvp_credit_documents_data
 
 networks:
   mvp_credit_network:

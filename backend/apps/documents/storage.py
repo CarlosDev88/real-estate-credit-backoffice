@@ -1,10 +1,15 @@
 """Almacenamiento privado de archivos, compatible con S3 (DER §8.1, RNF-03 y RNF-15).
 
-Una interfaz propia (``ObjectStorage``) con dos implementaciones:
+Una interfaz propia (``ObjectStorage``) con tres implementaciones:
 
 - ``S3Storage``: ``boto3`` sobre S3 real o SeaweedFS en local. Pasar de uno a otro es
   solo cambiar variables de entorno (``DOCUMENT_STORAGE_*``).
+- ``FilesystemStorage``: una carpeta local (un volumen de Docker), para correr el
+  proyecto en local sin servicios externos. La descarga es una URL firmada hacia el
+  propio backend (``GET /api/v1/storage/objects/{token}``).
 - ``MemoryStorage``: para pruebas y CI, sin servicios externos.
+
+``filesystem`` y ``memory`` solo se admiten con DEBUG o en pruebas.
 
 Un solo bucket privado con prefijos ``documents/`` y ``packages/``. La clave nunca lleva
 el nombre original ni datos personales, y nunca sale en una respuesta ni en un log: la
@@ -13,10 +18,15 @@ descarga es una URL prefirmada de corta duración.
 
 import io
 import logging
+import os
+import shutil
+import tempfile
 import unicodedata
 import uuid
 from collections.abc import Callable
+from dataclasses import dataclass
 from functools import lru_cache
+from pathlib import Path
 from typing import Any, BinaryIO, Protocol
 from urllib.parse import quote, urlencode
 
@@ -24,15 +34,24 @@ import boto3
 from botocore.config import Config
 from botocore.exceptions import BotoCoreError, ClientError
 from django.conf import settings
+from django.core import signing
 from django.core.exceptions import ImproperlyConfigured
+from django.urls import reverse
+from django.utils import timezone
 
 from apps.documents.exceptions import StorageUnavailable
 
 logger = logging.getLogger(__name__)
 
 S3 = "s3"
+FILESYSTEM = "filesystem"
 MEMORY = "memory"
-STORAGE_BACKENDS = (S3, MEMORY)
+STORAGE_BACKENDS = (S3, FILESYSTEM, MEMORY)
+FAKE_STORAGE_BACKENDS = (FILESYSTEM, MEMORY)
+
+# Sal de la firma de las URL del backend en disco: un token de otra firma de Django
+# (sesiones, enlaces de acceso) no sirve aquí.
+OBJECT_TOKEN_SALT = "apps.documents.storage.object-url"
 
 DOCUMENTS_PREFIX = "documents"
 PACKAGES_PREFIX = "packages"
@@ -216,6 +235,141 @@ def _s3_client(endpoint_url: str) -> Any:
     )
 
 
+class InvalidObjectKey(ValueError):
+    """La clave podría salir de la carpeta raíz del almacenamiento en disco."""
+
+
+@dataclass(frozen=True)
+class ObjectGrant:
+    """Lo que autoriza una URL firmada del backend en disco."""
+
+    key: str
+    filename: str
+    content_type: str
+
+
+class InvalidObjectToken(Exception):
+    """La URL firmada venció, fue alterada o no es de este almacenamiento."""
+
+
+def sign_object_url(key: str, *, expires_in: int, filename: str, content_type: str) -> str:
+    """Ruta relativa y firmada hacia ``GET /api/v1/storage/objects/{token}``.
+
+    Relativa para que funcione igual desde el frontend (rewrites de ``/api/v1``) que
+    directo contra el backend. Es una credencial: nunca va a un log.
+    """
+    expires_at = int(timezone.now().timestamp()) + expires_in
+    payload = {"k": key, "f": filename, "t": content_type, "e": expires_at}
+    token = signing.dumps(payload, salt=OBJECT_TOKEN_SALT, compress=True)
+    return reverse("documents:storage-object", kwargs={"token": token})
+
+
+def read_object_token(token: str) -> ObjectGrant:
+    """``InvalidObjectToken`` si la firma no es válida o el enlace venció."""
+    try:
+        payload = signing.loads(token, salt=OBJECT_TOKEN_SALT)
+    except signing.BadSignature as exc:
+        raise InvalidObjectToken() from exc
+    try:
+        expires_at = int(payload["e"])
+        grant = ObjectGrant(
+            key=str(payload["k"]), filename=str(payload["f"]), content_type=str(payload["t"])
+        )
+    except (KeyError, TypeError, ValueError) as exc:
+        raise InvalidObjectToken() from exc
+    if timezone.now().timestamp() >= expires_at:
+        raise InvalidObjectToken()
+    return grant
+
+
+class FilesystemStorage:
+    """Objetos en una carpeta local (un volumen de Docker), para desarrollo. No cifra.
+
+    La clave es la ruta relativa dentro de ``root``. Se valida que no pueda salir de
+    ella: sin ``..``, sin ``.``, sin segmentos vacíos, sin rutas absolutas ni ``\\``.
+    """
+
+    provider = FILESYSTEM
+    encryption_key_version: str | None = None
+
+    def __init__(self, root: Path, bucket: str) -> None:
+        self.root = Path(root)
+        self.bucket = bucket
+
+    def _path(self, key: str) -> Path:
+        parts = key.split("/")
+        if (
+            not key
+            or "\\" in key
+            or "\x00" in key
+            or any(part in ("", ".", "..") for part in parts)
+        ):
+            raise InvalidObjectKey("Clave de objeto inválida.")
+        path = self.root.joinpath(*parts)
+        root = self.root.resolve()
+        if not path.resolve().is_relative_to(root):
+            raise InvalidObjectKey("Clave de objeto inválida.")
+        return path
+
+    def _fail(self, operation: str, exc: OSError) -> StorageUnavailable:
+        logger.warning("Almacenamiento en disco: %s falló (%s)", operation, type(exc).__name__)
+        return StorageUnavailable(f"El almacenamiento no completó {operation}.")
+
+    def put(self, key: str, content: BinaryIO, *, content_type: str) -> None:
+        path = self._path(key)
+        try:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            # Se escribe aparte y se reemplaza de una vez: nunca queda un objeto a medias.
+            descriptor, temporary = tempfile.mkstemp(dir=path.parent, prefix=".tmp-")
+            try:
+                with os.fdopen(descriptor, "wb") as handle:
+                    shutil.copyfileobj(content, handle)
+                os.replace(temporary, path)
+            except BaseException:
+                Path(temporary).unlink(missing_ok=True)
+                raise
+        except OSError as exc:
+            raise self._fail("put", exc) from exc
+
+    def open(self, key: str) -> BinaryIO:
+        path = self._path(key)
+        try:
+            return path.open("rb")
+        except FileNotFoundError as exc:
+            raise StorageUnavailable("El objeto no existe.") from exc
+        except OSError as exc:
+            raise self._fail("open", exc) from exc
+
+    def delete(self, key: str) -> None:
+        path = self._path(key)
+        try:
+            path.unlink(missing_ok=True)
+        except OSError as exc:
+            raise self._fail("delete", exc) from exc
+
+    def presigned_url(self, key: str, *, expires_in: int, filename: str, content_type: str) -> str:
+        self._path(key)
+        return sign_object_url(
+            key, expires_in=expires_in, filename=filename, content_type=content_type
+        )
+
+    def ensure_bucket(self) -> bool:
+        created = not self.root.is_dir()
+        try:
+            self.root.mkdir(parents=True, exist_ok=True)
+        except OSError as exc:
+            raise self._fail("ensure_bucket", exc) from exc
+        return created
+
+    def check(self) -> None:
+        """Comprueba que la carpeta exista y se pueda escribir en ella."""
+        try:
+            with tempfile.TemporaryFile(dir=self.root, prefix=".check-"):
+                pass
+        except OSError as exc:
+            raise self._fail("check", exc) from exc
+
+
 def fake_services_allowed() -> bool:
     return bool(settings.DEBUG or settings.DOCUMENT_ALLOW_FAKE_SERVICES)
 
@@ -225,10 +379,12 @@ def validate_storage_settings() -> None:
     backend = settings.DOCUMENT_STORAGE_BACKEND
     if backend not in STORAGE_BACKENDS:
         raise ImproperlyConfigured(f"DOCUMENT_STORAGE_BACKEND debe ser uno de {STORAGE_BACKENDS}.")
-    if backend == MEMORY and not fake_services_allowed():
+    if backend in FAKE_STORAGE_BACKENDS and not fake_services_allowed():
         raise ImproperlyConfigured(
-            "DOCUMENT_STORAGE_BACKEND=memory solo se admite con DEBUG o en pruebas."
+            f"DOCUMENT_STORAGE_BACKEND={backend} solo se admite con DEBUG o en pruebas."
         )
+    if backend == FILESYSTEM and not Path(settings.DOCUMENT_STORAGE_ROOT).is_absolute():
+        raise ImproperlyConfigured("DOCUMENT_STORAGE_ROOT debe ser una ruta absoluta.")
 
 
 @lru_cache(maxsize=1)
@@ -236,6 +392,10 @@ def get_storage() -> ObjectStorage:
     """El almacenamiento configurado. Se crea una vez por proceso."""
     if settings.DOCUMENT_STORAGE_BACKEND == MEMORY:
         return MemoryStorage()
+    if settings.DOCUMENT_STORAGE_BACKEND == FILESYSTEM:
+        return FilesystemStorage(
+            root=Path(settings.DOCUMENT_STORAGE_ROOT), bucket=settings.DOCUMENT_STORAGE_BUCKET
+        )
     endpoint = settings.DOCUMENT_STORAGE_ENDPOINT_URL
     public_endpoint = settings.DOCUMENT_STORAGE_PUBLIC_ENDPOINT_URL
     return S3Storage(

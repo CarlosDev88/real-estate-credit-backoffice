@@ -144,6 +144,11 @@ Partes sugeridas, un commit por parte:
 
    Después del merge, Carlos agrega el job como check obligatorio en `protect-master`.
 
+7. Servicio `frontend` en `backend/docker-compose.yml` (agregado por `TAREA-local-simple.md`): la F0 lo agrega **solo después del merge de esa tarea**, para no chocar con el compose.
+   - Puerto `3000`, sin perfil: con `docker compose up -d` quedan tres contenedores (`postgres`, `backend` y `frontend`).
+   - `API_ORIGIN=http://backend:8000` para los rewrites de `/api/v1` (dentro de la red de Docker el backend se llama `backend`, no `localhost`).
+   - Las descargas de documentos en el modo local simple son rutas relativas (`/api/v1/storage/objects/{token}`) y pasan por los mismos rewrites.
+
 **Terminado F0:** login funcionando contra el backend local, que lleva a `/solicitudes` (vacía, dentro del shell); el tema funciona; el CI está verde.
 
 ### F1 y F2 — En paralelo (dos agentes, dos worktrees)

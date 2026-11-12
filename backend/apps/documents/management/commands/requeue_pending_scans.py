@@ -5,7 +5,7 @@ from django.core.management.base import BaseCommand, CommandParser
 from django.utils import timezone
 
 from apps.documents.models import FileObject, ScanStatus
-from apps.documents.tasks import scan_file_object
+from apps.documents.tasks import log_eager_failure, scan_file_object
 
 
 class Command(BaseCommand):
@@ -35,6 +35,7 @@ class Command(BaseCommand):
         )
         count = 0
         for file_object_id in pending.iterator():
-            scan_file_object.delay(str(file_object_id))
+            result = scan_file_object.delay(str(file_object_id))
+            log_eager_failure(result, f"Análisis del archivo {file_object_id}")
             count += 1
         self.stdout.write(self.style.SUCCESS(f"Análisis reencolados: {count}."))
