@@ -7,6 +7,12 @@ app_name = "applications"
 urlpatterns = [
     # Solicitudes (sección 16)
     path("applications", views.ApplicationListView.as_view(), name="application-list"),
+    # Antes de las rutas con `<uuid:…>`.
+    path(
+        "applications/quick-filters",
+        views.ApplicationQuickFiltersView.as_view(),
+        name="application-quick-filters",
+    ),
     path(
         "applications/<uuid:application_id>",
         views.ApplicationDetailView.as_view(),

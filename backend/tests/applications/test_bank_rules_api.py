@@ -461,6 +461,7 @@ def test_eligible_products_lists_available_products_with_an_unsaved_evaluation(
             "id": str(seeded_product().bank_id),
             "code": "BANCOLOMBIA",
             "name": "Bancolombia",
+            "short_name": "",
         },
         "product_type_code": "MORTGAGE",
         "min_amount_cop": None,

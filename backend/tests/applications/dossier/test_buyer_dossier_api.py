@@ -134,7 +134,9 @@ def test_a_clean_scan_leaves_the_version_in_review(
         response = upload(portal, slot)
 
     assert response.status_code == 201, response.content
-    assert len(callbacks) == 1
+    # El análisis se encola una sola vez (los demás on_commit recalculan la completitud).
+    scans = [cb for cb in callbacks if getattr(cb, "func", None) is uploads._enqueue_scan]
+    assert len(scans) == 1
     version = DocumentFile.objects.select_related("file_object").get(slot=slot)
     assert version.status == DocumentFileStatus.IN_REVIEW
     assert version.file_object.scan_status == ScanStatus.CLEAN

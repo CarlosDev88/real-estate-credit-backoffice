@@ -123,6 +123,11 @@ def review_slot(actor: User, slot: ApplicationDocumentSlot, review: Review) -> l
         changed = _waive(actor, slot, review)
     else:
         changed = _reopen(actor, slot, review)
+    # Aprobar, rechazar, exonerar y reabrir pasan todos por aquí. Import local para no
+    # crear un ciclo con `apps.applications.services`.
+    from apps.applications.services import schedule_completeness_refresh
+
+    schedule_completeness_refresh(slot.application_id)
     logger.info(
         "Revisión %s sobre %s slot(s) desde %s por %s",
         review.decision,

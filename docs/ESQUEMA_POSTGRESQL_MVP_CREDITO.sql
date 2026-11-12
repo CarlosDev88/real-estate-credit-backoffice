@@ -260,6 +260,8 @@ CREATE TABLE banks (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     code VARCHAR(50) NOT NULL UNIQUE,
     name VARCHAR(180) NOT NULL,
+    -- Nombre corto opcional para listados (por ejemplo, FNA); vacío: se muestra name.
+    short_name VARCHAR(30) NOT NULL DEFAULT '',
     tax_id VARCHAR(30),
     status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
     operational_notes TEXT,
@@ -429,6 +431,12 @@ CREATE TABLE credit_applications (
     withdrawn_at TIMESTAMPTZ,
     withdrawal_reason_item_id UUID REFERENCES catalog_items(id) ON DELETE RESTRICT,
     closed_at TIMESTAMPTZ,
+    -- Completitud guardada para el listado (la misma regla de /completeness); nulos hasta
+    -- el primer cálculo. La recalculan los cambios de datos y del expediente, y el comando
+    -- refresh_application_completeness.
+    completeness_pct SMALLINT CHECK (completeness_pct IS NULL OR completeness_pct BETWEEN 0 AND 100),
+    ready_to_file_ok BOOLEAN,
+    completeness_refreshed_at TIMESTAMPTZ,
     CONSTRAINT ck_credit_applications_withdrawal CHECK (
         (withdrawn_at IS NULL AND withdrawal_reason_item_id IS NULL) OR
         (withdrawn_at IS NOT NULL AND withdrawal_reason_item_id IS NOT NULL)

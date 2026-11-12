@@ -25,11 +25,13 @@ services:
       context: .
       dockerfile: Dockerfile
     # Antes de servir: migraciones y tabla de la caché (las dos se pueden repetir sin
-    # efecto) y una línea en el log con el modo de los servicios. Si una migración
-    # falla, el backend no arranca.
+    # efecto), la completitud guardada del listado y una línea en el log con el modo de
+    # los servicios. Si una migración falla, el backend no arranca; el recálculo de la
+    # completitud siempre termina bien (un error queda en el log).
     command: >-
       sh -c "python manage.py migrate --noinput
       && python manage.py createcachetable
+      && python manage.py refresh_application_completeness
       && python manage.py describe_local_services
       && exec python manage.py runserver 0.0.0.0:8000"
     env_file:

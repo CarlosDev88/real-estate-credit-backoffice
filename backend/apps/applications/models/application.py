@@ -98,11 +98,21 @@ class CreditApplication(models.Model):
         related_name="+",
     )
     closed_at = models.DateTimeField(null=True, blank=True)
+    # Completitud guardada para el listado: la calcula `completeness()` (la misma regla de
+    # `/completeness`) después de cada cambio de datos o del expediente, y el comando
+    # `refresh_application_completeness`. Nulos hasta el primer cálculo.
+    completeness_pct = models.PositiveSmallIntegerField(null=True, blank=True)
+    ready_to_file_ok = models.BooleanField(null=True, blank=True)
+    completeness_refreshed_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         db_table = "credit_applications"
         ordering = ["-created_at"]
         constraints = [
+            models.CheckConstraint(
+                condition=Q(completeness_pct__isnull=True) | Q(completeness_pct__lte=100),
+                name="ck_credit_applications_completeness_pct",
+            ),
             models.CheckConstraint(
                 condition=Q(status__in=ApplicationStatus.values),
                 name="ck_credit_applications_status",

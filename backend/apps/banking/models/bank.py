@@ -25,6 +25,8 @@ class Bank(models.Model):
     # Código interno estable, por ejemplo `BANCOLOMBIA`. No se renombra.
     code = models.CharField(max_length=50, unique=True)
     name = models.CharField(max_length=180)
+    # Nombre corto opcional para listados, por ejemplo `FNA`. Vacío: se muestra `name`.
+    short_name = models.CharField(max_length=30, blank=True, default="", db_default="")
     # NIT normalizado con dígito de verificación, por ejemplo `890903938-8`.
     tax_id = models.CharField(max_length=30, blank=True)
     status = models.CharField(max_length=20, choices=BankStatus.choices, default=BankStatus.ACTIVE)

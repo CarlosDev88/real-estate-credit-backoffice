@@ -467,7 +467,7 @@
                         "schema": {
                             "type": "string"
                         },
-                        "description": "Código `lead_origin`."
+                        "description": "Código `lead_origin`. Uno que no existe responde `400`."
                     },
                     {
                         "name": "page",
@@ -497,6 +497,14 @@
                     },
                     {
                         "in": "query",
+                        "name": "product_type",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Tipo de crédito: código `bank_product_type`. Uno que no existe responde `400`."
+                    },
+                    {
+                        "in": "query",
                         "name": "project_id",
                         "schema": {
                             "type": "string",
@@ -509,7 +517,24 @@
                         "schema": {
                             "type": "string"
                         },
-                        "description": "Código `loan_purpose`."
+                        "description": "Código `loan_purpose`. Uno que no existe responde `400`."
+                    },
+                    {
+                        "in": "query",
+                        "name": "quick_filter",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "all",
+                                "bank",
+                                "closed",
+                                "draft",
+                                "ready",
+                                "review",
+                                "waiting"
+                            ]
+                        },
+                        "description": "Pestaña rápida (`/applications/quick-filters`). `all` no filtra; junto con `status` se aplican los dos. Un código desconocido responde `400`."
                     },
                     {
                         "name": "search",
@@ -2810,6 +2835,123 @@
                             }
                         },
                         "description": "RESOURCE_NOT_FOUND (inexistente o fuera del alcance)"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "NOT_AUTHENTICATED o SESSION_EXPIRED"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    }
+                }
+            }
+        },
+        "/api/v1/applications/quick-filters": {
+            "get": {
+                "operationId": "applications_quick_filters",
+                "description": "Cada pestaña con los estados que agrupa y cuántas solicitudes tiene, en el orden del listado. Cuenta solo lo que el actor puede ver (asesor: lo asignado; broker: lo que originó; administrador: todo) y aplica los mismos filtros y la misma búsqueda del listado, para que el número coincida con lo que se ve al elegir la pestaña. Ignora `status`, `quick_filter`, la paginación y el orden. Los conteos salen de una sola consulta. Cada estado está en exactamente una pestaña, así que la suma de las demás es igual a `all`.",
+                "summary": "Pestañas rápidas del listado con sus conteos",
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "advisor_id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "bank_id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "origin",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Código `lead_origin`. Uno que no existe responde `400`."
+                    },
+                    {
+                        "in": "query",
+                        "name": "product_id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "product_type",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Tipo de crédito: código `bank_product_type`. Uno que no existe responde `400`."
+                    },
+                    {
+                        "in": "query",
+                        "name": "project_id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "purpose",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Código `loan_purpose`. Uno que no existe responde `400`."
+                    },
+                    {
+                        "name": "search",
+                        "required": false,
+                        "in": "query",
+                        "description": "Un término de búsqueda.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "tags": [
+                    "Applications"
+                ],
+                "security": [
+                    {
+                        "internalSession": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/QuickFilter"
+                                    }
+                                }
+                            }
+                        },
+                        "description": ""
                     },
                     "401": {
                         "content": {
@@ -15335,6 +15477,10 @@
                         ],
                         "readOnly": true
                     },
+                    "status_label": {
+                        "type": "string",
+                        "readOnly": true
+                    },
                     "opportunity_id": {
                         "type": "string",
                         "format": "uuid",
@@ -15344,6 +15490,14 @@
                         "allOf": [
                             {
                                 "$ref": "#/components/schemas/ApplicantRef"
+                            }
+                        ],
+                        "readOnly": true
+                    },
+                    "participants_summary": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/ParticipantsSummary"
                             }
                         ],
                         "readOnly": true
@@ -15366,6 +15520,47 @@
                             }
                         ],
                         "readOnly": true
+                    },
+                    "requested_amount_cop": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "readOnly": true,
+                        "description": "Monto solicitado de la financiación; `null` si aún no hay financiación."
+                    },
+                    "completeness_pct": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "readOnly": true,
+                        "description": "Completitud guardada (0 a 100), la misma regla de `/completeness`. `null` si todavía no se calculó."
+                    },
+                    "ready_to_file_blocked": {
+                        "type": [
+                            "boolean",
+                            "null"
+                        ],
+                        "readOnly": true,
+                        "description": "Solo en `READY_TO_FILE`: `true` si ya no cumple la guarda (documento rechazado, reabierto, vencido o versión nueva), `false` si cumple. `null` en los demás estados o sin valor calculado."
+                    },
+                    "last_buyer_activity_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time",
+                        "readOnly": true,
+                        "description": "Última vez que el comprador usó el portal en esta solicitud; `null` si nunca entró. Sirve para el texto del aviso de inactividad."
+                    },
+                    "buyer_inactive": {
+                        "type": [
+                            "boolean",
+                            "null"
+                        ],
+                        "readOnly": true,
+                        "description": "Solo en la pestaña `waiting` (esperando al comprador): `true` si la última actividad del comprador (o, si nunca entró, el inicio de la etapa) tiene más de `BUYER_INACTIVITY_DAYS` días (3), `false` si no. `null` en los demás estados."
                     },
                     "assigned_advisor": {
                         "allOf": [
@@ -15450,17 +15645,24 @@
                     "applicant",
                     "assigned_advisor",
                     "bank_product",
+                    "buyer_inactive",
                     "closed_at",
                     "code",
+                    "completeness_pct",
                     "created_at",
                     "current_stage_started_at",
                     "id",
+                    "last_buyer_activity_at",
                     "opportunity_id",
                     "origin",
+                    "participants_summary",
                     "project",
                     "purpose",
                     "ready_to_file_at",
+                    "ready_to_file_blocked",
+                    "requested_amount_cop",
                     "status",
+                    "status_label",
                     "updated_at",
                     "version",
                     "withdrawal_reason",
@@ -15530,6 +15732,10 @@
                         ],
                         "readOnly": true
                     },
+                    "status_label": {
+                        "type": "string",
+                        "readOnly": true
+                    },
                     "opportunity_id": {
                         "type": "string",
                         "format": "uuid",
@@ -15539,6 +15745,14 @@
                         "allOf": [
                             {
                                 "$ref": "#/components/schemas/ApplicantRef"
+                            }
+                        ],
+                        "readOnly": true
+                    },
+                    "participants_summary": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/ParticipantsSummary"
                             }
                         ],
                         "readOnly": true
@@ -15561,6 +15775,47 @@
                             }
                         ],
                         "readOnly": true
+                    },
+                    "requested_amount_cop": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "readOnly": true,
+                        "description": "Monto solicitado de la financiación; `null` si aún no hay financiación."
+                    },
+                    "completeness_pct": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "readOnly": true,
+                        "description": "Completitud guardada (0 a 100), la misma regla de `/completeness`. `null` si todavía no se calculó."
+                    },
+                    "ready_to_file_blocked": {
+                        "type": [
+                            "boolean",
+                            "null"
+                        ],
+                        "readOnly": true,
+                        "description": "Solo en `READY_TO_FILE`: `true` si ya no cumple la guarda (documento rechazado, reabierto, vencido o versión nueva), `false` si cumple. `null` en los demás estados o sin valor calculado."
+                    },
+                    "last_buyer_activity_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time",
+                        "readOnly": true,
+                        "description": "Última vez que el comprador usó el portal en esta solicitud; `null` si nunca entró. Sirve para el texto del aviso de inactividad."
+                    },
+                    "buyer_inactive": {
+                        "type": [
+                            "boolean",
+                            "null"
+                        ],
+                        "readOnly": true,
+                        "description": "Solo en la pestaña `waiting` (esperando al comprador): `true` si la última actividad del comprador (o, si nunca entró, el inicio de la etapa) tiene más de `BUYER_INACTIVITY_DAYS` días (3), `false` si no. `null` en los demás estados."
                     },
                     "assigned_advisor": {
                         "allOf": [
@@ -15671,18 +15926,25 @@
                     "assignments",
                     "available_actions",
                     "bank_product",
+                    "buyer_inactive",
                     "closed_at",
                     "code",
+                    "completeness_pct",
                     "created_at",
                     "current_stage_started_at",
                     "id",
+                    "last_buyer_activity_at",
                     "opportunity_id",
                     "origin",
+                    "participants_summary",
                     "project",
                     "property",
                     "purpose",
                     "ready_to_file_at",
+                    "ready_to_file_blocked",
+                    "requested_amount_cop",
                     "status",
+                    "status_label",
                     "updated_at",
                     "version",
                     "withdrawal_reason",
@@ -16007,6 +16269,10 @@
                         "type": "string",
                         "readOnly": true
                     },
+                    "short_name": {
+                        "type": "string",
+                        "readOnly": true
+                    },
                     "tax_id": {
                         "type": "string",
                         "readOnly": true
@@ -16040,6 +16306,7 @@
                     "id",
                     "name",
                     "operational_notes",
+                    "short_name",
                     "status",
                     "tax_id",
                     "updated_at"
@@ -16059,6 +16326,11 @@
                         "type": "string",
                         "minLength": 1,
                         "maxLength": 180
+                    },
+                    "short_name": {
+                        "type": "string",
+                        "default": "",
+                        "maxLength": 30
                     },
                     "tax_id": {
                         "type": "string",
@@ -16088,6 +16360,10 @@
                         "readOnly": true
                     },
                     "name": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "short_name": {
                         "type": "string",
                         "readOnly": true
                     },
@@ -16132,6 +16408,7 @@
                     "name",
                     "operational_notes",
                     "products",
+                    "short_name",
                     "status",
                     "tax_id",
                     "updated_at"
@@ -16525,15 +16802,24 @@
                     "name": {
                         "type": "string"
                     },
+                    "product_type": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/CatalogItemRef"
+                            }
+                        ],
+                        "description": "Tipo de crédito (catálogo `bank_product_type`)."
+                    },
                     "bank": {
-                        "$ref": "#/components/schemas/NamedRef"
+                        "$ref": "#/components/schemas/BankRef"
                     }
                 },
                 "required": [
                     "bank",
                     "code",
                     "id",
-                    "name"
+                    "name",
+                    "product_type"
                 ]
             },
             "BankProductSummary": {
@@ -16580,12 +16866,17 @@
                     },
                     "name": {
                         "type": "string"
+                    },
+                    "short_name": {
+                        "type": "string",
+                        "description": "Nombre corto para listados; vacío si no tiene (se muestra `name`)."
                     }
                 },
                 "required": [
                     "code",
                     "id",
-                    "name"
+                    "name",
+                    "short_name"
                 ]
             },
             "BankRuleEvaluation": {
@@ -24030,6 +24321,22 @@
                 "type": "string",
                 "description": "* `PRIMARY` - Titular\n* `CO_APPLICANT` - Co-solicitante\n* `SOLIDARY_DEBTOR` - Deudor solidario"
             },
+            "ParticipantsSummary": {
+                "type": "object",
+                "description": "Participantes activos además del titular, para el texto \"+ 1 co-solicitante\".",
+                "properties": {
+                    "co_applicants": {
+                        "type": "integer"
+                    },
+                    "solidary_debtors": {
+                        "type": "integer"
+                    }
+                },
+                "required": [
+                    "co_applicants",
+                    "solidary_debtors"
+                ]
+            },
             "Partner": {
                 "type": "object",
                 "properties": {
@@ -24420,6 +24727,10 @@
                         "type": "string",
                         "minLength": 1,
                         "maxLength": 180
+                    },
+                    "short_name": {
+                        "type": "string",
+                        "maxLength": 30
                     },
                     "tax_id": {
                         "type": "string",
@@ -25570,6 +25881,35 @@
                     "condition_code",
                     "estimated_value_cop",
                     "property_type_code"
+                ]
+            },
+            "QuickFilter": {
+                "type": "object",
+                "description": "Pestaña rápida del listado con su conteo dentro del alcance del actor.",
+                "properties": {
+                    "code": {
+                        "type": "string",
+                        "description": "Valor de `quick_filter` en el listado."
+                    },
+                    "label": {
+                        "type": "string"
+                    },
+                    "statuses": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/ApplicationStatusEnum"
+                        },
+                        "description": "Estados que agrupa; vacío en `all`."
+                    },
+                    "count": {
+                        "type": "integer"
+                    }
+                },
+                "required": [
+                    "code",
+                    "count",
+                    "label",
+                    "statuses"
                 ]
             },
             "ReasonRequest": {

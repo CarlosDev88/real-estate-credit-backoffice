@@ -284,4 +284,9 @@ def sync_slots(locked: CreditApplication) -> SlotSync:
             len(result.revived),
             len(result.updated),
         )
+        # También cubre la creación de la solicitud y el recálculo manual. Import local:
+        # `apps.applications.services` importa este módulo.
+        from apps.applications.services import schedule_completeness_refresh
+
+        schedule_completeness_refresh(locked.pk)
     return result
