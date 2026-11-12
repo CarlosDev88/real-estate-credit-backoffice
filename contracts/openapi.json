@@ -1963,6 +1963,188 @@
                 }
             }
         },
+        "/api/v1/applications/{application_id}/filings": {
+            "get": {
+                "operationId": "applications_filings_list",
+                "description": "Historial de radicaciones y re-radicaciones, la más reciente primero. El broker ve las de las solicitudes que originó, sin `comment`.",
+                "summary": "Radicaciones de la solicitud",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "application_id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "required": true
+                    },
+                    {
+                        "name": "page",
+                        "required": false,
+                        "in": "query",
+                        "description": "Un número de página dentro del conjunto de resultados paginado.",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "page_size",
+                        "required": false,
+                        "in": "query",
+                        "description": "Número de resultados a devolver por página.",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "tags": [
+                    "Filings"
+                ],
+                "security": [
+                    {
+                        "internalSession": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PaginatedFilingList"
+                                }
+                            }
+                        },
+                        "description": ""
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "RESOURCE_NOT_FOUND (inexistente o fuera del alcance)"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "NOT_AUTHENTICATED o SESSION_EXPIRED"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    }
+                }
+            },
+            "post": {
+                "operationId": "applications_filings_create",
+                "description": "Registra la entrega del paquete al banco; la API no se comunica con el banco. Exige la solicitud en `READY_TO_FILE`, el producto de la financiación, los documentos obligatorios aprobados o exonerados, las reglas del banco sin bloqueos y un paquete de la solicitud terminado, vigente, sin radicar y con la huella documental actual. `expected_version` va en el cuerpo (no `If-Match`).\n\nCrea la radicación con el consecutivo siguiente, guarda las versiones exactas del paquete (`/document-snapshots`), bloquea esos documentos y pasa la solicitud a `FILED`. `target_response_at` es `filed_at` más los días de respuesta del banco, o nulo. Responde `ETag` con la versión de la solicitud. Solo el administrador o el asesor asignado a la solicitud (`403`).",
+                "summary": "Registrar la radicación manual",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "application_id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "Filings"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/FilingCreateRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "security": [
+                    {
+                        "internalSession": []
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Filing"
+                                }
+                            }
+                        },
+                        "description": ""
+                    },
+                    "409": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "STALE_VERSION, APPLICATION_CLOSED, INVALID_STATE_TRANSITION (no está en READY_TO_FILE), PACKAGE_NOT_READY, PACKAGE_EXPIRED, PACKAGE_OUTDATED, PACKAGE_ALREADY_FILED o FILING_REFERENCE_EXISTS"
+                    },
+                    "422": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "BANK_PRODUCT_MISMATCH o APPLICATION_NOT_READY (documentos o reglas del banco, en `details`)"
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "RESOURCE_NOT_FOUND (inexistente o fuera del alcance)"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "NOT_AUTHENTICATED o SESSION_EXPIRED"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    }
+                }
+            }
+        },
         "/api/v1/applications/{application_id}/financing": {
             "get": {
                 "operationId": "applications_financing_retrieve",
@@ -11096,6 +11278,245 @@
                             }
                         },
                         "description": "RESOURCE_NOT_FOUND"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "NOT_AUTHENTICATED o SESSION_EXPIRED"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    }
+                }
+            }
+        },
+        "/api/v1/filings/{filing_id}": {
+            "get": {
+                "operationId": "filings_retrieve",
+                "description": "El broker no recibe `comment`.",
+                "summary": "Detalle de una radicación",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "filing_id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "Filings"
+                ],
+                "security": [
+                    {
+                        "internalSession": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Filing"
+                                }
+                            }
+                        },
+                        "description": ""
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "RESOURCE_NOT_FOUND (inexistente o fuera del alcance)"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "NOT_AUTHENTICATED o SESSION_EXPIRED"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    }
+                }
+            },
+            "patch": {
+                "operationId": "filings_partial_update",
+                "description": "Solo `external_reference` y `comment`; `null` o vacío los borra. No cambia el estado, los snapshots ni las respuestas, ni la versión de la solicitud, así que no exige `If-Match`. Solo el administrador o el asesor asignado a la solicitud (`403`).",
+                "summary": "Corregir la referencia o el comentario",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "filing_id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "Filings"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PatchedFilingUpdateRequest"
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "internalSession": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Filing"
+                                }
+                            }
+                        },
+                        "description": ""
+                    },
+                    "409": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "FILING_REFERENCE_EXISTS"
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "RESOURCE_NOT_FOUND (inexistente o fuera del alcance)"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "NOT_AUTHENTICATED o SESSION_EXPIRED"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    }
+                }
+            }
+        },
+        "/api/v1/filings/{filing_id}/document-snapshots": {
+            "get": {
+                "operationId": "filings_document_snapshots_list",
+                "description": "Las versiones exactas del paquete radicado (los exonerados no tienen archivo). Solo el administrador o el asesor asignado a la solicitud (`403`).",
+                "summary": "Documentos que se entregaron en la radicación",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "filing_id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "required": true
+                    },
+                    {
+                        "name": "page",
+                        "required": false,
+                        "in": "query",
+                        "description": "Un número de página dentro del conjunto de resultados paginado.",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "page_size",
+                        "required": false,
+                        "in": "query",
+                        "description": "Número de resultados a devolver por página.",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "tags": [
+                    "Filings"
+                ],
+                "security": [
+                    {
+                        "internalSession": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PaginatedFilingDocumentSnapshotList"
+                                }
+                            }
+                        },
+                        "description": ""
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "RESOURCE_NOT_FOUND (inexistente o fuera del alcance)"
                     },
                     "401": {
                         "content": {
@@ -21403,6 +21824,269 @@
                     "size_bytes"
                 ]
             },
+            "Filing": {
+                "type": "object",
+                "description": "Radicación. Con ``context[\"restricted\"]`` (el broker) no sale ``comment``.",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "readOnly": true
+                    },
+                    "application_id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "readOnly": true
+                    },
+                    "sequence_number": {
+                        "type": "integer",
+                        "readOnly": true
+                    },
+                    "status": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/FilingStatusEnum"
+                            }
+                        ],
+                        "readOnly": true
+                    },
+                    "status_label": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "bank_product": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/BankProductRef"
+                            }
+                        ],
+                        "readOnly": true
+                    },
+                    "channel": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/CatalogItemRef"
+                            }
+                        ],
+                        "readOnly": true,
+                        "description": "Catálogo `filing_channel`."
+                    },
+                    "external_reference": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "readOnly": true
+                    },
+                    "package_job_id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "readOnly": true
+                    },
+                    "filed_by": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/UserRef"
+                            }
+                        ],
+                        "readOnly": true
+                    },
+                    "filed_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "readOnly": true
+                    },
+                    "target_response_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time",
+                        "readOnly": true
+                    },
+                    "comment": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Nota interna. No sale para el broker."
+                    },
+                    "responses_count": {
+                        "type": "integer",
+                        "readOnly": true,
+                        "description": "Respuestas del banco registradas, incluidas las correcciones."
+                    },
+                    "application_status": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/ApplicationStatusEnum"
+                            }
+                        ],
+                        "readOnly": true
+                    },
+                    "application_status_label": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "readOnly": true
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "readOnly": true
+                    }
+                },
+                "required": [
+                    "application_id",
+                    "application_status",
+                    "application_status_label",
+                    "bank_product",
+                    "channel",
+                    "created_at",
+                    "external_reference",
+                    "filed_at",
+                    "filed_by",
+                    "id",
+                    "package_job_id",
+                    "responses_count",
+                    "sequence_number",
+                    "status",
+                    "status_label",
+                    "target_response_at",
+                    "updated_at"
+                ]
+            },
+            "FilingCreateRequest": {
+                "type": "object",
+                "description": "``POST /applications/{id}/filings``. Lleva ``expected_version`` en el cuerpo, como\n``/status-transitions``, en lugar de ``If-Match``.",
+                "properties": {
+                    "bank_product_id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Producto de la financiación de la solicitud."
+                    },
+                    "package_job_id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Paquete terminado y vigente de esta solicitud, con la huella documental actual y sin radicar."
+                    },
+                    "channel_code": {
+                        "type": "string",
+                        "description": "Canal de entrega (catálogo `filing_channel`)."
+                    },
+                    "external_reference": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Número o código que dio el banco. Único por producto.",
+                        "maxLength": 100
+                    },
+                    "filed_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "description": "Cuándo se entregó; no puede ser futura."
+                    },
+                    "comment": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Nota interna; el broker no la ve.",
+                        "maxLength": 2000
+                    },
+                    "expected_version": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "description": "Versión de la solicitud que se consultó (`ETag`)."
+                    }
+                },
+                "required": [
+                    "bank_product_id",
+                    "channel_code",
+                    "expected_version",
+                    "filed_at",
+                    "package_job_id"
+                ]
+            },
+            "FilingDocumentSnapshot": {
+                "type": "object",
+                "description": "Versión exacta que se entregó al banco en la radicación.",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "readOnly": true
+                    },
+                    "slot_id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "readOnly": true
+                    },
+                    "document_file_id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "readOnly": true
+                    },
+                    "version_number": {
+                        "type": "integer",
+                        "readOnly": true
+                    },
+                    "document_type_code": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "client_filename": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "mime_type": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "size_bytes": {
+                        "type": "integer",
+                        "readOnly": true
+                    },
+                    "sha256": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "readOnly": true
+                    }
+                },
+                "required": [
+                    "client_filename",
+                    "created_at",
+                    "document_file_id",
+                    "document_type_code",
+                    "id",
+                    "mime_type",
+                    "sha256",
+                    "size_bytes",
+                    "slot_id",
+                    "version_number"
+                ]
+            },
+            "FilingStatusEnum": {
+                "enum": [
+                    "FILED",
+                    "RECEIVED",
+                    "IN_ANALYSIS",
+                    "RETURNED",
+                    "APPROVED",
+                    "REJECTED",
+                    "DISBURSED"
+                ],
+                "type": "string",
+                "description": "* `FILED` - Radicada\n* `RECEIVED` - Recibida\n* `IN_ANALYSIS` - En análisis\n* `RETURNED` - Devuelta\n* `APPROVED` - Aprobada\n* `REJECTED` - Rechazada\n* `DISBURSED` - Desembolsada"
+            },
             "FinancialProfile": {
                 "type": "object",
                 "properties": {
@@ -23832,6 +24516,88 @@
                     }
                 }
             },
+            "PaginatedFilingDocumentSnapshotList": {
+                "type": "object",
+                "required": [
+                    "items",
+                    "page",
+                    "page_size",
+                    "total",
+                    "next",
+                    "previous"
+                ],
+                "properties": {
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/FilingDocumentSnapshot"
+                        }
+                    },
+                    "page": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "page_size": {
+                        "type": "integer",
+                        "example": 25
+                    },
+                    "total": {
+                        "type": "integer",
+                        "example": 128
+                    },
+                    "next": {
+                        "type": "string",
+                        "nullable": true,
+                        "example": "/api/v1/x?page=2"
+                    },
+                    "previous": {
+                        "type": "string",
+                        "nullable": true,
+                        "example": null
+                    }
+                }
+            },
+            "PaginatedFilingList": {
+                "type": "object",
+                "required": [
+                    "items",
+                    "page",
+                    "page_size",
+                    "total",
+                    "next",
+                    "previous"
+                ],
+                "properties": {
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/Filing"
+                        }
+                    },
+                    "page": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "page_size": {
+                        "type": "integer",
+                        "example": 25
+                    },
+                    "total": {
+                        "type": "integer",
+                        "example": 128
+                    },
+                    "next": {
+                        "type": "string",
+                        "nullable": true,
+                        "example": "/api/v1/x?page=2"
+                    },
+                    "previous": {
+                        "type": "string",
+                        "nullable": true,
+                        "example": null
+                    }
+                }
+            },
             "PaginatedIncomeSourceList": {
                 "type": "object",
                 "required": [
@@ -25062,6 +25828,26 @@
                             }
                         ],
                         "description": "`PARTICIPANT`: se pide a cada participante al que aplique el requisito. `APPLICATION`: se pide una sola vez por solicitud (inmueble, legalización).\n\n* `PARTICIPANT` - Participante\n* `APPLICATION` - Solicitud"
+                    }
+                }
+            },
+            "PatchedFilingUpdateRequest": {
+                "type": "object",
+                "description": "``PATCH /filings/{id}``: solo la referencia del banco y el comentario. Enviar\n``null`` o vacío los borra.",
+                "properties": {
+                    "external_reference": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 100
+                    },
+                    "comment": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 2000
                     }
                 }
             },

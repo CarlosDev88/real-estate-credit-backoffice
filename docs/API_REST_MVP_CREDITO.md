@@ -195,7 +195,11 @@ Las cookies de sesión usan `HttpOnly`, `Secure`, `SameSite=Lax` y `Path=/`. La 
 | `PAYLOAD_TOO_LARGE` | El cuerpo de la carga supera el límite global; se corta antes de leerlo (`413`). |
 | `SERVICE_UNAVAILABLE` | El almacenamiento de archivos no respondió al cargar o al firmar una descarga (`503`). |
 | `PACKAGE_NOT_READY` | Descarga de un paquete para radicar pendiente, en proceso o fallido (`409`). |
-| `PACKAGE_EXPIRED` | Descarga de un paquete para radicar vencido: se pide otro (`409`). |
+| `PACKAGE_EXPIRED` | Descarga de un paquete para radicar vencido: se pide otro (`409`). También al radicar con un paquete vencido. |
+| `PACKAGE_OUTDATED` | Radicación con un paquete cuya huella documental ya no es la vigente: los documentos cambiaron después de armarlo y se pide otro (`409`). |
+| `PACKAGE_ALREADY_FILED` | Radicación con un paquete que ya se usó en otra radicación (`409`). |
+| `BANK_PRODUCT_MISMATCH` | Radicación con un producto distinto del de la financiación de la solicitud (`422`). |
+| `FILING_REFERENCE_EXISTS` | Ya hay una radicación con esa `external_reference` para el mismo producto (`409`). |
 | `REQUIREMENT_SCOPE_EXISTS` | Ya existe un requisito documental con ese alcance: se edita para crear una versión nueva (`409`). |
 | `REQUIREMENT_DRAFT_EXISTS` | El requisito ya tiene un borrador (`409`). |
 | `REQUIREMENT_EXPIRED` | La vigencia del requisito ya terminó y no se publica (`422`). |

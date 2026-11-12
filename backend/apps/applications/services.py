@@ -1145,7 +1145,7 @@ class StatusChange:
     transitioned_at: datetime
 
 
-def _lock_for_status_change(
+def lock_for_status_change(
     application: CreditApplication, expected_version: int
 ) -> CreditApplication:
     """Bloquea la fila. Terminada: ``409 APPLICATION_CLOSED``; otra versión:
@@ -1337,7 +1337,7 @@ def transition_application(
     problems: list[dict[str, Any]] = []
     change: StatusChange | None = None
     with transaction.atomic():
-        locked = _lock_for_status_change(application, expected_version)
+        locked = lock_for_status_change(application, expected_version)
         transition = resolve_transition(
             actor, flow_type=FlowType.APPLICATION, from_status=locked.status, to_status=to_status
         )
@@ -1398,11 +1398,45 @@ def withdraw_application(
     comprador como actor, el historial guarda su sesión en ``actor_buyer_session``.
     """
     with transaction.atomic():
-        locked = _lock_for_status_change(application, expected_version)
+        locked = lock_for_status_change(application, expected_version)
         transition = _withdraw_transition(actor, locked.status)
         change = _apply_status_change(actor, locked, transition, reason=reason, comment=comment)
     _notify_status_change(actor, change, transition, reason, comment)
     return change
+
+
+@dataclass(frozen=True)
+class SystemStatusChange:
+    change: StatusChange
+    transition: WorkflowTransition
+
+
+def apply_system_transition(
+    actor: User, locked: CreditApplication, *, to_status: str, comment: str = ""
+) -> SystemStatusChange:
+    """Ejecuta una transición de sistema (``system_only``) para el servicio de otro módulo
+    (la radicación y las respuestas del banco, paso 11).
+
+    Va dentro de la transacción de quien llama, con la solicitud ya bloqueada por
+    ``lock_for_status_change``. Cambia el estado y registra el historial igual que
+    ``transition_application``; sin una transición de sistema activa desde el estado
+    actual: ``409 INVALID_STATE_TRANSITION``. Después de confirmar, quien llama emite
+    el evento con ``notify_system_transition``.
+    """
+    transition = resolve_transition(
+        actor,
+        flow_type=FlowType.APPLICATION,
+        from_status=locked.status,
+        to_status=to_status,
+        system_only=True,
+    )
+    change = _apply_status_change(actor, locked, transition, reason=None, comment=comment)
+    return SystemStatusChange(change=change, transition=transition)
+
+
+def notify_system_transition(actor: User, result: SystemStatusChange, comment: str = "") -> None:
+    """Emite ``application_status_changed`` de una transición de sistema ya confirmada."""
+    _notify_status_change(actor, result.change, result.transition, None, comment)
 
 
 def available_actions(user: User, application: CreditApplication) -> list[WorkflowTransition]:

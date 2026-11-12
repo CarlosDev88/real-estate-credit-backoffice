@@ -253,3 +253,26 @@ _(las agrega el agente)_
 8. **Ida y vuelta.**
    - En pytest: `seed`/`unseed` de `filings/0002` y de `banking/0005`.
    - A mano, en una base propia `mvp_credit_filings` (creada y borrada en el contenedor de un solo uso, nunca la de desarrollo): `migrate`, luego `migrate filings zero`, `banking 0004` y `catalogs 0002`, y otra vez `migrate`.
+
+### Parte 2
+1. **Errores de las precondiciones**, en este orden:
+   - versión: `409 STALE_VERSION`; solicitud terminada: `409 APPLICATION_CLOSED`;
+   - estado distinto de `READY_TO_FILE`: `409 INVALID_STATE_TRANSITION`;
+   - producto distinto del de la financiación: `422 BANK_PRODUCT_MISMATCH` (nuevo);
+   - documentos y reglas del banco: `422 APPLICATION_NOT_READY`, con los mismos `details` que la guarda de `READY_TO_FILE`. Como en `/status-transitions`, la evaluación bancaria que haga la guarda queda guardada aunque se rechace;
+   - paquete de otra solicitud o inexistente: `400 VALIDATION_ERROR` en `package_job_id`;
+   - paquete ya radicado: `409 PACKAGE_ALREADY_FILED` (nuevo);
+   - paquete pendiente, en proceso o fallido: `409 PACKAGE_NOT_READY`; vencido: `409 PACKAGE_EXPIRED`;
+   - huella distinta de la vigente: `409 PACKAGE_OUTDATED` (nuevo).
+   Los códigos nuevos quedan en API §5.5.
+2. **Referencia del banco.** El SQL tiene la única parcial `(bank_product, external_reference)`: un choque, al crear o al corregir, responde `409 FILING_REFERENCE_EXISTS` (nuevo, en API §5.5). Un texto vacío se guarda como nulo, igual que el comentario.
+3. **El paquete radicado no se reutiliza.** `documents/packages._reusable` deja fuera los paquetes que ya tienen radicación. Si no, después de una devolución sin cambios en la huella, pedir un paquete devolvía el ya radicado y la re-radicación fallaba con `PACKAGE_ALREADY_FILED`.
+4. **Bloqueo de los documentos.** Al radicar se llena `locked_at` en los slots del manifiesto (si estaba vacío), como anticipaba el modelo ("bloqueo posterior a la radicación, paso 11"). Así, después de `FILED`, la carga del comprador sobre un documento radicado sin observación responde `DOCUMENT_LOCKED`.
+5. **Transición `FILE`.** `applications.services` expone `lock_for_status_change` (antes `_lock_for_status_change`), `apply_system_transition` y `notify_system_transition`. Son el servicio de transición que ya existía (historial, versión y `application_status_changed`), ahora con entrada para las transiciones de sistema. `filing_created` se emite después de `application_status_changed`, al confirmar.
+6. **Alcance.**
+   - Escribir y ver los snapshots exige ser administrador o el asesor asignado. El broker sin `filings.create` o `filings.update` recibe `403` por permiso. Un usuario que es asesor y broker a la vez ve lo que originó, pero sin estar asignado recibe `403`.
+   - Fuera del alcance: `404`.
+   - Los snapshots exigen además `filings.read`.
+7. **`PATCH` sin `If-Match`.** La radicación no tiene versión y corregirla no cambia la versión de la solicitud, así que no lleva `If-Match` ni `ETag`. Se admite en cualquier estado de la solicitud. El `POST` responde `201` con `ETag`, la versión nueva de la solicitud.
+8. **Respuesta.** Además de los campos de la spec, lleva `application_id`, `package_job_id`, `created_at` y `updated_at`. `bank_product` usa la referencia de las solicitudes (`id`, `code`, `name`, `product_type` y `bank`). `responses_count` cuenta todas las respuestas, también las correcciones. Las listas (radicaciones y snapshots) son paginadas, como el resto de la API.
+9. **Snapshot.** Cada uno lleva `slot_id`, `document_file_id`, `version_number`, `document_type_code`, `client_filename`, `mime_type`, `size_bytes`, `sha256` y `created_at`. Los exonerados no tienen archivo, así que no tienen snapshot.
