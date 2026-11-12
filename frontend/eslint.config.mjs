@@ -29,6 +29,9 @@ export default defineConfig([
     "coverage/**",
     "playwright-report/**",
     "test-results/**",
+    ".ci-report/**",
+    // Salidas de ejemplo de las herramientas para las pruebas del reporte del CI.
+    "scripts/__fixtures__/**",
     "next-env.d.ts",
     // Generado por `pnpm api:gen` desde ../contracts/openapi.json.
     "src/lib/api/schema.d.ts",

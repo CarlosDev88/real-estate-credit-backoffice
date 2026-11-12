@@ -16,7 +16,8 @@ Una sola app Next.js con dos zonas:
 
 ## Reglas de trabajo
 - El agente **no** hace `commit`, `push`, `merge` ni `rebase`; git solo en lectura. Trabaja por partes y al cerrar cada una propone un mensaje de commit corto, sin `Co-Authored-By`. Carlos commitea.
-- Antes de cada parte, el agente presenta las ambigüedades que encuentre, una por una y con su recomendación. Las precisiones acordadas se agregan al final de esta spec.
+- **No se presentan dudas.** Lo que esta spec no cubra lo decide el agente con la opción más simple, lo anota en "Precisiones acordadas" y sigue. Solo se detiene si la decisión rompe el contrato de la API, cambia el alcance, borra o altera datos existentes, o exige tocar un `.env`.
+- Cada parte se hace de corrido. Al cerrarla, el agente entrega: verificaciones en verde, la lista corta de decisiones que tomó por su cuenta y el mensaje de commit. Espera el "listo" de Carlos para la siguiente.
 - No se inventan endpoints. Si un mockup muestra algo que la API no da, se anota en "Brechas del backend" y se simula con MSW hasta que exista.
 
 ## Stack
@@ -318,4 +319,189 @@ _(se completan al resolver las ambigüedades de cada fase)_
 - Fecha y hora en 12 h como es-CO: "24 ago 2026, 3:45 p. m.", con espacios de no separación en la hora.
 - Visor: en modo local simple la URL de descarga es relativa (`/api/v1/storage/objects/<token>`), pasa por el rewrite y es del mismo origen, sin CORS. El riesgo de CORS aplica solo al modo full (SeaweedFS) y a S3 real, donde el almacenamiento debe permitir el origen del frontend.
 
+**CI (parte 6):** se sigue el "Plan detallado" de abajo. Además, lo que decidió el agente:
+- El reporte lo arma `frontend/scripts/ci-report.ts`: corre con Node 24, sin dependencias y con el mismo formato que `backend/scripts/ci_report.py`. Siete filas: ESLint (los *warnings* son ⚠️ y no bloquean), Prettier (formato), TypeScript, Tests, Cobertura, Contrato API y Build. Los E2E de Playwright no van en este job: necesitan el backend con datos.
+- Cobertura:
+  - Bloquea la de **líneas** (mínimo 70 %, REQ §10.5). Ramas y funciones solo se muestran.
+  - Mide `src/**` y `scripts/**`, sin los tests, los *fixtures*, `src/test/**`, `schema.d.ts` ni las demos `src/app/(dev)/**`.
+  - `reportOnFailure: true`, para que haya datos aunque fallen tests.
+- Contrato API:
+  - El paso guarda el `schema.d.ts` commiteado, el generado y el diff.
+  - El reporte compara los dos por bloques (rutas, operaciones y esquemas) para listar las rutas nuevas, quitadas y cambiadas (con sus métodos) y los esquemas nuevos, quitados y cambiados.
+  - También muestra las primeras 50 líneas del diff.
+- Anotaciones:
+  - ESLint las pone el *matcher* `eslint-stylish` de `setup-node`, que recibe rutas absolutas.
+  - TypeScript las imprime el script del reporte (`::error file=frontend/…`), porque `tsc` da rutas relativas a `frontend/` que el *matcher* `tsc` no encontraría. El paso de TypeScript lo quita con `::remove-matcher owner=tsc::`, así no se duplican.
+- `setup-node` corre siempre, sin el `if` de "changes": el paso del reporte necesita Node 24 también cuando se omiten las verificaciones. Con `run=false` tampoco se sube el artefacto.
+- `COREPACK_ENABLE_DOWNLOAD_PROMPT: "0"` en el `env` del job, para que corepack baje pnpm sin preguntar.
+- Si `git diff <base>...<head>` falla, se verifica todo (`run=true`).
+- TypeScript:
+  - `allowImportingTsExtensions`, porque el test del script importa `./ci-report.ts` con extensión, como pide el plan.
+  - `erasableSyntaxOnly`, para que todo el código pueda correr con *type stripping*. Por esto `ApiError` pasó a declarar sus campos sin propiedades de parámetro.
+- Los *fixtures* (`scripts/__fixtures__/`) quedan fuera de Prettier, ESLint y `tsconfig`: Prettier cambiaría la indentación de 4 espacios del `schema.d.ts`, que es lo que lee el script.
+- **Pendiente:** el escaneo de dependencias en cada PR que pide REQ §10.5 no está en la parte 6.
+
 **Saltos de línea:** los archivos de `frontend/` van en LF (Prettier `endOfLine: "lf"`), y se verifica con `git ls-files --eol`.
+
+## Plan detallado de lo que falta en F0
+Partes 1 a 5 hechas. Faltan la 6 (CI), la 7 (contenedor del front) y el cierre. Todo lo de abajo ya está decidido: no se pregunta.
+
+### Parte 6. CI del frontend
+**Workflow `.github/workflows/frontend.yml`** (mismo esqueleto que `backend.yml`; copiar su estilo):
+- `on`: `push` a `master` y `pull_request`. **Sin `paths:`**.
+- `concurrency`: `group: ci-frontend-${{ github.ref }}`, `cancel-in-progress: true`. **Debe ser distinto del grupo del backend** (`ci-${{ github.ref }}`): si fuera el mismo, un workflow cancelaría al otro.
+- Job `quality`:
+  - `name: "Frontend: lint, types and tests"` (exacto: es el nombre del check obligatorio);
+  - `runs-on: ubuntu-latest`, `timeout-minutes: 15`;
+  - `permissions`: `contents: read` y `pull-requests: write`;
+  - `defaults.run`: `working-directory: frontend` y `shell: bash`;
+  - `env`: `CI_REPORT_DIR: .ci-report`, `CI_COVERAGE_MIN: "70"`, `NEXT_TELEMETRY_DISABLED: "1"` y `API_ORIGIN: http://localhost:8000`.
+- **Solo acciones oficiales** (`actions/*`), fijadas por SHA con la versión en comentario:
+  - `checkout` y `upload-artifact`: los mismos SHA que `backend.yml`;
+  - `github-script`: el mismo SHA que `backend.yml`;
+  - `setup-node` y `cache`: el SHA de su última versión estable.
+  - Nada de `pnpm/action-setup` (no es oficial): pnpm sale de `corepack enable`, que respeta `packageManager`.
+
+**Pasos, en orden** (cada verificación con `id` y `continue-on-error: true`; salida a `$CI_REPORT_DIR`):
+0. `Record start time`, igual que en el backend.
+1. `checkout` con `fetch-depth: 2`.
+2. **`changes`** (Detectar cambios):
+   - en `pull_request`, compara el commit de merge con su primer padre (`git diff --name-only HEAD^1 HEAD`), como ya quedó en las precisiones;
+   - si algún archivo empieza por `frontend/`, `contracts/openapi.json`, `design/generated/` o `.github/workflows/frontend.yml`, deja `run=true`; si no, `run=false`;
+   - en `push` a `master`, siempre `run=true`.
+
+   Todos los pasos siguientes llevan `if: steps.changes.outputs.run == 'true'`, salvo el gate.
+3. `setup-node` con Node 24, más `corepack enable`.
+4. Caché del store de pnpm con `actions/cache`, sobre `pnpm store path`, con la clave del hash de `frontend/pnpm-lock.yaml`.
+5. **`install`:** `mkdir -p "$CI_REPORT_DIR"` y `pnpm install --frozen-lockfile`.
+6. **`eslint`:**
+   - `pnpm lint --format json --output-file "$CI_REPORT_DIR/eslint.json" || true`;
+   - luego `pnpm lint`. El formato por defecto (stylish) lo anota en las líneas el *matcher* que registra `setup-node`.
+   - Falla solo con errores; los *warnings* no lo hacen fallar (sin `--max-warnings`).
+7. **`prettier`:** `pnpm format:check 2>&1 | tee "$CI_REPORT_DIR/prettier.txt"`.
+8. **`typecheck`:** `pnpm typecheck 2>&1 | tee "$CI_REPORT_DIR/tsc.txt"`. Lo anota el *matcher* `tsc` de `setup-node`.
+9. **`tests`:** Vitest con cobertura y JUnit:
+   ```
+   pnpm vitest run --coverage --coverage.reporter=text --coverage.reporter=json-summary --coverage.reportsDirectory="$CI_REPORT_DIR/coverage" --reporter=default --reporter=junit --outputFile.junit="$CI_REPORT_DIR/vitest.xml"
+   ```
+   - **El umbral no va en `vitest.config.mts`.** Así, este paso falla solo por tests rotos.
+10. **`coverage`:** corre si existe `coverage-summary.json`, aunque hayan fallado los tests.
+    - Usa `node scripts/ci-report.ts --check-coverage`, que falla si el total de **líneas** está por debajo de `CI_COVERAGE_MIN`.
+11. **`api_contract`:** `pnpm api:gen` y luego `git diff --exit-code -- src/lib/api/schema.d.ts`.
+    - Genera desde `contracts/openapi.json` del repo, sin backend.
+    - `schema.d.ts` ya está excluido de Prettier y de ESLint. Si aun así queda distinto, el agente lo corrige en el script `api:gen`, no en el CI.
+12. **`build`:** `pnpm build 2>&1 | tee "$CI_REPORT_DIR/build.txt"`.
+13. **Build CI report** (`if: always()`): `node scripts/ci-report.ts`, con:
+    - las `OUTCOME_*` de cada paso;
+    - `CI_COMMIT_SHA`;
+    - `CI_SKIPPED=true` cuando `run=false`.
+14. **Upload artifact** `ci-report-frontend`: `frontend/.ci-report/`, con `include-hidden-files: true`, 7 días e `if-no-files-found: ignore`.
+15. **Comentario en el PR** con el marcador `<!-- ci-report:frontend -->`. Es el mismo script de `backend.yml`, cambiando solo el marcador y la ruta.
+    - Solo en PR del mismo repo.
+    - **Cuando el PR no toca el frontend (`run=false`), no se publica comentario.**
+16. **CI gate** (`if: always()`):
+    - con `run=false`, sale en éxito;
+    - si no, falla si alguna verificación terminó en `failure` o si `install` no terminó en `success`. Igual que en el backend.
+
+**Script `frontend/scripts/ci-report.ts`**
+- Lo ejecuta Node 24 directamente (*type stripping*): solo sintaxis que se puede borrar, sin `enum` ni `namespace`, con imports relativos con extensión `.ts` y sin importar nada de `src/` ni alias. Sin dependencias: solo `node:fs`, `node:path` y `node:process`.
+- Lee:
+  - `eslint.json`: errores y *warnings* por regla, con archivo y línea;
+  - `prettier.txt`: archivos de las líneas `[warn]`;
+  - `tsc.txt`: errores `TSxxxx` con archivo y línea;
+  - `vitest.xml`: total, pasan, fallan, saltados, duración y los que fallan (nombre y primera línea del error);
+  - `coverage/coverage-summary.json`: total de líneas contra el mínimo, y los 5 archivos con menos cobertura (ignorando los de 0 líneas);
+  - el diff del contrato y `build.txt`: últimas 50 líneas si falló.
+- **Estados por fila:**
+  - ✅ pasó;
+  - ⚠️ pasó con advertencias (solo ESLint con *warnings*);
+  - ❌ falló;
+  - ⏭️ no corrió.
+- **Formato:** el del backend.
+  - Encabezado `## Frontend CI · …`, con el commit corto, el enlace al run y la duración.
+  - Tabla de 7 filas: ESLint, Prettier (formato), TypeScript, Tests, Cobertura, Contrato API y Build.
+  - `<details>` de máximo 50 líneas, con "… y N más".
+  - Texto escapado.
+  - Con `CI_SKIPPED=true`, una sola línea: "Sin cambios en el frontend: verificaciones omitidas".
+- Escribe en `$GITHUB_STEP_SUMMARY` y en `.ci-report/report.md`. Nunca falla el job, salvo en `--check-coverage`.
+- **Pruebas** en `frontend/scripts/ci-report.test.ts`, con `// @vitest-environment node` y *fixtures* en `frontend/scripts/__fixtures__/`. Casos:
+  - todo en verde;
+  - fallos y *warnings* juntos;
+  - falló la instalación (todo ⏭️);
+  - `CI_SKIPPED`;
+  - salida larga (truncado);
+  - caracteres especiales (escape);
+  - `--check-coverage` por encima y por debajo del mínimo.
+- En `vitest.config.mts`, agregar `scripts/**/*.test.ts` a `include` y `scripts/**/*.ts` a la cobertura, sin contar `__fixtures__`.
+- `.ci-report/` ya está en el `.gitignore` raíz (vale para cualquier carpeta).
+
+**Verificación del agente antes de entregar**
+- `pnpm lint`, `pnpm format:check`, `pnpm typecheck`, los tests con cobertura ≥ 70 %, `pnpm api:gen` sin diferencias y `pnpm build`, todo en local.
+- Correr `node scripts/ci-report.ts` contra una carpeta `.ci-report` armada con los *fixtures*, y mostrar el Markdown que sale.
+- Validar el YAML: que se lea y que los `id` usados en `OUTCOME_*` y en el gate existan.
+
+**Verificación real (Carlos):** hace push y revisa, en el PR #15:
+- que aparezcan los dos comentarios (backend y frontend) y los dos checks en verde;
+- que ninguno de los dos workflows cancele al otro.
+
+No se hace la rama de prueba en rojo: ese caso lo cubren los tests del script.
+
+**Commit:** `ci(frontend): add the frontend CI job with a PR report`
+
+### Parte 7. Contenedor del frontend (3 contenedores)
+**Antes de empezar, Carlos trae `master` a la rama.** La rama no tiene el PR #14 (modo local simple). Carlos corre `git fetch` y `git merge origin/master` en el worktree.
+- Si hay conflictos (lo más probable: esta spec y el README), el agente los resuelve editando los archivos: une las dos versiones sin perder nada.
+- Carlos hace el commit del merge. El agente no corre comandos de git que escriban.
+
+**Qué construir**
+- **`.dockerignore` en la raíz del repo** (el contexto del build es la raíz), que excluya:
+  - `.git`;
+  - `**/node_modules` y `frontend/.next`;
+  - `frontend/coverage`;
+  - `**/.ci-report`;
+  - `backend/` (el backend se construye con su propio contexto);
+  - `docs/` y `specs/`;
+  - los `.env*`.
+- **`frontend/Dockerfile`** de producción, en varias etapas, con `node:24-alpine` fijado por versión:
+  1. `deps`: `corepack enable` y `pnpm install --frozen-lockfile`, copiando solo `package.json` y `pnpm-lock.yaml`.
+  2. `build`: copia `frontend/`, `design/generated/` y `contracts/` respetando la estructura (`/app/frontend`, `/app/design/generated`, `/app/contracts`), porque el front importa `../design/generated`. Corre `pnpm build`.
+     - **`API_ORIGIN` entra como `ARG`, con valor por defecto `http://backend:8000`**, y se exporta como `ENV` en esta etapa. Next fija los *rewrites* al compilar, así que no basta con ponerlo al arrancar.
+  3. `run`: `NODE_ENV=production`, usuario sin privilegios (`node`), `EXPOSE 3000` y `pnpm start` (o el servidor `standalone`, si el agente lo activa en `next.config.ts`; lo que sea más simple y lo anota).
+- **Servicio `frontend` en `backend/docker-compose.yml`:**
+  - sin perfil;
+  - `build.context: ..`, `dockerfile: frontend/Dockerfile` y `args.API_ORIGIN: http://backend:8000`;
+  - `ports: "${FRONTEND_HOST_PORT:-3000}:3000"`;
+  - `depends_on: backend` (`condition: service_started`).
+
+  Con `docker compose up -d` quedan exactamente `postgres`, `backend` y `frontend`. El perfil `full` no cambia.
+- **Host del backend:** el *rewrite* llega a Django con el host `backend`.
+  - Si Django responde `400` por `DJANGO_ALLOWED_HOSTS`, el agente **se detiene y le dice a Carlos la línea exacta** que hay que cambiar en `backend/.env` y en `backend/.env.example`. No los toca.
+  - Lo mismo si hace falta algo en `CSRF_TRUSTED_ORIGINS`.
+- **Desarrollo vs. demo** (va en el README):
+  - para mostrar el proyecto, `docker compose up -d --build` y abrir `http://localhost:3000`;
+  - para programar el front, `docker compose up -d postgres backend` y `pnpm dev` (el contenedor `frontend` ocuparía el puerto 3000).
+- **README raíz y `backend/README.md`:** los tres contenedores, las URLs (`:3000` front y `:8000` API), los dos modos (demo y desarrollo) y el usuario de prueba (sin la contraseña: "créalo con…").
+
+**Verificación del agente**
+- `docker compose up -d --build` levanta los 3 contenedores.
+- Con `curl` contra `http://localhost:3000`:
+  - `/login` responde `200`;
+  - `POST /api/v1/auth/login` con el usuario de `.env.local` devuelve las cookies;
+  - `/api/v1/auth/me` con esas cookies responde `200`.
+
+  El agente lee el usuario de `.env.local` solo si sus permisos se lo dejan. Si no, le pide a Carlos que lo pruebe en el navegador.
+- `docker compose --profile full config` sigue siendo válido.
+- Después, deja corriendo `postgres` y `backend` (sin `frontend`), para no ocupar el 3000.
+
+**Commit:** `chore(frontend): run the frontend as the third local container`
+
+### Cierre de F0
+- **README del frontend** (`frontend/README.md`): requisitos (Node 24 y corepack), comandos (`dev`, `lint`, `format`, `typecheck`, `test`, `api:gen` y `build`), cómo regenerar tipos después de un cambio de API y la carpeta de cada cosa.
+- **"Brechas del backend":** marcar como resueltas las del listado (`TAREA-applications-listado.md`) cuando se fusione ese PR. Las demás quedan para la tarea de "brechas".
+- **El agente entrega el título y la descripción del PR #15**, en español y sin firmas de Claude, con:
+  - lo que trae cada parte;
+  - las decisiones de arquitectura principales;
+  - cómo correrlo;
+  - el CI;
+  - lo que queda para F1 y F2.
+- **Después del merge (Carlos):** agregar "Frontend: lint, types and tests" como check obligatorio en `protect-master`.

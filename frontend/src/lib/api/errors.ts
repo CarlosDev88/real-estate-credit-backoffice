@@ -9,17 +9,27 @@ export const NETWORK_ERROR = "NETWORK_ERROR";
 /** Todo error de la API, con el formato de API §5.3. */
 export class ApiError extends Error {
   override readonly name = "ApiError";
+  readonly status: number;
+  readonly code: string;
+  readonly details: ErrorDetail[];
+  readonly requestId: string | null;
+  /** Segundos de `Retry-After` (en `429`), si llegó. */
+  readonly retryAfter: number | null;
 
   constructor(
-    readonly status: number,
-    readonly code: string,
+    status: number,
+    code: string,
     message: string,
-    readonly details: ErrorDetail[] = [],
-    readonly requestId: string | null = null,
-    /** Segundos de `Retry-After` (en `429`), si llegó. */
-    readonly retryAfter: number | null = null,
+    details: ErrorDetail[] = [],
+    requestId: string | null = null,
+    retryAfter: number | null = null,
   ) {
     super(message);
+    this.status = status;
+    this.code = code;
+    this.details = details;
+    this.requestId = requestId;
+    this.retryAfter = retryAfter;
   }
 
   get isNetworkError(): boolean {

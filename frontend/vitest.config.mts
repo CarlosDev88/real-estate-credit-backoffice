@@ -15,13 +15,24 @@ export default defineConfig({
     environment: "jsdom",
     environmentOptions: { jsdom: { url: "http://localhost:3000/" } },
     setupFiles: ["./src/test/setup.ts"],
-    include: ["src/**/*.test.{ts,tsx}"],
+    include: ["src/**/*.test.{ts,tsx}", "scripts/**/*.test.ts"],
     restoreMocks: true,
     unstubGlobals: true,
     coverage: {
       provider: "v8",
-      include: ["src/**/*.{ts,tsx}"],
-      exclude: ["src/**/*.test.{ts,tsx}", "src/test/**", "src/lib/api/schema.d.ts"],
+      include: ["src/**/*.{ts,tsx}", "scripts/**/*.ts"],
+      exclude: [
+        "**/*.test.{ts,tsx}",
+        "scripts/__fixtures__/**",
+        "src/test/**",
+        "src/lib/api/schema.d.ts",
+        // Demos de desarrollo: en producción no existen.
+        "src/app/(dev)/**",
+      ],
+      // Sin umbral aquí: el mínimo (70 % de líneas, REQ §10.5) lo aplica el paso "Cobertura"
+      // del CI con `node scripts/ci-report.ts --check-coverage`.
+      // Con tests fallidos también se escribe el informe, para que el reporte lo muestre.
+      reportOnFailure: true,
     },
   },
 });

@@ -1,0 +1,254 @@
+name: Frontend CI
+
+# Sin `paths:`: el job es un check obligatorio y debe correr en todos los PR. Si el PR no
+# toca el frontend, el paso "changes" lo detecta y el job termina en verde sin verificar.
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+# Grupo propio: si fuera el mismo del backend (`ci-<ref>`), un workflow cancelaría al otro.
+concurrency:
+  group: ci-frontend-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    name: "Frontend: lint, types and tests"
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    # Solo lo necesario: leer el repo y publicar el comentario del reporte en el PR.
+    permissions:
+      contents: read
+      pull-requests: write
+
+    defaults:
+      run:
+        working-directory: frontend
+        # Explícito para que corra con `-eo pipefail`: sin eso, `herramienta | tee` no falla.
+        shell: bash
+
+    env:
+      # Salidas de las verificaciones para el reporte (relativa a frontend/; ignorada por git).
+      CI_REPORT_DIR: .ci-report
+      CI_COVERAGE_MIN: "70"
+      NEXT_TELEMETRY_DISABLED: "1"
+      API_ORIGIN: http://localhost:8000
+      # corepack descarga la versión de pnpm de `packageManager` sin preguntar.
+      COREPACK_ENABLE_DOWNLOAD_PROMPT: "0"
+
+    # Cada verificación lleva continue-on-error para que corran todas y el reporte muestre
+    # todos los problemas; el paso "CI gate", al final, es el que hace fallar el job.
+    steps:
+      - name: Record start time
+        working-directory: ${{ github.workspace }}
+        run: echo "CI_STARTED_AT=$(date +%s)" >> "$GITHUB_ENV"
+
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          # Historia completa para comparar la rama del PR con su base.
+          fetch-depth: 0
+
+      - name: Detect frontend changes
+        id: changes
+        working-directory: ${{ github.workspace }}
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          if [ "$EVENT_NAME" != pull_request ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # Si no se puede comparar, se verifica todo.
+          if ! files=$(git diff --name-only "$BASE_SHA...$HEAD_SHA"); then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if grep -qE '^(frontend/|contracts/openapi\.json$|design/generated/|\.github/workflows/frontend\.yml$)' <<< "$files"; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "El PR no toca el frontend: verificaciones omitidas."
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Node siempre: el reporte corre también cuando se omiten las verificaciones.
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "24"
+
+      - name: Enable corepack
+        if: steps.changes.outputs.run == 'true'
+        run: corepack enable
+
+      - name: Locate the pnpm store
+        id: pnpm_store
+        if: steps.changes.outputs.run == 'true'
+        run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        if: steps.changes.outputs.run == 'true'
+        with:
+          path: ${{ steps.pnpm_store.outputs.path }}
+          key: pnpm-store-${{ runner.os }}-${{ hashFiles('frontend/pnpm-lock.yaml') }}
+          restore-keys: pnpm-store-${{ runner.os }}-
+
+      - name: Install dependencies
+        id: install
+        if: steps.changes.outputs.run == 'true'
+        run: |
+          mkdir -p "$CI_REPORT_DIR"
+          pnpm install --frozen-lockfile
+
+      # Los warnings no hacen fallar el paso (sin --max-warnings). La segunda corrida, con el
+      # formato stylish, la anota en las líneas el matcher `eslint-stylish` de setup-node.
+      - name: ESLint
+        id: eslint
+        if: steps.changes.outputs.run == 'true'
+        continue-on-error: true
+        run: |
+          pnpm lint --format json --output-file "$CI_REPORT_DIR/eslint.json" || true
+          pnpm lint
+
+      - name: Prettier (format)
+        id: prettier
+        if: steps.changes.outputs.run == 'true'
+        continue-on-error: true
+        run: pnpm format:check 2>&1 | tee "$CI_REPORT_DIR/prettier.txt"
+
+      # tsc imprime rutas relativas a frontend/ y el matcher `tsc` de setup-node no las
+      # encontraría: las anotaciones de TypeScript las imprime el script del reporte.
+      - name: TypeScript
+        id: typecheck
+        if: steps.changes.outputs.run == 'true'
+        continue-on-error: true
+        run: |
+          echo "::remove-matcher owner=tsc::"
+          pnpm typecheck 2>&1 | tee "$CI_REPORT_DIR/tsc.txt"
+
+      # Sin umbral: este paso falla solo por tests rotos; el mínimo lo aplica "Coverage".
+      - name: Tests
+        id: tests
+        if: steps.changes.outputs.run == 'true'
+        continue-on-error: true
+        run: >-
+          pnpm vitest run --coverage --coverage.reporter=text --coverage.reporter=json-summary
+          --coverage.reportsDirectory="$CI_REPORT_DIR/coverage" --reporter=default --reporter=junit
+          --outputFile.junit="$CI_REPORT_DIR/vitest.xml"
+
+      # Corre aunque fallen los tests, siempre que haya datos de cobertura.
+      - name: Coverage
+        id: coverage
+        if: steps.changes.outputs.run == 'true' && hashFiles('frontend/.ci-report/coverage/coverage-summary.json') != ''
+        continue-on-error: true
+        run: node scripts/ci-report.ts --check-coverage
+
+      # Genera desde contracts/openapi.json del repo (sin backend). Si la API cambió, el PR
+      # debe traer src/lib/api/schema.d.ts regenerado.
+      - name: API contract is up to date
+        id: api_contract
+        if: steps.changes.outputs.run == 'true'
+        continue-on-error: true
+        run: |
+          cp src/lib/api/schema.d.ts "$CI_REPORT_DIR/schema.committed.d.ts"
+          pnpm api:gen 2>&1 | tee "$CI_REPORT_DIR/api-gen.txt"
+          cp src/lib/api/schema.d.ts "$CI_REPORT_DIR/schema.generated.d.ts"
+          git diff -- src/lib/api/schema.d.ts > "$CI_REPORT_DIR/api-contract.diff"
+          git diff --exit-code --stat -- src/lib/api/schema.d.ts
+
+      - name: Build
+        id: build
+        if: steps.changes.outputs.run == 'true'
+        continue-on-error: true
+        run: pnpm build 2>&1 | tee "$CI_REPORT_DIR/build.txt"
+
+      - name: Build CI report
+        if: always()
+        continue-on-error: true
+        env:
+          CI_COMMIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          CI_SKIPPED: ${{ steps.changes.outputs.run != 'true' }}
+          OUTCOME_INSTALL: ${{ steps.install.outcome }}
+          OUTCOME_ESLINT: ${{ steps.eslint.outcome }}
+          OUTCOME_PRETTIER: ${{ steps.prettier.outcome }}
+          OUTCOME_TYPECHECK: ${{ steps.typecheck.outcome }}
+          OUTCOME_TESTS: ${{ steps.tests.outcome }}
+          OUTCOME_COVERAGE: ${{ steps.coverage.outcome }}
+          OUTCOME_API_CONTRACT: ${{ steps.api_contract.outcome }}
+          OUTCOME_BUILD: ${{ steps.build.outcome }}
+        run: node scripts/ci-report.ts
+
+      - name: Upload CI report
+        if: always() && steps.changes.outputs.run == 'true'
+        continue-on-error: true
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ci-report-frontend
+          path: frontend/.ci-report/
+          # .ci-report es una carpeta oculta: sin esto, upload-artifact no sube nada.
+          include-hidden-files: true
+          retention-days: 7
+          if-no-files-found: ignore
+
+      # Un solo comentario por PR, identificado por el marcador: se edita si ya existe.
+      # Si el PR no toca el frontend, no se publica.
+      - name: Comment CI report on the PR
+        if: always() && steps.changes.outputs.run == 'true' && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        continue-on-error: true
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const fs = require('fs');
+            const marker = '<!-- ci-report:frontend -->';
+            const path = 'frontend/.ci-report/report.md';
+            if (!fs.existsSync(path)) {
+              core.warning('No hay reporte para publicar.');
+              return;
+            }
+            const body = fs.readFileSync(path, 'utf8');
+            const { owner, repo } = context.repo;
+            const issue_number = context.payload.pull_request.number;
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner, repo, issue_number, per_page: 100,
+            });
+            const existing = comments.find((comment) =>
+              comment.user?.login === 'github-actions[bot]' && comment.body?.startsWith(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body });
+            } else {
+              await github.rest.issues.createComment({ owner, repo, issue_number, body });
+            }
+
+      # Check obligatorio: falla si alguna verificación falló o si no se pudo instalar.
+      # Los warnings de ESLint nunca lo hacen fallar. Sin cambios en el frontend, pasa.
+      - name: CI gate
+        if: always()
+        working-directory: ${{ github.workspace }}
+        env:
+          RUN: ${{ steps.changes.outputs.run }}
+          OUTCOMES: >-
+            install=${{ steps.install.outcome }}
+            eslint=${{ steps.eslint.outcome }}
+            prettier=${{ steps.prettier.outcome }}
+            typecheck=${{ steps.typecheck.outcome }}
+            tests=${{ steps.tests.outcome }}
+            coverage=${{ steps.coverage.outcome }}
+            api_contract=${{ steps.api_contract.outcome }}
+            build=${{ steps.build.outcome }}
+        run: |
+          if [ "$RUN" = false ]; then
+            echo "Sin cambios en el frontend: verificaciones omitidas."
+            exit 0
+          fi
+          failed=0
+          for pair in $OUTCOMES; do
+            name="${pair%%=*}"
+            outcome="${pair#*=}"
+            if [ "$outcome" = failure ] || { [ "$name" = install ] && [ "$outcome" != success ]; }; then
+              echo "::error title=CI gate::$name: ${outcome:-no corrió}"
+              failed=1
+            fi
+          done
+          exit "$failed"
