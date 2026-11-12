@@ -90,7 +90,17 @@ class BankProductRefSerializer(serializers.Serializer):
     id = serializers.UUIDField()
     code = serializers.CharField()
     name = serializers.CharField()
+    product_type = CatalogItemRefSerializer(
+        source="product_type_item", help_text="Tipo de crédito (catálogo `bank_product_type`)."
+    )
     bank = NamedRefSerializer()
+
+
+class ParticipantsSummarySerializer(serializers.Serializer):
+    """Participantes activos además del titular, para el texto "+ 1 co-solicitante"."""
+
+    co_applicants = serializers.IntegerField()
+    solidary_debtors = serializers.IntegerField()
 
 
 class ApplicantRefSerializer(serializers.Serializer):
@@ -260,10 +270,18 @@ class ApplicationAssignmentSerializer(serializers.ModelSerializer):
 class ApplicationSerializer(serializers.ModelSerializer):
     """Vista interna (administrador y asesor) para listas."""
 
+    status_label = serializers.CharField(source="get_status_display", read_only=True)
     opportunity_id = serializers.UUIDField(read_only=True)
     applicant = ApplicantRefSerializer(source="opportunity.client", read_only=True)
+    participants_summary = serializers.SerializerMethodField()
     purpose = CatalogItemRefSerializer(source="purpose_item", read_only=True)
     bank_product = BankProductRefSerializer(read_only=True, allow_null=True)
+    requested_amount_cop = serializers.IntegerField(
+        source="financing.requested_amount_cop",
+        read_only=True,
+        allow_null=True,
+        help_text="Monto solicitado de la financiación; `null` si aún no hay financiación.",
+    )
     assigned_advisor = UserRefSerializer(read_only=True)
     origin = CatalogItemRefSerializer(source="opportunity.origin_item", read_only=True)
     project = serializers.SerializerMethodField()
@@ -277,10 +295,13 @@ class ApplicationSerializer(serializers.ModelSerializer):
             "id",
             "code",
             "status",
+            "status_label",
             "opportunity_id",
             "applicant",
+            "participants_summary",
             "purpose",
             "bank_product",
+            "requested_amount_cop",
             "assigned_advisor",
             "origin",
             "project",
@@ -300,6 +321,18 @@ class ApplicationSerializer(serializers.ModelSerializer):
         if prop is None or prop.project is None:
             return None
         return {"id": str(prop.project.pk), "name": prop.project.name}
+
+    @extend_schema_field(ParticipantsSummarySerializer)
+    def get_participants_summary(self, obj: CreditApplication) -> dict[str, int]:
+        """Lee los conteos de ``services.applications_queryset``; si la instancia no los
+        trae (no salió de ese queryset), los consulta."""
+        co_applicants = getattr(obj, "co_applicants_count", None)
+        solidary_debtors = getattr(obj, "solidary_debtors_count", None)
+        if co_applicants is None or solidary_debtors is None:
+            active = obj.participants.filter(is_active=True)
+            co_applicants = active.filter(role=ParticipantRole.CO_APPLICANT).count()
+            solidary_debtors = active.filter(role=ParticipantRole.SOLIDARY_DEBTOR).count()
+        return {"co_applicants": co_applicants, "solidary_debtors": solidary_debtors}
 
 
 class ApplicationSummarySerializer(serializers.ModelSerializer):

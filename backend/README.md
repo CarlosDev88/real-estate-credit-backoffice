@@ -500,7 +500,7 @@ The credit application is the central record of the process (API §16 to §18). 
 
 | Method | Path | Access |
 | --- | --- | --- |
-| `GET`, `POST` | `/applications` | `applications.read`, `applications.create`. Filters: `status`, `bank_id`, `product_id`, `purpose`, `advisor_id`, `project_id`, `origin`, `search`, and `ordering`. |
+| `GET`, `POST` | `/applications` | `applications.read`, `applications.create`. Filters: `status`, `bank_id`, `product_id`, `purpose`, `product_type`, `advisor_id`, `project_id`, `origin`, `search`, and `ordering` (also `requested_amount`, `bank_name`, and `applicant_name`, with empty values last). Catalog codes (`purpose`, `origin`, `product_type`) that do not exist answer `400`. Rows also carry `status_label`, the product type, `requested_amount_cop`, and `participants_summary`. |
 | `GET`, `PATCH` | `/applications/{id}` | `applications.read`, `applications.update`. `?include=participants,financing`. `PATCH` changes only `purpose_code` and `bank_product_id`. |
 | `GET` | `/applications/{id}/summary` | `applications.read_summary`. No financial or property data. |
 | `POST` | `/applications/{id}/assignments` | `applications.assign` |

@@ -5,7 +5,8 @@ historial, acciones disponibles y completitud (§16 y §9) y
 
 from typing import Any, cast
 
-from django.db.models import QuerySet
+from django.db.models import CharField, F, QuerySet, Value
+from django.db.models.functions import Concat
 from django.http import Http404
 from django.shortcuts import get_object_or_404
 from drf_spectacular.types import OpenApiTypes
@@ -57,6 +58,7 @@ from apps.applications.serializers import (
     WithdrawalSerializer,
     property_model_values,
 )
+from apps.catalogs.models import CatalogItem
 from apps.catalogs.workflow import ApplicationStatus
 from apps.crm.services import CrmScope, clients_visible_to, resolve_visible_client
 from apps.identity.models import User
@@ -125,6 +127,30 @@ def _choice_param(request: Request, name: str, choices: list[str]) -> str | None
     return value
 
 
+def _catalog_param(request: Request, name: str, catalog_code: str) -> str | None:
+    """Código de un catálogo en ``?name=``. Uno que no existe en el catálogo (activo o
+    inactivo, para poder filtrar el histórico) responde 400."""
+    value = request.query_params.get(name)
+    if not value:
+        return None
+    codes = list(
+        CatalogItem.objects.filter(catalog__code=catalog_code)
+        .order_by("code")
+        .values_list("code", flat=True)
+    )
+    if value not in codes:
+        raise ValidationError({name: [f"Valor no permitido. Opciones: {', '.join(codes)}."]})
+    return value
+
+
+# Filtros por código de catálogo del listado: parámetro, catálogo y campo.
+CATALOG_FILTERS = (
+    ("purpose", "loan_purpose", "purpose_item__code"),
+    ("origin", "lead_origin", "opportunity__origin_item__code"),
+    ("product_type", "bank_product_type", "bank_product__product_type_item__code"),
+)
+
+
 def _include_param(request: Request) -> frozenset[str]:
     """Bloques de ``?include=`` (separados por comas). Uno desconocido responde 400."""
     raw = request.query_params.get("include", "")
@@ -174,8 +200,18 @@ class ApplicationListView(ApplicationView):
         "opportunity__client__last_names",
         "opportunity__client__document_number",
     ]
-    ordering_fields = ["created_at", "updated_at", "status", "code"]
+    ordering_fields = [
+        "created_at",
+        "updated_at",
+        "status",
+        "code",
+        "requested_amount",
+        "bank_name",
+        "applicant_name",
+    ]
     ordering = ["-created_at"]
+    # Sin financiación o sin banco elegido, la fila va al final en los dos sentidos.
+    ordering_nulls_last = True
 
     def get_queryset(self) -> QuerySet[CreditApplication]:
         applications = services.applications_visible_to(self.actor)
@@ -191,14 +227,21 @@ class ApplicationListView(ApplicationView):
             value = parse_uuid_param(self.request, param)
             if value:
                 applications = applications.filter(**{field: value})
-        for param, field in (
-            ("purpose", "purpose_item__code"),
-            ("origin", "opportunity__origin_item__code"),
-        ):
-            code = self.request.query_params.get(param)
+        for param, catalog_code, field in CATALOG_FILTERS:
+            code = _catalog_param(self.request, param, catalog_code)
             if code:
                 applications = applications.filter(**{field: code})
-        return applications
+        # Campos de orden con nombre propio.
+        return applications.annotate(
+            requested_amount=F("financing__requested_amount_cop"),
+            bank_name=F("bank_product__bank__name"),
+            applicant_name=Concat(
+                "opportunity__client__first_names",
+                Value(" "),
+                "opportunity__client__last_names",
+                output_field=CharField(),
+            ),
+        )
 
     @extend_schema(
         tags=[APPLICATIONS_TAG],
@@ -212,10 +255,24 @@ class ApplicationListView(ApplicationView):
             STATUS_PARAM,
             OpenApiParameter("bank_id", OpenApiTypes.UUID),
             OpenApiParameter("product_id", OpenApiTypes.UUID),
-            OpenApiParameter("purpose", OpenApiTypes.STR, description="Código `loan_purpose`."),
+            OpenApiParameter(
+                "purpose",
+                OpenApiTypes.STR,
+                description="Código `loan_purpose`. Uno que no existe responde `400`.",
+            ),
+            OpenApiParameter(
+                "product_type",
+                OpenApiTypes.STR,
+                description="Tipo de crédito: código `bank_product_type`. Uno que no existe "
+                "responde `400`.",
+            ),
             OpenApiParameter("advisor_id", OpenApiTypes.UUID),
             OpenApiParameter("project_id", OpenApiTypes.UUID),
-            OpenApiParameter("origin", OpenApiTypes.STR, description="Código `lead_origin`."),
+            OpenApiParameter(
+                "origin",
+                OpenApiTypes.STR,
+                description="Código `lead_origin`. Uno que no existe responde `400`.",
+            ),
         ],
         responses={200: ApplicationSerializer(many=True), **COMMON_ERRORS},
     )

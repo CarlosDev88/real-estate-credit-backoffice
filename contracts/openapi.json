@@ -467,7 +467,7 @@
                         "schema": {
                             "type": "string"
                         },
-                        "description": "Código `lead_origin`."
+                        "description": "Código `lead_origin`. Uno que no existe responde `400`."
                     },
                     {
                         "name": "page",
@@ -497,6 +497,14 @@
                     },
                     {
                         "in": "query",
+                        "name": "product_type",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Tipo de crédito: código `bank_product_type`. Uno que no existe responde `400`."
+                    },
+                    {
+                        "in": "query",
                         "name": "project_id",
                         "schema": {
                             "type": "string",
@@ -509,7 +517,7 @@
                         "schema": {
                             "type": "string"
                         },
-                        "description": "Código `loan_purpose`."
+                        "description": "Código `loan_purpose`. Uno que no existe responde `400`."
                     },
                     {
                         "name": "search",
@@ -15335,6 +15343,10 @@
                         ],
                         "readOnly": true
                     },
+                    "status_label": {
+                        "type": "string",
+                        "readOnly": true
+                    },
                     "opportunity_id": {
                         "type": "string",
                         "format": "uuid",
@@ -15344,6 +15356,14 @@
                         "allOf": [
                             {
                                 "$ref": "#/components/schemas/ApplicantRef"
+                            }
+                        ],
+                        "readOnly": true
+                    },
+                    "participants_summary": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/ParticipantsSummary"
                             }
                         ],
                         "readOnly": true
@@ -15366,6 +15386,14 @@
                             }
                         ],
                         "readOnly": true
+                    },
+                    "requested_amount_cop": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "readOnly": true,
+                        "description": "Monto solicitado de la financiación; `null` si aún no hay financiación."
                     },
                     "assigned_advisor": {
                         "allOf": [
@@ -15457,10 +15485,13 @@
                     "id",
                     "opportunity_id",
                     "origin",
+                    "participants_summary",
                     "project",
                     "purpose",
                     "ready_to_file_at",
+                    "requested_amount_cop",
                     "status",
+                    "status_label",
                     "updated_at",
                     "version",
                     "withdrawal_reason",
@@ -15530,6 +15561,10 @@
                         ],
                         "readOnly": true
                     },
+                    "status_label": {
+                        "type": "string",
+                        "readOnly": true
+                    },
                     "opportunity_id": {
                         "type": "string",
                         "format": "uuid",
@@ -15539,6 +15574,14 @@
                         "allOf": [
                             {
                                 "$ref": "#/components/schemas/ApplicantRef"
+                            }
+                        ],
+                        "readOnly": true
+                    },
+                    "participants_summary": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/ParticipantsSummary"
                             }
                         ],
                         "readOnly": true
@@ -15561,6 +15604,14 @@
                             }
                         ],
                         "readOnly": true
+                    },
+                    "requested_amount_cop": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "readOnly": true,
+                        "description": "Monto solicitado de la financiación; `null` si aún no hay financiación."
                     },
                     "assigned_advisor": {
                         "allOf": [
@@ -15678,11 +15729,14 @@
                     "id",
                     "opportunity_id",
                     "origin",
+                    "participants_summary",
                     "project",
                     "property",
                     "purpose",
                     "ready_to_file_at",
+                    "requested_amount_cop",
                     "status",
+                    "status_label",
                     "updated_at",
                     "version",
                     "withdrawal_reason",
@@ -16525,6 +16579,14 @@
                     "name": {
                         "type": "string"
                     },
+                    "product_type": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/CatalogItemRef"
+                            }
+                        ],
+                        "description": "Tipo de crédito (catálogo `bank_product_type`)."
+                    },
                     "bank": {
                         "$ref": "#/components/schemas/NamedRef"
                     }
@@ -16533,7 +16595,8 @@
                     "bank",
                     "code",
                     "id",
-                    "name"
+                    "name",
+                    "product_type"
                 ]
             },
             "BankProductSummary": {
@@ -24029,6 +24092,22 @@
                 ],
                 "type": "string",
                 "description": "* `PRIMARY` - Titular\n* `CO_APPLICANT` - Co-solicitante\n* `SOLIDARY_DEBTOR` - Deudor solidario"
+            },
+            "ParticipantsSummary": {
+                "type": "object",
+                "description": "Participantes activos además del titular, para el texto \"+ 1 co-solicitante\".",
+                "properties": {
+                    "co_applicants": {
+                        "type": "integer"
+                    },
+                    "solidary_debtors": {
+                        "type": "integer"
+                    }
+                },
+                "required": [
+                    "co_applicants",
+                    "solidary_debtors"
+                ]
             },
             "Partner": {
                 "type": "object",

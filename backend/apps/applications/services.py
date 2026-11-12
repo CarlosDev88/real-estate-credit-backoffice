@@ -23,7 +23,7 @@ from datetime import datetime
 from typing import Any
 
 from django.db import IntegrityError, transaction
-from django.db.models import Prefetch, Q, QuerySet, Sum
+from django.db.models import Count, OuterRef, Prefetch, Q, QuerySet, Subquery, Sum
 from django.db.models.functions import Coalesce
 from django.utils import timezone
 from rest_framework.exceptions import NotFound, ValidationError
@@ -133,18 +133,37 @@ def _scope_filter(user: User, scope: CrmScope) -> Q | None:
     return condition
 
 
+def _active_participants(role: str) -> Coalesce:
+    """Cantidad de participantes activos con ese rol, como subconsulta: sin consultas
+    por fila y sin multiplicar las filas del listado."""
+    count = (
+        ApplicationParticipant.objects.filter(application=OuterRef("pk"), role=role, is_active=True)
+        .order_by()
+        .values("application")
+        .annotate(total=Count("pk"))
+        .values("total")[:1]
+    )
+    return Coalesce(Subquery(count), 0)
+
+
 def applications_queryset() -> QuerySet[CreditApplication]:
+    """Solicitudes con lo que muestran el listado y el detalle, en una sola consulta."""
     return CreditApplication.objects.select_related(
         "opportunity__client__document_type_item",
         "opportunity__origin_item",
         "purpose_item",
         "bank_product__bank",
+        "bank_product__product_type_item",
+        "financing",
         "assigned_advisor",
         "withdrawal_reason_item",
         "financed_property__project",
         "financed_property__property_type_item",
         "financed_property__condition_item",
         "financed_property__city_item",
+    ).annotate(
+        co_applicants_count=_active_participants(ParticipantRole.CO_APPLICANT),
+        solidary_debtors_count=_active_participants(ParticipantRole.SOLIDARY_DEBTOR),
     )
 
 

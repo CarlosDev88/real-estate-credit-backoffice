@@ -675,7 +675,7 @@ Respuesta reducida:
 
 | Método | Ruta | Permiso | Entrada / filtros | Respuesta |
 | --- | --- | --- | --- | --- |
-| `GET` | `/applications` | `applications.read` | `status`, `bank_id`, `product_id`, `purpose`, `advisor_id`, `project_id`, `origin`, `search` | Solicitudes según alcance. |
+| `GET` | `/applications` | `applications.read` | `status`, `bank_id`, `product_id`, `purpose`, `product_type`, `advisor_id`, `project_id`, `origin`, `search`, `ordering` | Solicitudes según alcance. |
 | `POST` | `/applications` | `applications.create` | Oportunidad, finalidad, asesor e inmueble inicial | Solicitud `DRAFT`. |
 | `GET` | `/applications/{application_id}` | `applications.read` | `include` permitido | Expediente según rol. |
 | `PATCH` | `/applications/{application_id}` | `applications.update` | Campos editables no relacionados con estado | Solicitud actualizada. |
@@ -686,6 +686,13 @@ Respuesta reducida:
 | `POST` | `/applications/{application_id}/status-transitions` | `applications.transition` | Estado destino, motivo y versión | Transición atómica. |
 | `POST` | `/applications/{application_id}/withdrawals` | `applications.withdraw` | Motivo y versión | Solicitud `WITHDRAWN`. |
 | `POST` | `/applications/{application_id}/assignments` | `applications.assign` | Asesor | Reasignación auditada. |
+
+Listado `GET /applications`:
+
+- **Filtros por código de catálogo:** `purpose` (`loan_purpose`), `origin` (`lead_origin`) y `product_type` (tipo de crédito, `bank_product_type`). Un código que no existe en su catálogo responde `400 VALIDATION_ERROR` con las opciones; un código inactivo sigue filtrando el histórico.
+- **Orden:** `created_at` (por omisión, descendente), `updated_at`, `status`, `code`, `requested_amount`, `bank_name` y `applicant_name` (nombres y apellidos del titular). Las filas sin monto o sin banco van al final en los dos sentidos. Otro campo responde `400`.
+- **Cada fila (administrador y asesor)** trae además `status_label`, `bank_product.product_type` (`{code, label}`), `requested_amount_cop` (`null` si aún no hay financiación) y `participants_summary` (`{co_applicants, solidary_debtors}`, solo participantes activos). El número de consultas no crece con las filas.
+- **El broker** recibe el mismo resumen de siempre, sin montos ni participantes.
 
 `POST /applications` requiere `Idempotency-Key`:
 
