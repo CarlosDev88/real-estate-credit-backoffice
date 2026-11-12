@@ -7198,6 +7198,81 @@
                 }
             }
         },
+        "/api/v1/buyer/metadata/catalogs/{catalog_code}": {
+            "get": {
+                "operationId": "buyer_metadata_catalogs_retrieve",
+                "description": "Para catálogos grandes o dependientes, como `municipality`. Filtra por `parent_code` (ej. el código DANE del departamento) o `parent_id`. Soporta `If-None-Match`. Misma respuesta que `GET /metadata/catalogs/{catalog_code}`, solo para los catálogos que usan los formularios del portal: `address_type`, `amortization_mode`, `application_withdrawal_reason`, `contract_type`, `currency_mode`, `department`, `employment_profile`, `financing_mode`, `funds_origin`, `income_source_type`, `municipality`, `property_condition`, `property_type`. Cualquier otro código responde `404`, igual que uno inexistente.",
+                "summary": "Valores activos y vigentes de un catálogo de los formularios del comprador",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "catalog_code",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "required": true
+                    },
+                    {
+                        "in": "query",
+                        "name": "parent_code",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "parent_id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "tags": [
+                    "Buyer portal"
+                ],
+                "security": [
+                    {
+                        "buyerSession": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/MetadataCatalog"
+                                }
+                            }
+                        },
+                        "description": ""
+                    },
+                    "304": {
+                        "description": "Sin cambios."
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "NOT_AUTHENTICATED o SESSION_EXPIRED"
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "RESOURCE_NOT_FOUND"
+                    }
+                }
+            }
+        },
         "/api/v1/buyer/participants/{participant_id}/financial-profile": {
             "get": {
                 "operationId": "buyer_financial_profile_retrieve",
@@ -15980,6 +16055,10 @@
                         ],
                         "readOnly": true
                     },
+                    "role_label": {
+                        "type": "string",
+                        "readOnly": true
+                    },
                     "contributes_income": {
                         "type": "boolean",
                         "readOnly": true
@@ -16024,6 +16103,7 @@
                     "income_share_cop",
                     "is_active",
                     "role",
+                    "role_label",
                     "updated_at"
                 ]
             },
@@ -17805,9 +17885,28 @@
                         ],
                         "readOnly": true
                     },
+                    "public_status": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/BuyerDocumentSlotPublicStatusEnum"
+                            }
+                        ],
+                        "description": "Estado para el comprador: `TO_UPLOAD` (`PENDING`), `TO_FIX` (`REJECTED`), `IN_REVIEW` (`UPLOADED`), `DONE` (`APPROVED`) o `NOT_APPLICABLE` (`WAIVED`).",
+                        "readOnly": true
+                    },
+                    "public_status_label": {
+                        "type": "string",
+                        "readOnly": true,
+                        "description": "Texto del estado público: Te falta, Corrígelo, En revisión, Listo o No aplica."
+                    },
                     "can_upload": {
                         "type": "boolean",
                         "readOnly": true
+                    },
+                    "needs_action": {
+                        "type": "boolean",
+                        "readOnly": true,
+                        "description": "`true` si `can_upload` y el estado público es `TO_UPLOAD` o `TO_FIX`: arma la tarjeta «Lo que necesitamos de ti»."
                     },
                     "current_file": {
                         "oneOf": [
@@ -17848,13 +17947,26 @@
                     "label",
                     "max_size_bytes",
                     "minimum_files",
+                    "needs_action",
                     "participant",
+                    "public_status",
+                    "public_status_label",
                     "rejection",
                     "slot_index",
                     "status",
                     "updated_at",
                     "validity_days"
                 ]
+            },
+            "BuyerDocumentSlotPublicStatusEnum": {
+                "enum": [
+                    "TO_UPLOAD",
+                    "TO_FIX",
+                    "IN_REVIEW",
+                    "DONE",
+                    "NOT_APPLICABLE"
+                ],
+                "type": "string"
             },
             "BuyerDocumentUploadRequest": {
                 "type": "object",
@@ -18403,6 +18515,10 @@
                         ],
                         "readOnly": true
                     },
+                    "role_label": {
+                        "type": "string",
+                        "readOnly": true
+                    },
                     "full_name": {
                         "type": "string",
                         "readOnly": true
@@ -18416,7 +18532,8 @@
                     "contributes_income",
                     "full_name",
                     "id",
-                    "role"
+                    "role",
+                    "role_label"
                 ]
             },
             "BuyerParticipantSummary": {
@@ -18434,6 +18551,10 @@
                                 "$ref": "#/components/schemas/ParticipantRoleEnum"
                             }
                         ],
+                        "readOnly": true
+                    },
+                    "role_label": {
+                        "type": "string",
                         "readOnly": true
                     },
                     "full_name": {
@@ -18467,7 +18588,8 @@
                     "financial_profile_id",
                     "full_name",
                     "id",
-                    "role"
+                    "role",
+                    "role_label"
                 ]
             },
             "BuyerProcess": {
@@ -18962,6 +19084,9 @@
                     "role": {
                         "type": "string"
                     },
+                    "role_label": {
+                        "type": "string"
+                    },
                     "full_name": {
                         "type": "string"
                     }
@@ -18969,7 +19094,8 @@
                 "required": [
                     "full_name",
                     "id",
-                    "role"
+                    "role",
+                    "role_label"
                 ]
             },
             "Catalog": {
@@ -26343,6 +26469,9 @@
                     "role": {
                         "type": "string"
                     },
+                    "role_label": {
+                        "type": "string"
+                    },
                     "client_id": {
                         "type": "string",
                         "format": "uuid"
@@ -26359,7 +26488,8 @@
                     "full_name",
                     "id",
                     "is_active",
-                    "role"
+                    "role",
+                    "role_label"
                 ]
             },
             "SlotRefresh": {

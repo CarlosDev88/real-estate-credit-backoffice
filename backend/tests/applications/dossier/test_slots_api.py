@@ -134,6 +134,7 @@ def test_list_returns_the_dossier_in_display_order(
     assert identity["participant"] == {
         "id": str(primary.id),
         "role": "PRIMARY",
+        "role_label": "Titular",
         "client_id": str(primary.client_id),
         "full_name": "Laura Gómez Vélez",
         "is_active": True,

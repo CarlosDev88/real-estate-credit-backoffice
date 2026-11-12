@@ -513,6 +513,7 @@ CLIENT_IDENTITY_FIELDS = (
 class ApplicationParticipantSerializer(serializers.ModelSerializer):
     application_id = serializers.UUIDField(read_only=True)
     client = ClientSerializer(read_only=True)
+    role_label = serializers.CharField(source="get_role_display", read_only=True)
     financial_profile_id = serializers.SerializerMethodField()
 
     class Meta:
@@ -522,6 +523,7 @@ class ApplicationParticipantSerializer(serializers.ModelSerializer):
             "application_id",
             "client",
             "role",
+            "role_label",
             "contributes_income",
             "income_share_cop",
             "is_active",

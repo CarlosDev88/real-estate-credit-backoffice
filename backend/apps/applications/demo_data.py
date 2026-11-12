@@ -5,8 +5,9 @@ pestañas ``draft``, ``waiting``, ``review`` y ``ready``, con perfiles financier
 inmueble, financiación, documentos y revisiones. Todo pasa por los servicios del
 dominio, para que el historial, los slots, la completitud guardada y las evaluaciones
 queden como los dejaría un uso real. Solo se escribe una cosa por fuera de ellos:
-la fecha de inicio de la etapa de una solicitud, que se mueve al pasado para que
-muestre el aviso de inactividad del comprador (no hay forma de "esperar" tres días).
+la fecha de inicio de la etapa de una solicitud en `WAITING_BUYER_DATA` por asesor, que
+se mueve al pasado para que muestre el aviso de inactividad del comprador (no hay forma
+de "esperar" tres días).
 
 - Solo con ``DEBUG``: lo exige el comando.
 - Idempotente: los clientes de demo llevan un documento con ``DEMO_DOCUMENT_PREFIX``;
@@ -186,7 +187,6 @@ class DemoCase:
     reject: int = 0
     # Todo aprobado y después un documento rechazado: `ready_to_file_blocked`.
     reject_after_ready: bool = False
-    inactive: bool = False
     portal_link: bool = False
 
 
@@ -211,7 +211,7 @@ DEMO_CASES: tuple[DemoCase, ...] = (
     DemoCase(D, NEW, BOGOTA_LEASING, EMPLOYEE),
     DemoCase(D, USED, None, None, origin="BROKER"),
     # Esperando al comprador.
-    DemoCase(WB, NEW, BANCOLOMBIA, None, inactive=True),
+    DemoCase(WB, NEW, BANCOLOMBIA, None),
     DemoCase(WB, USED, FNA, INDEPENDENT, extra_role=SOLIDARY),
     DemoCase(WB, NEW, BOGOTA_LEASING, None),
     DemoCase(WB, IMPROVEMENT, BANCOLOMBIA_LEASING, PENSIONER, origin="BROKER"),
@@ -637,13 +637,15 @@ def _build_case(
         # que la última evaluación corresponda a los datos actuales.
         services.evaluate_application(advisor, _fresh(application))
 
-    if case.inactive:
-        # Lo único que no pasa por un servicio: la etapa empezó hace días y el comprador
-        # nunca entró, para que la lista muestre el aviso de inactividad.
-        CreditApplication.objects.filter(pk=application.pk).update(
-            current_stage_started_at=timezone.now() - timedelta(days=INACTIVE_DAYS)
-        )
     return _fresh(application)
+
+
+def _mark_buyer_inactive(application: CreditApplication) -> None:
+    """Lo único que no pasa por un servicio: la etapa empezó hace días y el comprador
+    nunca entró, para que la lista muestre el aviso de inactividad (``buyer_inactive``)."""
+    CreditApplication.objects.filter(pk=application.pk).update(
+        current_stage_started_at=timezone.now() - timedelta(days=INACTIVE_DAYS)
+    )
 
 
 def _round_robin(advisors: list[User]) -> Iterator[User]:
@@ -670,11 +672,17 @@ def seed_demo_data(*, extra_advisor: User | None = None) -> DemoResult:
     names = _Names()
     assignments = _round_robin(advisors)
     portal: tuple[User, CreditApplication] | None = None
+    # Cada asesor ve al menos una solicitud inactiva en su pestaña `waiting`: la primera
+    # suya en `WAITING_BUYER_DATA` (el comprador nunca entró, porque esos casos no cargan).
+    with_inactive: set[Any] = set()
     for index, case in enumerate(DEMO_CASES):
         advisor = next(assignments)
         application = _build_case(
             case, index, advisor=advisor, admin=admin, broker=broker, names=names
         )
+        if case.status == WB and advisor.pk not in with_inactive:
+            _mark_buyer_inactive(application)
+            with_inactive.add(advisor.pk)
         result.applications.append(application)
         if case.portal_link:
             portal = (advisor, application)

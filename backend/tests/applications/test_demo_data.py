@@ -101,9 +101,9 @@ def test_seed_creates_the_demo_data(e2e_advisor: User) -> None:
         assert tabs[code] > 0, tabs
     assert tabs["all"] == 30
 
-    def rows(quick_filter: str) -> list[dict[str, Any]]:
-        body = admin.get(APPLICATIONS_URL, {"quick_filter": quick_filter, "page_size": "50"}).json()
-        return list(body["items"])
+    def rows(quick_filter: str, client: APIClient = admin) -> list[dict[str, Any]]:
+        params = {"quick_filter": quick_filter, "page_size": "50"}
+        return list(client.get(APPLICATIONS_URL, params).json()["items"])
 
     assert any(row["ready_to_file_blocked"] is True for row in rows("ready"))
     assert any(row["ready_to_file_blocked"] is False for row in rows("ready"))
@@ -111,7 +111,15 @@ def test_seed_creates_the_demo_data(e2e_advisor: User) -> None:
     assert {
         row["completeness_pct"] for row in rows("ready") if not row["ready_to_file_blocked"]
     } == {100}
-    assert any(row["buyer_inactive"] is True for row in rows("waiting"))
+    waiting = rows("waiting")
+    assert any(row["buyer_inactive"] is True for row in waiting)
+    assert any(row["buyer_inactive"] is False for row in waiting)
+    # Cada asesor, con su propia sesión, ve al menos una inactiva en su pestaña `waiting`.
+    advisors = [demo_client(DEMO_USERS[1].email), demo_client(DEMO_USERS[2].email)]
+    e2e = APIClient()
+    assert login(e2e, email=E2E_EMAIL).status_code == 200
+    for advisor in [*advisors, e2e]:
+        assert any(row["buyer_inactive"] is True for row in rows("waiting", advisor))
     review = CreditApplication.objects.filter(status="DOCUMENTS_REVIEW")
     slot_statuses = set(review.values_list("document_slots__status", flat=True))
     assert {SlotStatus.UPLOADED, SlotStatus.APPROVED, SlotStatus.REJECTED} <= slot_statuses

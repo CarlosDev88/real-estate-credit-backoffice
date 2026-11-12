@@ -1290,6 +1290,26 @@ export interface paths {
         patch: operations["buyer_income_sources_partial_update"];
         trace?: never;
     };
+    "/api/v1/buyer/metadata/catalogs/{catalog_code}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Valores activos y vigentes de un catálogo de los formularios del comprador
+         * @description Para catálogos grandes o dependientes, como `municipality`. Filtra por `parent_code` (ej. el código DANE del departamento) o `parent_id`. Soporta `If-None-Match`. Misma respuesta que `GET /metadata/catalogs/{catalog_code}`, solo para los catálogos que usan los formularios del portal: `address_type`, `amortization_mode`, `application_withdrawal_reason`, `contract_type`, `currency_mode`, `department`, `employment_profile`, `financing_mode`, `funds_origin`, `income_source_type`, `municipality`, `property_condition`, `property_type`. Cualquier otro código responde `404`, igual que uno inexistente.
+         */
+        get: operations["buyer_metadata_catalogs_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/buyer/participants/{participant_id}/financial-profile": {
         parameters: {
             query?: never;
@@ -2825,6 +2845,7 @@ export interface components {
             readonly application_id: string;
             readonly client: components["schemas"]["Client"];
             readonly role: components["schemas"]["ParticipantRoleEnum"];
+            readonly role_label: string;
             readonly contributes_income: boolean;
             readonly income_share_cop: number | null;
             readonly is_active: boolean;
@@ -3355,12 +3376,20 @@ export interface components {
             readonly allowed_mime_types: string[];
             readonly max_size_bytes: number;
             readonly status: components["schemas"]["DocumentSlotStatusEnum"];
+            /** @description Estado para el comprador: `TO_UPLOAD` (`PENDING`), `TO_FIX` (`REJECTED`), `IN_REVIEW` (`UPLOADED`), `DONE` (`APPROVED`) o `NOT_APPLICABLE` (`WAIVED`). */
+            readonly public_status: components["schemas"]["BuyerDocumentSlotPublicStatusEnum"];
+            /** @description Texto del estado público: Te falta, Corrígelo, En revisión, Listo o No aplica. */
+            readonly public_status_label: string;
             readonly can_upload: boolean;
+            /** @description `true` si `can_upload` y el estado público es `TO_UPLOAD` o `TO_FIX`: arma la tarjeta «Lo que necesitamos de ti». */
+            readonly needs_action: boolean;
             readonly current_file: components["schemas"]["BuyerDocumentFile"] | null;
             readonly rejection: components["schemas"]["BuyerRejection"] | null;
             /** Format: date-time */
             readonly updated_at: string;
         };
+        /** @enum {string} */
+        BuyerDocumentSlotPublicStatusEnum: "TO_UPLOAD" | "TO_FIX" | "IN_REVIEW" | "DONE" | "NOT_APPLICABLE";
         /**
          * @description Serializer que rechaza campos no declarados (``additionalProperties: false``).
          *
@@ -3505,6 +3534,7 @@ export interface components {
             /** Format: uuid */
             readonly id: string;
             readonly role: components["schemas"]["ParticipantRoleEnum"];
+            readonly role_label: string;
             readonly full_name: string;
             readonly contributes_income: boolean;
         };
@@ -3513,6 +3543,7 @@ export interface components {
             /** Format: uuid */
             readonly id: string;
             readonly role: components["schemas"]["ParticipantRoleEnum"];
+            readonly role_label: string;
             readonly full_name: string;
             readonly contributes_income: boolean;
             /** Format: uuid */
@@ -3656,6 +3687,7 @@ export interface components {
             /** Format: uuid */
             id: string;
             role: string;
+            role_label: string;
             full_name: string;
         };
         Catalog: {
@@ -5860,6 +5892,7 @@ export interface components {
             /** Format: uuid */
             id: string;
             role: string;
+            role_label: string;
             /** Format: uuid */
             client_id: string;
             full_name: string;
@@ -10899,6 +10932,55 @@ export interface operations {
             };
             /** @description PRECONDITION_REQUIRED (falta If-Match) */
             428: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    buyer_metadata_catalogs_retrieve: {
+        parameters: {
+            query?: {
+                parent_code?: string;
+                parent_id?: string;
+            };
+            header?: never;
+            path: {
+                catalog_code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MetadataCatalog"];
+                };
+            };
+            /** @description Sin cambios. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description RESOURCE_NOT_FOUND */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

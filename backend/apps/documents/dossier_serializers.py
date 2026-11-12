@@ -45,6 +45,7 @@ class SlotDocumentTypeSerializer(DocumentTypeRefSerializer):
 class SlotParticipantSerializer(serializers.Serializer):
     id = serializers.UUIDField()
     role = serializers.CharField()
+    role_label = serializers.CharField(source="get_role_display")
     client_id = serializers.UUIDField()
     full_name = serializers.CharField(source="client.full_name")
     is_active = serializers.BooleanField()

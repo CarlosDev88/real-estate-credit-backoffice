@@ -22,6 +22,27 @@ from apps.identity.models import BuyerSession
 
 APPLICATION_STATUS_CATALOG = "application_status"
 
+# Catálogos que el comprador consulta en `/buyer/metadata/catalogs/{code}`: los que
+# validan sus formularios (`CatalogItemCodeField` de los serializers que usa el portal) y
+# `department`, el padre de `municipality`. Otro código responde `404`.
+BUYER_CATALOG_CODES: frozenset[str] = frozenset(
+    {
+        "address_type",
+        "department",
+        "municipality",
+        "employment_profile",
+        "contract_type",
+        "funds_origin",
+        "income_source_type",
+        "property_type",
+        "property_condition",
+        "financing_mode",
+        "currency_mode",
+        "amortization_mode",
+        "application_withdrawal_reason",
+    }
+)
+
 # Decisión 17: el estado público es el estado de la solicitud, con un texto fijo.
 NEXT_ACTIONS: dict[str, str] = {
     ApplicationStatus.DRAFT: "Tu asesor está preparando la solicitud.",

@@ -133,11 +133,12 @@ class BuyerProgressSerializer(serializers.Serializer):
 
 class BuyerParticipantSerializer(serializers.ModelSerializer):
     role = serializers.ChoiceField(choices=ParticipantRole.choices, read_only=True)
+    role_label = serializers.CharField(source="get_role_display", read_only=True)
     full_name = serializers.CharField(source="client.full_name", read_only=True)
 
     class Meta:
         model = ApplicationParticipant
-        fields = ["id", "role", "full_name", "contributes_income"]
+        fields = ["id", "role", "role_label", "full_name", "contributes_income"]
         read_only_fields = fields
 
 
