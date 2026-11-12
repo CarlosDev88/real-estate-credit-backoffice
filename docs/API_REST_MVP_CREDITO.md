@@ -1499,6 +1499,8 @@ Los códigos usados históricamente no se renombran ni eliminan. Si dejan de apl
 
 Para el MVP existen tres bancos de prueba —Bancolombia, Fondo Nacional del Ahorro y Banco de Bogotá— y un producto hipotecario configurable por banco. Ningún campo o endpoint presume comunicación automática con ellos.
 
+`short_name` es un nombre corto opcional para listados (hasta 30 caracteres, por ejemplo `FNA`), editable en `POST /banks` y `PATCH /banks/{bank_id}`. Vacío por omisión: el frontend muestra `name`. De los bancos de prueba, solo el Fondo Nacional del Ahorro trae `short_name` (`FNA`). Sale en el banco, en su detalle y en cada referencia al banco (`bank_product.bank` del listado de solicitudes y de los productos).
+
 Semilla inicial (paso 6): cada banco tiene un producto `MORTGAGE` activo —"Crédito hipotecario" en Bancolombia y FNA, "Crédito de vivienda" en Banco de Bogotá— que admite `PURCHASE_NEW`, `PURCHASE_USED` y `HOME_IMPROVEMENT`, sin montos ni plazos y vigente desde `2026-01-01`. No se siembran reglas.
 
 Acceso (decisión del paso 6, alineada con la matriz 8.6 de requerimientos): `banks.read` y `bank_rules.read` son de `ADMIN` y `ADVISOR`; crear, editar, activar y desactivar bancos, productos y reglas es solo de `ADMIN`. `INDEPENDENT_BROKER` y `CONSTRUCTION_PARTNER` reciben `403` en `/banks`, `/bank-products` y `/bank-policy-rules`.

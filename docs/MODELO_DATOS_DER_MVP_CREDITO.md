@@ -672,6 +672,7 @@ Entidades financieras disponibles para selección manual.
 | `updated_at` | `TIMESTAMPTZ` | No | Fecha y hora de última modificación. |
 | `code` | `VARCHAR(50)` | No | UQ, código interno. |
 | `name` | `VARCHAR(180)` | No | Nombre visible. |
+| `short_name` | `VARCHAR(30)` | No | Nombre corto opcional para listados (por ejemplo, `FNA`). `DEFAULT ''`; vacío: se muestra `name`. |
 | `tax_id` | `VARCHAR(30)` | Sí | Identificación. |
 | `status` | `VARCHAR(20)` | No | `ACTIVE`/`INACTIVE`. |
 | `operational_notes` | `TEXT` | Sí | Indicaciones internas. |

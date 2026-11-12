@@ -125,6 +125,22 @@ def test_row_has_type_amount_participants_and_status_label(
     assert row["participants_summary"] == {"co_applicants": 1, "solidary_debtors": 1}
 
 
+def test_bank_short_name_in_the_row(
+    advisor_client: APIClient, new_application: ApplicationFactory
+) -> None:
+    new_application(bank_product=seeded_product("FNA"))  # Sembrado con "FNA".
+    new_application(bank_product=seeded_product("BANCOLOMBIA"))  # Sin nombre corto.
+
+    banks = {
+        row["bank_product"]["bank"]["code"]: row["bank_product"]["bank"]
+        for row in items(advisor_client)
+    }
+
+    assert banks["FNA"]["short_name"] == "FNA"
+    assert banks["FNA"]["name"] == "Fondo Nacional del Ahorro"
+    assert banks["BANCOLOMBIA"]["short_name"] == ""
+
+
 def test_fields_without_product_or_financing(
     advisor_client: APIClient, application: CreditApplication
 ) -> None:

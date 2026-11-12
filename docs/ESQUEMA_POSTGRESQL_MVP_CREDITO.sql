@@ -260,6 +260,8 @@ CREATE TABLE banks (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     code VARCHAR(50) NOT NULL UNIQUE,
     name VARCHAR(180) NOT NULL,
+    -- Nombre corto opcional para listados (por ejemplo, FNA); vacío: se muestra name.
+    short_name VARCHAR(30) NOT NULL DEFAULT '',
     tax_id VARCHAR(30),
     status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
     operational_notes TEXT,

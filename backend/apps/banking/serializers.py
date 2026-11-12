@@ -42,6 +42,9 @@ class BankRefSerializer(serializers.Serializer):
     id = serializers.UUIDField()
     code = serializers.CharField()
     name = serializers.CharField()
+    short_name = serializers.CharField(
+        help_text="Nombre corto para listados; vacío si no tiene (se muestra `name`)."
+    )
 
 
 class BankSerializer(serializers.ModelSerializer):
@@ -51,6 +54,7 @@ class BankSerializer(serializers.ModelSerializer):
             "id",
             "code",
             "name",
+            "short_name",
             "tax_id",
             "status",
             "operational_notes",
@@ -78,6 +82,7 @@ class BankDetailSerializer(BankSerializer):
 class BankCreateSerializer(StrictSerializer):
     code = serializers.CharField(max_length=50, validators=[bank_code_validator])
     name = serializers.CharField(max_length=180)
+    short_name = serializers.CharField(max_length=30, required=False, allow_blank=True, default="")
     tax_id = serializers.CharField(max_length=30, required=False, allow_blank=True, default="")
     operational_notes = serializers.CharField(required=False, allow_blank=True, default="")
 
@@ -89,6 +94,7 @@ class BankUpdateSerializer(StrictSerializer):
     """El código no se edita: es estable."""
 
     name = serializers.CharField(max_length=180, required=False)
+    short_name = serializers.CharField(max_length=30, required=False, allow_blank=True)
     tax_id = serializers.CharField(max_length=30, required=False, allow_blank=True)
     operational_notes = serializers.CharField(required=False, allow_blank=True)
 

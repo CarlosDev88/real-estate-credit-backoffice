@@ -234,6 +234,7 @@ erDiagram
         uuid id PK
         varchar code UK
         varchar name
+        varchar short_name
     }
     BANK_PRODUCTS {
         uuid id PK

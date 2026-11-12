@@ -16061,6 +16061,10 @@
                         "type": "string",
                         "readOnly": true
                     },
+                    "short_name": {
+                        "type": "string",
+                        "readOnly": true
+                    },
                     "tax_id": {
                         "type": "string",
                         "readOnly": true
@@ -16094,6 +16098,7 @@
                     "id",
                     "name",
                     "operational_notes",
+                    "short_name",
                     "status",
                     "tax_id",
                     "updated_at"
@@ -16113,6 +16118,11 @@
                         "type": "string",
                         "minLength": 1,
                         "maxLength": 180
+                    },
+                    "short_name": {
+                        "type": "string",
+                        "default": "",
+                        "maxLength": 30
                     },
                     "tax_id": {
                         "type": "string",
@@ -16142,6 +16152,10 @@
                         "readOnly": true
                     },
                     "name": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "short_name": {
                         "type": "string",
                         "readOnly": true
                     },
@@ -16186,6 +16200,7 @@
                     "name",
                     "operational_notes",
                     "products",
+                    "short_name",
                     "status",
                     "tax_id",
                     "updated_at"
@@ -16588,7 +16603,7 @@
                         "description": "Tipo de crédito (catálogo `bank_product_type`)."
                     },
                     "bank": {
-                        "$ref": "#/components/schemas/NamedRef"
+                        "$ref": "#/components/schemas/BankRef"
                     }
                 },
                 "required": [
@@ -16643,12 +16658,17 @@
                     },
                     "name": {
                         "type": "string"
+                    },
+                    "short_name": {
+                        "type": "string",
+                        "description": "Nombre corto para listados; vacío si no tiene (se muestra `name`)."
                     }
                 },
                 "required": [
                     "code",
                     "id",
-                    "name"
+                    "name",
+                    "short_name"
                 ]
             },
             "BankRuleEvaluation": {
@@ -24499,6 +24519,10 @@
                         "type": "string",
                         "minLength": 1,
                         "maxLength": 180
+                    },
+                    "short_name": {
+                        "type": "string",
+                        "maxLength": 30
                     },
                     "tax_id": {
                         "type": "string",

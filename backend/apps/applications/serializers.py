@@ -93,7 +93,7 @@ class BankProductRefSerializer(serializers.Serializer):
     product_type = CatalogItemRefSerializer(
         source="product_type_item", help_text="Tipo de crédito (catálogo `bank_product_type`)."
     )
-    bank = NamedRefSerializer()
+    bank = BankRefSerializer()
 
 
 class ParticipantsSummarySerializer(serializers.Serializer):

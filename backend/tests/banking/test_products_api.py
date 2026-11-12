@@ -64,7 +64,12 @@ def test_admin_creates_product_with_purposes(admin_client: APIClient, fna: Bank)
 
     assert response.status_code == 201, response.content
     body = response.json()
-    assert body["bank"] == {"id": str(fna.id), "code": "FNA", "name": "Fondo Nacional del Ahorro"}
+    assert body["bank"] == {
+        "id": str(fna.id),
+        "code": "FNA",
+        "name": "Fondo Nacional del Ahorro",
+        "short_name": "FNA",
+    }
     assert body["product_type"] == {"code": "HOUSING_LEASING", "label": "Leasing habitacional"}
     assert body["status"] == "ACTIVE"
     assert (body["min_amount_cop"], body["max_amount_cop"]) == (20_000_000, 500_000_000)
