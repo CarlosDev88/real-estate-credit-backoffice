@@ -12,7 +12,7 @@ import {
   TIME_ZONE,
 } from "@/lib/format";
 
-const NBSP = " ";
+const NBSP = String.fromCharCode(0xa0); // espacio de no separación
 
 describe("montos y porcentajes", () => {
   it("formatea COP entero con separador de miles", () => {
@@ -49,7 +49,14 @@ describe("fechas en la zona horaria de la app", () => {
   it("convierte desde UTC", () => {
     // 03:30 UTC del 25 es todavía el 24 en Bogotá (UTC−5).
     expect(formatDate("2026-08-25T03:30:00Z")).toBe("24 ago 2026");
-    expect(formatDateTime("2026-08-24T15:30:00Z")).toBe("24 ago 2026, 10:30");
+    expect(formatDateTime("2026-08-24T15:30:00Z")).toBe(`24 ago 2026, 10:30${NBSP}a.${NBSP}m.`);
+  });
+
+  it("la hora va en 12 h como es-CO", () => {
+    // 20:45 UTC = 3:45 p. m. en Bogotá; mediodía y medianoche son las 12.
+    expect(formatDateTime("2026-08-24T20:45:00Z")).toBe(`24 ago 2026, 3:45${NBSP}p.${NBSP}m.`);
+    expect(formatDateTime("2026-08-24T17:00:00Z")).toBe(`24 ago 2026, 12:00${NBSP}p.${NBSP}m.`);
+    expect(formatDateTime("2026-08-24T05:05:00Z")).toBe(`24 ago 2026, 12:05${NBSP}a.${NBSP}m.`);
     expect(formatDate("no-es-fecha")).toBeNull();
   });
 

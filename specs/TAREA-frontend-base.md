@@ -315,6 +315,7 @@ _(se completan al resolver las ambigüedades de cada fase)_
   - Fecha relativa: menos de 1 min, "Hace un momento"; menos de 1 h, "Hace N min"; mismo día, "Hace N h"; el día anterior, "Ayer"; hasta 3 días, "Hace N días"; después, "8 nov" ("8 nov 2025" si es de otro año). En el `title`, la fecha y hora completas.
   - La fecha relativa es un componente que se actualiza solo cada minuto, sin diferencias entre el HTML del servidor y el del cliente ni avisos de hidratación.
 - Montos COP enteros con `Intl.NumberFormat("es-CO")` y porcentajes enteros ("62 %"), con `tabular-nums`.
+- Fecha y hora en 12 h como es-CO: "24 ago 2026, 3:45 p. m.", con espacios de no separación en la hora.
 - Visor: en modo local simple la URL de descarga es relativa (`/api/v1/storage/objects/<token>`), pasa por el rewrite y es del mismo origen, sin CORS. El riesgo de CORS aplica solo al modo full (SeaweedFS) y a S3 real, donde el almacenamiento debe permitir el origen del frontend.
 
 **Saltos de línea:** los archivos de `frontend/` van en LF (Prettier `endOfLine: "lf"`), y se verifica con `git ls-files --eol`.

@@ -9,7 +9,7 @@ import { FilterChips } from "@/components/ui/filter-chips";
 import { Money, MoneyInput } from "@/components/ui/money";
 import { StatusBadge } from "@/components/ui/status-badge";
 
-const NBSP = " ";
+const NBSP = String.fromCharCode(0xa0); // espacio de no separación
 
 describe("StatusBadge", () => {
   it("muestra el texto de la API con el tono del código", () => {

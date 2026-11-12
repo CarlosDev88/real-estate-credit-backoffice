@@ -4,6 +4,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { RelativeTime } from "@/components/ui/relative-time";
 
+const NBSP = String.fromCharCode(0xa0); // espacio de no separación
+
 describe("RelativeTime", () => {
   beforeEach(() => {
     vi.useFakeTimers({ toFake: ["Date", "setInterval", "clearInterval"] });
@@ -21,7 +23,7 @@ describe("RelativeTime", () => {
     render(<RelativeTime value="2026-11-11T14:48:00Z" />);
     const time = screen.getByText("Hace 12 min");
     expect(time.tagName).toBe("TIME");
-    expect(time).toHaveAttribute("title", "11 nov 2026, 09:48");
+    expect(time).toHaveAttribute("title", `11 nov 2026, 9:48${NBSP}a.${NBSP}m.`);
   });
 
   it("se actualiza sola cada minuto", () => {

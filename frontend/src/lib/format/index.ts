@@ -4,7 +4,7 @@
 export const TIME_ZONE = "America/Bogota";
 export const LOCALE = "es-CO";
 
-const NBSP = " ";
+const NBSP = String.fromCharCode(0xa0); // espacio de no separación
 
 const copFormat = new Intl.NumberFormat(LOCALE, {
   style: "currency",
@@ -90,12 +90,17 @@ export function formatDate(value: string | Date | null | undefined): string | nu
   return `${p.day} ${shortMonth(p.month)} ${p.year}`;
 }
 
-/** "24 ago 2026, 10:30" (24 h) en la zona horaria de la app. */
+/**
+ * "24 ago 2026, 3:45 p. m." (12 h, como es-CO) en la zona horaria de la app. Los espacios
+ * de la hora son de no separación, para que "3:45 p. m." no se parta en dos líneas.
+ */
 export function formatDateTime(value: string | Date | null | undefined): string | null {
   const date = value ? toDate(value) : null;
   if (!date) return null;
   const p = zoned(date);
-  const time = `${String(p.hour).padStart(2, "0")}:${String(p.minute).padStart(2, "0")}`;
+  const hour = p.hour % 12 || 12;
+  const period = p.hour < 12 ? `a.${NBSP}m.` : `p.${NBSP}m.`;
+  const time = `${hour}:${String(p.minute).padStart(2, "0")}${NBSP}${period}`;
   return `${p.day} ${shortMonth(p.month)} ${p.year}, ${time}`;
 }
 
