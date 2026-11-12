@@ -176,6 +176,15 @@ describe("refresh de la sesión interna", () => {
     expect(redirectTo).toHaveBeenCalledWith("/login?next=%2Fsolicitudes%3Fpage%3D2");
   });
 
+  it("en el login, un refresh fallido no vuelve a redirigir (sin bucle)", async () => {
+    window.history.replaceState(null, "", "/login?next=%2Fsolicitudes");
+    refreshHandler(false);
+    server.use(http.get(apiUrl("/auth/me"), () => unauthorized()));
+
+    expect((await get("/auth/me")).status).toBe(401);
+    expect(redirectTo).not.toHaveBeenCalled();
+  });
+
   it("usa el manejador de fallo inyectado en lugar de la redirección por defecto", async () => {
     const onFailure = vi.fn();
     setAuthFailureHandler(onFailure);

@@ -286,11 +286,21 @@ _(se completan al resolver las ambigüedades de cada fase)_
     - **Error sin campo:** toast de error persistente con el `message` y, debajo, pequeño, "Código: <request_id>".
     - **`409 STALE_VERSION`:** toast de advertencia "Alguien cambió esta solicitud" con el botón "Recargar" (`invalidateQueries`).
     - **`429`:** "Vuelve a intentarlo en N minutos", con N desde `Retry-After`.
-    - **Error de red, sin respuesta del servidor:** toast "No hay conexión con el servidor. Revisa tu conexión e inténtalo de nuevo".
+    - **Error de red, sin respuesta del servidor:** toast "No hay conexión con el servidor. Revisa tu conexión e inténtalo de nuevo". También cuenta como error de red un 5xx sin el formato de la API y sin `X-Request-ID`: es el `500` que devuelve el rewrite de Next.js cuando la API no responde.
+    - **Versión obsoleta:** el toast de `STALE_VERSION` dice "Recarga para ver los datos actuales. No se guardó nada." y se queda hasta cerrarlo, porque pide una acción.
     - Una escritura que maneja su error lo indica con `meta: { handlesErrors: true }`.
   - **Lecturas:** sin toast global; cada pantalla muestra su error en línea.
   - **Portal:** `401 SESSION_EXPIRED` y `403 CONSENT_REQUIRED` salen como eventos con manejador inyectable, y la pantalla la decide F2.
   - **Solo lectura:** `isReadOnlyError` identifica `APPLICATION_NOT_EDITABLE` y `APPLICATION_CLOSED`.
 - Versiones con la regla de antigüedad: msw 3.0.4 y vite 8.3.7, porque msw 3.0.5 y vite 8.3.8 se publicaron hoy.
+
+**Login y guarda (parte 4):**
+- `proxy.ts` protege todo menos lo público: su `matcher` excluye `/login`, `/acceso`, `/portal`, `/dev`, `/api`, `/_next` y los archivos estáticos. Una ruta pública nueva se suma a esa lista.
+- Formulario con React Hook Form, Zod y `@hookform/resolvers` 5.9.2. En el cliente, correo requerido y con formato válido y contraseña requerida. Los mensajes van bajo cada campo con `aria-describedby`.
+- `/` redirige a `/login`. `/login` con sesión válida lleva al destino: `next`, si es interno y el usuario puede verlo, o la primera entrada permitida del menú. `next` es visible si empieza con el `href` de una entrada del menú permitida por los permisos del usuario.
+- Sin módulos visibles, el destino es `/sin-modulos`, dentro del shell.
+- En `/login`, un `401` de `/auth/me` con refresh fallido no redirige otra vez al login: se queda en el formulario.
+- Logout: `POST /auth/logout`, se vacía la caché de Query y se va a `/login`. Si falla, se queda en la página con un toast de error.
+- `/solicitudes` en F0: título y subtítulo del mockup dentro del shell, sin lista, sin datos y sin llamar a la API. La construye el Agente A en F1.
 
 **Saltos de línea:** los archivos de `frontend/` van en LF (Prettier `endOfLine: "lf"`), y se verifica con `git ls-files --eol`.

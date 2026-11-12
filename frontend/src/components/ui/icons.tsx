@@ -55,6 +55,30 @@ export function HouseIcon(props: IconProps) {
   );
 }
 
+export function MailIcon(props: IconProps) {
+  return (
+    <svg {...base} fill="currentColor" width={16} height={16} {...props}>
+      <path d="M2 4h16v12H2V4Zm2 2v.5l6 4 6-4V6H4Zm12 2.9-6 4-6-4V14h12V8.9Z" />
+    </svg>
+  );
+}
+
+export function LockIcon(props: IconProps) {
+  return (
+    <svg {...base} fill="currentColor" width={16} height={16} {...props}>
+      <path d="M6 8V6a4 4 0 1 1 8 0v2h1a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1h1Zm2 0h4V6a2 2 0 1 0-4 0v2Zm1 3v3h2v-3H9Z" />
+    </svg>
+  );
+}
+
+export function EyeIcon(props: IconProps) {
+  return (
+    <svg {...base} fill="currentColor" width={16} height={16} {...props}>
+      <path d="M10 4C5 4 1.7 8.1 1 10c.7 1.9 4 6 9 6s8.3-4.1 9-6c-.7-1.9-4-6-9-6Zm0 10a4 4 0 1 1 0-8 4 4 0 0 1 0 8Zm0-2a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z" />
+    </svg>
+  );
+}
+
 /** Marca de Umbral: el arco de la puerta sobre el umbral. */
 export function LogoMark({ size = 26 }: { size?: number }) {
   return (

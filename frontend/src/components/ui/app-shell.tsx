@@ -141,6 +141,28 @@ function SidebarContent({
   );
 }
 
+/** Esqueleto del shell mientras se confirma la sesión (`/auth/me`). */
+export function AppShellSkeleton() {
+  return (
+    <div
+      className="grid min-h-screen grid-cols-1 min-[861px]:grid-cols-[232px_minmax(0,1fr)]"
+      aria-busy="true"
+    >
+      <div className="bg-bg-sidebar hidden min-[861px]:block" />
+      <div className="min-w-0">
+        <div className="bg-bg-surface border-border-default h-14 border-b" />
+        <div className="p-4 min-[861px]:p-6">
+          <span className="sr-only" role="status">
+            Cargando…
+          </span>
+          <div className="bg-bg-muted h-8 w-48 animate-pulse rounded-md motion-reduce:animate-none" />
+          <div className="bg-bg-muted mt-3 h-4 w-80 max-w-full animate-pulse rounded-md motion-reduce:animate-none" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /**
  * Shell del backoffice (mockups `solicitudes.html` y `solicitud.html`): barra lateral,
  * barra superior y, en pantallas de 860 px o menos, menú lateral en un drawer.

@@ -59,7 +59,10 @@ export function loginUrl(next: string | null | undefined): string {
 type Handler = () => void;
 
 const defaultAuthFailure: Handler = () => {
-  redirectTo(loginUrl(currentPath()));
+  const path = currentPath();
+  // En el login, sin sesión, se queda en el formulario: redirigir haría un bucle.
+  if (path === "/login" || path.startsWith("/login?") || path.startsWith("/login/")) return;
+  redirectTo(loginUrl(path));
 };
 
 const handlers: {
