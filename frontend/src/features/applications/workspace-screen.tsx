@@ -10,6 +10,7 @@ import { useShellTrail } from "@/components/ui/app-shell";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ScrollTabs } from "@/components/ui/scroll-tabs";
 import { useMe } from "@/features/auth/queries";
+import { DocumentsTab } from "@/features/document-review/documents-tab";
 import { HistoryPanel, useStatusLabels } from "@/features/applications/status-history";
 import {
   BuyerAccessCard,
@@ -71,7 +72,8 @@ export function useWorkspaceTab() {
     },
     [pathname, router],
   );
-  return { tab, go };
+  const slot = tab === "documentos" ? searchParams.get(SLOT_PARAM) : null;
+  return { tab, slot, go };
 }
 
 function BackLink() {
@@ -182,7 +184,7 @@ export function WorkspaceScreen({ id }: { id: string }) {
 function Workspace({ detail, version }: { detail: ApplicationDetail; version: number }) {
   const id = detail.id;
   const permissions = usePermissions();
-  const { tab, go } = useWorkspaceTab();
+  const { tab, slot, go } = useWorkspaceTab();
 
   const completeness = useCompleteness(id);
   const participants = useParticipants(id);
@@ -300,12 +302,18 @@ function Workspace({ detail, version }: { detail: ApplicationDetail; version: nu
 
       {tab === "documentos" && (
         <section role="tabpanel" aria-label="Documentos">
-          <div className="bg-bg-surface border-border-default rounded-lg border">
-            <EmptyState
-              title="Documentos del expediente"
-              description="La revisión documental se agrega en la siguiente parte."
-            />
-          </div>
+          <DocumentsTab
+            applicationId={id}
+            participants={participants.participants ?? []}
+            profiles={participants.profiles}
+            can={{
+              review: permissions.has("documents.review"),
+              waive: permissions.has("documents.waive"),
+              download: permissions.has("documents.download"),
+            }}
+            openSlotId={slot}
+            onOpenSlot={(slotId) => go("documentos", slotId ? { [SLOT_PARAM]: slotId } : {})}
+          />
         </section>
       )}
 

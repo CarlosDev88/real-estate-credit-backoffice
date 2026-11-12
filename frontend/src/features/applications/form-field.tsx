@@ -1,6 +1,10 @@
 "use client";
 
 import type { ReactNode } from "react";
+import type { FieldValues, Path } from "react-hook-form";
+
+import { applyFieldErrors, isApiError } from "@/lib/api/errors";
+import { useApiErrorToast } from "@/providers/api-error-toast";
 
 /** Props que el control recibe para quedar enlazado con su etiqueta, ayuda y error. */
 export interface FieldControlProps {
@@ -57,4 +61,23 @@ export function FormField({
       )}
     </div>
   );
+}
+
+/**
+ * Errores de una escritura con formulario: los `details[].field` van a su campo y el
+ * resto (o el error sin detalles, como `409 STALE_VERSION`) al toast global.
+ */
+export function useFormErrorHandler<T extends FieldValues>(
+  setError: (name: Path<T>, error: { type: string; message: string }) => void,
+  fields: readonly Path<T>[],
+) {
+  const showError = useApiErrorToast();
+  return (error: unknown) => {
+    if (!isApiError(error) || error.details.length === 0) {
+      showError(error);
+      return;
+    }
+    const leftover = applyFieldErrors(error, setError, fields);
+    if (leftover.length) showError(error, leftover);
+  };
 }

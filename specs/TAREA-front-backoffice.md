@@ -312,3 +312,53 @@ _(las agrega el agente)_
 - El detalle no trae el nombre del broker que originó la oportunidad: en "Origen" va solo la etiqueta.
 - "Actividad reciente" del mockup se reemplazó por "Últimos cambios de estado": el registro de actividad completo llega con el módulo de auditoría.
 - Botón "Agregar" de participantes: queda fuera (la edición llega con F2).
+
+### Parte 3 (documentos y revisión)
+
+**Orden de trabajo (pedido de Carlos):** se hizo con lo que ya está en el contrato, sin esperar las brechas. Lo pendiente de las Partes 2 y 3 (stepper, `role_label` y etiquetas nuevas) se cierra en un solo commit cuando se fusione la tarea de brechas.
+
+**Datos:**
+- Slots: `GET /applications/{id}/document-slots?page_size=100`. Los retirados (`is_retired`) se filtran también en el front.
+- **Etiqueta del estado del slot:** sale del catálogo `document_status` del bootstrap (Pendiente, Cargado, Aprobado, Rechazado, Exonerado). Cuando el slot traiga `status_label` (brechas 3.2), se usa ese. El color sale de `toneFor("documentSlot", status)`.
+- **Tamaño, tipo y mensaje del rechazo:** la lista de slots no los trae. Se pide `GET /document-files/{id}` de la versión vigente de cada slot (en paralelo, con caché de 1 min). El mensaje al comprador es el `buyer_comment` de la revisión más reciente, si es un rechazo. Ver "Brechas".
+- **Análisis antivirus:** en la fila, `current_file.scan_status`. En el panel, `GET /document-files/{id}/scan-status`, que se vuelve a consultar cada 3 s mientras está `PENDING`.
+- **Descarga:** `GET /document-files/{id}/download` cada vez que se abre el visor, como mutación (no pasa por la caché de consultas). La URL vive solo mientras el visor está abierto. El pie del visor dice cuándo vence el enlace. Si es imagen (`detected_mime_type` `image/*`), se muestra directo; si no, va por PDF.js.
+- Después de cualquier decisión se invalida todo el expediente (`["application", id]`: slots, completitud, detalle, "Por revisar"), los archivos, las versiones y el listado.
+
+**Acciones por estado (API §19.1):**
+- **Revisar** (aprobar o rechazar, con `documents.review`): sobre la versión vigente con análisis `CLEAN`, en `UPLOADED`, y también en `APPROVED` y `REJECTED`, porque "corregir es decidir otra vez". En un exonerado, no.
+- **Exonerar** (`documents.waive`): si `is_waivable` y el slot no está aprobado ni exonerado.
+- **Reabrir** (`documents.waive`): solo un exonerado. `REOPENED` deshace la exoneración y exige `internal_comment`. Un aprobado no se "reabre": se corrige con "Revisar" (la spec decía "Reabrir para un aprobado o exonerado"; la API solo reabre exoneraciones).
+- **Ver** (`documents.download`): con análisis `CLEAN`.
+- Con el análisis `PENDING`, la fila dice "Analizando el archivo…" y no ofrece ni Ver ni Revisar. Con `INFECTED` o `INVALID`, "El archivo no pasó el análisis de seguridad".
+- Un error de descarga (`409`, `503` u otro) muestra el `message` de la API en línea: en la fila, en el panel o en la versión anterior que se intentó ver.
+
+**Pestaña Documentos:**
+- **Grupos:** uno por participante, en el orden de `/participants`, con la inicial, el nombre y el perfil laboral del perfil financiero. Al final, "Solicitud · Inmueble y trámite", como en el mockup (la API los da primero).
+- **Cada fila:** etiqueta del slot; archivo, tamaño y regla de vigencia ("vigencia de 30 días · vence 2 dic 2026"); sin archivo, "Sin archivo" o "Exonerado: <motivo>"; `StatusBadge`; el mensaje al comprador si fue rechazado; los avisos del análisis y los errores de descarga.
+- Los botones de la fila llevan el nombre del documento en texto oculto ("Revisar Certificado laboral").
+
+**Panel de revisión:**
+- Se abre con `?tab=documentos&slot=<id>` (desde la fila, "Por revisar" o "Revisar N documentos"). Cerrarlo quita `slot` de la URL.
+- `Drawer` de Ant Design a la derecha (520 px), con pantalla completa en ≤ 860 px. Su nombre accesible es el título (participante y documento).
+- **Foco:** al abrir y al pasar a otro documento, el foco va al título (`h2` con `tabIndex=-1`), sin depender de que termine la animación. El bloqueo de foco y Escape son los del `Drawer`.
+- **Datos:** archivo, tamaño, "Cargado hace … · por el comprador" (si `uploaded_by_buyer_session_id`), análisis, fecha del documento y vigencia.
+- **Decisión:** radios "Aprobar" / "Rechazar". El botón del pie dice "Aprobar documento", o "Rechazar documento" en rojo.
+  - **Fecha del documento:** se pide si el slot tiene `validity_days` (la API exige `document_date` en ese caso). Viene con la del comprador, no puede ser futura y se envía al aprobar.
+  - **Rechazo:** exige el motivo (`document_rejection_reason`) y el mensaje al comprador. La nota interna es opcional y su etiqueta dice que el comprador no la ve.
+  - **Al terminar:** toast ("…: aprobado", o "…: rechazado" en advertencia) y el panel pasa al siguiente por revisar, en el orden de la pantalla y después del actual (`UPLOADED` con análisis limpio). Si no hay, se cierra. "Siguiente" pasa sin decidir.
+- **Versiones anteriores:** un `Collapse` que, al abrirse, pide `/versions`. Muestra las que no son la vigente, con número, archivo, fecha, el último mensaje al comprador y "Ver".
+- **Exonerar y Reabrir:** modales con `FormField`. Al exonerar, el motivo es obligatorio (`document_waiver_reason`) y la nota interna opcional; al reabrir, la nota interna es obligatoria.
+- `useFormErrorHandler` pasó a `features/applications/form-field.tsx`, para compartirlo entre los dos módulos.
+
+**Pruebas:**
+- La pestaña se prueba dentro del expediente real (`WorkspaceScreen` con `?tab=documentos`), con el slot en la URL.
+- **Bloqueo de foco:** el de Ant Design solo cuenta como enfocables los elementos visibles (`offsetParent`), que jsdom no calcula. La prueba lo simula. Al pasar el último control, jsdom deja el foco un momento en `body` y el bloqueo lo devuelve. La prueba verifica que nunca cae en un control de afuera.
+- Los radios de Ant Design no reciben el puntero en su `input`: se hace clic en la etiqueta.
+
+**Brechas de esta parte (se pasan a `TAREA-frontend-base.md` en la Parte 4):**
+- **Pendiente de la tarea de brechas:** `status_label` del slot y de la versión (hoy sale del catálogo `document_status`) y `role_label` del participante del slot (encabezados de grupo y del panel).
+- La lista de slots no trae el tamaño ni el tipo del archivo vigente, ni el último mensaje del rechazo: se pide un `GET /document-files/{id}` por cada archivo vigente. Con 16 slots son 16 peticiones. `CurrentFile` debería traer `size_bytes`, `detected_mime_type` y el `buyer_comment` vigente.
+- `scan_status` no trae etiqueta: el panel usa los textos de la spec ("Analizando el archivo…", "El archivo no pasó el análisis de seguridad") y "Sin amenazas" para un archivo limpio. Debería venir `scan_status_label`.
+- No hay un "deshacer" de una aprobación: se corrige rechazando (o aprobando) otra vez la versión vigente.
+- `DocumentFile` no dice qué usuario interno cargó un archivo (solo `uploaded_by_buyer_session_id`): "por el comprador" sale cuando ese campo viene; si no, no se dice quién.

@@ -4,10 +4,10 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Alert, Button, Input, InputNumber, Modal, Select } from "antd";
 import { useRouter } from "next/navigation";
 import { useId, useState } from "react";
-import { Controller, useForm, type FieldValues, type Path } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 
-import { FormField } from "@/features/applications/form-field";
+import { FormField, useFormErrorHandler } from "@/features/applications/form-field";
 import { useCatalog } from "@/features/applications/queries";
 import {
   useAdvisors,
@@ -18,9 +18,7 @@ import {
   type AvailableAction,
   type BuyerAccessLinkCreated,
 } from "@/features/applications/workspace-queries";
-import { applyFieldErrors, isApiError } from "@/lib/api/errors";
 import { formatDateTime } from "@/lib/format";
-import { useApiErrorToast } from "@/providers/api-error-toast";
 import { useToast } from "@/providers/toast";
 
 /** Máximo de `comment` en transiciones y desistimientos (API §16.3). */
@@ -33,25 +31,6 @@ function optional<K extends string>(key: K, value: string | undefined): Partial<
 
 const optionsOf = (items: { code: string; label: string }[]) =>
   items.map((item) => ({ value: item.code, label: item.label }));
-
-/**
- * Errores de una escritura con formulario: los `details[].field` van a su campo y el
- * resto (o el error sin detalles, como `409 STALE_VERSION`) al toast global.
- */
-function useFormErrorHandler<T extends FieldValues>(
-  setError: (name: Path<T>, error: { type: string; message: string }) => void,
-  fields: readonly Path<T>[],
-) {
-  const showError = useApiErrorToast();
-  return (error: unknown) => {
-    if (!isApiError(error) || error.details.length === 0) {
-      showError(error);
-      return;
-    }
-    const leftover = applyFieldErrors(error, setError, fields);
-    if (leftover.length) showError(error, leftover);
-  };
-}
 
 interface BaseModalProps {
   applicationId: string;

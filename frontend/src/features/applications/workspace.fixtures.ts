@@ -71,6 +71,18 @@ export const BOOTSTRAP = {
     ],
     application_withdrawal_reason: [item("OTHER_FINANCING", "Compró con otra entidad", 1)],
     buyer_access_channel: [item("EMAIL", "Correo", 1), item("COPY_LINK", "Copiar enlace", 2)],
+    document_status: [
+      item("PENDING", "Pendiente", 1),
+      item("UPLOADED", "Cargado", 2),
+      item("APPROVED", "Aprobado", 3),
+      item("REJECTED", "Rechazado", 4),
+      item("WAIVED", "Exonerado", 5),
+    ],
+    document_rejection_reason: [
+      item("ILLEGIBLE", "Ilegible", 1),
+      item("OUTDATED", "Desactualizado", 2),
+    ],
+    document_waiver_reason: [item("NOT_APPLICABLE", "No aplica al inmueble", 1)],
   },
 };
 
