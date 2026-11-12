@@ -1,0 +1,11 @@
+# Contexto de build del frontend (frontend/Dockerfile se construye desde la raíz del repo,
+# porque importa ../design/generated). El backend usa su propio contexto (backend/).
+.git
+**/node_modules
+frontend/.next
+frontend/coverage
+**/.ci-report
+backend/
+docs/
+specs/
+**/.env*

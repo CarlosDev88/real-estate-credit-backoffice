@@ -115,6 +115,7 @@ import { lightTheme, darkTheme } from "../../design/generated/antd-theme";
 ## Reglas visuales
 
 - **Etiquetas:** nada de mayúsculas espaciadas. Encabezados de tabla, etiquetas de KPI, grupos del menú y grupos de listas van en minúscula inicial, `text.xs` (12 px), peso medio. No se usan tamaños fuera de la escala (no hay 11 px).
+- **Enlaces en texto:** un enlace dentro de un bloque de texto (párrafo, ayuda, mensaje) va subrayado siempre, no solo al pasar el mouse. El color solo no alcanza para distinguirlo del texto que lo rodea (WCAG 1.4.1). Los enlaces que no están dentro de texto corrido (menú, migas, botones de texto) no lo necesitan.
 - **Sombras:** las tarjetas que están en el flujo de la página llevan borde y fondo, sin sombra. `shadow.md` y `shadow.lg` son solo para lo que flota: menús, toasts, drawer y hojas inferiores.
 - **Teal es estado, no avance:** las barras de completitud siempre van en `brand.primary`. El teal (`accent`) queda para "Lista para radicar" y exonerado.
 - **Conteos de alerta sobre color sólido** (documentos pendientes en la navegación del portal): `tone.danger.solid` con `tone.danger.onSolid`.

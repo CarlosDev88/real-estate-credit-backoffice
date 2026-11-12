@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<testsuites name="vitest tests" tests="4" failures="2" errors="0" time="75.25">
+    <testsuite name="src/lib/api/fetch.test.ts" tests="4" failures="2" errors="0" skipped="1" time="1.4">
+        <testcase classname="src/lib/api/fetch.test.ts" name="cabeceras &gt; agrega X-Request-ID" time="0.02">
+        </testcase>
+        <testcase classname="src/lib/api/fetch.test.ts" name="refresh &gt; dos 401 a la vez hacen un solo refresh" time="0.05">
+            <failure message="expected 3 to be 4 // Object.is equality" type="AssertionError">
+AssertionError: expected 3 to be 4 // Object.is equality
+ ❯ src/lib/api/fetch.test.ts:123:22
+            </failure>
+        </testcase>
+        <testcase classname="src/lib/api/fetch.test.ts" name="refresh &gt; con &quot;comillas&quot; &amp; &lt;html&gt;" time="0.01">
+            <failure type="Error">
+Error: CORS
+    at x (src/a.ts:1:1)
+            </failure>
+        </testcase>
+        <testcase classname="src/lib/api/fetch.test.ts" name="portal &gt; pendiente" time="0">
+            <skipped/>
+        </testcase>
+    </testsuite>
+</testsuites>

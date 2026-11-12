@@ -57,6 +57,24 @@ services:
     networks:
       - mvp_credit_network
 
+  # Frontend Next.js (build de producción). Se construye desde la raíz del repo porque
+  # importa ../design/generated. API_ORIGIN entra al compilar: Next fija ahí los rewrites
+  # de /api/v1 hacia el backend. Para programar el frontend se usa `pnpm dev` en su lugar
+  # (este contenedor ocuparía el puerto 3000).
+  frontend:
+    build:
+      context: ..
+      dockerfile: frontend/Dockerfile
+      args:
+        API_ORIGIN: http://backend:8000
+    ports:
+      - "${FRONTEND_HOST_PORT:-3000}:3000"
+    depends_on:
+      backend:
+        condition: service_started
+    networks:
+      - mvp_credit_network
+
   # --- Perfil `full`: la arquitectura asíncrona real (docker compose --profile full up) ---
   # Requiere el bloque "Full" de .env. Sin el perfil, el backend usa disco, la caché en
   # PostgreSQL y tareas en el mismo proceso.

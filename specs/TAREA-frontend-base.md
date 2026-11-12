@@ -16,7 +16,8 @@ Una sola app Next.js con dos zonas:
 
 ## Reglas de trabajo
 - El agente **no** hace `commit`, `push`, `merge` ni `rebase`; git solo en lectura. Trabaja por partes y al cerrar cada una propone un mensaje de commit corto, sin `Co-Authored-By`. Carlos commitea.
-- Antes de cada parte, el agente presenta las ambigüedades que encuentre, una por una y con su recomendación. Las precisiones acordadas se agregan al final de esta spec.
+- **No se presentan dudas.** Lo que esta spec no cubra lo decide el agente con la opción más simple, lo anota en "Precisiones acordadas" y sigue. Solo se detiene si la decisión rompe el contrato de la API, cambia el alcance, borra o altera datos existentes, o exige tocar un `.env`.
+- Cada parte se hace de corrido. Al cerrarla, el agente entrega: verificaciones en verde, la lista corta de decisiones que tomó por su cuenta y el mensaje de commit. Espera el "listo" de Carlos para la siguiente.
 - No se inventan endpoints. Si un mockup muestra algo que la API no da, se anota en "Brechas del backend" y se simula con MSW hasta que exista.
 
 ## Stack
@@ -186,12 +187,18 @@ git worktree add ..\wt-front-portal -b feat/front-portal
 Cada agente se abre en su carpeta. Al terminar: `git worktree remove ..\wt-front-backoffice` (y lo mismo con el otro).
 
 ## Brechas del backend vistas en los mockups
-Se resuelven en `TAREA-applications-listado.md`. Mientras tanto, se simulan con MSW.
+Las cuatro primeras se resuelven en `TAREA-applications-listado.md`; mientras tanto, se simulan con MSW. Al cierre de F0 ese PR todavía no estaba en `master`: se marcan como resueltas cuando se fusione. Las demás quedan para la tarea de "brechas".
 - Tipo de crédito (`bank_product_type`) en el listado, y filtro por tipo.
 - Monto solicitado, completitud y número de co-solicitantes en cada fila.
 - Conteos de las pestañas del listado y qué estados agrupa cada una (no los puede definir el frontend).
 - Marca de "ya no cumple" en solicitudes `READY_TO_FILE` y nombre corto del banco (filas 9 y 10 de esa spec).
 - Etiqueta pública del estado de cada documento para el comprador ("Te falta", "Corrígelo", "En revisión", "No aplica"). Hoy el DTO del comprador trae el código; el texto no puede escribirse en el frontend. Va en el DTO de `/buyer/.../document-slots` (tarea pequeña aparte, después de la fase 10).
+- Etiqueta del rol del usuario interno: `/auth/me` trae `role` y `roles` como códigos, sin texto. Mientras no exista, bajo el avatar van el nombre y el correo.
+- Casilla "Mantener la sesión en este equipo" del login: `/auth/login` solo recibe correo y contraseña, y la sesión dura 8 h fijas. Se quita.
+- Búsqueda global de la barra superior: no hay endpoint. Se quita.
+- Campana de notificaciones internas de la barra superior: no hay endpoint. Se quita.
+- El contrato (`contracts/openapi.json`) no declara la cabecera `ETag` en ninguna respuesta, aunque exige `If-Match` en 12 escrituras y API §6 dice que toda respuesta del expediente la lleva. El frontend la lee igual desde la respuesta, pero el contrato debe documentarla.
+- El tipo documental que ve el comprador (`BuyerSlotDocumentType`) no trae `allowed_mime_types` ni `max_size_bytes`; el interno (`SlotDocumentType`) sí. Sin ellos, el uploader del portal no puede validar tipo y tamaño antes de enviar: lo valida solo la API (`422 UNSUPPORTED_FILE_TYPE` / `FILE_TOO_LARGE`, `413 PAYLOAD_TOO_LARGE`).
 
 ## Pruebas
 - **Unitarias** (Vitest + Testing Library): componentes de `ui`, formularios con validación, manejo de `ApiError` y formato de montos.
@@ -211,3 +218,306 @@ Se resuelven en `TAREA-applications-listado.md`. Mientras tanto, se simulan con 
 
 ## Precisiones acordadas
 _(se completan al resolver las ambigüedades de cada fase)_
+
+### F0
+
+**Versiones** (fijadas exactas en `package.json`, sin `^`):
+- Node 24 LTS (`engines >=24`) y pnpm 12.18.0 con `packageManager` (corepack).
+- next y eslint-config-next 16.4.6; react y react-dom 19.3.1; TypeScript 5.9.3. La 7.x no es compatible con `typescript-eslint` (`<6.1`) ni con `openapi-typescript` (`^5`).
+- antd 6.7.0, `@ant-design/cssinjs` 2.1.2 (la misma que usa antd) y `@ant-design/nextjs-registry` 1.3.0; tailwindcss y `@tailwindcss/postcss` 4.3.5.
+- `@tanstack/react-query` 5.107.1 y `@tanstack/react-table` 9.3.1; react-hook-form 7.92.0, zod 4.6.7 y `@hookform/resolvers` 5.9.2. La línea 5 se prefiere a la 6 y la 7, que salieron con pocos días de diferencia.
+- openapi-typescript 7.13.0 y openapi-fetch 0.17.0; pdfjs-dist 6.5.438.
+- vitest y `@vitest/coverage-v8` 5.1.0, vite 8.3.x, `@vitejs/plugin-react` 6.3.0, jsdom 31.0.0; Testing Library: react 16.3.3, dom 10.4.2, user-event 14.6.9 y jest-dom 7.0.1; msw 3.0.5; `@playwright/test` 1.65.0 y `@axe-core/playwright` 4.14.0.
+- eslint 10.14.0, typescript-eslint 8.72.2 y prettier 3.9.10. La línea 9.x de ESLint ya no tiene soporte. Se aceptan los avisos de peer dependencies de `eslint-plugin-react`, `eslint-plugin-import` y `eslint-plugin-jsx-a11y` (vienen con `eslint-config-next` y declaran ESLint hasta 9); con ESLint 10 funcionan. **Pendiente:** revisar cuando `eslint-config-next` declare soporte oficial para ESLint 10.
+- Antigüedad mínima: si una versión aprobada cae dentro de la antigüedad mínima de publicación de pnpm (`minimumReleaseAge`), se usa la versión anterior. No se agregan excepciones en `pnpm-workspace.yaml`. Aplica a msw y vite cuando entren.
+- Fuentes: `@fontsource/inter` y `@fontsource/jetbrains-mono` 5.3.0, solo con los pesos que usan los tokens (Inter 400, 500, 600 y 700; Mono 400 y 500). Declaran las familias con el mismo nombre que usan los tokens y `antd-theme.ts`, así que no se sobrescribe nada, y no hay peticiones a Google.
+
+**Backend local y mismo origen:**
+- En local (`AUTH_COOKIE_SECURE=false`) las cookies no llevan el prefijo `__Host-`: son `app_access` y `app_refresh`. Los nombres se configuran por entorno (`AUTH_ACCESS_COOKIE` y `AUTH_REFRESH_COOKIE`).
+- El rewrite de `/api/v1` va desde la parte 1. Al cerrarla se verifica con `pnpm dev`: login, cookies guardadas en `localhost:3000`, `/auth/me` con `200` y una escritura con `X-CSRFToken` (`POST /auth/refresh` y luego `POST /auth/logout`). Si algo falla, se para y se reporta.
+- Usuario de prueba: un `ADVISOR` creado en la base local, con las credenciales en `frontend/.env.local` (`E2E_USER_EMAIL` y `E2E_USER_PASSWORD`), que no se versiona (`.env*.local` en `.gitignore`).
+
+**Sesión interna:**
+- El refresh se dispara con `401 NOT_AUTHENTICATED` y con `401 SESSION_EXPIRED`. Cuando vence la cookie de acceso, el navegador deja de enviarla y llega `NOT_AUTHENTICATED`.
+- El refresh se serializa:
+  - Entre pestañas, con `navigator.locks` (candado `um-auth-refresh`). Con el candado tomado, si otra pestaña refrescó después de que salió la petición, solo se reintenta. Si no, `POST /auth/refresh`, se guarda la hora y se reintenta la petición una vez.
+  - Dentro de la pestaña, los `401` simultáneos comparten una sola promesa. Sin `navigator.locks`, queda solo esta.
+- En `localStorage` va solo la hora del último refresh, nunca tokens ni datos de la sesión. Lecturas y escrituras van con try/catch; si fallan, se actúa como si no hubiera dato.
+- `/auth/login`, `/auth/refresh`, `/auth/logout` y `/buyer/*` no disparan el refresh.
+- Si el refresh falla, se va a `/login?next=…`. `next` solo acepta rutas internas; un valor externo se ignora.
+- Pruebas obligatorias:
+  - dos `401` a la vez en la misma pestaña hacen un solo refresh;
+  - con un refresh reciente de otra pestaña, no se vuelve a refrescar;
+  - un refresh fallido lleva a `/login` con un `next` interno;
+  - un `next` externo se ignora.
+
+**Guarda del `(backoffice)`:**
+- `proxy.ts` solo redirige a `/login?next=…` cuando no hay cookie de acceso ni de refresh. Es una decisión de experiencia de uso: no mira permisos ni datos. La seguridad la pone la API.
+- El layout del grupo pide `/auth/me` con TanStack Query y muestra el shell con un esqueleto mientras carga. Un `401` sigue el flujo de refresh; si falla, va al login.
+- `/login` con una sesión válida redirige a `next` o al destino por defecto.
+
+**Login (mockup `login.html`):**
+- Se quita la casilla "Mantener la sesión en este equipo" (ver "Brechas").
+- El enlace "¿La olvidaste?" queda fuera de F0. **Pendiente:** pantallas de recuperación de contraseña sobre `POST /auth/password-reset-requests` y `POST /auth/password-resets/confirm`, que ya existen.
+- Errores:
+  - **Título del aviso:** el `message` de la API.
+  - **`INVALID_CREDENTIALS`:** el texto de ayuda del mockup, con `aria-invalid` en los dos campos y sin decir cuál falló.
+  - **`RATE_LIMITED` (`429`):** "Vuelve a intentarlo en N minutos", con N calculado desde `Retry-After`.
+  - **`USER_INACTIVE` y cualquier otro código:** solo el `message`.
+
+**Shell y menú:**
+- Se quitan la búsqueda global y la campana (ver "Brechas"). Bajo el avatar van el nombre y el correo.
+- El menú se arma desde una configuración de navegación: ruta, texto, ícono, grupo y permiso exigido. Solo aparecen las rutas que existen. En F0, "Solicitudes" (`applications.read`), en el grupo "Comercial". Un grupo sin entradas visibles no se pinta. El conteo de "Mi día" entra con su pantalla, si la API lo da.
+- Destino después del login: `next`, si es interno y el usuario puede verlo. Si no, la primera entrada del menú que su permiso le deja ver. Si no ve ninguna, una pantalla en el shell: "Tu usuario todavía no tiene módulos habilitados. Pídele acceso a un administrador."
+
+**Página de prueba:** `/dev/ui`, solo en desarrollo (`notFound()` en producción), sin sesión ni API. Muestra tokens, componentes de Ant Design con el tema y los componentes de `components/ui`. Playwright la usa para `axe` en claro y en oscuro y para revisarla en 1440, 1280 y 390 px.
+
+**Tema (parte 2):**
+- `localStorage` (`um-theme`) es la fuente. La elección también se copia en la cookie `um-theme`: no `HttpOnly`, `SameSite=Lax`, un año, solo `light` o `dark`. Cualquier otro valor se trata como `light`.
+- El layout raíz lee la cookie en el servidor y pinta `data-theme` y el `ConfigProvider` con ese tema, así Ant Design no parpadea. Por eso todas las páginas se generan en cada petición.
+- El script de `<head>` es el respaldo: sin cookie, toma el tema de `localStorage` y aplica `data-theme`.
+
+**Cierre de sesión en el shell (parte 2):** el bloque del usuario (avatar, nombre y correo) es un botón que abre un menú hacia arriba con "Cerrar sesión".
+- Teclado: Enter o Espacio abren el menú, las flechas recorren las opciones y Escape lo cierra y devuelve el foco al botón. El botón lleva `aria-haspopup` y `aria-expanded`.
+- El `AppShell` recibe `onLogout` como prop y el logout real se conecta en la parte 4. En `/dev/ui` solo muestra un toast.
+
+**Cliente API (parte 3):**
+- El refresh completo vive en `lib/api` (candado entre pestañas, hora del último refresh, un reintento, rutas excluidas y `next` validado), con sus cuatro tests. Si falla, el cliente llama a un manejador inyectable que por defecto lleva a `/login?next=<ruta actual>`. La parte 4 conecta login, `/auth/me`, la guarda y el logout.
+- Versión explícita:
+  - El cliente devuelve `{ data, version }`, con `version` tomada del `ETag`. Las consultas del expediente guardan esa versión en la caché, junto a los datos.
+  - Las escrituras pasan `If-Match` a mano; el contrato la tipa como obligatoria. Un helper normaliza `"7"`, `7` y `W/"7"`.
+  - La versión nueva se toma del `ETag` de la respuesta de cada escritura, también en los `204`.
+- Errores:
+  - **Escrituras:** las maneja un `MutationCache.onError` global.
+    - `details[].field` va al formulario con `applyFieldErrors(error, setError)`. Los detalles sin campo en el formulario van a un toast.
+    - **Error sin campo:** toast de error persistente con el `message` y, debajo, pequeño, "Código: <request_id>".
+    - **`409 STALE_VERSION`:** toast de advertencia "Alguien cambió esta solicitud" con el botón "Recargar" (`invalidateQueries`).
+    - **`429`:** "Vuelve a intentarlo en N minutos", con N desde `Retry-After`.
+    - **Error de red, sin respuesta del servidor:** toast "No hay conexión con el servidor. Revisa tu conexión e inténtalo de nuevo". También cuenta como error de red un 5xx sin el formato de la API y sin `X-Request-ID`: es el `500` que devuelve el rewrite de Next.js cuando la API no responde.
+    - **Versión obsoleta:** el toast de `STALE_VERSION` dice "Recarga para ver los datos actuales. No se guardó nada." y se queda hasta cerrarlo, porque pide una acción.
+    - Una escritura que maneja su error lo indica con `meta: { handlesErrors: true }`.
+  - **Lecturas:** sin toast global; cada pantalla muestra su error en línea.
+  - **Portal:** `401 SESSION_EXPIRED` y `403 CONSENT_REQUIRED` salen como eventos con manejador inyectable, y la pantalla la decide F2.
+  - **Solo lectura:** `isReadOnlyError` identifica `APPLICATION_NOT_EDITABLE` y `APPLICATION_CLOSED`.
+- Versiones con la regla de antigüedad: msw 3.0.4 y vite 8.3.7, porque msw 3.0.5 y vite 8.3.8 se publicaron hoy.
+
+**Login y guarda (parte 4):**
+- `proxy.ts` protege todo menos lo público: su `matcher` excluye `/login`, `/acceso`, `/portal`, `/dev`, `/api`, `/_next` y los archivos estáticos. Una ruta pública nueva se suma a esa lista.
+- Formulario con React Hook Form, Zod y `@hookform/resolvers` 5.9.2. En el cliente, correo requerido y con formato válido y contraseña requerida. Los mensajes van bajo cada campo con `aria-describedby`.
+- `/` redirige a `/login`. `/login` con sesión válida lleva al destino: `next`, si es interno y el usuario puede verlo, o la primera entrada permitida del menú. `next` es visible si empieza con el `href` de una entrada del menú permitida por los permisos del usuario.
+- Sin módulos visibles, el destino es `/sin-modulos`, dentro del shell.
+- En `/login`, un `401` de `/auth/me` con refresh fallido no redirige otra vez al login: se queda en el formulario.
+- Logout: `POST /auth/logout`, se vacía la caché de Query y se va a `/login`. Si falla, se queda en la página con un toast de error.
+- `/solicitudes` en F0: título y subtítulo del mockup dentro del shell, sin lista, sin datos y sin llamar a la API. La construye el Agente A en F1.
+
+**Componentes compartidos (parte 5):**
+- `uploadFile({ path, file, fields, onProgress, signal })` en `lib/api`:
+  - Usa `XMLHttpRequest` para tener progreso, con las mismas cabeceras (`X-CSRFToken` y `X-Request-ID`) y los errores como `ApiError`, incluido el de red.
+  - En rutas internas, un `401` hace el mismo refresh y un reintento. En `/buyer/*` emite los eventos del portal.
+  - Se puede cancelar con `signal`.
+- `DocumentUploader` es solo interfaz: recibe `onUpload(file, onProgress)`, y cada feature conecta su endpoint.
+- Fechas:
+  - La zona horaria es fija, `America/Bogota`, en una sola constante de `lib/format`. Las fechas sin hora (`document_date`, `birth_date`) se muestran tal cual, sin pasar por zona horaria.
+  - Fecha relativa: menos de 1 min, "Hace un momento"; menos de 1 h, "Hace N min"; mismo día, "Hace N h"; el día anterior, "Ayer"; hasta 3 días, "Hace N días"; después, "8 nov" ("8 nov 2025" si es de otro año). En el `title`, la fecha y hora completas.
+  - La fecha relativa es un componente que se actualiza solo cada minuto, sin diferencias entre el HTML del servidor y el del cliente ni avisos de hidratación.
+- Montos COP enteros con `Intl.NumberFormat("es-CO")` y porcentajes enteros ("62 %"), con `tabular-nums`.
+- Fecha y hora en 12 h como es-CO: "24 ago 2026, 3:45 p. m.", con espacios de no separación en la hora.
+- Visor: en modo local simple la URL de descarga es relativa (`/api/v1/storage/objects/<token>`), pasa por el rewrite y es del mismo origen, sin CORS. El riesgo de CORS aplica solo al modo full (SeaweedFS) y a S3 real, donde el almacenamiento debe permitir el origen del frontend.
+
+**CI (parte 6):** se sigue el "Plan detallado" de abajo. Además, lo que decidió el agente:
+- El reporte lo arma `frontend/scripts/ci-report.ts`: corre con Node 24, sin dependencias y con el mismo formato que `backend/scripts/ci_report.py`. Siete filas: ESLint (los *warnings* son ⚠️ y no bloquean), Prettier (formato), TypeScript, Tests, Cobertura, Contrato API y Build. Los E2E de Playwright no van en este job: necesitan el backend con datos.
+- Cobertura:
+  - Bloquea la de **líneas** (mínimo 70 %, REQ §10.5). Ramas y funciones solo se muestran.
+  - Mide `src/**` y `scripts/**`, sin los tests, los *fixtures*, `src/test/**`, `schema.d.ts` ni las demos `src/app/(dev)/**`.
+  - `reportOnFailure: true`, para que haya datos aunque fallen tests.
+- Contrato API:
+  - El paso guarda el `schema.d.ts` commiteado, el generado y el diff.
+  - El reporte compara los dos por bloques (rutas, operaciones y esquemas) para listar las rutas nuevas, quitadas y cambiadas (con sus métodos) y los esquemas nuevos, quitados y cambiados.
+  - También muestra las primeras 50 líneas del diff.
+- Anotaciones:
+  - ESLint las pone el *matcher* `eslint-stylish` de `setup-node`, que recibe rutas absolutas.
+  - TypeScript las imprime el script del reporte (`::error file=frontend/…`), porque `tsc` da rutas relativas a `frontend/` que el *matcher* `tsc` no encontraría. El paso de TypeScript lo quita con `::remove-matcher owner=tsc::`, así no se duplican.
+- `setup-node` corre siempre, sin el `if` de "changes": el paso del reporte necesita Node 24 también cuando se omiten las verificaciones. Con `run=false` tampoco se sube el artefacto.
+- `COREPACK_ENABLE_DOWNLOAD_PROMPT: "0"` en el `env` del job, para que corepack baje pnpm sin preguntar.
+- Si `git diff <base>...<head>` falla, se verifica todo (`run=true`).
+- TypeScript:
+  - `allowImportingTsExtensions`, porque el test del script importa `./ci-report.ts` con extensión, como pide el plan.
+  - `erasableSyntaxOnly`, para que todo el código pueda correr con *type stripping*. Por esto `ApiError` pasó a declarar sus campos sin propiedades de parámetro.
+- Los *fixtures* (`scripts/__fixtures__/`) quedan fuera de Prettier, ESLint y `tsconfig`: Prettier cambiaría la indentación de 4 espacios del `schema.d.ts`, que es lo que lee el script.
+- **Pendiente:** el escaneo de dependencias en cada PR que pide REQ §10.5 no está en la parte 6.
+
+**Contenedor (parte 7):** se sigue el "Plan detallado". Además, lo que decidió el agente:
+- Imagen base `node:24.22.2-alpine`: la 24.22.3 tenía dos días, y se aplica el mismo criterio de antigüedad que con los paquetes.
+- La etapa `run` arranca con `pnpm start` y copia el frontend completo, con `node_modules`. La imagen pesa unos 1,5 GB. **Pendiente:** `output: "standalone"` para achicarla.
+- pnpm se descarga al construir la imagen (`RUN pnpm --version` como `node`), así el contenedor no necesita red al arrancar.
+- Hizo falta `backend` en `DJANGO_ALLOWED_HOSTS`, porque el rewrite llega a Django con ese host. Carlos lo agregó en `backend/.env` y en `backend/.env.example`. `CSRF_TRUSTED_ORIGINS` no cambia.
+- Verificación desde el worktree:
+  - El `.env` existe solo en la carpeta principal y los dos compose comparten el nombre de proyecto.
+  - Por eso se levantó solo `frontend`, con `--no-deps`, `--project-directory` en la carpeta principal y un *override* temporal que apunta el build al worktree.
+  - El backend no se recreó, y al final se quitó el contenedor `frontend`.
+- `backend/README.md` explica cómo crear el usuario de prueba con un comando de `manage.py shell` (sin la contraseña real).
+
+**Saltos de línea:** los archivos de `frontend/` van en LF (Prettier `endOfLine: "lf"`), y se verifica con `git ls-files --eol`.
+
+## Plan detallado de lo que falta en F0
+Partes 1 a 5 hechas. Faltan la 6 (CI), la 7 (contenedor del front) y el cierre. Todo lo de abajo ya está decidido: no se pregunta.
+
+### Parte 6. CI del frontend
+**Workflow `.github/workflows/frontend.yml`** (mismo esqueleto que `backend.yml`; copiar su estilo):
+- `on`: `push` a `master` y `pull_request`. **Sin `paths:`**.
+- `concurrency`: `group: ci-frontend-${{ github.ref }}`, `cancel-in-progress: true`. **Debe ser distinto del grupo del backend** (`ci-${{ github.ref }}`): si fuera el mismo, un workflow cancelaría al otro.
+- Job `quality`:
+  - `name: "Frontend: lint, types and tests"` (exacto: es el nombre del check obligatorio);
+  - `runs-on: ubuntu-latest`, `timeout-minutes: 15`;
+  - `permissions`: `contents: read` y `pull-requests: write`;
+  - `defaults.run`: `working-directory: frontend` y `shell: bash`;
+  - `env`: `CI_REPORT_DIR: .ci-report`, `CI_COVERAGE_MIN: "70"`, `NEXT_TELEMETRY_DISABLED: "1"` y `API_ORIGIN: http://localhost:8000`.
+- **Solo acciones oficiales** (`actions/*`), fijadas por SHA con la versión en comentario:
+  - `checkout` y `upload-artifact`: los mismos SHA que `backend.yml`;
+  - `github-script`: el mismo SHA que `backend.yml`;
+  - `setup-node` y `cache`: el SHA de su última versión estable.
+  - Nada de `pnpm/action-setup` (no es oficial): pnpm sale de `corepack enable`, que respeta `packageManager`.
+
+**Pasos, en orden** (cada verificación con `id` y `continue-on-error: true`; salida a `$CI_REPORT_DIR`):
+0. `Record start time`, igual que en el backend.
+1. `checkout` con `fetch-depth: 2`.
+2. **`changes`** (Detectar cambios):
+   - en `pull_request`, compara el commit de merge con su primer padre (`git diff --name-only HEAD^1 HEAD`), como ya quedó en las precisiones;
+   - si algún archivo empieza por `frontend/`, `contracts/openapi.json`, `design/generated/` o `.github/workflows/frontend.yml`, deja `run=true`; si no, `run=false`;
+   - en `push` a `master`, siempre `run=true`.
+
+   Todos los pasos siguientes llevan `if: steps.changes.outputs.run == 'true'`, salvo el gate.
+3. `setup-node` con Node 24, más `corepack enable`.
+4. Caché del store de pnpm con `actions/cache`, sobre `pnpm store path`, con la clave del hash de `frontend/pnpm-lock.yaml`.
+5. **`install`:** `mkdir -p "$CI_REPORT_DIR"` y `pnpm install --frozen-lockfile`.
+6. **`eslint`:**
+   - `pnpm lint --format json --output-file "$CI_REPORT_DIR/eslint.json" || true`;
+   - luego `pnpm lint`. El formato por defecto (stylish) lo anota en las líneas el *matcher* que registra `setup-node`.
+   - Falla solo con errores; los *warnings* no lo hacen fallar (sin `--max-warnings`).
+7. **`prettier`:** `pnpm format:check 2>&1 | tee "$CI_REPORT_DIR/prettier.txt"`.
+8. **`typecheck`:** `pnpm typecheck 2>&1 | tee "$CI_REPORT_DIR/tsc.txt"`. Lo anota el *matcher* `tsc` de `setup-node`.
+9. **`tests`:** Vitest con cobertura y JUnit:
+   ```
+   pnpm vitest run --coverage --coverage.reporter=text --coverage.reporter=json-summary --coverage.reportsDirectory="$CI_REPORT_DIR/coverage" --reporter=default --reporter=junit --outputFile.junit="$CI_REPORT_DIR/vitest.xml"
+   ```
+   - **El umbral no va en `vitest.config.mts`.** Así, este paso falla solo por tests rotos.
+10. **`coverage`:** corre si existe `coverage-summary.json`, aunque hayan fallado los tests.
+    - Usa `node scripts/ci-report.ts --check-coverage`, que falla si el total de **líneas** está por debajo de `CI_COVERAGE_MIN`.
+11. **`api_contract`:** `pnpm api:gen` y luego `git diff --exit-code -- src/lib/api/schema.d.ts`.
+    - Genera desde `contracts/openapi.json` del repo, sin backend.
+    - `schema.d.ts` ya está excluido de Prettier y de ESLint. Si aun así queda distinto, el agente lo corrige en el script `api:gen`, no en el CI.
+12. **`build`:** `pnpm build 2>&1 | tee "$CI_REPORT_DIR/build.txt"`.
+13. **Build CI report** (`if: always()`): `node scripts/ci-report.ts`, con:
+    - las `OUTCOME_*` de cada paso;
+    - `CI_COMMIT_SHA`;
+    - `CI_SKIPPED=true` cuando `run=false`.
+14. **Upload artifact** `ci-report-frontend`: `frontend/.ci-report/`, con `include-hidden-files: true`, 7 días e `if-no-files-found: ignore`.
+15. **Comentario en el PR** con el marcador `<!-- ci-report:frontend -->`. Es el mismo script de `backend.yml`, cambiando solo el marcador y la ruta.
+    - Solo en PR del mismo repo.
+    - **Cuando el PR no toca el frontend (`run=false`), no se publica comentario.**
+16. **CI gate** (`if: always()`):
+    - con `run=false`, sale en éxito;
+    - si no, falla si alguna verificación terminó en `failure` o si `install` no terminó en `success`. Igual que en el backend.
+
+**Script `frontend/scripts/ci-report.ts`**
+- Lo ejecuta Node 24 directamente (*type stripping*): solo sintaxis que se puede borrar, sin `enum` ni `namespace`, con imports relativos con extensión `.ts` y sin importar nada de `src/` ni alias. Sin dependencias: solo `node:fs`, `node:path` y `node:process`.
+- Lee:
+  - `eslint.json`: errores y *warnings* por regla, con archivo y línea;
+  - `prettier.txt`: archivos de las líneas `[warn]`;
+  - `tsc.txt`: errores `TSxxxx` con archivo y línea;
+  - `vitest.xml`: total, pasan, fallan, saltados, duración y los que fallan (nombre y primera línea del error);
+  - `coverage/coverage-summary.json`: total de líneas contra el mínimo, y los 5 archivos con menos cobertura (ignorando los de 0 líneas);
+  - el diff del contrato y `build.txt`: últimas 50 líneas si falló.
+- **Estados por fila:**
+  - ✅ pasó;
+  - ⚠️ pasó con advertencias (solo ESLint con *warnings*);
+  - ❌ falló;
+  - ⏭️ no corrió.
+- **Formato:** el del backend.
+  - Encabezado `## Frontend CI · …`, con el commit corto, el enlace al run y la duración.
+  - Tabla de 7 filas: ESLint, Prettier (formato), TypeScript, Tests, Cobertura, Contrato API y Build.
+  - `<details>` de máximo 50 líneas, con "… y N más".
+  - Texto escapado.
+  - Con `CI_SKIPPED=true`, una sola línea: "Sin cambios en el frontend: verificaciones omitidas".
+- Escribe en `$GITHUB_STEP_SUMMARY` y en `.ci-report/report.md`. Nunca falla el job, salvo en `--check-coverage`.
+- **Pruebas** en `frontend/scripts/ci-report.test.ts`, con `// @vitest-environment node` y *fixtures* en `frontend/scripts/__fixtures__/`. Casos:
+  - todo en verde;
+  - fallos y *warnings* juntos;
+  - falló la instalación (todo ⏭️);
+  - `CI_SKIPPED`;
+  - salida larga (truncado);
+  - caracteres especiales (escape);
+  - `--check-coverage` por encima y por debajo del mínimo.
+- En `vitest.config.mts`, agregar `scripts/**/*.test.ts` a `include` y `scripts/**/*.ts` a la cobertura, sin contar `__fixtures__`.
+- `.ci-report/` ya está en el `.gitignore` raíz (vale para cualquier carpeta).
+
+**Verificación del agente antes de entregar**
+- `pnpm lint`, `pnpm format:check`, `pnpm typecheck`, los tests con cobertura ≥ 70 %, `pnpm api:gen` sin diferencias y `pnpm build`, todo en local.
+- Correr `node scripts/ci-report.ts` contra una carpeta `.ci-report` armada con los *fixtures*, y mostrar el Markdown que sale.
+- Validar el YAML: que se lea y que los `id` usados en `OUTCOME_*` y en el gate existan.
+
+**Verificación real (Carlos):** hace push y revisa, en el PR #15:
+- que aparezcan los dos comentarios (backend y frontend) y los dos checks en verde;
+- que ninguno de los dos workflows cancele al otro.
+
+No se hace la rama de prueba en rojo: ese caso lo cubren los tests del script.
+
+**Commit:** `ci(frontend): add the frontend CI job with a PR report`
+
+### Parte 7. Contenedor del frontend (3 contenedores)
+**Antes de empezar, Carlos trae `master` a la rama.** La rama no tiene el PR #14 (modo local simple). Carlos corre `git fetch` y `git merge origin/master` en el worktree.
+- Si hay conflictos (lo más probable: esta spec y el README), el agente los resuelve editando los archivos: une las dos versiones sin perder nada.
+- Carlos hace el commit del merge. El agente no corre comandos de git que escriban.
+
+**Qué construir**
+- **`.dockerignore` en la raíz del repo** (el contexto del build es la raíz), que excluya:
+  - `.git`;
+  - `**/node_modules` y `frontend/.next`;
+  - `frontend/coverage`;
+  - `**/.ci-report`;
+  - `backend/` (el backend se construye con su propio contexto);
+  - `docs/` y `specs/`;
+  - los `.env*`.
+- **`frontend/Dockerfile`** de producción, en varias etapas, con `node:24-alpine` fijado por versión:
+  1. `deps`: `corepack enable` y `pnpm install --frozen-lockfile`, copiando solo `package.json` y `pnpm-lock.yaml`.
+  2. `build`: copia `frontend/`, `design/generated/` y `contracts/` respetando la estructura (`/app/frontend`, `/app/design/generated`, `/app/contracts`), porque el front importa `../design/generated`. Corre `pnpm build`.
+     - **`API_ORIGIN` entra como `ARG`, con valor por defecto `http://backend:8000`**, y se exporta como `ENV` en esta etapa. Next fija los *rewrites* al compilar, así que no basta con ponerlo al arrancar.
+  3. `run`: `NODE_ENV=production`, usuario sin privilegios (`node`), `EXPOSE 3000` y `pnpm start` (o el servidor `standalone`, si el agente lo activa en `next.config.ts`; lo que sea más simple y lo anota).
+- **Servicio `frontend` en `backend/docker-compose.yml`:**
+  - sin perfil;
+  - `build.context: ..`, `dockerfile: frontend/Dockerfile` y `args.API_ORIGIN: http://backend:8000`;
+  - `ports: "${FRONTEND_HOST_PORT:-3000}:3000"`;
+  - `depends_on: backend` (`condition: service_started`).
+
+  Con `docker compose up -d` quedan exactamente `postgres`, `backend` y `frontend`. El perfil `full` no cambia.
+- **Host del backend:** el *rewrite* llega a Django con el host `backend`.
+  - Si Django responde `400` por `DJANGO_ALLOWED_HOSTS`, el agente **se detiene y le dice a Carlos la línea exacta** que hay que cambiar en `backend/.env` y en `backend/.env.example`. No los toca.
+  - Lo mismo si hace falta algo en `CSRF_TRUSTED_ORIGINS`.
+- **Desarrollo vs. demo** (va en el README):
+  - para mostrar el proyecto, `docker compose up -d --build` y abrir `http://localhost:3000`;
+  - para programar el front, `docker compose up -d postgres backend` y `pnpm dev` (el contenedor `frontend` ocuparía el puerto 3000).
+- **README raíz y `backend/README.md`:** los tres contenedores, las URLs (`:3000` front y `:8000` API), los dos modos (demo y desarrollo) y el usuario de prueba (sin la contraseña: "créalo con…").
+
+**Verificación del agente**
+- `docker compose up -d --build` levanta los 3 contenedores.
+- Con `curl` contra `http://localhost:3000`:
+  - `/login` responde `200`;
+  - `POST /api/v1/auth/login` con el usuario de `.env.local` devuelve las cookies;
+  - `/api/v1/auth/me` con esas cookies responde `200`.
+
+  El agente lee el usuario de `.env.local` solo si sus permisos se lo dejan. Si no, le pide a Carlos que lo pruebe en el navegador.
+- `docker compose --profile full config` sigue siendo válido.
+- Después, deja corriendo `postgres` y `backend` (sin `frontend`), para no ocupar el 3000.
+
+**Commit:** `chore(frontend): run the frontend as the third local container`
+
+### Cierre de F0
+- **README del frontend** (`frontend/README.md`): requisitos (Node 24 y corepack), comandos (`dev`, `lint`, `format`, `typecheck`, `test`, `api:gen` y `build`), cómo regenerar tipos después de un cambio de API y la carpeta de cada cosa.
+- **"Brechas del backend":** marcar como resueltas las del listado (`TAREA-applications-listado.md`) cuando se fusione ese PR. Las demás quedan para la tarea de "brechas".
+- **El agente entrega el título y la descripción del PR #15**, en español y sin firmas de Claude, con:
+  - lo que trae cada parte;
+  - las decisiones de arquitectura principales;
+  - cómo correrlo;
+  - el CI;
+  - lo que queda para F1 y F2.
+- **Después del merge (Carlos):** agregar "Frontend: lint, types and tests" como check obligatorio en `protect-master`.

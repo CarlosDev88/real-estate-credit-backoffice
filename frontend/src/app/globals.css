@@ -1,0 +1,52 @@
+/* Orden de capas: el preflight de Tailwind (base) no pisa a Ant Design (antd),
+   y las utilidades de Tailwind ganan sobre ambos. */
+@layer theme, base, antd, components, utilities;
+
+@import "tailwindcss";
+@import "../../../design/generated/tokens.css";
+@import "../../../design/generated/tailwind-theme.css";
+
+@layer base {
+  html,
+  body {
+    min-height: 100%;
+  }
+
+  body {
+    margin: 0;
+    background: var(--um-bg-canvas);
+    color: var(--um-text-primary);
+    font-family: var(--um-font-sans);
+    font-size: var(--um-text-md);
+    line-height: var(--um-leading-md);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--um-focus-ring);
+    outline-offset: 2px;
+  }
+}
+
+/* Toasts: notification de Ant Design con el borde de tono de los mockups (_base.css). */
+@layer components {
+  .um-toast {
+    border: 1px solid var(--um-border-default);
+    border-left: 4px solid var(--um-toast-tone);
+  }
+  .um-toast .ant-notification-notice-icon {
+    color: var(--um-toast-tone);
+  }
+  .um-toast--success {
+    --um-toast-tone: var(--um-tone-success-fg);
+  }
+  .um-toast--info {
+    --um-toast-tone: var(--um-tone-info-fg);
+  }
+  .um-toast--warning {
+    --um-toast-tone: var(--um-tone-warning-fg);
+  }
+  .um-toast--danger {
+    --um-toast-tone: var(--um-tone-danger-fg);
+  }
+}
