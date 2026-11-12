@@ -15986,6 +15986,14 @@
                         },
                         "readOnly": true
                     },
+                    "progress_stages": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/ProgressStage"
+                        },
+                        "readOnly": true,
+                        "description": "Las 8 etapas del expediente con su estado (`done`, `current` o `pending`). Vacía en `WITHDRAWN`, `CANCELLED`, `OWN_FUNDS` y `EXTERNAL_CREDIT_APPROVED`."
+                    },
                     "available_actions": {
                         "type": "array",
                         "items": {
@@ -16012,6 +16020,7 @@
                     "opportunity_id",
                     "origin",
                     "participants_summary",
+                    "progress_stages",
                     "project",
                     "property",
                     "purpose",
@@ -17432,6 +17441,31 @@
                     "line1"
                 ]
             },
+            "BuyerAdvisor": {
+                "type": "object",
+                "description": "Contacto del asesor para el comprador: solo nombre, correo y teléfono.",
+                "properties": {
+                    "full_name": {
+                        "type": "string"
+                    },
+                    "email": {
+                        "type": "string",
+                        "format": "email"
+                    },
+                    "phone": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "`null` si el asesor no tiene teléfono. Arma el enlace de WhatsApp."
+                    }
+                },
+                "required": [
+                    "email",
+                    "full_name",
+                    "phone"
+                ]
+            },
             "BuyerApplicationDetail": {
                 "type": "object",
                 "description": "Solicitud vista por el comprador. La versión también viaja en ``ETag``.",
@@ -17498,6 +17532,26 @@
                         ],
                         "readOnly": true
                     },
+                    "advisor": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/BuyerAdvisor"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "readOnly": true,
+                        "description": "Asesor asignado; `null` si la solicitud no tiene un asesor activo."
+                    },
+                    "stages": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/ProgressStage"
+                        },
+                        "readOnly": true,
+                        "description": "Las 4 etapas del portal con su estado (`done`, `current` o `pending`). Vacía en `WITHDRAWN`, `CANCELLED`, `OWN_FUNDS` y `EXTERNAL_CREDIT_APPROVED`: el portal oculta las etapas."
+                    },
                     "participants": {
                         "type": "array",
                         "items": {
@@ -17529,6 +17583,7 @@
                     }
                 },
                 "required": [
+                    "advisor",
                     "code",
                     "created_at",
                     "financing",
@@ -17543,6 +17598,7 @@
                     "public_status",
                     "public_status_label",
                     "purpose",
+                    "stages",
                     "updated_at",
                     "version"
                 ]
@@ -22257,6 +22313,13 @@
                             "null"
                         ]
                     },
+                    "role_label": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Nombre del rol principal (`role`), para mostrar bajo el nombre del usuario; `null` si no tiene rol."
+                    },
                     "roles": {
                         "type": "array",
                         "items": {
@@ -22279,6 +22342,7 @@
                     "name",
                     "permissions",
                     "role",
+                    "role_label",
                     "roles",
                     "scope"
                 ]
@@ -25553,6 +25617,31 @@
                     "purpose_codes"
                 ]
             },
+            "ProgressStage": {
+                "type": "object",
+                "description": "Etapa de avance de la solicitud. La comparten el expediente interno\n(``progress_stages``) y el portal del comprador (``stages``).",
+                "properties": {
+                    "code": {
+                        "type": "string"
+                    },
+                    "label": {
+                        "type": "string"
+                    },
+                    "state": {
+                        "$ref": "#/components/schemas/StateEnum"
+                    },
+                    "state_label": {
+                        "type": "string",
+                        "description": "Listo, En curso o Pendiente."
+                    }
+                },
+                "required": [
+                    "code",
+                    "label",
+                    "state",
+                    "state_label"
+                ]
+            },
             "Project": {
                 "type": "object",
                 "properties": {
@@ -26538,6 +26627,15 @@
                     "slots",
                     "updated"
                 ]
+            },
+            "StateEnum": {
+                "enum": [
+                    "done",
+                    "current",
+                    "pending"
+                ],
+                "type": "string",
+                "description": "* `done` - Listo\n* `current` - En curso\n* `pending` - Pendiente"
             },
             "StatusChange": {
                 "type": "object",

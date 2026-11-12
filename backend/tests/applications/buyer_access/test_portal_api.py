@@ -514,6 +514,8 @@ def test_application_detail_is_the_portal_dto(
         "updated_at",
         "version",
         "progress",
+        "advisor",
+        "stages",
         "participants",
         "property",
         "financing",

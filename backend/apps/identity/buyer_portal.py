@@ -18,7 +18,7 @@ from apps.applications.services import (
 from apps.catalogs.models import CatalogItem
 from apps.catalogs.workflow import ApplicationStatus
 from apps.documents.verification import check_dossier
-from apps.identity.models import BuyerSession
+from apps.identity.models import BuyerSession, User
 
 APPLICATION_STATUS_CATALOG = "application_status"
 
@@ -111,6 +111,15 @@ def buyer_progress(application: CreditApplication) -> BuyerProgress:
     )
 
 
+def buyer_advisor(application: CreditApplication) -> User | None:
+    """Asesor que el comprador puede contactar: el asignado, si sigue activo. Un asesor
+    desactivado o borrado no se muestra."""
+    advisor = application.assigned_advisor
+    if advisor is None or not advisor.can_authenticate:
+        return None
+    return advisor
+
+
 def session_applications(session: BuyerSession) -> QuerySet[CreditApplication]:
     """La única solicitud a la que da acceso la sesión."""
     return CreditApplication.objects.select_related("purpose_item").filter(
@@ -122,6 +131,7 @@ def buyer_application_detail(session: BuyerSession) -> QuerySet[CreditApplicatio
     return (
         session_applications(session)
         .select_related(
+            "assigned_advisor",
             "bank_product__bank",
             "financed_property__project",
             "financed_property__property_type_item",

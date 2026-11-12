@@ -2835,6 +2835,8 @@ export interface components {
             readonly assignments: {
                 [key: string]: unknown;
             }[];
+            /** @description Las 8 etapas del expediente con su estado (`done`, `current` o `pending`). Vacía en `WITHDRAWN`, `CANCELLED`, `OWN_FUNDS` y `EXTERNAL_CREDIT_APPROVED`. */
+            readonly progress_stages: components["schemas"]["ProgressStage"][];
             /** @description Transiciones que el actor puede ejecutar ahora (rol y permiso; la guarda se evalúa al ejecutarla). `WITHDRAW_*` se ejecuta por `/withdrawals`. */
             readonly available_actions: components["schemas"]["AvailableAction"][];
         };
@@ -3259,6 +3261,14 @@ export interface components {
             /** @default false */
             is_primary: boolean;
         };
+        /** @description Contacto del asesor para el comprador: solo nombre, correo y teléfono. */
+        BuyerAdvisor: {
+            full_name: string;
+            /** Format: email */
+            email: string;
+            /** @description `null` si el asesor no tiene teléfono. Arma el enlace de WhatsApp. */
+            phone: string | null;
+        };
         /** @description Solicitud vista por el comprador. La versión también viaja en ``ETag``. */
         BuyerApplicationDetail: {
             /** Format: uuid */
@@ -3277,6 +3287,10 @@ export interface components {
             readonly updated_at: string;
             readonly version: number;
             readonly progress: components["schemas"]["BuyerProgress"];
+            /** @description Asesor asignado; `null` si la solicitud no tiene un asesor activo. */
+            readonly advisor: components["schemas"]["BuyerAdvisor"] | null;
+            /** @description Las 4 etapas del portal con su estado (`done`, `current` o `pending`). Vacía en `WITHDRAWN`, `CANCELLED`, `OWN_FUNDS` y `EXTERNAL_CREDIT_APPROVED`: el portal oculta las etapas. */
+            readonly stages: components["schemas"]["ProgressStage"][];
             readonly participants: components["schemas"]["BuyerParticipant"][];
             readonly property: components["schemas"]["BuyerProperty"] | null;
             readonly financing: components["schemas"]["BuyerFinancing"] | null;
@@ -4578,6 +4592,8 @@ export interface components {
             /** Format: email */
             email: string;
             role: string | null;
+            /** @description Nombre del rol principal (`role`), para mostrar bajo el nombre del usuario; `null` si no tiene rol. */
+            role_label: string | null;
             roles: string[];
             permissions: string[];
             scope: components["schemas"]["Scope"];
@@ -5627,6 +5643,17 @@ export interface components {
         ProductPurposesRequest: {
             purpose_codes: string[];
         };
+        /**
+         * @description Etapa de avance de la solicitud. La comparten el expediente interno
+         *     (``progress_stages``) y el portal del comprador (``stages``).
+         */
+        ProgressStage: {
+            code: string;
+            label: string;
+            state: components["schemas"]["StateEnum"];
+            /** @description Listo, En curso o Pendiente. */
+            state_label: string;
+        };
         Project: {
             /** Format: uuid */
             readonly id: string;
@@ -5906,6 +5933,13 @@ export interface components {
             updated: string[];
             slots: components["schemas"]["DocumentSlot"][];
         };
+        /**
+         * @description * `done` - Listo
+         *     * `current` - En curso
+         *     * `pending` - Pendiente
+         * @enum {string}
+         */
+        StateEnum: "done" | "current" | "pending";
         /** @description Respuesta de un cambio de estado (API §16.3). */
         StatusChange: {
             /** Format: uuid */

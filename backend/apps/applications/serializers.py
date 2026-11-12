@@ -28,6 +28,7 @@ from apps.applications.models import (
     Property,
 )
 from apps.applications.quick_filters import WAITING_STATUSES
+from apps.applications.stages import INTERNAL_STAGES, StageState, progress_stages
 from apps.banking.models import BankProduct
 from apps.banking.rule_engine import Outcome
 from apps.banking.serializers import BankRefSerializer
@@ -724,6 +725,17 @@ class AvailableActionSerializer(serializers.ModelSerializer):
 DETAIL_INCLUDES = ("participants", "property", "financing")
 
 
+class ProgressStageSerializer(serializers.Serializer):
+    """Etapa de avance de la solicitud. La comparten el expediente interno
+    (``progress_stages``) y el portal del comprador (``stages``)."""
+
+    code = serializers.CharField()
+    # `label` choca con el atributo `Field.label` de los stubs de DRF.
+    label = serializers.CharField()  # type: ignore[assignment]
+    state = serializers.ChoiceField(choices=StageState.choices)
+    state_label = serializers.CharField(help_text="Listo, En curso o Pendiente.")
+
+
 class ApplicationDetailSerializer(ApplicationSerializer):
     """Expediente interno. ``context["include"]`` agrega `participants` y `financing`, y
     ``context["available_actions"]`` trae las transiciones que el actor puede ejecutar.
@@ -735,6 +747,11 @@ class ApplicationDetailSerializer(ApplicationSerializer):
 
     property = serializers.SerializerMethodField()
     assignments = serializers.SerializerMethodField()
+    progress_stages = serializers.SerializerMethodField(
+        help_text="Las 8 etapas del expediente con su estado (`done`, `current` o "
+        "`pending`). Vacía en `WITHDRAWN`, `CANCELLED`, `OWN_FUNDS` y "
+        "`EXTERNAL_CREDIT_APPROVED`."
+    )
     available_actions = serializers.SerializerMethodField(
         help_text="Transiciones que el actor puede ejecutar ahora (rol y permiso; la guarda "
         "se evalúa al ejecutarla). `WITHDRAW_*` se ejecuta por `/withdrawals`."
@@ -756,6 +773,7 @@ class ApplicationDetailSerializer(ApplicationSerializer):
             *ApplicationSerializer.Meta.fields,
             "property",
             "assignments",
+            "progress_stages",
             "available_actions",
             "participants",
             "financing",
@@ -764,6 +782,7 @@ class ApplicationDetailSerializer(ApplicationSerializer):
             *ApplicationSerializer.Meta.fields,
             "property",
             "assignments",
+            "progress_stages",
             "available_actions",
         ]
 
@@ -777,6 +796,10 @@ class ApplicationDetailSerializer(ApplicationSerializer):
     def get_property(self, obj: CreditApplication) -> dict[str, Any] | None:
         prop = getattr(obj, "financed_property", None)
         return None if prop is None else cast(dict[str, Any], PropertySerializer(prop).data)
+
+    @extend_schema_field(ProgressStageSerializer(many=True))
+    def get_progress_stages(self, obj: CreditApplication) -> list[dict[str, str]]:
+        return progress_stages(INTERNAL_STAGES, obj.status)
 
     @extend_schema_field(AvailableActionSerializer(many=True))
     def get_available_actions(self, obj: CreditApplication) -> list[dict[str, Any]]:

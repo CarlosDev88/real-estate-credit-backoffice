@@ -74,6 +74,8 @@ class AccessProfile:
     permissions: list[str]
     assigned_applications_only: bool
     partner_id: uuid.UUID | None = None
+    # Nombre del rol principal (`role`), para mostrar; `None` si no tiene rol.
+    role_label: str | None = None
 
 
 # --------------------------------------------------------------------------------------
@@ -124,7 +126,7 @@ def _active_partner_id(user: User) -> uuid.UUID | None:
 
 
 def get_access_profile(user: User) -> AccessProfile:
-    assignments = (
+    assignments = list(
         UserRole.objects.filter(user=user, role__is_active=True)
         .select_related("role")
         .order_by("created_at")
@@ -149,6 +151,7 @@ def get_access_profile(user: User) -> AccessProfile:
         permissions=permissions,
         assigned_applications_only=assigned_only,
         partner_id=_active_partner_id(user) if RoleCode.CONSTRUCTION_PARTNER in roles else None,
+        role_label=assignments[0].role.name if assignments else None,
     )
 
 

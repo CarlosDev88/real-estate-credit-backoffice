@@ -183,6 +183,7 @@ def test_me_returns_profile_permissions_and_scope(logged_client: APIClient, user
         "name": "Andrea García",
         "email": "asesor@example.com",
         "role": "ADVISOR",
+        "role_label": "Asesor",
         "roles": ["ADVISOR"],
         "permissions": role_permissions("ADVISOR"),
         "scope": {"assigned_applications_only": True, "partner_id": None},
@@ -197,6 +198,7 @@ def test_me_for_admin_is_not_limited_to_assigned_applications(
 
     body = api_client.get(ME_URL).json()
     assert body["role"] == "ADMIN"
+    assert body["role_label"] == "Administrador"
     assert body["scope"]["assigned_applications_only"] is False
 
 
@@ -211,4 +213,22 @@ def test_me_ignores_permissions_of_inactive_roles(
 
     body = api_client.get(ME_URL).json()
     assert body["role"] is None
+    assert body["role_label"] is None
     assert body["permissions"] == []
+
+
+def test_me_role_label_is_the_name_of_the_main_role(
+    api_client: APIClient, make_user: Callable[..., User]
+) -> None:
+    """Con varios roles, la etiqueta es la del principal: el primero asignado."""
+    from apps.identity.models import Role, UserRole
+
+    user = make_user(email="broker@example.com", role_code="INDEPENDENT_BROKER")
+    UserRole.objects.create(user=user, role=Role.objects.get(code="ADVISOR"))
+    Role.objects.filter(code="INDEPENDENT_BROKER").update(name="Aliado comercial")
+    login(api_client, email="broker@example.com")
+
+    body = api_client.get(ME_URL).json()
+    assert body["roles"] == ["INDEPENDENT_BROKER", "ADVISOR"]
+    assert body["role"] == "INDEPENDENT_BROKER"
+    assert body["role_label"] == "Aliado comercial"
