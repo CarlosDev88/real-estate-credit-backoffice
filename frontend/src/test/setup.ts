@@ -5,26 +5,40 @@ import { afterAll, afterEach, beforeAll } from "vitest";
 
 import { server } from "@/test/msw-server";
 
-// jsdom no trae matchMedia; Ant Design y useMediaQuery lo usan.
-if (!window.matchMedia) {
-  window.matchMedia = (query: string) =>
-    ({
-      matches: false,
-      media: query,
-      onchange: null,
-      addEventListener: () => {},
-      removeEventListener: () => {},
-      addListener: () => {},
-      removeListener: () => {},
-      dispatchEvent: () => false,
-    }) as MediaQueryList;
+// Algunas pruebas (proxy.ts) corren en entorno Node, sin DOM.
+const hasDom = typeof window !== "undefined";
+
+if (hasDom) {
+  // jsdom no trae matchMedia; Ant Design y useMediaQuery lo usan.
+  if (!window.matchMedia) {
+    window.matchMedia = (query: string) =>
+      ({
+        matches: false,
+        media: query,
+        onchange: null,
+        addEventListener: () => {},
+        removeEventListener: () => {},
+        addListener: () => {},
+        removeListener: () => {},
+        dispatchEvent: () => false,
+      }) as MediaQueryList;
+  }
+  // Ni ResizeObserver (lo usan el menú de Ant Design y ScrollTabs).
+  if (typeof window.ResizeObserver === "undefined") {
+    window.ResizeObserver = class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    };
+  }
 }
 
 beforeAll(() => server.listen({ onUnhandledFrame: "error" }));
 
 afterEach(() => {
-  cleanup();
   server.resetHandlers();
+  if (!hasDom) return;
+  cleanup();
   try {
     window.localStorage.clear();
   } catch {

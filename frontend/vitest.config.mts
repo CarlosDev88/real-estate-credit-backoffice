@@ -8,6 +8,8 @@ export default defineConfig({
       "@design": path.resolve(import.meta.dirname, "../design/generated"),
       "@": path.resolve(import.meta.dirname, "src"),
     },
+    // `../design/generated/antd-theme.ts` importa "antd": se resuelve desde aquí.
+    dedupe: ["antd", "react", "react-dom"],
   },
   test: {
     environment: "jsdom",

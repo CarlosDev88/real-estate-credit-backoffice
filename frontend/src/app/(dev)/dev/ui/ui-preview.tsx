@@ -17,6 +17,7 @@ import {
 import { useMutation } from "@tanstack/react-query";
 import Link from "next/link";
 
+import { TONE_CLASS } from "@/components/ui/status-badge";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { ApiError, networkError } from "@/lib/api/errors";
 import { useToast } from "@/providers/toast";
@@ -24,16 +25,6 @@ import { useToast } from "@/providers/toast";
 type Mode = "light" | "dark";
 
 const TONES: Tone[] = ["neutral", "info", "accent", "success", "warning", "danger"];
-
-// Clases completas (no interpoladas) para que Tailwind las detecte.
-const TONE_CLASS: Record<Tone, string> = {
-  neutral: "text-tone-neutral-fg bg-tone-neutral-bg border-tone-neutral-border",
-  info: "text-tone-info-fg bg-tone-info-bg border-tone-info-border",
-  accent: "text-tone-accent-fg bg-tone-accent-bg border-tone-accent-border",
-  success: "text-tone-success-fg bg-tone-success-bg border-tone-success-border",
-  warning: "text-tone-warning-fg bg-tone-warning-bg border-tone-warning-border",
-  danger: "text-tone-danger-fg bg-tone-danger-bg border-tone-danger-border",
-};
 
 const SURFACES = [
   { name: "bg-canvas", className: "bg-bg-canvas" },

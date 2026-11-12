@@ -9,7 +9,8 @@ import {
 } from "@/lib/api/session";
 
 const UNSAFE_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
-const REFRESH_CODES = new Set(["NOT_AUTHENTICATED", "SESSION_EXPIRED"]);
+/** Códigos de `401` que se resuelven renovando la sesión interna. */
+export const REFRESH_CODES = new Set(["NOT_AUTHENTICATED", "SESSION_EXPIRED"]);
 
 // Rutas que nunca disparan el refresh: las de la sesión interna y las del comprador.
 const NO_REFRESH = [
@@ -18,8 +19,13 @@ const NO_REFRESH = [
   /^\/api\/v1\/buyer-access\//,
 ];
 
-function isBuyerPath(path: string): boolean {
+export function isBuyerPath(path: string): boolean {
   return path.startsWith("/api/v1/buyer/");
+}
+
+/** La ruta puede disparar el refresh de la sesión interna. */
+export function canRefreshPath(path: string): boolean {
+  return !NO_REFRESH.some((re) => re.test(path));
 }
 
 function withHeaders(request: Request): Request {
@@ -61,7 +67,7 @@ async function errorCode(response: Response): Promise<string | null> {
 export async function apiFetch(input: Request): Promise<Response> {
   const startedAt = Date.now();
   const path = new URL(input.url).pathname;
-  const canRefresh = !NO_REFRESH.some((re) => re.test(path));
+  const canRefresh = canRefreshPath(path);
   // Copia para el reintento: el cuerpo de una petición se consume una sola vez.
   const retryCopy = canRefresh ? input.clone() : null;
 

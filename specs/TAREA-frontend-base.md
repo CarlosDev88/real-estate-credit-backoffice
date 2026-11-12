@@ -192,6 +192,7 @@ Se resuelven en `TAREA-applications-listado.md`. Mientras tanto, se simulan con 
 - Búsqueda global de la barra superior: no hay endpoint. Se quita.
 - Campana de notificaciones internas de la barra superior: no hay endpoint. Se quita.
 - El contrato (`contracts/openapi.json`) no declara la cabecera `ETag` en ninguna respuesta, aunque exige `If-Match` en 12 escrituras y API §6 dice que toda respuesta del expediente la lleva. El frontend la lee igual desde la respuesta, pero el contrato debe documentarla.
+- El tipo documental que ve el comprador (`BuyerSlotDocumentType`) no trae `allowed_mime_types` ni `max_size_bytes`; el interno (`SlotDocumentType`) sí. Sin ellos, el uploader del portal no puede validar tipo y tamaño antes de enviar: lo valida solo la API (`422 UNSUPPORTED_FILE_TYPE` / `FILE_TOO_LARGE`, `413 PAYLOAD_TOO_LARGE`).
 
 ## Pruebas
 - **Unitarias** (Vitest + Testing Library): componentes de `ui`, formularios con validación, manejo de `ApiError` y formato de montos.
@@ -302,5 +303,18 @@ _(se completan al resolver las ambigüedades de cada fase)_
 - En `/login`, un `401` de `/auth/me` con refresh fallido no redirige otra vez al login: se queda en el formulario.
 - Logout: `POST /auth/logout`, se vacía la caché de Query y se va a `/login`. Si falla, se queda en la página con un toast de error.
 - `/solicitudes` en F0: título y subtítulo del mockup dentro del shell, sin lista, sin datos y sin llamar a la API. La construye el Agente A en F1.
+
+**Componentes compartidos (parte 5):**
+- `uploadFile({ path, file, fields, onProgress, signal })` en `lib/api`:
+  - Usa `XMLHttpRequest` para tener progreso, con las mismas cabeceras (`X-CSRFToken` y `X-Request-ID`) y los errores como `ApiError`, incluido el de red.
+  - En rutas internas, un `401` hace el mismo refresh y un reintento. En `/buyer/*` emite los eventos del portal.
+  - Se puede cancelar con `signal`.
+- `DocumentUploader` es solo interfaz: recibe `onUpload(file, onProgress)`, y cada feature conecta su endpoint.
+- Fechas:
+  - La zona horaria es fija, `America/Bogota`, en una sola constante de `lib/format`. Las fechas sin hora (`document_date`, `birth_date`) se muestran tal cual, sin pasar por zona horaria.
+  - Fecha relativa: menos de 1 min, "Hace un momento"; menos de 1 h, "Hace N min"; mismo día, "Hace N h"; el día anterior, "Ayer"; hasta 3 días, "Hace N días"; después, "8 nov" ("8 nov 2025" si es de otro año). En el `title`, la fecha y hora completas.
+  - La fecha relativa es un componente que se actualiza solo cada minuto, sin diferencias entre el HTML del servidor y el del cliente ni avisos de hidratación.
+- Montos COP enteros con `Intl.NumberFormat("es-CO")` y porcentajes enteros ("62 %"), con `tabular-nums`.
+- Visor: en modo local simple la URL de descarga es relativa (`/api/v1/storage/objects/<token>`), pasa por el rewrite y es del mismo origen, sin CORS. El riesgo de CORS aplica solo al modo full (SeaweedFS) y a S3 real, donde el almacenamiento debe permitir el origen del frontend.
 
 **Saltos de línea:** los archivos de `frontend/` van en LF (Prettier `endOfLine: "lf"`), y se verifica con `git ls-files --eol`.
