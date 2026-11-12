@@ -11,7 +11,8 @@ Que `GET /applications` entregue lo que muestra el mockup `design/screens/solici
 Las mismas de siempre:
 - Git solo en lectura; Carlos hace los commits de cada parte.
 - Sin `Co-Authored-By`.
-- Primero, las ambigüedades una por una con su recomendación; después se implementa.
+- **No se presentan dudas.** Lo que esta spec no cubra lo decide el agente con la opción más simple, lo anota en "Precisiones acordadas" y sigue. Solo se detiene si la decisión rompe el contrato de la API ya acordado, cambia el alcance, borra o altera datos existentes, o exige tocar el `.env`.
+- Cada parte se hace de corrido. Al cerrarla, el agente entrega: verificaciones en verde, la lista corta de decisiones que tomó por su cuenta y el mensaje de commit. Espera el "listo" de Carlos para la siguiente.
 - OpenAPI con `--fail-on-warn` y `contracts/openapi.json` actualizado.
 - Cobertura ≥ 95 %.
 
@@ -108,3 +109,126 @@ Las mismas de siempre:
 - Nombres de orden: `requested_amount`, `bank_name` y `applicant_name` (nombres y apellidos del titular), más los de hoy. Los nulos van al final en los dos sentidos.
 - `banks.short_name`: opcional (`max_length=30`, puede quedar vacío), editable en `POST`/`PATCH /banks`, y en las referencias del banco (`bank_product.bank.short_name` en el listado). Se actualizan el DER, el SQL y la API §23.2.
 - Cada migración se aplica al backend en marcha con `migrate` (sin reiniciar contenedores) apenas se crea: el front lo usa en `:8000`.
+
+### Parte 3: decisiones de implementación
+- **Orden de la migración:** primero `migrate` (tres columnas nulas, más `ck_credit_applications_completeness_pct`: nulo o ≤ 100) y después el modelo y el código. Así el backend en marcha nunca lee columnas que no existen.
+- **Enganches extra**, además de los 6 del plan:
+  - `save_evaluation`: una evaluación bancaria nueva cambia el ítem `bank_evaluation` sin subir la versión;
+  - `create_application`: si a la solicitud no le aplica ningún requisito, `sync_slots` no cambia nada y no refresca. Sin este enganche, una solicitud nueva saldría con "—" hasta el próximo cambio o arranque.
+- **Cambio de estado:** pasa por `bump_version()` (en `_apply_status_change`), así que no necesita enganche propio. Tiene su prueba.
+- **Búsqueda de otros `save()`/`update()`:** los demás (reasignación de asesor, oportunidades, enlaces del comprador y ZIP de paquetes) no afectan la completitud.
+- **Sin deduplicar dentro de la transacción:** Django no expone los `on_commit` pendientes sin usar internos, y el cálculo es idempotente. Una petición puede recalcular dos o tres veces la misma solicitud (unos milisegundos cada vez).
+- **`refresh_completeness_safely`:** envuelve a `refresh_completeness`, registra el error con el id y devuelve `False`. La usan el `on_commit` y el comando. Una solicitud que ya no existe no es un error: no hace nada.
+- **Imports locales de `schedule_completeness_refresh`** en `documents` (carga, análisis, revisión y slots) y en `bank_evaluation`: `services` importa esos módulos al cargarse.
+- **Prueba existente ajustada:** `test_a_clean_scan_leaves_the_version_in_review` contaba exactamente un `on_commit` en la carga. Ahora comprueba que el análisis se encola una sola vez; los demás `on_commit` son los refrescos.
+
+## Plan detallado de las partes que faltan
+Partes 1 y 2 hechas (campos del listado, filtros y `short_name`). Faltan la 3, la 4 y el cierre. Todo lo de abajo ya está decidido: no se pregunta.
+
+### Parte 3. Completitud guardada
+**Modelo y migración**
+- En `CreditApplication`: `completeness_pct` (`PositiveSmallIntegerField`, nulo, 0 a 100), `ready_to_file_ok` (`BooleanField`, nulo) y `completeness_refreshed_at` (`DateTimeField`, nulo).
+- Migración solo de esquema, con los tres campos nulos. Sin migración de datos: los llena el comando.
+- El agente **puede aplicar la migración y correr el comando en el contenedor sin preguntar**: solo agregan columnas y valores calculados. Usa `docker compose exec backend python manage.py migrate applications` (sin reiniciar).
+
+**Servicio** (en `apps/applications/services.py`, junto a `completeness()`)
+- `refresh_completeness(application_id)`:
+  - lee la solicitud de nuevo desde la base, calcula `completeness()` y guarda con `CreditApplication.objects.filter(pk=…).update(...)`;
+  - **no** usa `save()`: no sube `version`, no cambia `updated_at`, no dispara señales, eventos ni auditoría. El `ETag` de la solicitud no cambia por esto;
+  - si la solicitud no existe, no hace nada.
+- `schedule_completeness_refresh(application_id)`: registra `refresh_completeness` en `transaction.on_commit`.
+  - Si se programa varias veces la misma solicitud en una transacción, conviene que corra una sola vez. Si deduplicar se complica, se omite y se anota: primero lo correcto.
+  - Un error dentro del refresco se registra en el log con el id de la solicitud y **nunca** rompe la petición del usuario.
+
+**Puntos de enganche** (cada uno llama a `schedule_completeness_refresh`)
+1. `bump_version()`: cubre todas las ediciones de datos.
+2. Carga de una versión de documento (`uploads.upload_document`).
+3. Resultado del análisis (`scans._apply`).
+4. Revisión: aprobar, rechazar, exonerar y reabrir (`reviews.py`).
+5. Recálculo de slots (`slots.sync_slots`), cuando cambió algo.
+6. Cambio de estado (`transition_application`), si no pasa ya por `bump_version()`.
+
+El agente busca con `grep` cualquier otro `.save(` sobre `CreditApplication` o sobre slots y documentos fuera de estos puntos. Si encuentra uno que cambie la completitud, lo engancha y lo anota.
+
+**Comando `refresh_application_completeness`** (`apps/applications/management/commands/`)
+- Por defecto recalcula las solicitudes abiertas (fuera de `TERMINAL_APPLICATION_STATUSES`) y las que tengan `completeness_refreshed_at` nulo. Con `--all`, todas.
+- Recorre con `.iterator(chunk_size=200)`, una solicitud a la vez. Un error se registra y se sigue.
+- Al final imprime una línea: "Completitud: N recalculadas, M con error".
+- **Siempre termina con código 0**, para que el backend arranque aunque falle una solicitud.
+- En `backend/docker-compose.yml` va después de `createcachetable` y antes de `describe_local_services`.
+- El README del backend dice que en un entorno real correría a diario (por vencimiento de documentos por fecha).
+
+**API**
+- `ApplicationSerializer` (interno): `completeness_pct` (entero o `null`) y `ready_to_file_blocked`:
+  - `true` si está en `READY_TO_FILE` y `ready_to_file_ok` es falso;
+  - `false` si está en `READY_TO_FILE` y cumple;
+  - `null` en otro estado o sin valor calculado.
+
+  Se calcula con los campos de la fila, sin consultas. En el OpenAPI va como booleano nulo (`extend_schema_field`).
+- `ApplicationSummarySerializer` (broker): no cambia.
+- `/completeness` sigue calculando en vivo.
+
+**Pruebas**
+- Después de cada uno de los 6 enganches, el valor guardado es igual a `completeness()`.
+- `refresh_completeness` no cambia `version` ni `updated_at`.
+- Un error en el refresco no rompe la petición: responde igual y queda en el log.
+- Comando: solo abiertas y nulas por defecto, todas con `--all`; con un error en una, las demás se recalculan y el código de salida es 0.
+- `ready_to_file_blocked` en sus tres valores.
+- Mismo número de consultas con 1 y con 25 filas.
+- El broker no ve los campos nuevos.
+
+**Documentación:** DER, SQL, modelo de datos, API (listado) y README del backend (el comando).
+
+**Commit:** `feat(applications): store completeness for the list and refresh it on changes`
+
+### Parte 4. Pestañas e inactividad del comprador
+**Pestañas**
+- `apps/applications/quick_filters.py`: una tupla fija de `QuickFilter(code, label, statuses)`, con la tabla de la precisión B. Los estados se referencian con `ApplicationStatus`, no como texto suelto.
+- Prueba: cada estado está en exactamente una pestaña (sin contar `all`), y no sobra ni falta ninguno.
+- **Endpoint** `GET /api/v1/applications/quick-filters`:
+  - mismo permiso que el listado (`applications.read`); el broker también puede;
+  - se declara en `urls.py` antes de las rutas con `<uuid:…>`;
+  - usa el mismo queryset base y los mismos filtros que el listado (alcance, `q`, banco, tipo, finalidad, asesor, etc.). Ignora `status`, `quick_filter`, `page`, `page_size` y `ordering`;
+  - los conteos salen en **una sola consulta**, con `aggregate` y `Count(filter=Q(status__in=…))`, más el total de `all`;
+  - la forma de la respuesta sigue la convención del proyecto para listas sin paginar. El agente mira cómo responde un endpoint parecido, usa la misma forma y la anota.
+- **Filtro `quick_filter`** en el listado:
+  - `all` no filtra;
+  - un código desconocido responde `400` con el mismo formato de error que `purpose` (`details[].field = "quick_filter"`);
+  - junto con `status`, se aplican los dos.
+
+**Inactividad del comprador**
+- `last_buyer_activity_at`: anotación con `Subquery` sobre `BuyerSession` (`application=OuterRef("pk")`), con el `last_seen_at` más reciente y los nulos al final. `null` si nunca entró.
+- `buyer_inactive`: se calcula en el serializer con la anotación, el estado, `current_stage_started_at` y `timezone.now()`, sin consultas. La regla es la de la precisión C.
+- `BUYER_INACTIVITY_DAYS = 3` como constante en `config/settings/base.py`, **sin variable de entorno** (así no se toca el `.env`).
+- Solo en `ApplicationSerializer`; el broker no lo ve.
+
+**Pruebas**
+- Pestañas: conteos correctos; respetan el alcance (asesor: lo asignado; broker: lo que originó; administrador: todo); aplican los filtros del listado e ignoran `status`.
+- El endpoint hace una sola consulta de conteo (`django_assert_num_queries`).
+- `quick_filter`: válido, `all`, desconocido (`400`) y combinado con `status`.
+- `buyer_inactive`:
+  - `true` con actividad vieja;
+  - `true` sin actividad y con la etapa vieja;
+  - `false` con actividad reciente;
+  - `null` fuera de `waiting`.
+
+  Con el tiempo congelado.
+- El listado sigue con el mismo número de consultas con 1 y con 25 filas.
+
+**Documentación:** API (listado y endpoint nuevo).
+
+**Commit:** `feat(applications): add quick filter tabs with counts and a buyer inactivity flag`
+
+### Cierre
+- Todo en verde:
+  - ruff, formato y mypy;
+  - `makemigrations --check`;
+  - suite completa;
+  - cobertura ≥ 95 %;
+  - contrato regenerado con `--fail-on-warn` y commiteado;
+  - backend de `:8000` sano.
+- El agente entrega el **título y la descripción del PR**, en español, sin firmas de Claude. La descripción incluye:
+  - qué trae cada parte;
+  - los campos nuevos del listado (para el front);
+  - los dos comandos/migraciones;
+  - cómo probarlo.

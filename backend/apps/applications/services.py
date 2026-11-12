@@ -20,6 +20,7 @@ import uuid
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from datetime import datetime
+from functools import partial
 from typing import Any
 
 from django.db import IntegrityError, transaction
@@ -319,9 +320,12 @@ def lock_for_edit(
 
 
 def bump_version(locked: CreditApplication, fields: Iterable[str] = ()) -> None:
-    """Guarda los ``fields`` indicados y aumenta la versión del expediente."""
+    """Guarda los ``fields`` indicados y aumenta la versión del expediente. Después del
+    commit recalcula la completitud guardada: toda edición de datos y todo cambio de
+    estado pasan por aquí."""
     locked.version += 1
     locked.save(update_fields=[*fields, "version", "updated_at"])
+    schedule_completeness_refresh(locked.pk)
 
 
 # --------------------------------------------------------------------------------------
@@ -417,6 +421,8 @@ def create_application(
             )
             # La solicitud nueva aún no es visible para nadie más: no hace falta bloquearla.
             sync_slots(application)
+            # Aunque no le aplique ningún requisito: nunca queda sin valor en el listado.
+            schedule_completeness_refresh(application.pk)
     except IntegrityError as exc:
         # Respaldo ante una carrera: la restricción admite una sola solicitud en curso.
         if OPEN_APPLICATION_CONSTRAINT in str(exc):
@@ -1514,3 +1520,51 @@ def completeness(application: CreditApplication) -> Completeness:
         items=items,
         documents=dossier,
     )
+
+
+# --- Completitud guardada para el listado -------------------------------------------------
+# Calcularla por fila costaba de 6 a 10 consultas por solicitud. Se guarda el resultado de
+# `completeness()` (la misma regla de `/completeness`) después de cada cambio de datos o
+# del expediente; lo que cambia solo con el tiempo lo recalcula el comando
+# `refresh_application_completeness`.
+
+
+def refresh_completeness(application_id: uuid.UUID) -> None:
+    """Guarda la completitud actual de la solicitud. Si no existe, no hace nada.
+
+    Lee la solicitud de nuevo y guarda con ``update()``: no sube ``version`` ni cambia
+    ``updated_at``, no dispara señales ni eventos, y el ``ETag`` sigue igual.
+    """
+    application = (
+        CreditApplication.objects.select_related("bank_product", "purpose_item")
+        .filter(pk=application_id)
+        .first()
+    )
+    if application is None:
+        return
+    result = completeness(application)
+    CreditApplication.objects.filter(pk=application_id).update(
+        completeness_pct=result.percentage,
+        ready_to_file_ok=result.ready_to_file,
+        completeness_refreshed_at=timezone.now(),
+    )
+
+
+def refresh_completeness_safely(application_id: uuid.UUID) -> bool:
+    """``refresh_completeness`` sin propagar errores: el fallo queda en el log con el id y
+    la solicitud conserva el valor anterior. ``False`` si falló."""
+    try:
+        refresh_completeness(application_id)
+    except Exception:  # La completitud guardada nunca rompe la operación que la pidió.
+        logger.exception("No se pudo recalcular la completitud de la solicitud %s", application_id)
+        return False
+    return True
+
+
+def schedule_completeness_refresh(application_id: uuid.UUID) -> None:
+    """Recalcula después del commit (o enseguida, fuera de una transacción).
+
+    No se deduplica dentro de una transacción: Django no expone los ``on_commit``
+    pendientes, y el cálculo es idempotente (correrlo dos veces da lo mismo).
+    """
+    transaction.on_commit(partial(refresh_completeness_safely, application_id))

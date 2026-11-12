@@ -93,7 +93,7 @@ Default services (simple mode):
 
 | Service | Local address | Purpose |
 | --- | --- | --- |
-| Django backend | http://localhost:8000 | API and documentation. Applies migrations and creates the cache table on every start. |
+| Django backend | http://localhost:8000 | API and documentation. Applies migrations, creates the cache table, and recalculates the stored completeness of the application list on every start. |
 | PostgreSQL | `localhost:5433` | Local development database, also the shared cache used by rate limits. |
 
 Uploaded documents and filing packages are stored in the `mvp_credit_documents_data` volume. Redis, SeaweedFS, the Celery worker, and ClamAV belong to the `full` profile.
@@ -500,7 +500,7 @@ The credit application is the central record of the process (API §16 to §18). 
 
 | Method | Path | Access |
 | --- | --- | --- |
-| `GET`, `POST` | `/applications` | `applications.read`, `applications.create`. Filters: `status`, `bank_id`, `product_id`, `purpose`, `product_type`, `advisor_id`, `project_id`, `origin`, `search`, and `ordering` (also `requested_amount`, `bank_name`, and `applicant_name`, with empty values last). Catalog codes (`purpose`, `origin`, `product_type`) that do not exist answer `400`. Rows also carry `status_label`, the product type, `requested_amount_cop`, and `participants_summary`. |
+| `GET`, `POST` | `/applications` | `applications.read`, `applications.create`. Filters: `status`, `bank_id`, `product_id`, `purpose`, `product_type`, `advisor_id`, `project_id`, `origin`, `search`, and `ordering` (also `requested_amount`, `bank_name`, and `applicant_name`, with empty values last). Catalog codes (`purpose`, `origin`, `product_type`) that do not exist answer `400`. Rows also carry `status_label`, the product type, `requested_amount_cop`, `participants_summary`, `completeness_pct`, and `ready_to_file_blocked`. |
 | `GET`, `PATCH` | `/applications/{id}` | `applications.read`, `applications.update`. `?include=participants,financing`. `PATCH` changes only `purpose_code` and `bank_product_id`. |
 | `GET` | `/applications/{id}/summary` | `applications.read_summary`. No financial or property data. |
 | `POST` | `/applications/{id}/assignments` | `applications.assign` |
@@ -524,6 +524,7 @@ The credit application is the central record of the process (API §16 to §18). 
 - Creating an application converts its opportunity to `CONVERTED` in the same transaction; at most one non-terminal application exists per opportunity.
 - Optimistic concurrency: every response carries `ETag: "<version>"`. Every `PUT`/`PATCH` requires `If-Match` (`428` without it, `409 STALE_VERSION` when stale). Status transitions and withdrawals send `expected_version` in the body instead.
 - Application data can only change before `FILED` (`409 APPLICATION_NOT_EDITABLE`).
+- Stored completeness for the list: `completeness_pct` and `ready_to_file_ok` hold the result of the same rule as `/completeness`, so the list needs no per-row queries. They are recalculated after commit on every data edit and status change, every bank evaluation, the application's creation, and every dossier change (upload, scan result, review, waiver, reopening, and slot refresh). The refresh never changes `version` or `updated_at`, and an error is logged with the application id without breaking the request. What changes only with time (documents that expire, new rules or requirements) is recalculated by `python manage.py refresh_application_completeness`: open applications and those never calculated (`--all` for every one). It always exits with code 0, runs on every backend start, and in a real environment would run daily.
 - Bank rules: the evaluation applies the product's published rules plus its amount and term ranges as system blocking rules, and fails closed on missing data. Choosing a product stores an evaluation automatically.
 - `READY_TO_FILE` requires a product, a current eligible evaluation (re-evaluated automatically when stale), and the required documents approved or waived (see [Readiness and Completeness](#readiness-and-completeness)). Otherwise the transition returns `422 APPLICATION_NOT_READY` with every reason in `details`.
 - Seeded `APPLICATION` transitions cover the pre-filing flow, closing to `CANCELLED`, `OWN_FUNDS`, and `EXTERNAL_CREDIT_APPROVED` (with a required reason), and `WITHDRAWN` from every non-terminal status. Transitions from `FILED` onwards arrive with the filings module.

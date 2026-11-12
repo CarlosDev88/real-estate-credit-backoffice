@@ -241,7 +241,7 @@ def save_evaluation(actor: User | BuyerSession, locked: CreditApplication) -> Ba
     context = build_rule_context(locked)
     rows = evaluate_product(product, context, purpose=locked.purpose_item)
     summary = summarize(rows)
-    return BankRuleEvaluation.objects.create(
+    evaluation = BankRuleEvaluation.objects.create(
         application=locked,
         bank_product=product,
         application_version=locked.version,
@@ -251,3 +251,9 @@ def save_evaluation(actor: User | BuyerSession, locked: CreditApplication) -> Ba
         result_snapshot={"rules": rows, "context": context},
         evaluated_by=actor if isinstance(actor, User) else None,
     )
+    # Una evaluación nueva cambia el ítem `bank_evaluation` sin subir la versión.
+    # Import local: `services` importa este módulo.
+    from apps.applications.services import schedule_completeness_refresh
+
+    schedule_completeness_refresh(locked.pk)
+    return evaluation

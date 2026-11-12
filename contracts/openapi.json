@@ -15395,6 +15395,22 @@
                         "readOnly": true,
                         "description": "Monto solicitado de la financiación; `null` si aún no hay financiación."
                     },
+                    "completeness_pct": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "readOnly": true,
+                        "description": "Completitud guardada (0 a 100), la misma regla de `/completeness`. `null` si todavía no se calculó."
+                    },
+                    "ready_to_file_blocked": {
+                        "type": [
+                            "boolean",
+                            "null"
+                        ],
+                        "readOnly": true,
+                        "description": "Solo en `READY_TO_FILE`: `true` si ya no cumple la guarda (documento rechazado, reabierto, vencido o versión nueva), `false` si cumple. `null` en los demás estados o sin valor calculado."
+                    },
                     "assigned_advisor": {
                         "allOf": [
                             {
@@ -15480,6 +15496,7 @@
                     "bank_product",
                     "closed_at",
                     "code",
+                    "completeness_pct",
                     "created_at",
                     "current_stage_started_at",
                     "id",
@@ -15489,6 +15506,7 @@
                     "project",
                     "purpose",
                     "ready_to_file_at",
+                    "ready_to_file_blocked",
                     "requested_amount_cop",
                     "status",
                     "status_label",
@@ -15613,6 +15631,22 @@
                         "readOnly": true,
                         "description": "Monto solicitado de la financiación; `null` si aún no hay financiación."
                     },
+                    "completeness_pct": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "readOnly": true,
+                        "description": "Completitud guardada (0 a 100), la misma regla de `/completeness`. `null` si todavía no se calculó."
+                    },
+                    "ready_to_file_blocked": {
+                        "type": [
+                            "boolean",
+                            "null"
+                        ],
+                        "readOnly": true,
+                        "description": "Solo en `READY_TO_FILE`: `true` si ya no cumple la guarda (documento rechazado, reabierto, vencido o versión nueva), `false` si cumple. `null` en los demás estados o sin valor calculado."
+                    },
                     "assigned_advisor": {
                         "allOf": [
                             {
@@ -15724,6 +15758,7 @@
                     "bank_product",
                     "closed_at",
                     "code",
+                    "completeness_pct",
                     "created_at",
                     "current_stage_started_at",
                     "id",
@@ -15734,6 +15769,7 @@
                     "property",
                     "purpose",
                     "ready_to_file_at",
+                    "ready_to_file_blocked",
                     "requested_amount_cop",
                     "status",
                     "status_label",

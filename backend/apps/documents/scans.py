@@ -68,6 +68,10 @@ def _apply(file_object_id: uuid.UUID, result: ScanResult) -> str:
             if slot.current_file_id == version.pk:
                 slot.status = SlotStatus.REJECTED
                 slot.save(update_fields=["status", "updated_at"])
+        # Import local para no crear un ciclo con `apps.applications.services`.
+        from apps.applications.services import schedule_completeness_refresh
+
+        schedule_completeness_refresh(slot.application_id)
     if result.status == ScanStatus.INFECTED:
         logger.warning(
             "Archivo %s infectado (%s): versión %s rechazada",

@@ -282,6 +282,17 @@ class ApplicationSerializer(serializers.ModelSerializer):
         allow_null=True,
         help_text="Monto solicitado de la financiación; `null` si aún no hay financiación.",
     )
+    completeness_pct = serializers.IntegerField(
+        read_only=True,
+        allow_null=True,
+        help_text="Completitud guardada (0 a 100), la misma regla de `/completeness`. `null` "
+        "si todavía no se calculó.",
+    )
+    ready_to_file_blocked = serializers.SerializerMethodField(
+        help_text="Solo en `READY_TO_FILE`: `true` si ya no cumple la guarda (documento "
+        "rechazado, reabierto, vencido o versión nueva), `false` si cumple. `null` en los "
+        "demás estados o sin valor calculado."
+    )
     assigned_advisor = UserRefSerializer(read_only=True)
     origin = CatalogItemRefSerializer(source="opportunity.origin_item", read_only=True)
     project = serializers.SerializerMethodField()
@@ -302,6 +313,8 @@ class ApplicationSerializer(serializers.ModelSerializer):
             "purpose",
             "bank_product",
             "requested_amount_cop",
+            "completeness_pct",
+            "ready_to_file_blocked",
             "assigned_advisor",
             "origin",
             "project",
@@ -321,6 +334,13 @@ class ApplicationSerializer(serializers.ModelSerializer):
         if prop is None or prop.project is None:
             return None
         return {"id": str(prop.project.pk), "name": prop.project.name}
+
+    @extend_schema_field(serializers.BooleanField(allow_null=True))
+    def get_ready_to_file_blocked(self, obj: CreditApplication) -> bool | None:
+        """Con los campos de la fila, sin consultas."""
+        if obj.status != ApplicationStatus.READY_TO_FILE or obj.ready_to_file_ok is None:
+            return None
+        return not obj.ready_to_file_ok
 
     @extend_schema_field(ParticipantsSummarySerializer)
     def get_participants_summary(self, obj: CreditApplication) -> dict[str, int]:

@@ -501,6 +501,9 @@ Expediente central del proceso de crédito.
 | `withdrawn_at` | `TIMESTAMPTZ` | Sí | Desistimiento. |
 | `withdrawal_reason_item_id` | `UUID` | Sí | FK `catalog_items`, `RESTRICT`. |
 | `closed_at` | `TIMESTAMPTZ` | Sí | Cierre final. |
+| `completeness_pct` | `SMALLINT` | Sí | Completitud guardada para el listado (0 a 100), la misma regla de `/completeness`. Nulo hasta el primer cálculo. |
+| `ready_to_file_ok` | `BOOLEAN` | Sí | Si cumple la guarda de `READY_TO_FILE`; el listado marca "ya no cumple" con esto. |
+| `completeness_refreshed_at` | `TIMESTAMPTZ` | Sí | Último recálculo: después de cada cambio de datos o del expediente, y con `refresh_application_completeness`. |
 
 Relaciones: N:1 con oportunidad porque puede haber más de un intento en una relación comercial; N:1 opcional con producto porque la selección puede ocurrir después; N:1 con asesor para poblar “Mi día”; 1:N con participantes, documentos, radicaciones, estados, tareas y actividad porque todos forman parte del mismo expediente.
 

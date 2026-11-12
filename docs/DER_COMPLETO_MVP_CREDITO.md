@@ -339,6 +339,9 @@ erDiagram
         uuid assigned_advisor_id FK
         varchar status
         int version
+        smallint completeness_pct
+        boolean ready_to_file_ok
+        timestamptz completeness_refreshed_at
     }
     APPLICATION_ASSIGNMENTS {
         uuid id PK

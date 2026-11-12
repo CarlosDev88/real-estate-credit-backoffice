@@ -139,6 +139,14 @@ def expires_on(slot: ApplicationDocumentSlot, document_date: date | None) -> dat
     return document_date + timedelta(days=slot.validity_days)
 
 
+def _schedule_completeness(application_id: Any) -> None:
+    """Recalcula la completitud guardada después del commit. Import local para no crear
+    un ciclo con ``apps.applications.services``."""
+    from apps.applications.services import schedule_completeness_refresh
+
+    schedule_completeness_refresh(application_id)
+
+
 def _enqueue_scan(file_object_id: str) -> None:
     """Encola el análisis. Si el broker no responde, la carga ya quedó guardada: el
     archivo sigue ``PENDING`` y lo retoma ``requeue_pending_scans``."""
@@ -193,6 +201,7 @@ def _save_version(
         slot.status = SlotStatus.UPLOADED
         slot.save(update_fields=["current_file", "status", "updated_at"])
         transaction.on_commit(partial(_enqueue_scan, str(file_object.pk)))
+        _schedule_completeness(application.pk)
     return version
 
 
