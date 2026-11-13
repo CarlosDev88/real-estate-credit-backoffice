@@ -3,12 +3,26 @@
 import { Button, Drawer, Dropdown } from "antd";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 import type { ReactNode } from "react";
 
 import { CloseIcon, LogoMark, MenuIcon } from "@/components/ui/icons";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import type { NavGroup, NavItem } from "@/lib/navigation/nav-config";
+
+const TrailContext = createContext<(label: string | null) => void>(() => {});
+
+/**
+ * Agrega una última miga a la barra superior ("Comercial / Solicitudes / SOL-000182"):
+ * la entrada del menú pasa a ser un enlace. Se quita al desmontar la página.
+ */
+export function useShellTrail(label: string | null | undefined) {
+  const setTrail = useContext(TrailContext);
+  useEffect(() => {
+    setTrail(label ?? null);
+    return () => setTrail(null);
+  }, [label, setTrail]);
+}
 
 export interface ShellUser {
   name: string;
@@ -171,6 +185,7 @@ export function AppShell({ nav, user, onLogout, activeHref, children }: AppShell
   const pathname = usePathname();
   const activePath = activeHref ?? pathname;
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [trail, setTrail] = useState<string | null>(null);
 
   const current = nav.flatMap((g) => g.items).find((item) => isActive(item, activePath));
 
@@ -229,14 +244,29 @@ export function AppShell({ nav, user, onLogout, activeHref, children }: AppShell
                   </span>
                 </>
               )}
-              <b className="text-text-primary truncate font-medium">{current.label}</b>
+              {trail ? (
+                <>
+                  <Link
+                    href={current.href}
+                    className="text-text-tertiary hover:text-text-primary hidden no-underline min-[861px]:inline"
+                  >
+                    {current.label}
+                  </Link>
+                  <span aria-hidden="true" className="hidden min-[861px]:inline">
+                    /
+                  </span>
+                  <b className="text-text-primary truncate font-medium">{trail}</b>
+                </>
+              ) : (
+                <b className="text-text-primary truncate font-medium">{current.label}</b>
+              )}
             </div>
           )}
           <div className="flex-1" />
           <ThemeToggle />
         </header>
         <main id="contenido" tabIndex={-1} className="p-4 outline-none min-[861px]:p-6">
-          {children}
+          <TrailContext.Provider value={setTrail}>{children}</TrailContext.Provider>
         </main>
       </div>
     </div>

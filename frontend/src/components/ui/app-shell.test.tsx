@@ -2,7 +2,7 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
-import { AppShell, AppShellSkeleton } from "@/components/ui/app-shell";
+import { AppShell, AppShellSkeleton, useShellTrail } from "@/components/ui/app-shell";
 import { HouseIcon } from "@/components/ui/icons";
 import { groupNav, NAV_ITEMS, type NavItem } from "@/lib/navigation/nav-config";
 import { ThemeProvider } from "@/providers/theme-provider";
@@ -74,6 +74,30 @@ describe("AppShell", () => {
     expect(screen.getByRole("link", { name: "Saltar al contenido" })).toHaveAttribute(
       "href",
       "#contenido",
+    );
+  });
+
+  it("una página agrega su última miga y la entrada del menú pasa a ser enlace", () => {
+    function Page() {
+      useShellTrail("SOL-000182");
+      return <h1>Expediente</h1>;
+    }
+    render(
+      <ThemeProvider initialMode="light" hasCookie>
+        <AppShell
+          nav={groupNav(ITEMS)}
+          user={{ name: "A", email: "a@example.com" }}
+          onLogout={vi.fn()}
+        >
+          <Page />
+        </AppShell>
+      </ThemeProvider>,
+    );
+    const banner = screen.getByRole("banner");
+    expect(banner).toHaveTextContent("Comercial/Solicitudes/SOL-000182");
+    expect(within(banner).getByRole("link", { name: "Solicitudes" })).toHaveAttribute(
+      "href",
+      "/solicitudes",
     );
   });
 
