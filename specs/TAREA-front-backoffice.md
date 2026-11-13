@@ -362,3 +362,33 @@ _(las agrega el agente)_
 - `scan_status` no trae etiqueta: el panel usa los textos de la spec ("Analizando el archivo…", "El archivo no pasó el análisis de seguridad") y "Sin amenazas" para un archivo limpio. Debería venir `scan_status_label`.
 - No hay un "deshacer" de una aprobación: se corrige rechazando (o aprobando) otra vez la versión vigente.
 - `DocumentFile` no dice qué usuario interno cargó un archivo (solo `uploaded_by_buyer_session_id`): "por el comprador" sale cuando ese campo viene; si no, no se dice quién.
+
+### Parte 4 (E2E y accesibilidad, primera mitad)
+
+**Orden de trabajo (pedido de Carlos):** primero los E2E y `axe`, que no dependen de las brechas. Las capturas, las brechas en `TAREA-frontend-base.md`, el `merge` de `master` y el PR quedan para cuando `master` traiga las brechas.
+
+**Instalación:**
+- `@playwright/test` 1.65.0 y `@axe-core/playwright` 4.14.0 (las versiones aprobadas en F0), como dependencias de desarrollo.
+- Solo Chromium (`playwright install chromium`).
+- Script `pnpm e2e` (`playwright test`).
+
+**Configuración** (`frontend/playwright.config.ts`):
+- Pruebas en `e2e/`: `auth.setup.ts` y `e2e/backoffice/`. La salida va a `test-results/e2e/` y el informe a `playwright-report/`; las dos carpetas ya estaban en `.gitignore`.
+- **Usuario de prueba:** se lee de `.env.local` con `process.loadEnvFile` (Node 24), sin dependencias. Las variables que ya existen en el entorno tienen prioridad.
+- **Servidor:** `webServer` reutiliza el `pnpm dev` de :3000 si ya corre (`reuseExistingServer`). Si no, lo levanta con `node ./node_modules/next/dist/bin/next dev`: en este equipo el shim global de pnpm no funciona.
+- **Ejecución:** un solo worker y sin paralelo, porque las pruebas cambian los datos de demo. Viewport de 1440 × 900, `es-CO`, `America/Bogota`, y traza y captura solo cuando una prueba falla.
+
+**Sesión y saltos:**
+- El proyecto `setup` hace el login por la pantalla real y guarda la sesión en `test-results/.auth/advisor.json`. Al empezar borra la de una corrida anterior.
+- **Sin usuario:** el setup se salta ("Falta el usuario de prueba…") y las pruebas del backoffice también ("Sin sesión del asesor…"). Se revisa al correr, con un fixture que reemplaza `storageState`.
+- **Sin datos de demo** (la pestaña "Todas" en 0): las pruebas se saltan con el comando para sembrar la demo.
+- **Sin documentos para revisar:** si ninguna solicitud en revisión tiene dos documentos cargados por revisar, la prueba de aprobar y rechazar se salta con un mensaje claro. Cada corrida aprueba uno y rechaza otro, así que la demo se va gastando.
+
+**Pruebas** (`e2e/backoffice/backoffice.spec.ts`):
+- **Listado:** la pestaña "En revisión" va a la URL. El filtro por tipo de crédito usa la primera opción del catálogo. Se recarga y se conservan los dos; "Limpiar" quita el filtro.
+- **Expediente:** se abre la primera solicitud en revisión con un clic en la fila. Se ven el código, la miga en la barra superior, la pestaña Resumen y la completitud.
+- **Aprobar y rechazar:** se busca la primera solicitud en revisión con dos documentos por revisar y se aprueba uno. Si no tiene fecha del documento, se usa la de ayer. Después se rechaza el siguiente, con el primer motivo del catálogo y un mensaje. La fila rechazada muestra "Mensaje al comprador: …".
+- **`axe`:** reglas WCAG 2.1 A y AA. Falla si hay violaciones serias o críticas en el listado y en las tres pestañas del expediente, en claro y en oscuro. El tema se elige con la cookie `um-theme`.
+- En el fixture, el parámetro `use` de Playwright se llama `provide`: con `use`, la regla `react-hooks/rules-of-hooks` lo marca como error.
+
+**Resultado contra :8000:** 6 de 6 pasan, y sin usuario las 6 se saltan. `axe` no encontró violaciones serias ni críticas.

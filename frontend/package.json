@@ -17,7 +17,8 @@
     "format:check": "prettier --check .",
     "api:gen": "openapi-typescript ../contracts/openapi.json -o src/lib/api/schema.d.ts",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "e2e": "playwright test"
   },
   "dependencies": {
     "@ant-design/cssinjs": "2.1.2",
@@ -37,6 +38,8 @@
     "zod": "4.6.7"
   },
   "devDependencies": {
+    "@axe-core/playwright": "4.14.0",
+    "@playwright/test": "1.65.0",
     "@tailwindcss/postcss": "4.3.5",
     "@testing-library/dom": "10.4.2",
     "@testing-library/jest-dom": "7.0.1",
