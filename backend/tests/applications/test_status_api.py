@@ -141,7 +141,9 @@ def test_transition_changes_the_status_and_records_the_history(
     assert body == {
         "application_id": str(application.id),
         "previous_status": "DRAFT",
+        "previous_status_label": "Borrador",
         "status": "WAITING_BUYER_DATA",
+        "status_label": "Esperando datos del comprador",
         "version": 2,
         "transitioned_at": body["transitioned_at"],
     }
@@ -474,7 +476,9 @@ def test_status_history_is_newest_first(
     assert latest == {
         "id": latest["id"],
         "from_status": "WAITING_BUYER_DATA",
+        "from_status_label": "Esperando datos del comprador",
         "to_status": "CANCELLED",
+        "to_status_label": "Cancelada",
         "transition_code": "CANCEL_WAITING_BUYER_DATA",
         "reason": {"code": "OTHER", "label": "Otro motivo"},
         "comment": "",
@@ -484,6 +488,8 @@ def test_status_history_is_newest_first(
         "created_at": latest["created_at"],
     }
     assert (items[2]["transition_code"], items[2]["reason"]) == (None, None)
+    # El registro de creación no tiene estado de origen: tampoco etiqueta.
+    assert (items[2]["from_status_label"], items[2]["to_status_label"]) == (None, "Borrador")
 
 
 # --- Acciones disponibles ---------------------------------------------------------------
@@ -512,6 +518,7 @@ def test_available_actions_endpoint_and_detail(
         "code": "REQUEST_BUYER_DATA",
         "label": "Solicitar datos al comprador",
         "target_status": "WAITING_BUYER_DATA",
+        "target_status_label": "Esperando datos del comprador",
         "guard_code": "",
     }
     detail = advisor_client.get(application_url(application)).json()
@@ -844,6 +851,7 @@ def test_completeness_lists_only_the_required_slots(
         "participant_id": str(first.participant_id) if first.participant_id else None,
         "document_type": {"code": first.document_type.code, "name": first.document_type.name},
         "status": "PENDING",
+        "status_label": "Pendiente",
         "alternative_group_code": None,
         "expires_at": None,
         "complete": False,

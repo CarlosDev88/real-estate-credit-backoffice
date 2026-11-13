@@ -30,7 +30,7 @@ from apps.applications.models import (
 from apps.applications.quick_filters import WAITING_STATUSES
 from apps.applications.stages import INTERNAL_STAGES, StageState, progress_stages
 from apps.banking.models import BankProduct
-from apps.banking.rule_engine import Outcome
+from apps.banking.rule_engine import OUTCOME_LABELS, Outcome
 from apps.banking.serializers import BankRefSerializer
 from apps.catalogs.fields import CatalogItemCodeField
 from apps.catalogs.models import WorkflowTransition
@@ -48,7 +48,7 @@ from apps.crm.serializers import (
 from apps.crm.validators import mask_document_number
 from apps.documents.models import SlotStatus
 from apps.identity.models import BuyerSession, User
-from config.serializers import ErrorDetailSerializer, StrictSerializer
+from config.serializers import ChoiceLabelField, ErrorDetailSerializer, StrictSerializer
 
 __all__ = [
     "DETAIL_INCLUDES",
@@ -713,11 +713,12 @@ class IncomeSourceUpdateSerializer(IncomeSourceCreateSerializer):
 class AvailableActionSerializer(serializers.ModelSerializer):
     """Transición que el actor puede ejecutar ahora; la guarda se evalúa al ejecutarla."""
 
+    target_status_label = ChoiceLabelField(ApplicationStatus, source="to_status")
     target_status = serializers.ChoiceField(source="to_status", choices=ApplicationStatus.choices)
 
     class Meta:
         model = WorkflowTransition
-        fields = ["code", "label", "target_status", "guard_code"]
+        fields = ["code", "label", "target_status", "target_status_label", "guard_code"]
         read_only_fields = fields
 
 
@@ -821,6 +822,7 @@ class RuleIssueSerializer(serializers.Serializer):
 
     rule_code = serializers.CharField()
     outcome = serializers.ChoiceField(choices=[Outcome.FAILED.value, Outcome.MISSING_DATA.value])
+    outcome_label = ChoiceLabelField(OUTCOME_LABELS, source="outcome")
     message = serializers.CharField()
     field = serializers.CharField(
         allow_null=True,
@@ -830,6 +832,13 @@ class RuleIssueSerializer(serializers.Serializer):
         ),
     )
     unresolved_fields = serializers.ListField(child=serializers.CharField())
+
+
+def _issues(rows: list[Mapping[str, Any]]) -> list[dict[str, Any]]:
+    """Reglas de ``blocking``/``warnings`` con la forma de ``RuleIssueSerializer``."""
+    return cast(
+        list[dict[str, Any]], RuleIssueSerializer([issue(row) for row in rows], many=True).data
+    )
 
 
 class BankRuleEvaluationSerializer(serializers.ModelSerializer):
@@ -864,11 +873,11 @@ class BankRuleEvaluationSerializer(serializers.ModelSerializer):
 
     @extend_schema_field(RuleIssueSerializer(many=True))
     def get_blocking(self, obj: BankRuleEvaluation) -> list[dict[str, Any]]:
-        return [issue(row) for row in blocking_rows(obj.result_snapshot["rules"])]
+        return _issues(blocking_rows(obj.result_snapshot["rules"]))
 
     @extend_schema_field(RuleIssueSerializer(many=True))
     def get_warnings(self, obj: BankRuleEvaluation) -> list[dict[str, Any]]:
-        return [issue(row) for row in warning_rows(obj.result_snapshot["rules"])]
+        return _issues(warning_rows(obj.result_snapshot["rules"]))
 
 
 class ProductEligibilitySerializer(serializers.Serializer):
@@ -883,6 +892,7 @@ class EligibleBankProductSerializer(serializers.ModelSerializer):
     ``context["evaluations"]`` trae el resumen de cada producto, por id.
     """
 
+    product_type_label = serializers.CharField(source="product_type_item.label", read_only=True)
     bank = BankRefSerializer(read_only=True)
     product_type_code = serializers.CharField(source="product_type_item.code", read_only=True)
     evaluation = serializers.SerializerMethodField()
@@ -895,6 +905,7 @@ class EligibleBankProductSerializer(serializers.ModelSerializer):
             "name",
             "bank",
             "product_type_code",
+            "product_type_label",
             "min_amount_cop",
             "max_amount_cop",
             "min_term_months",
@@ -945,12 +956,16 @@ class StatusChangeSerializer(serializers.Serializer):
 
     application_id = serializers.UUIDField(source="application.pk")
     previous_status = serializers.ChoiceField(choices=ApplicationStatus.choices)
+    previous_status_label = ChoiceLabelField(ApplicationStatus, source="previous_status")
     status = serializers.ChoiceField(source="application.status", choices=ApplicationStatus.choices)
+    status_label = ChoiceLabelField(ApplicationStatus, source="application.status")
     version = serializers.IntegerField(source="application.version")
     transitioned_at = serializers.DateTimeField()
 
 
 class StatusHistorySerializer(serializers.ModelSerializer):
+    from_status_label = ChoiceLabelField(ApplicationStatus, source="from_status", allow_null=True)
+    to_status_label = ChoiceLabelField(ApplicationStatus, source="to_status")
     transition_code = serializers.CharField(
         source="transition.code", read_only=True, allow_null=True
     )
@@ -966,7 +981,9 @@ class StatusHistorySerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "from_status",
+            "from_status_label",
             "to_status",
+            "to_status_label",
             "transition_code",
             "reason",
             "comment",
@@ -1007,6 +1024,7 @@ class CompletenessDocumentSlotSerializer(serializers.Serializer):
     # `CatalogItemRefSerializer`, el campo de la API se llama así.
     label = serializers.CharField()  # type: ignore[assignment]
     status = serializers.ChoiceField(choices=SlotStatus.choices)
+    status_label = ChoiceLabelField(SlotStatus, source="status")
     alternative_group_code = serializers.CharField(allow_null=True)
     expires_at = serializers.DateField(allow_null=True)
     complete = serializers.BooleanField(

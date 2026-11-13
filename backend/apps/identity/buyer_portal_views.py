@@ -57,6 +57,7 @@ from apps.identity.cookies import (
 from apps.identity.exceptions import BuyerSessionExpired
 from apps.identity.models import BuyerSession
 from apps.identity.throttling import BuyerAccessConsumeRateThrottle
+from config.openapi import etag_response_headers
 from config.serializers import ErrorSerializer
 
 BUYER_PORTAL_TAG = "Buyer portal"
@@ -245,6 +246,7 @@ class BuyerApplicationDetailView(BuyerPortalView):
             "financiación. No incluye notas, asesor ni evaluaciones bancarias. La "
             "versión viaja también en `ETag`."
         ),
+        parameters=[etag_response_headers(200)],
         responses={200: BuyerApplicationDetailSerializer, **NOT_FOUND, **SESSION_ERRORS},
     )
     def get(self, request: Request, application_id: Any) -> Response:

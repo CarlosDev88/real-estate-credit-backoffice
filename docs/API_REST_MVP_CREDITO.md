@@ -226,6 +226,8 @@ Concurrencia de la solicitud de crédito:
 - Los `POST` que crean subrecursos y los `DELETE` no exigen `If-Match`, pero aumentan la versión.
 - `POST /status-transitions` y `POST /withdrawals` llevan `expected_version` en el cuerpo en lugar de `If-Match`.
 - El portal del comprador sigue las mismas reglas (sección 8). La confirmación del perfil financiero también exige `If-Match`.
+- **El contrato lo declara.** Cada respuesta que lleva `ETag` lo publica en `contracts/openapi.json` como `headers.ETag` (string), con un solo helper (`config.openapi.etag_response_headers`) aplicado a todas las vistas que lo envían, internas y del comprador. Una prueba recorre el esquema y exige que toda operación con `If-Match` declare `ETag` en sus `2xx`, y que el `GET` del mismo recurso también lo haga. El `204` de la reasignación que deja al actor sin acceso no lleva `ETag` y no lo declara.
+- Los metadatos (`/metadata/bootstrap`, `/metadata/catalogs/{catalog_code}` y `/buyer/metadata/catalogs/{catalog_code}`) usan otro `ETag`: la huella del contenido, que se reenvía en `If-None-Match` y responde `304` si no cambió. El contrato lo declara en el `200` y el `304`.
 
 **Estado de implementación.** `Idempotency-Key` se exigirá cuando exista `idempotency_keys` (notificaciones). Mientras tanto, la creación de solicitudes se protege con la restricción de una sola solicitud no terminal por oportunidad (`409 APPLICATION_ALREADY_OPEN`) y las transiciones con `expected_version`. En la creación de enlaces mágicos, un reintento crea otro enlace y revoca el anterior; el límite de 3 por hora acota el abuso. En el paquete para radicar, un `POST` repetido devuelve el trabajo vivo con la misma huella documental (`200`) en lugar de crear otro (§19.2).
 
@@ -286,6 +288,7 @@ La respuesta es la fuente de verdad para ocultar funciones del panel. Next.js no
   "id": "uuid",
   "name": "Andrea García",
   "role": "ADVISOR",
+  "role_label": "Asesor",
   "permissions": ["applications.read_assigned", "documents.review", "filings.manage"],
   "scope": {
     "assigned_applications_only": true,
@@ -293,6 +296,8 @@ La respuesta es la fuente de verdad para ocultar funciones del panel. Next.js no
   }
 }
 ```
+
+`role_label` es el nombre del rol principal (`role`), para mostrarlo bajo el nombre del usuario; `null` si no tiene rol. Lo da la tabla de roles, no el frontend.
 
 ## 8. Acceso passwordless del comprador
 
@@ -383,7 +388,8 @@ Estos endpoints usan DTO exclusivos del portal. Aunque internamente consulten lo
 | Método | Ruta | Descripción |
 | --- | --- | --- |
 | `GET` | `/buyer/processes` | Devuelve únicamente el proceso asociado a la sesión vigente. |
-| `GET` | `/buyer/applications/{application_id}` | Estado público, siguiente acción, progreso, participantes, inmueble y financiación. `progress` trae `percentage`, `data_percentage`, `documents_percentage`, `documents_required_total` y `documents_completed_total`, con la regla de la completitud (§16.3) sin la evaluación bancaria. |
+| `GET` | `/buyer/metadata/catalogs/{catalog_code}` | Valores de un catálogo de los formularios del portal. Misma respuesta, filtros (`parent_code`, `parent_id`), `ETag` e `If-None-Match` que `GET /metadata/catalogs/{catalog_code}` (§9). |
+| `GET` | `/buyer/applications/{application_id}` | Estado público, siguiente acción, progreso, asesor, etapas, participantes, inmueble y financiación. `progress` trae `percentage`, `data_percentage`, `documents_percentage`, `documents_required_total` y `documents_completed_total`, con la regla de la completitud (§16.3) sin la evaluación bancaria. |
 | `GET`, `POST` | `/buyer/applications/{application_id}/consents` | Consentimientos vigentes y su estado; acepta o retira una versión. |
 | `GET`, `PATCH` | `/buyer/applications/{application_id}/profile` | Datos del titular: `email`, `phone`, `birth_date` y direcciones. |
 | `GET` | `/buyer/applications/{application_id}/participants` | Titular y co-solicitantes activos, incluidos los deudores solidarios. |
@@ -412,14 +418,34 @@ Reglas del portal:
 - El documento de identidad del titular se muestra enmascarado. El comprador no ve notas internas, el asesor, ni el detalle de las evaluaciones bancarias.
 - El desistimiento del comprador queda en el historial con `actor_buyer_session_id` en lugar de un usuario. Elegir un producto guarda su evaluación sin evaluador interno.
 
+Catálogos del portal (`GET /buyer/metadata/catalogs/{catalog_code}`):
+
+- Solo los que validan los formularios del comprador: `address_type`, `department` (padre de `municipality`), `municipality`, `employment_profile`, `contract_type`, `funds_origin`, `income_source_type`, `property_type`, `property_condition`, `financing_mode`, `currency_mode`, `amortization_mode` y `application_withdrawal_reason` (constante `BUYER_CATALOG_CODES`).
+- Cualquier otro código, o uno inexistente, responde `404 RESOURCE_NOT_FOUND`: no se revela qué catálogos hay. Sin sesión del comprador, `401`. Sin límite de consumo, como los demás `GET` del portal.
+- A diferencia del resto del portal, responde `Cache-Control: private, no-cache` (no lleva datos personales), para que el navegador revalide con `If-None-Match`.
+
+DTO del detalle (`GET /buyer/applications/{application_id}`), además de lo anterior:
+
+- `advisor`: `{full_name, email, phone}` del asesor asignado; `phone` es `null` si no tiene teléfono (el frontend arma el enlace de WhatsApp). Es `null` si el asesor ya no está activo. No lleva id, roles ni otros datos del usuario.
+- `stages`: las 4 etapas del portal, `[{code, label, state, state_label}]`, con `state` en `done`, `current` o `pending` (Listo, En curso, Pendiente). Las anteriores a la actual van `done` y las siguientes `pending`; `DISBURSED`: las cuatro `done`; `WITHDRAWN`, `CANCELLED`, `OWN_FUNDS` y `EXTERNAL_CREDIT_APPROVED`: lista vacía (el portal oculta las etapas).
+
+| `code` | `label` | En curso con |
+| --- | --- | --- |
+| `DATA` | Tus datos | `DRAFT`, `WAITING_BUYER_DATA` |
+| `DOCUMENTS` | Documentos | `WAITING_DOCUMENTS`, `DOCUMENTS_REVIEW`, `BANK_OBSERVATION` |
+| `FILING` | Radicación en el banco | `READY_TO_FILE`, `FILED`, `FILING_VALIDATION` |
+| `BANK_RESPONSE` | Respuesta del banco | `CREDIT_ANALYSIS`, `APPROVED`, `LEGALIZATION`, `REJECTED` |
+
+- Cada participante (`participants`, `/participants` y el `participant` de los documentos) trae `role_label`: Titular, Co-solicitante o Deudor solidario.
+
 ## 9. Metadatos públicos para el frontend
 
 | Método | Ruta | Actor | Descripción |
 | --- | --- | --- | --- |
 | `GET` | `/metadata/bootstrap` | Usuario interno o `BUYER` | Catálogos mínimos, permisos, configuración pública y versión. |
-| `GET` | `/metadata/catalogs/{catalog_code}` | Usuario interno o `BUYER` según catálogo | Ítems activos aplicables al actor. |
+| `GET` | `/metadata/catalogs/{catalog_code}` | Usuario interno (el comprador usa `/buyer/metadata/catalogs/{catalog_code}`, §8) | Ítems activos y vigentes; filtra por `parent_code` o `parent_id`. |
 | `GET` | `/metadata/form-schemas/{form_code}` | Usuario interno o `BUYER` | Campos, tipos, dependencias y validaciones de presentación. |
-| `GET` | `/applications/{application_id}/available-actions` | `applications.read` (no broker) | Transiciones que el actor puede ejecutar desde el estado actual, según rol y permiso: `[{code, label, target_status, guard_code}]`. La guarda se evalúa al ejecutarla. Ver §16.3. |
+| `GET` | `/applications/{application_id}/available-actions` | `applications.read` (no broker) | Transiciones que el actor puede ejecutar desde el estado actual, según rol y permiso: `[{code, label, target_status, target_status_label, guard_code}]`. La guarda se evalúa al ejecutarla. Ver §16.3. |
 
 ### `GET /metadata/bootstrap`
 
@@ -752,7 +778,9 @@ Reglas de creación:
 
 Detalle (`GET /applications/{application_id}`):
 
-- `property`, `assignments` y `available_actions` salen siempre.
+- `property`, `assignments`, `progress_stages` y `available_actions` salen siempre.
+- `progress_stages`: las 8 etapas del expediente, con la misma forma y la misma función que `stages` del portal (§8): `BUYER_DATA` (en curso con `DRAFT` y `WAITING_BUYER_DATA`), `DOCUMENT_UPLOAD` (`WAITING_DOCUMENTS`), `DOCUMENT_REVIEW` (`DOCUMENTS_REVIEW`), `READY_TO_FILE`, `FILED` (`FILED`, `FILING_VALIDATION`), `BANK_ANALYSIS` (`CREDIT_ANALYSIS`, `BANK_OBSERVATION`), `APPROVED` (`APPROVED`, `LEGALIZATION`) y `DISBURSED` (todas `done`). `REJECTED`: `done` hasta `BANK_ANALYSIS` y el resto `pending`. `WITHDRAWN`, `CANCELLED`, `OWN_FUNDS` y `EXTERNAL_CREDIT_APPROVED`: lista vacía.
+- Cada código de estado o de tipo que muestra el backoffice trae su `*_label` desde el backend: `status_label` de la solicitud; `role_label` de los participantes y del participante de cada slot; `from_status_label` y `to_status_label` del historial; `target_status_label` de las acciones; `previous_status_label` y `status_label` del cambio de estado; `outcome_label` de las reglas de una evaluación (Cumple, No cumple, Faltan datos); `product_type_label` de los productos elegibles; y las del expediente documental (§19.1).
 - `include` agrega bloques opcionales separados por comas (se toleran espacios): `participants` (solo vigentes) y `financing` (`null` si no existe). `property` se admite sin efecto. Un valor desconocido responde `400` en el campo `include`.
 - El broker recibe el resumen e `include` se ignora. Solo el `GET` admite `include`.
 
@@ -1162,6 +1190,20 @@ El expediente se modela como una lista de requisitos (`document slots`). Cada sl
 Filtros de la lista interna: `status`, `participant_id`, `document_type_code`, `required=true|false`, `include_retired=true|false`.
 
 Estados de un slot: `PENDING`, `UPLOADED`, `APPROVED`, `REJECTED`, `WAIVED`. Estados de una versión: `UPLOADED` (análisis en curso), `IN_REVIEW` (análisis limpio, espera al asesor), `APPROVED`, `REJECTED`. Estados técnicos del archivo: `PENDING`, `CLEAN`, `INFECTED`, `INVALID`.
+
+Etiquetas en las respuestas internas: `status_label` del slot, de la versión vigente (`current_file`), de cada versión y del `scan-status`; `scan_status_label` del archivo; `decision_label` de cada revisión y de `waiver_history`; `holder_scope_label` del tipo documental; y `status_label` de los documentos de la completitud. Salen de las `TextChoices` del modelo.
+
+Estado público del slot (DTO del comprador, sin quitar `status`). Una sola tabla en `apps/documents/models/slot.py` (`PUBLIC_SLOT_STATUS`):
+
+| `status` | `public_status` | `public_status_label` |
+| --- | --- | --- |
+| `PENDING` | `TO_UPLOAD` | Te falta |
+| `REJECTED` | `TO_FIX` | Corrígelo |
+| `UPLOADED` | `IN_REVIEW` | En revisión |
+| `APPROVED` | `DONE` | Listo |
+| `WAIVED` | `NOT_APPLICABLE` | No aplica |
+
+`needs_action` es `true` si `can_upload` es verdadero y el estado público es `TO_UPLOAD` o `TO_FIX`: arma la tarjeta «Lo que necesitamos de ti». Llegan en la lista, el detalle y la respuesta de la carga.
 
 Carga de archivo:
 

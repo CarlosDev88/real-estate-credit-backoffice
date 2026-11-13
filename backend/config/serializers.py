@@ -1,8 +1,33 @@
 from collections.abc import Mapping
 from typing import Any
 
+from django.db import models
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 from rest_framework.exceptions import ErrorDetail
+
+
+@extend_schema_field(OpenApiTypes.STR)
+class ChoiceLabelField(serializers.Field):
+    """Etiqueta visible de un código (``*_label``), de solo lectura.
+
+    ``labels`` es la ``TextChoices`` del código o un mapa único código → texto: la
+    etiqueta vive en un solo lugar del backend (REQ §8.5). ``source`` apunta al código;
+    un código nulo da ``null`` (con ``allow_null=True``).
+    """
+
+    def __init__(self, labels: type[models.TextChoices] | Mapping[str, str], **kwargs: Any) -> None:
+        kwargs["read_only"] = True
+        super().__init__(**kwargs)
+        self.labels: dict[str, str] = (
+            {str(value): str(label) for value, label in labels.choices}
+            if isinstance(labels, type)
+            else dict(labels)
+        )
+
+    def to_representation(self, value: Any) -> str:
+        return self.labels[str(value)]
 
 
 class StrictSerializer(serializers.Serializer):

@@ -121,6 +121,9 @@ def test_list_returns_the_dossier_in_display_order(
     assert rows[0]["document_type"]["code"] == "PROPERTY_OWNERSHIP_DOCUMENT"
     assert rows[0]["participant"] is None
     assert rows[0]["document_type"]["holder_scope"] == "APPLICATION"
+    assert rows[0]["document_type"]["holder_scope_label"] == "Solicitud"
+    assert rows[1]["document_type"]["holder_scope_label"] == "Participante"
+    assert (rows[0]["status"], rows[0]["status_label"]) == ("PENDING", "Pendiente")
     assert [row["document_type"]["code"] for row in rows[1:]] == [
         "IDENTITY_DOCUMENT",
         "INCOME_RETENTION_CERTIFICATE",
@@ -251,10 +254,12 @@ def test_detail_shows_the_current_file(
         "id": str(current.id),
         "version_number": 1,
         "status": "UPLOADED",
+        "status_label": "Cargado",
         "client_filename": "nomina-febrero.pdf",
         "document_date": None,
         "expires_at": None,
         "scan_status": "PENDING",
+        "scan_status_label": "Pendiente de análisis",
         "created_at": body["current_file"]["created_at"],
     }
 
@@ -321,12 +326,15 @@ def test_versions_list_every_upload_with_its_reviews(
         "size_bytes",
         "sha256",
         "scan_status",
+        "scan_status_label",
         "scanned_at",
     }
     assert "object_key" not in response.content.decode()
-    assert oldest["status"] == "REJECTED"
+    assert (oldest["status"], oldest["status_label"]) == ("REJECTED", "Rechazado")
     assert oldest["file"]["scan_status"] == "CLEAN"
+    assert oldest["file"]["scan_status_label"] == "Limpio"
     assert [review["decision"] for review in oldest["reviews"]] == ["REJECTED", "APPROVED"]
+    assert [review["decision_label"] for review in oldest["reviews"]] == ["Rechazado", "Aprobado"]
     rejection = oldest["reviews"][0]
     assert rejection["reason"]["code"] == "ILLEGIBLE"
     assert rejection["buyer_comment"] == "La foto está borrosa."

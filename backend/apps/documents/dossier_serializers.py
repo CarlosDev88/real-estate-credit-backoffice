@@ -14,12 +14,16 @@ from apps.crm.serializers import UserRefSerializer
 from apps.documents.models import (
     ApplicationDocumentSlot,
     DocumentFile,
+    DocumentFileStatus,
     DocumentReview,
     FileObject,
+    HolderScope,
     ReviewDecision,
+    ScanStatus,
+    SlotStatus,
 )
 from apps.documents.serializers import DocumentTypeRefSerializer
-from config.serializers import StrictSerializer
+from config.serializers import ChoiceLabelField, StrictSerializer
 
 
 def slot_label(slot: ApplicationDocumentSlot, set_size: int | None = None) -> str:
@@ -38,6 +42,7 @@ def slot_label(slot: ApplicationDocumentSlot, set_size: int | None = None) -> st
 
 class SlotDocumentTypeSerializer(DocumentTypeRefSerializer):
     holder_scope = serializers.CharField()
+    holder_scope_label = ChoiceLabelField(HolderScope, source="holder_scope")
     allowed_mime_types = serializers.ListField(child=serializers.CharField())
     max_size_bytes = serializers.IntegerField()
 
@@ -52,6 +57,8 @@ class SlotParticipantSerializer(serializers.Serializer):
 
 
 class CurrentFileSerializer(serializers.ModelSerializer):
+    status_label = ChoiceLabelField(DocumentFileStatus, source="status")
+    scan_status_label = ChoiceLabelField(ScanStatus, source="file_object.scan_status")
     scan_status = serializers.CharField(source="file_object.scan_status")
 
     class Meta:
@@ -60,16 +67,19 @@ class CurrentFileSerializer(serializers.ModelSerializer):
             "id",
             "version_number",
             "status",
+            "status_label",
             "client_filename",
             "document_date",
             "expires_at",
             "scan_status",
+            "scan_status_label",
             "created_at",
         ]
         read_only_fields = fields
 
 
 class DocumentSlotSerializer(serializers.ModelSerializer):
+    status_label = ChoiceLabelField(SlotStatus, source="status")
     application_id = serializers.UUIDField(read_only=True)
     participant = SlotParticipantSerializer(read_only=True, allow_null=True)
     document_type = SlotDocumentTypeSerializer(read_only=True)
@@ -101,6 +111,7 @@ class DocumentSlotSerializer(serializers.ModelSerializer):
             "validity_days",
             "sort_order",
             "status",
+            "status_label",
             "waiver_reason",
             "current_file",
             "locked_at",
@@ -116,6 +127,8 @@ class DocumentSlotSerializer(serializers.ModelSerializer):
 
 
 class FileMetadataSerializer(serializers.ModelSerializer):
+    scan_status_label = ChoiceLabelField(ScanStatus, source="scan_status")
+
     class Meta:
         model = FileObject
         fields = [
@@ -124,12 +137,14 @@ class FileMetadataSerializer(serializers.ModelSerializer):
             "size_bytes",
             "sha256",
             "scan_status",
+            "scan_status_label",
             "scanned_at",
         ]
         read_only_fields = fields
 
 
 class DocumentReviewSerializer(serializers.ModelSerializer):
+    decision_label = ChoiceLabelField(ReviewDecision, source="decision")
     reason = CatalogItemRefSerializer(source="reason_item", read_only=True, allow_null=True)
     reviewer = UserRefSerializer(read_only=True)
 
@@ -138,6 +153,7 @@ class DocumentReviewSerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "decision",
+            "decision_label",
             "reason",
             "buyer_comment",
             "internal_comment",
@@ -151,6 +167,7 @@ class DocumentFileSerializer(serializers.ModelSerializer):
     """Versión cargada. ``reviews`` va de la más reciente a la primera: una corrección
     es una fila nueva."""
 
+    status_label = ChoiceLabelField(DocumentFileStatus, source="status")
     slot_id = serializers.UUIDField(read_only=True)
     uploaded_by_buyer_session_id = serializers.UUIDField(read_only=True)
     is_current = serializers.SerializerMethodField()
@@ -164,6 +181,7 @@ class DocumentFileSerializer(serializers.ModelSerializer):
             "slot_id",
             "version_number",
             "status",
+            "status_label",
             "is_current",
             "client_filename",
             "document_date",
@@ -196,6 +214,7 @@ class SlotDecisionSerializer(serializers.ModelSerializer):
     """Exoneración o reapertura del slot. ``decision_batch_id`` es el lote: los slots de
     un grupo alternativo exonerados juntos lo comparten."""
 
+    decision_label = ChoiceLabelField(ReviewDecision, source="decision")
     reason = CatalogItemRefSerializer(source="reason_item", read_only=True, allow_null=True)
     reviewer = UserRefSerializer(read_only=True)
     document_file_id = serializers.UUIDField(read_only=True, allow_null=True)
@@ -205,6 +224,7 @@ class SlotDecisionSerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "decision",
+            "decision_label",
             "reason",
             "internal_comment",
             "document_file_id",
@@ -330,6 +350,8 @@ class DocumentSlotReviewResultSerializer(serializers.Serializer):
 class DocumentFileScanStatusSerializer(serializers.ModelSerializer):
     """Validación técnica y antivirus de una versión."""
 
+    status_label = ChoiceLabelField(DocumentFileStatus, source="status")
+    scan_status_label = ChoiceLabelField(ScanStatus, source="file_object.scan_status")
     document_file_id = serializers.UUIDField(source="id", read_only=True)
     scan_status = serializers.CharField(source="file_object.scan_status", read_only=True)
     scanned_at = serializers.DateTimeField(
@@ -346,7 +368,9 @@ class DocumentFileScanStatusSerializer(serializers.ModelSerializer):
         fields = [
             "document_file_id",
             "status",
+            "status_label",
             "scan_status",
+            "scan_status_label",
             "scanned_at",
             "detected_mime_type",
             "size_bytes",

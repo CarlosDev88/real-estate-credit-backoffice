@@ -43,6 +43,7 @@ from apps.catalogs.workflow import FlowType
 from apps.identity.models import User
 from apps.identity.permissions import HasPermissionCode
 from config.filters import StrictOrderingFilter, parse_bool_param, parse_uuid_param
+from config.openapi import CONTENT_ETAG, etag_response_headers
 from config.serializers import ErrorSerializer
 
 CATALOGS_TAG = "Configuration"
@@ -513,6 +514,7 @@ class MetadataBootstrapView(GenericAPIView):
         operation_id="metadata_bootstrap",
         summary="Catálogos, permisos y configuración pública para iniciar el frontend",
         description="Soporta `If-None-Match`; responde `304` si los datos no cambiaron.",
+        parameters=[etag_response_headers(200, 304, description=CONTENT_ETAG)],
         responses={
             200: BootstrapSerializer,
             304: OpenApiResponse(description="Sin cambios."),
@@ -531,6 +533,7 @@ METADATA_CATALOG_DESCRIPTION = (
 METADATA_CATALOG_PARAMETERS = [
     OpenApiParameter("parent_code", OpenApiTypes.STR),
     OpenApiParameter("parent_id", OpenApiTypes.UUID),
+    etag_response_headers(200, 304, description=CONTENT_ETAG),
 ]
 METADATA_CATALOG_RESPONSES = {
     200: MetadataCatalogSerializer,

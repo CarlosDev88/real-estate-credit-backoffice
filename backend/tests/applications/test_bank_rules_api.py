@@ -142,6 +142,7 @@ def test_failed_blocking_rule_makes_it_ineligible(
         {
             "rule_code": "MAX_LTV",
             "outcome": "FAILED",
+            "outcome_label": "No cumple",
             "message": "El monto no puede superar el 70% del valor del inmueble.",
             "field": "financing.requested_amount_cop",
             "unresolved_fields": [],
@@ -180,6 +181,7 @@ def test_blocking_rule_with_missing_data_fails_closed(
         {
             "rule_code": "EMPLOYEE_ONLY",
             "outcome": "MISSING_DATA",
+            "outcome_label": "Faltan datos",
             "message": "Faltan datos para evaluar la regla: applicant.employment_profile_code.",
             "field": "applicant.employment_profile_code",
             "unresolved_fields": ["applicant.employment_profile_code"],
@@ -242,6 +244,7 @@ def test_product_ranges_are_system_blocking_rules(
         {
             "rule_code": "PRODUCT_AMOUNT_RANGE",
             "outcome": "FAILED",
+            "outcome_label": "No cumple",
             "message": (
                 "El monto solicitado debe estar entre $50.000.000 y $250.000.000 para este "
                 "producto."
@@ -269,6 +272,7 @@ def test_missing_term_blocks_when_the_product_limits_it(
         {
             "rule_code": "PRODUCT_TERM_RANGE",
             "outcome": "MISSING_DATA",
+            "outcome_label": "Faltan datos",
             "message": "Faltan datos para evaluar la regla: financing.term_months.",
             "field": "financing.term_months",
             "unresolved_fields": ["financing.term_months"],
@@ -464,6 +468,7 @@ def test_eligible_products_lists_available_products_with_an_unsaved_evaluation(
             "short_name": "",
         },
         "product_type_code": "MORTGAGE",
+        "product_type_label": "Crédito hipotecario",
         "min_amount_cop": None,
         "max_amount_cop": None,
         "min_term_months": None,

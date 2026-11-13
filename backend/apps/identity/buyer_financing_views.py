@@ -44,6 +44,7 @@ from apps.identity.buyer_profile_views import (
     WRITE_ERRORS,
     BuyerExpedienteView,
 )
+from config.openapi import etag_response_headers
 from config.serializers import ErrorSerializer
 
 
@@ -66,6 +67,7 @@ class BuyerPropertyView(BuyerExpedienteView):
         operation_id="buyer_property_retrieve",
         summary="Inmueble de la solicitud",
         description=f"`404` si todavía no se registró. {ETAG_NOTE}",
+        parameters=[etag_response_headers(200)],
         responses={200: BuyerPropertySerializer, **READ_ERRORS},
     )
     def get(self, request: Request, application_id: Any) -> Response:
@@ -81,7 +83,7 @@ class BuyerPropertyView(BuyerExpedienteView):
             "del asesor no se envían y conservan su valor. Responde `201` si lo creó. "
             f"Solo antes de `FILED`. {ETAG_NOTE}"
         ),
-        parameters=[IF_MATCH],
+        parameters=[IF_MATCH, etag_response_headers(200, 201)],
         request=BuyerPropertyInputSerializer,
         responses={
             200: BuyerPropertySerializer,
@@ -123,6 +125,7 @@ class BuyerFinancingView(BuyerExpedienteView):
         operation_id="buyer_financing_retrieve",
         summary="Financiación y producto elegido",
         description=f"`404` si todavía no se registró. {ETAG_NOTE}",
+        parameters=[etag_response_headers(200)],
         responses={200: BuyerFinancingSerializer, **READ_ERRORS},
     )
     def get(self, request: Request, application_id: Any) -> Response:
@@ -138,7 +141,7 @@ class BuyerFinancingView(BuyerExpedienteView):
             "evaluación de sus reglas, sin evaluador interno. Responde `201` si la creó. "
             f"Solo antes de `FILED`. {ETAG_NOTE}"
         ),
-        parameters=[IF_MATCH],
+        parameters=[IF_MATCH, etag_response_headers(200, 201)],
         request=FinancingInputSerializer,
         responses={
             200: BuyerFinancingSerializer,
@@ -174,6 +177,7 @@ class BuyerEligibleBankProductsView(BuyerExpedienteView):
             "datos actuales cumplen las reglas bloqueantes del producto, sin el detalle "
             f"de las reglas. {ETAG_NOTE}"
         ),
+        parameters=[etag_response_headers(200)],
         responses={200: BuyerEligibleBankProductSerializer(many=True), **READ_ERRORS},
     )
     def get(self, request: Request, application_id: Any) -> Response:
@@ -198,6 +202,7 @@ class BuyerWithdrawalView(BuyerExpedienteView):
             f"{ETAG_NOTE}"
         ),
         request=WithdrawalSerializer,
+        parameters=[etag_response_headers(200)],
         responses={
             200: StatusChangeSerializer,
             **WRITE_ERRORS,

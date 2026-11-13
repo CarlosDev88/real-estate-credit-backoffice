@@ -2941,6 +2941,7 @@ export interface components {
             readonly code: string;
             readonly label: string;
             target_status: components["schemas"]["ApplicationStatusEnum"];
+            readonly target_status_label: string;
             readonly guard_code: string;
         };
         Bank: {
@@ -3391,7 +3392,7 @@ export interface components {
             readonly max_size_bytes: number;
             readonly status: components["schemas"]["DocumentSlotStatusEnum"];
             /** @description Estado para el comprador: `TO_UPLOAD` (`PENDING`), `TO_FIX` (`REJECTED`), `IN_REVIEW` (`UPLOADED`), `DONE` (`APPROVED`) o `NOT_APPLICABLE` (`WAIVED`). */
-            readonly public_status: components["schemas"]["BuyerDocumentSlotPublicStatusEnum"];
+            readonly public_status: components["schemas"]["PublicSlotStatusEnum"];
             /** @description Texto del estado público: Te falta, Corrígelo, En revisión, Listo o No aplica. */
             readonly public_status_label: string;
             readonly can_upload: boolean;
@@ -3402,8 +3403,6 @@ export interface components {
             /** Format: date-time */
             readonly updated_at: string;
         };
-        /** @enum {string} */
-        BuyerDocumentSlotPublicStatusEnum: "TO_UPLOAD" | "TO_FIX" | "IN_REVIEW" | "DONE" | "NOT_APPLICABLE";
         /**
          * @description Serializer que rechaza campos no declarados (``additionalProperties: false``).
          *
@@ -3931,6 +3930,7 @@ export interface components {
             document_type: components["schemas"]["CompletenessDocumentType"];
             label: string;
             status: components["schemas"]["DocumentSlotStatusEnum"];
+            readonly status_label: string;
             alternative_group_code: string | null;
             /** Format: date */
             expires_at: string | null;
@@ -3993,12 +3993,14 @@ export interface components {
             readonly id: string;
             readonly version_number: number;
             readonly status: components["schemas"]["DocumentFileStatusEnum"];
+            readonly status_label: string;
             readonly client_filename: string;
             /** Format: date */
             readonly document_date: string | null;
             /** Format: date */
             readonly expires_at: string | null;
             scan_status: string;
+            readonly scan_status_label: string;
             /** Format: date-time */
             readonly created_at: string;
         };
@@ -4027,6 +4029,7 @@ export interface components {
             readonly slot_id: string;
             readonly version_number: number;
             readonly status: components["schemas"]["DocumentFileStatusEnum"];
+            readonly status_label: string;
             readonly is_current: boolean;
             readonly client_filename: string;
             /** Format: date */
@@ -4045,7 +4048,9 @@ export interface components {
             /** Format: uuid */
             readonly document_file_id: string;
             readonly status: components["schemas"]["DocumentFileStatusEnum"];
+            readonly status_label: string;
             readonly scan_status: string;
+            readonly scan_status_label: string;
             /** Format: date-time */
             readonly scanned_at: string | null;
             readonly detected_mime_type: string;
@@ -4186,6 +4191,7 @@ export interface components {
             /** Format: uuid */
             readonly id: string;
             readonly decision: components["schemas"]["DecisionEnum"];
+            readonly decision_label: string;
             readonly reason: components["schemas"]["CatalogItemRef"] | null;
             readonly buyer_comment: string | null;
             readonly internal_comment: string | null;
@@ -4212,6 +4218,7 @@ export interface components {
             readonly validity_days: number | null;
             readonly sort_order: number;
             readonly status: components["schemas"]["DocumentSlotStatusEnum"];
+            readonly status_label: string;
             readonly waiver_reason: components["schemas"]["CatalogItemRef"] | null;
             readonly current_file: components["schemas"]["CurrentFile"] | null;
             /** Format: date-time */
@@ -4247,6 +4254,7 @@ export interface components {
             readonly validity_days: number | null;
             readonly sort_order: number;
             readonly status: components["schemas"]["DocumentSlotStatusEnum"];
+            readonly status_label: string;
             readonly waiver_reason: components["schemas"]["CatalogItemRef"] | null;
             readonly current_file: components["schemas"]["CurrentFile"] | null;
             /** Format: date-time */
@@ -4338,6 +4346,7 @@ export interface components {
             readonly name: string;
             readonly bank: components["schemas"]["BankRef"];
             readonly product_type_code: string;
+            readonly product_type_label: string;
             readonly min_amount_cop: number | null;
             readonly max_amount_cop: number | null;
             readonly min_term_months: number | null;
@@ -4366,6 +4375,7 @@ export interface components {
             readonly size_bytes: number;
             readonly sha256: string;
             readonly scan_status: components["schemas"]["ScanStatusEnum"];
+            readonly scan_status_label: string;
             /** Format: date-time */
             readonly scanned_at: string | null;
         };
@@ -5650,10 +5660,17 @@ export interface components {
         ProgressStage: {
             code: string;
             label: string;
-            state: components["schemas"]["StateEnum"];
+            state: components["schemas"]["ProgressStageStateEnum"];
             /** @description Listo, En curso o Pendiente. */
             state_label: string;
         };
+        /**
+         * @description * `done` - Listo
+         *     * `current` - En curso
+         *     * `pending` - Pendiente
+         * @enum {string}
+         */
+        ProgressStageStateEnum: "done" | "current" | "pending";
         Project: {
             /** Format: uuid */
             readonly id: string;
@@ -5762,6 +5779,8 @@ export interface components {
             /** @default  */
             ownership_notes: string;
         };
+        /** @enum {string} */
+        PublicSlotStatusEnum: "TO_UPLOAD" | "TO_FIX" | "IN_REVIEW" | "DONE" | "NOT_APPLICABLE";
         /** @description Pestaña rápida del listado con su conteo dentro del alcance del actor. */
         QuickFilter: {
             /** @description Valor de `quick_filter` en el listado. */
@@ -5804,6 +5823,7 @@ export interface components {
         RuleIssue: {
             rule_code: string;
             outcome: components["schemas"]["RuleIssueOutcomeEnum"];
+            readonly outcome_label: string;
             message: string;
             /** @description Campo de la lista segura (`financing.requested_amount_cop`): el primero que falta o, si se incumple, el primero que cita la condición. */
             field: string | null;
@@ -5895,6 +5915,7 @@ export interface components {
             /** Format: uuid */
             readonly id: string;
             readonly decision: components["schemas"]["DecisionEnum"];
+            readonly decision_label: string;
             readonly reason: components["schemas"]["CatalogItemRef"] | null;
             readonly internal_comment: string | null;
             /** Format: uuid */
@@ -5912,6 +5933,7 @@ export interface components {
             name: string;
             is_active: boolean;
             holder_scope: string;
+            readonly holder_scope_label: string;
             allowed_mime_types: string[];
             max_size_bytes: number;
         };
@@ -5933,19 +5955,14 @@ export interface components {
             updated: string[];
             slots: components["schemas"]["DocumentSlot"][];
         };
-        /**
-         * @description * `done` - Listo
-         *     * `current` - En curso
-         *     * `pending` - Pendiente
-         * @enum {string}
-         */
-        StateEnum: "done" | "current" | "pending";
         /** @description Respuesta de un cambio de estado (API §16.3). */
         StatusChange: {
             /** Format: uuid */
             application_id: string;
             previous_status: components["schemas"]["ApplicationStatusEnum"];
+            readonly previous_status_label: string;
             status: components["schemas"]["ApplicationStatusEnum"];
+            readonly status_label: string;
             version: number;
             /** Format: date-time */
             transitioned_at: string;
@@ -5954,7 +5971,9 @@ export interface components {
             /** Format: uuid */
             readonly id: string;
             readonly from_status: components["schemas"]["ApplicationStatusEnum"] | components["schemas"]["NullEnum"];
+            readonly from_status_label: string | null;
             readonly to_status: components["schemas"]["ApplicationStatusEnum"];
+            readonly to_status_label: string;
             readonly transition_code: string | null;
             readonly reason: components["schemas"]["CatalogItemRef"] | null;
             readonly comment: string;
@@ -6142,6 +6161,8 @@ export interface operations {
         responses: {
             200: {
                 headers: {
+                    /** @description Versión de la solicitud, por ejemplo `"3"`. Se reenvía en `If-Match` al editar el expediente (API §6). */
+                    ETag: string;
                     [name: string]: unknown;
                 };
                 content: {
@@ -6191,6 +6212,8 @@ export interface operations {
             /** @description Retirado. */
             204: {
                 headers: {
+                    /** @description Versión de la solicitud, por ejemplo `"3"`. Se reenvía en `If-Match` al editar el expediente (API §6). */
+                    ETag: string;
                     [name: string]: unknown;
                 };
                 content?: never;
@@ -6253,6 +6276,8 @@ export interface operations {
         responses: {
             200: {
                 headers: {
+                    /** @description Versión de la solicitud, por ejemplo `"3"`. Se reenvía en `If-Match` al editar el expediente (API §6). */
+                    ETag: string;
                     [name: string]: unknown;
                 };
                 content: {
@@ -6319,6 +6344,8 @@ export interface operations {
         responses: {
             200: {
                 headers: {
+                    /** @description Versión de la solicitud, por ejemplo `"3"`. Se reenvía en `If-Match` al editar el expediente (API §6). */
+                    ETag: string;
                     [name: string]: unknown;
                 };
                 content: {
@@ -6374,6 +6401,8 @@ export interface operations {
         responses: {
             200: {
                 headers: {
+                    /** @description Versión de la solicitud, por ejemplo `"3"`. Se reenvía en `If-Match` al editar el expediente (API §6). */
+                    ETag: string;
                     [name: string]: unknown;
                 };
                 content: {
@@ -6382,6 +6411,8 @@ export interface operations {
             };
             201: {
                 headers: {
+                    /** @description Versión de la solicitud, por ejemplo `"3"`. Se reenvía en `If-Match` al editar el expediente (API §6). */
+                    ETag: string;
                     [name: string]: unknown;
                 };
                 content: {
@@ -6509,6 +6540,8 @@ export interface operations {
         responses: {
             201: {
                 headers: {
+                    /** @description Versión de la solicitud, por ejemplo `"3"`. Se reenvía en `If-Match` al editar el expediente (API §6). */
+                    ETag: string;
                     [name: string]: unknown;
                 };
                 content: {
@@ -6569,6 +6602,8 @@ export interface operations {
         responses: {
             200: {
                 headers: {
+                    /** @description Versión de la solicitud, por ejemplo `"3"`. Se reenvía en `If-Match` al editar el expediente (API §6). */
+                    ETag: string;
                     [name: string]: unknown;
                 };
                 content: {
@@ -6624,6 +6659,8 @@ export interface operations {
         responses: {
             200: {
                 headers: {
+                    /** @description Versión de la solicitud, por ejemplo `"3"`. Se reenvía en `If-Match` al editar el expediente (API §6). */
+                    ETag: string;
                     [name: string]: unknown;
                 };
                 content: {
@@ -6694,6 +6731,8 @@ export interface operations {
         responses: {
             200: {
                 headers: {
+                    /** @description Versión de la solicitud, por ejemplo `"3"`. Se reenvía en `If-Match` al editar el expediente (API §6). */
+                    ETag: string;
                     [name: string]: unknown;
                 };
                 content: {
@@ -6772,6 +6811,8 @@ export interface operations {
         responses: {
             200: {
                 headers: {
+                    /** @description Versión de la solicitud, por ejemplo `"3"`. Se reenvía en `If-Match` al editar el expediente (API §6). */
+                    ETag: string;
                     [name: string]: unknown;
                 };
                 content: {
@@ -6820,6 +6861,8 @@ export interface operations {
         responses: {
             201: {
                 headers: {
+                    /** @description Versión de la solicitud, por ejemplo `"3"`. Se reenvía en `If-Match` al editar el expediente (API §6). */
+                    ETag: string;
                     [name: string]: unknown;
                 };
                 content: {
@@ -6886,6 +6929,8 @@ export interface operations {
         responses: {
             200: {
                 headers: {
+                    /** @description Versión de la solicitud, por ejemplo `"3"`. Se reenvía en `If-Match` al editar el expediente (API §6). */
+                    ETag: string;
                     [name: string]: unknown;
                 };
                 content: {
@@ -7067,6 +7112,8 @@ export interface operations {
         responses: {
             200: {
                 headers: {
+                    /** @description Versión de la solicitud, por ejemplo `"3"`. Se reenvía en `If-Match` al editar el expediente (API §6). */
+                    ETag: string;
                     [name: string]: unknown;
                 };
                 content: {
@@ -7364,6 +7411,8 @@ export interface operations {
         responses: {
             200: {
                 headers: {
+                    /** @description Versión de la solicitud, por ejemplo `"3"`. Se reenvía en `If-Match` al editar el expediente (API §6). */
+                    ETag: string;
                     [name: string]: unknown;
                 };
                 content: {
@@ -7412,6 +7461,8 @@ export interface operations {
         responses: {
             200: {
                 headers: {
+                    /** @description Versión de la solicitud, por ejemplo `"3"`. Se reenvía en `If-Match` al editar el expediente (API §6). */
+                    ETag: string;
                     [name: string]: unknown;
                 };
                 content: {
@@ -7467,6 +7518,8 @@ export interface operations {
         responses: {
             200: {
                 headers: {
+                    /** @description Versión de la solicitud, por ejemplo `"3"`. Se reenvía en `If-Match` al editar el expediente (API §6). */
+                    ETag: string;
                     [name: string]: unknown;
                 };
                 content: {
@@ -7475,6 +7528,8 @@ export interface operations {
             };
             201: {
                 headers: {
+                    /** @description Versión de la solicitud, por ejemplo `"3"`. Se reenvía en `If-Match` al editar el expediente (API §6). */
+                    ETag: string;
                     [name: string]: unknown;
                 };
                 content: {
@@ -7548,6 +7603,8 @@ export interface operations {
         responses: {
             200: {
                 headers: {
+                    /** @description Versión de la solicitud, por ejemplo `"3"`. Se reenvía en `If-Match` al editar el expediente (API §6). */
+                    ETag: string;
                     [name: string]: unknown;
                 };
                 content: {
@@ -7600,6 +7657,8 @@ export interface operations {
         responses: {
             201: {
                 headers: {
+                    /** @description Versión de la solicitud, por ejemplo `"3"`. Se reenvía en `If-Match` al editar el expediente (API §6). */
+                    ETag: string;
                     [name: string]: unknown;
                 };
                 content: {
@@ -7657,6 +7716,8 @@ export interface operations {
         responses: {
             200: {
                 headers: {
+                    /** @description Versión de la solicitud, por ejemplo `"3"`. Se reenvía en `If-Match` al editar el expediente (API §6). */
+                    ETag: string;
                     [name: string]: unknown;
                 };
                 content: {
@@ -7712,6 +7773,8 @@ export interface operations {
         responses: {
             200: {
                 headers: {
+                    /** @description Versión de la solicitud, por ejemplo `"3"`. Se reenvía en `If-Match` al editar el expediente (API §6). */
+                    ETag: string;
                     [name: string]: unknown;
                 };
                 content: {
@@ -7720,6 +7783,8 @@ export interface operations {
             };
             201: {
                 headers: {
+                    /** @description Versión de la solicitud, por ejemplo `"3"`. Se reenvía en `If-Match` al editar el expediente (API §6). */
+                    ETag: string;
                     [name: string]: unknown;
                 };
                 content: {
@@ -7800,6 +7865,8 @@ export interface operations {
         responses: {
             200: {
                 headers: {
+                    /** @description Versión de la solicitud, por ejemplo `"3"`. Se reenvía en `If-Match` al editar el expediente (API §6). */
+                    ETag: string;
                     [name: string]: unknown;
                 };
                 content: {
@@ -7852,6 +7919,8 @@ export interface operations {
         responses: {
             200: {
                 headers: {
+                    /** @description Versión de la solicitud, por ejemplo `"3"`. Se reenvía en `If-Match` al editar el expediente (API §6). */
+                    ETag: string;
                     [name: string]: unknown;
                 };
                 content: {
@@ -7970,6 +8039,8 @@ export interface operations {
         responses: {
             200: {
                 headers: {
+                    /** @description Versión de la solicitud, por ejemplo `"3"`. Se reenvía en `If-Match` al editar el expediente (API §6). */
+                    ETag: string;
                     [name: string]: unknown;
                 };
                 content: {
@@ -9618,6 +9689,8 @@ export interface operations {
         responses: {
             200: {
                 headers: {
+                    /** @description Versión de la solicitud, por ejemplo `"3"`. Se reenvía en `If-Match` al editar el expediente (API §6). */
+                    ETag: string;
                     [name: string]: unknown;
                 };
                 content: {
@@ -9859,6 +9932,8 @@ export interface operations {
         responses: {
             200: {
                 headers: {
+                    /** @description Versión de la solicitud, por ejemplo `"3"`. Se reenvía en `If-Match` al editar el expediente (API §6). */
+                    ETag: string;
                     [name: string]: unknown;
                 };
                 content: {
@@ -9907,6 +9982,8 @@ export interface operations {
         responses: {
             200: {
                 headers: {
+                    /** @description Versión de la solicitud, por ejemplo `"3"`. Se reenvía en `If-Match` al editar el expediente (API §6). */
+                    ETag: string;
                     [name: string]: unknown;
                 };
                 content: {
@@ -9962,6 +10039,8 @@ export interface operations {
         responses: {
             200: {
                 headers: {
+                    /** @description Versión de la solicitud, por ejemplo `"3"`. Se reenvía en `If-Match` al editar el expediente (API §6). */
+                    ETag: string;
                     [name: string]: unknown;
                 };
                 content: {
@@ -9970,6 +10049,8 @@ export interface operations {
             };
             201: {
                 headers: {
+                    /** @description Versión de la solicitud, por ejemplo `"3"`. Se reenvía en `If-Match` al editar el expediente (API §6). */
+                    ETag: string;
                     [name: string]: unknown;
                 };
                 content: {
@@ -10050,6 +10131,8 @@ export interface operations {
         responses: {
             200: {
                 headers: {
+                    /** @description Versión de la solicitud, por ejemplo `"3"`. Se reenvía en `If-Match` al editar el expediente (API §6). */
+                    ETag: string;
                     [name: string]: unknown;
                 };
                 content: {
@@ -10098,6 +10181,8 @@ export interface operations {
         responses: {
             200: {
                 headers: {
+                    /** @description Versión de la solicitud, por ejemplo `"3"`. Se reenvía en `If-Match` al editar el expediente (API §6). */
+                    ETag: string;
                     [name: string]: unknown;
                 };
                 content: {
@@ -10153,6 +10238,8 @@ export interface operations {
         responses: {
             200: {
                 headers: {
+                    /** @description Versión de la solicitud, por ejemplo `"3"`. Se reenvía en `If-Match` al editar el expediente (API §6). */
+                    ETag: string;
                     [name: string]: unknown;
                 };
                 content: {
@@ -10228,6 +10315,8 @@ export interface operations {
         responses: {
             200: {
                 headers: {
+                    /** @description Versión de la solicitud, por ejemplo `"3"`. Se reenvía en `If-Match` al editar el expediente (API §6). */
+                    ETag: string;
                     [name: string]: unknown;
                 };
                 content: {
@@ -10283,6 +10372,8 @@ export interface operations {
         responses: {
             200: {
                 headers: {
+                    /** @description Versión de la solicitud, por ejemplo `"3"`. Se reenvía en `If-Match` al editar el expediente (API §6). */
+                    ETag: string;
                     [name: string]: unknown;
                 };
                 content: {
@@ -10291,6 +10382,8 @@ export interface operations {
             };
             201: {
                 headers: {
+                    /** @description Versión de la solicitud, por ejemplo `"3"`. Se reenvía en `If-Match` al editar el expediente (API §6). */
+                    ETag: string;
                     [name: string]: unknown;
                 };
                 content: {
@@ -10370,6 +10463,8 @@ export interface operations {
         responses: {
             200: {
                 headers: {
+                    /** @description Versión de la solicitud, por ejemplo `"3"`. Se reenvía en `If-Match` al editar el expediente (API §6). */
+                    ETag: string;
                     [name: string]: unknown;
                 };
                 content: {
@@ -10723,6 +10818,8 @@ export interface operations {
         responses: {
             200: {
                 headers: {
+                    /** @description Versión de la solicitud, por ejemplo `"3"`. Se reenvía en `If-Match` al editar el expediente (API §6). */
+                    ETag: string;
                     [name: string]: unknown;
                 };
                 content: {
@@ -10775,6 +10872,8 @@ export interface operations {
         responses: {
             201: {
                 headers: {
+                    /** @description Versión de la solicitud, por ejemplo `"3"`. Se reenvía en `If-Match` al editar el expediente (API §6). */
+                    ETag: string;
                     [name: string]: unknown;
                 };
                 content: {
@@ -10842,6 +10941,8 @@ export interface operations {
             /** @description Eliminada. */
             204: {
                 headers: {
+                    /** @description Versión de la solicitud, por ejemplo `"3"`. Se reenvía en `If-Match` al editar el expediente (API §6). */
+                    ETag: string;
                     [name: string]: unknown;
                 };
                 content?: never;
@@ -10913,6 +11014,8 @@ export interface operations {
         responses: {
             200: {
                 headers: {
+                    /** @description Versión de la solicitud, por ejemplo `"3"`. Se reenvía en `If-Match` al editar el expediente (API §6). */
+                    ETag: string;
                     [name: string]: unknown;
                 };
                 content: {
@@ -10991,6 +11094,8 @@ export interface operations {
         responses: {
             200: {
                 headers: {
+                    /** @description Huella del contenido. Reenviada en `If-None-Match`, la respuesta es `304` si no cambió. */
+                    ETag: string;
                     [name: string]: unknown;
                 };
                 content: {
@@ -11000,6 +11105,8 @@ export interface operations {
             /** @description Sin cambios. */
             304: {
                 headers: {
+                    /** @description Huella del contenido. Reenviada en `If-None-Match`, la respuesta es `304` si no cambió. */
+                    ETag: string;
                     [name: string]: unknown;
                 };
                 content?: never;
@@ -11037,6 +11144,8 @@ export interface operations {
         responses: {
             200: {
                 headers: {
+                    /** @description Versión de la solicitud, por ejemplo `"3"`. Se reenvía en `If-Match` al editar el expediente (API §6). */
+                    ETag: string;
                     [name: string]: unknown;
                 };
                 content: {
@@ -11092,6 +11201,8 @@ export interface operations {
         responses: {
             200: {
                 headers: {
+                    /** @description Versión de la solicitud, por ejemplo `"3"`. Se reenvía en `If-Match` al editar el expediente (API §6). */
+                    ETag: string;
                     [name: string]: unknown;
                 };
                 content: {
@@ -11100,6 +11211,8 @@ export interface operations {
             };
             201: {
                 headers: {
+                    /** @description Versión de la solicitud, por ejemplo `"3"`. Se reenvía en `If-Match` al editar el expediente (API §6). */
+                    ETag: string;
                     [name: string]: unknown;
                 };
                 content: {
@@ -11178,6 +11291,8 @@ export interface operations {
         responses: {
             200: {
                 headers: {
+                    /** @description Versión de la solicitud, por ejemplo `"3"`. Se reenvía en `If-Match` al editar el expediente (API §6). */
+                    ETag: string;
                     [name: string]: unknown;
                 };
                 content: {
@@ -13658,6 +13773,8 @@ export interface operations {
         responses: {
             200: {
                 headers: {
+                    /** @description Versión de la solicitud, por ejemplo `"3"`. Se reenvía en `If-Match` al editar el expediente (API §6). */
+                    ETag: string;
                     [name: string]: unknown;
                 };
                 content: {
@@ -13710,6 +13827,8 @@ export interface operations {
         responses: {
             201: {
                 headers: {
+                    /** @description Versión de la solicitud, por ejemplo `"3"`. Se reenvía en `If-Match` al editar el expediente (API §6). */
+                    ETag: string;
                     [name: string]: unknown;
                 };
                 content: {
@@ -13768,6 +13887,8 @@ export interface operations {
             /** @description Eliminada. */
             204: {
                 headers: {
+                    /** @description Versión de la solicitud, por ejemplo `"3"`. Se reenvía en `If-Match` al editar el expediente (API §6). */
+                    ETag: string;
                     [name: string]: unknown;
                 };
                 content?: never;
@@ -13830,6 +13951,8 @@ export interface operations {
         responses: {
             200: {
                 headers: {
+                    /** @description Versión de la solicitud, por ejemplo `"3"`. Se reenvía en `If-Match` al editar el expediente (API §6). */
+                    ETag: string;
                     [name: string]: unknown;
                 };
                 content: {
@@ -14174,6 +14297,8 @@ export interface operations {
         responses: {
             200: {
                 headers: {
+                    /** @description Huella del contenido. Reenviada en `If-None-Match`, la respuesta es `304` si no cambió. */
+                    ETag: string;
                     [name: string]: unknown;
                 };
                 content: {
@@ -14183,6 +14308,8 @@ export interface operations {
             /** @description Sin cambios. */
             304: {
                 headers: {
+                    /** @description Huella del contenido. Reenviada en `If-None-Match`, la respuesta es `304` si no cambió. */
+                    ETag: string;
                     [name: string]: unknown;
                 };
                 content?: never;
@@ -14214,6 +14341,8 @@ export interface operations {
         responses: {
             200: {
                 headers: {
+                    /** @description Huella del contenido. Reenviada en `If-None-Match`, la respuesta es `304` si no cambió. */
+                    ETag: string;
                     [name: string]: unknown;
                 };
                 content: {
@@ -14223,6 +14352,8 @@ export interface operations {
             /** @description Sin cambios. */
             304: {
                 headers: {
+                    /** @description Huella del contenido. Reenviada en `If-None-Match`, la respuesta es `304` si no cambió. */
+                    ETag: string;
                     [name: string]: unknown;
                 };
                 content?: never;
