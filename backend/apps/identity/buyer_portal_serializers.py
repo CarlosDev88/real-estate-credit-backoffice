@@ -17,7 +17,12 @@ from apps.applications.models import (
     ParticipantRole,
     Property,
 )
-from apps.applications.serializers import BankProductRefSerializer, NamedRefSerializer
+from apps.applications.serializers import (
+    BankProductRefSerializer,
+    NamedRefSerializer,
+    ProgressStageSerializer,
+)
+from apps.applications.stages import BUYER_STAGES, progress_stages
 from apps.catalogs.serializers import CatalogItemRefSerializer
 from apps.catalogs.workflow import ApplicationStatus
 from apps.identity import buyer_portal, consents
@@ -133,11 +138,12 @@ class BuyerProgressSerializer(serializers.Serializer):
 
 class BuyerParticipantSerializer(serializers.ModelSerializer):
     role = serializers.ChoiceField(choices=ParticipantRole.choices, read_only=True)
+    role_label = serializers.CharField(source="get_role_display", read_only=True)
     full_name = serializers.CharField(source="client.full_name", read_only=True)
 
     class Meta:
         model = ApplicationParticipant
-        fields = ["id", "role", "full_name", "contributes_income"]
+        fields = ["id", "role", "role_label", "full_name", "contributes_income"]
         read_only_fields = fields
 
 
@@ -193,9 +199,33 @@ class BuyerFinancingSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
 
+class BuyerAdvisorSerializer(serializers.Serializer):
+    """Contacto del asesor para el comprador: solo nombre, correo y teléfono."""
+
+    full_name = serializers.CharField(source="get_full_name")
+    email = serializers.EmailField()
+    phone = serializers.CharField(
+        allow_null=True,
+        help_text="`null` si el asesor no tiene teléfono. Arma el enlace de WhatsApp.",
+    )
+
+    def to_representation(self, instance: Any) -> dict[str, Any]:
+        data = dict(super().to_representation(instance))
+        data["phone"] = data["phone"] or None
+        return data
+
+
 class BuyerApplicationDetailSerializer(BuyerProcessSerializer):
     """Solicitud vista por el comprador. La versión también viaja en ``ETag``."""
 
+    advisor = serializers.SerializerMethodField(
+        help_text="Asesor asignado; `null` si la solicitud no tiene un asesor activo."
+    )
+    stages = serializers.SerializerMethodField(
+        help_text="Las 4 etapas del portal con su estado (`done`, `current` o `pending`). "
+        "Vacía en `WITHDRAWN`, `CANCELLED`, `OWN_FUNDS` y `EXTERNAL_CREDIT_APPROVED`: el "
+        "portal oculta las etapas."
+    )
     progress = serializers.SerializerMethodField()
     participants = BuyerParticipantSerializer(
         source="active_participants", many=True, read_only=True
@@ -208,11 +238,22 @@ class BuyerApplicationDetailSerializer(BuyerProcessSerializer):
             *BuyerProcessSerializer.Meta.fields,
             "version",
             "progress",
+            "advisor",
+            "stages",
             "participants",
             "property",
             "financing",
         ]
         read_only_fields = fields
+
+    @extend_schema_field(BuyerAdvisorSerializer(allow_null=True))
+    def get_advisor(self, application: CreditApplication) -> dict[str, Any] | None:
+        advisor = buyer_portal.buyer_advisor(application)
+        return None if advisor is None else dict(BuyerAdvisorSerializer(advisor).data)
+
+    @extend_schema_field(ProgressStageSerializer(many=True))
+    def get_stages(self, application: CreditApplication) -> list[dict[str, str]]:
+        return progress_stages(BUYER_STAGES, application.status)
 
     @extend_schema_field(BuyerProgressSerializer)
     def get_progress(self, application: CreditApplication) -> dict[str, Any]:

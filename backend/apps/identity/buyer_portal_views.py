@@ -25,6 +25,12 @@ from rest_framework.views import APIView
 
 from apps.applications.concurrency import with_etag
 from apps.applications.models import CreditApplication
+from apps.catalogs.views import (
+    METADATA_CATALOG_DESCRIPTION,
+    METADATA_CATALOG_PARAMETERS,
+    METADATA_CATALOG_RESPONSES,
+    metadata_catalog_response,
+)
 from apps.identity import buyer_portal, buyer_sessions, consents
 from apps.identity.authentication import enforce_csrf
 from apps.identity.buyer_authentication import (
@@ -51,6 +57,7 @@ from apps.identity.cookies import (
 from apps.identity.exceptions import BuyerSessionExpired
 from apps.identity.models import BuyerSession
 from apps.identity.throttling import BuyerAccessConsumeRateThrottle
+from config.openapi import etag_response_headers
 from config.serializers import ErrorSerializer
 
 BUYER_PORTAL_TAG = "Buyer portal"
@@ -163,6 +170,37 @@ class BuyerSessionView(BuyerPortalView):
         return Response(BuyerSessionResponseSerializer(self.buyer_session).data)
 
 
+class BuyerMetadataCatalogView(BuyerPortalView):
+    """Catálogos de los formularios del comprador: la misma lógica de
+    ``GET /metadata/catalogs/{code}``, limitada a ``BUYER_CATALOG_CODES``."""
+
+    @extend_schema(
+        tags=[BUYER_PORTAL_TAG],
+        operation_id="buyer_metadata_catalogs_retrieve",
+        summary="Valores activos y vigentes de un catálogo de los formularios del comprador",
+        description=(
+            f"{METADATA_CATALOG_DESCRIPTION} Misma respuesta que "
+            "`GET /metadata/catalogs/{catalog_code}`, solo para los catálogos que usan los "
+            "formularios del portal: "
+            + ", ".join(f"`{code}`" for code in sorted(buyer_portal.BUYER_CATALOG_CODES))
+            + ". Cualquier otro código responde `404`, igual que uno inexistente."
+        ),
+        parameters=METADATA_CATALOG_PARAMETERS,
+        responses=METADATA_CATALOG_RESPONSES,
+    )
+    def get(self, request: Request, catalog_code: str) -> Response:
+        return metadata_catalog_response(
+            request, catalog_code, allowed=buyer_portal.BUYER_CATALOG_CODES
+        )
+
+    def finalize_response(
+        self, request: Request, response: Response, *args: Any, **kwargs: Any
+    ) -> Response:
+        # Sin datos personales: conserva el `private, no-cache` del catálogo, para que el
+        # navegador revalide con `If-None-Match` en vez de descargarlo de nuevo.
+        return super(BuyerPortalView, self).finalize_response(request, response, *args, **kwargs)
+
+
 class BuyerLogoutView(APIView):
     """Pública con CSRF, como el logout interno: una sesión vencida igual borra la cookie."""
 
@@ -208,6 +246,7 @@ class BuyerApplicationDetailView(BuyerPortalView):
             "financiación. No incluye notas, asesor ni evaluaciones bancarias. La "
             "versión viaja también en `ETag`."
         ),
+        parameters=[etag_response_headers(200)],
         responses={200: BuyerApplicationDetailSerializer, **NOT_FOUND, **SESSION_ERRORS},
     )
     def get(self, request: Request, application_id: Any) -> Response:

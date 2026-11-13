@@ -133,6 +133,7 @@ class BuyerParticipantSummarySerializer(serializers.ModelSerializer):
     """Participante cuyo perfil e ingresos edita el comprador."""
 
     role = serializers.ChoiceField(choices=ParticipantRole.choices, read_only=True)
+    role_label = serializers.CharField(source="get_role_display", read_only=True)
     full_name = serializers.CharField(source="client.full_name", read_only=True)
     # Sin perfil, DRF devuelve `null`: la relación inversa ausente no es un error.
     financial_profile_id = serializers.UUIDField(
@@ -147,6 +148,7 @@ class BuyerParticipantSummarySerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "role",
+            "role_label",
             "full_name",
             "contributes_income",
             "financial_profile_id",

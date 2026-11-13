@@ -178,7 +178,9 @@ def test_scan_status(advisor_client: APIClient, version: DocumentFile) -> None:
     assert body == {
         "document_file_id": str(version.pk),
         "status": "IN_REVIEW",
+        "status_label": "En revisión",
         "scan_status": "CLEAN",
+        "scan_status_label": "Limpio",
         "detected_mime_type": PDF,
         "size_bytes": file_object.size_bytes,
         "sha256": file_object.sha256,

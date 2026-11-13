@@ -2,9 +2,11 @@
 
 import hashlib
 import json
+from collections.abc import Collection
 from typing import Any, cast
 
 from django.db.models import Count, QuerySet
+from django.http import Http404
 from django.shortcuts import get_object_or_404
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import (
@@ -41,6 +43,7 @@ from apps.catalogs.workflow import FlowType
 from apps.identity.models import User
 from apps.identity.permissions import HasPermissionCode
 from config.filters import StrictOrderingFilter, parse_bool_param, parse_uuid_param
+from config.openapi import CONTENT_ETAG, etag_response_headers
 from config.serializers import ErrorSerializer
 
 CATALOGS_TAG = "Configuration"
@@ -511,6 +514,7 @@ class MetadataBootstrapView(GenericAPIView):
         operation_id="metadata_bootstrap",
         summary="Catálogos, permisos y configuración pública para iniciar el frontend",
         description="Soporta `If-None-Match`; responde `304` si los datos no cambiaron.",
+        parameters=[etag_response_headers(200, 304, description=CONTENT_ETAG)],
         responses={
             200: BootstrapSerializer,
             304: OpenApiResponse(description="Sin cambios."),
@@ -521,6 +525,43 @@ class MetadataBootstrapView(GenericAPIView):
         return _conditional_response(request, services.bootstrap(cast(User, request.user)))
 
 
+METADATA_CATALOG_DESCRIPTION = (
+    "Para catálogos grandes o dependientes, como `municipality`. Filtra por "
+    "`parent_code` (ej. el código DANE del departamento) o `parent_id`. Soporta "
+    "`If-None-Match`."
+)
+METADATA_CATALOG_PARAMETERS = [
+    OpenApiParameter("parent_code", OpenApiTypes.STR),
+    OpenApiParameter("parent_id", OpenApiTypes.UUID),
+    etag_response_headers(200, 304, description=CONTENT_ETAG),
+]
+METADATA_CATALOG_RESPONSES = {
+    200: MetadataCatalogSerializer,
+    304: OpenApiResponse(description="Sin cambios."),
+    401: _error("NOT_AUTHENTICATED o SESSION_EXPIRED"),
+    404: _error("RESOURCE_NOT_FOUND"),
+}
+
+
+def metadata_catalog_response(
+    request: Request, catalog_code: str, *, allowed: Collection[str] | None = None
+) -> Response:
+    """Valores activos y vigentes del catálogo, con sus filtros y el ``ETag``.
+
+    La usan la vista interna y la del comprador. Con ``allowed``, un código fuera de la
+    lista responde ``404`` igual que uno inexistente: no revela qué catálogos hay.
+    """
+    if allowed is not None and catalog_code not in allowed:
+        raise Http404
+    catalog = get_object_or_404(Catalog, code=catalog_code)
+    body = services.catalog_metadata(
+        catalog,
+        parent_id=parse_uuid_param(request, "parent_id"),
+        parent_code=request.query_params.get("parent_code") or None,
+    )
+    return _conditional_response(request, body)
+
+
 class MetadataCatalogView(GenericAPIView):
     permission_classes = [IsAuthenticated]
 
@@ -528,27 +569,9 @@ class MetadataCatalogView(GenericAPIView):
         tags=[METADATA_TAG],
         operation_id="metadata_catalogs_retrieve",
         summary="Valores activos y vigentes de un catálogo",
-        description=(
-            "Para catálogos grandes o dependientes, como `municipality`. Filtra por "
-            "`parent_code` (ej. el código DANE del departamento) o `parent_id`. Soporta "
-            "`If-None-Match`."
-        ),
-        parameters=[
-            OpenApiParameter("parent_code", OpenApiTypes.STR),
-            OpenApiParameter("parent_id", OpenApiTypes.UUID),
-        ],
-        responses={
-            200: MetadataCatalogSerializer,
-            304: OpenApiResponse(description="Sin cambios."),
-            401: _error("NOT_AUTHENTICATED o SESSION_EXPIRED"),
-            404: _error("RESOURCE_NOT_FOUND"),
-        },
+        description=METADATA_CATALOG_DESCRIPTION,
+        parameters=METADATA_CATALOG_PARAMETERS,
+        responses=METADATA_CATALOG_RESPONSES,
     )
     def get(self, request: Request, catalog_code: str) -> Response:
-        catalog = get_object_or_404(Catalog, code=catalog_code)
-        body = services.catalog_metadata(
-            catalog,
-            parent_id=parse_uuid_param(request, "parent_id"),
-            parent_code=request.query_params.get("parent_code") or None,
-        )
-        return _conditional_response(request, body)
+        return metadata_catalog_response(request, catalog_code)

@@ -18,9 +18,30 @@ from apps.applications.services import (
 from apps.catalogs.models import CatalogItem
 from apps.catalogs.workflow import ApplicationStatus
 from apps.documents.verification import check_dossier
-from apps.identity.models import BuyerSession
+from apps.identity.models import BuyerSession, User
 
 APPLICATION_STATUS_CATALOG = "application_status"
+
+# Catálogos que el comprador consulta en `/buyer/metadata/catalogs/{code}`: los que
+# validan sus formularios (`CatalogItemCodeField` de los serializers que usa el portal) y
+# `department`, el padre de `municipality`. Otro código responde `404`.
+BUYER_CATALOG_CODES: frozenset[str] = frozenset(
+    {
+        "address_type",
+        "department",
+        "municipality",
+        "employment_profile",
+        "contract_type",
+        "funds_origin",
+        "income_source_type",
+        "property_type",
+        "property_condition",
+        "financing_mode",
+        "currency_mode",
+        "amortization_mode",
+        "application_withdrawal_reason",
+    }
+)
 
 # Decisión 17: el estado público es el estado de la solicitud, con un texto fijo.
 NEXT_ACTIONS: dict[str, str] = {
@@ -90,6 +111,15 @@ def buyer_progress(application: CreditApplication) -> BuyerProgress:
     )
 
 
+def buyer_advisor(application: CreditApplication) -> User | None:
+    """Asesor que el comprador puede contactar: el asignado, si sigue activo. Un asesor
+    desactivado o borrado no se muestra."""
+    advisor = application.assigned_advisor
+    if advisor is None or not advisor.can_authenticate:
+        return None
+    return advisor
+
+
 def session_applications(session: BuyerSession) -> QuerySet[CreditApplication]:
     """La única solicitud a la que da acceso la sesión."""
     return CreditApplication.objects.select_related("purpose_item").filter(
@@ -101,6 +131,7 @@ def buyer_application_detail(session: BuyerSession) -> QuerySet[CreditApplicatio
     return (
         session_applications(session)
         .select_related(
+            "assigned_advisor",
             "bank_product__bank",
             "financed_property__project",
             "financed_property__property_type_item",

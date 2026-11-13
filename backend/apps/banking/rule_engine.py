@@ -64,6 +64,15 @@ class Outcome(StrEnum):
     MISSING_DATA = "MISSING_DATA"
 
 
+# Texto visible de cada resultado (`outcome_label`). Cubre todo `Outcome` (lo verifica una
+# prueba).
+OUTCOME_LABELS: dict[str, str] = {
+    Outcome.PASSED: "Cumple",
+    Outcome.FAILED: "No cumple",
+    Outcome.MISSING_DATA: "Faltan datos",
+}
+
+
 class ConditionError(Exception):
     """Condición o contexto no válido. ``path`` señala el nodo, p. ej. ``condition.left``."""
 

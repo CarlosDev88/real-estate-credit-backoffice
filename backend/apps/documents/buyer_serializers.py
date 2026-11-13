@@ -15,9 +15,12 @@ from rest_framework import serializers
 from apps.catalogs.serializers import CatalogItemRefSerializer
 from apps.documents.dossier_serializers import slot_label
 from apps.documents.models import (
+    ACTIONABLE_PUBLIC_STATUSES,
+    PUBLIC_SLOT_STATUS,
     ApplicationDocumentSlot,
     DocumentFile,
     DocumentFileStatus,
+    PublicSlotStatus,
     ReviewDecision,
     ScanStatus,
     SlotStatus,
@@ -106,6 +109,7 @@ class BuyerDocumentVersionSerializer(BuyerDocumentFileSerializer):
 class BuyerSlotParticipantSerializer(serializers.Serializer):
     id = serializers.UUIDField()
     role = serializers.CharField()
+    role_label = serializers.CharField(source="get_role_display")
     full_name = serializers.CharField(source="client.full_name")
 
 
@@ -130,6 +134,17 @@ class BuyerDocumentSlotSerializer(serializers.ModelSerializer):
     )
     max_size_bytes = serializers.IntegerField(source="document_type.max_size_bytes", read_only=True)
     can_upload = serializers.SerializerMethodField()
+    public_status = serializers.SerializerMethodField(
+        help_text="Estado para el comprador: `TO_UPLOAD` (`PENDING`), `TO_FIX` (`REJECTED`), "
+        "`IN_REVIEW` (`UPLOADED`), `DONE` (`APPROVED`) o `NOT_APPLICABLE` (`WAIVED`)."
+    )
+    public_status_label = serializers.SerializerMethodField(
+        help_text="Texto del estado público: Te falta, Corrígelo, En revisión, Listo o No aplica."
+    )
+    needs_action = serializers.SerializerMethodField(
+        help_text="`true` si `can_upload` y el estado público es `TO_UPLOAD` o `TO_FIX`: arma "
+        "la tarjeta «Lo que necesitamos de ti»."
+    )
     current_file = BuyerDocumentFileSerializer(read_only=True, allow_null=True)
     rejection = serializers.SerializerMethodField()
 
@@ -148,7 +163,10 @@ class BuyerDocumentSlotSerializer(serializers.ModelSerializer):
             "allowed_mime_types",
             "max_size_bytes",
             "status",
+            "public_status",
+            "public_status_label",
             "can_upload",
+            "needs_action",
             "current_file",
             "rejection",
             "updated_at",
@@ -160,6 +178,18 @@ class BuyerDocumentSlotSerializer(serializers.ModelSerializer):
 
     def get_can_upload(self, obj: ApplicationDocumentSlot) -> bool:
         return upload_block(self.context["application"], obj) is None
+
+    @extend_schema_field(serializers.ChoiceField(choices=PublicSlotStatus.choices))
+    def get_public_status(self, obj: ApplicationDocumentSlot) -> str:
+        return str(PUBLIC_SLOT_STATUS[obj.status])
+
+    def get_public_status_label(self, obj: ApplicationDocumentSlot) -> str:
+        return str(PUBLIC_SLOT_STATUS[obj.status].label)
+
+    def get_needs_action(self, obj: ApplicationDocumentSlot) -> bool:
+        return PUBLIC_SLOT_STATUS[obj.status] in ACTIONABLE_PUBLIC_STATUSES and self.get_can_upload(
+            obj
+        )
 
     @extend_schema_field(BuyerRejectionSerializer(allow_null=True))
     def get_rejection(self, obj: ApplicationDocumentSlot) -> dict[str, Any] | None:

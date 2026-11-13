@@ -10,6 +10,11 @@ urlpatterns = [
     path("buyer-access/consume", views.BuyerAccessConsumeView.as_view(), name="consume"),
     path("buyer/session", views.BuyerSessionView.as_view(), name="session"),
     path("buyer/session/logout", views.BuyerLogoutView.as_view(), name="logout"),
+    path(
+        "buyer/metadata/catalogs/<str:catalog_code>",
+        views.BuyerMetadataCatalogView.as_view(),
+        name="metadata-catalog",
+    ),
     path("buyer/processes", views.BuyerProcessesView.as_view(), name="processes"),
     path(
         "buyer/applications/<uuid:application_id>",

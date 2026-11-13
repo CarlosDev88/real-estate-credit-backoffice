@@ -514,6 +514,8 @@ def test_application_detail_is_the_portal_dto(
         "updated_at",
         "version",
         "progress",
+        "advisor",
+        "stages",
         "participants",
         "property",
         "financing",
@@ -525,6 +527,7 @@ def test_application_detail_is_the_portal_dto(
     assert body["participants"][1] == {
         "id": str(co_applicant.pk),
         "role": "CO_APPLICANT",
+        "role_label": "Co-solicitante",
         "full_name": "Pedro Gómez Vélez",
         "contributes_income": True,
     }
