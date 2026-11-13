@@ -330,6 +330,32 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/applications/{application_id}/filings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Radicaciones de la solicitud
+         * @description Historial de radicaciones y re-radicaciones, la más reciente primero. El broker ve las de las solicitudes que originó, sin `comment`.
+         */
+        get: operations["applications_filings_list"];
+        put?: never;
+        /**
+         * Registrar la radicación manual
+         * @description Registra la entrega del paquete al banco; la API no se comunica con el banco. Exige la solicitud en `READY_TO_FILE`, el producto de la financiación, los documentos obligatorios aprobados o exonerados, las reglas del banco sin bloqueos y un paquete de la solicitud terminado, vigente, sin radicar y con la huella documental actual. `expected_version` va en el cuerpo (no `If-Match`).
+         *
+         *     Crea la radicación con el consecutivo siguiente, guarda las versiones exactas del paquete (`/document-snapshots`), bloquea esos documentos y pasa la solicitud a `FILED`. `target_response_at` es `filed_at` más los días de respuesta del banco, o nulo. Responde `ETag` con la versión de la solicitud. Solo el administrador o el asesor asignado a la solicitud (`403`).
+         */
+        post: operations["applications_filings_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/applications/{application_id}/financing": {
         parameters: {
             query?: never;
@@ -1983,6 +2009,146 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/filing-responses/{response_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Detalle de una respuesta del banco
+         * @description Con sus observaciones. El broker recibe solo los datos públicos.
+         */
+        get: operations["filing_responses_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/filing-responses/{response_id}/evidence": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Adjuntar la evidencia de una respuesta
+         * @description Un PDF, JPG o PNG de hasta 10 MB (tipo real por su contenido, extensión y tamaño, como los documentos), una sola vez por respuesta. Pasa por el mismo análisis antivirus que los documentos: queda `PENDING` hasta que termina. Solo quien registró la respuesta o un administrador (`403`).
+         */
+        post: operations["filing_responses_evidence_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/filing-responses/{response_id}/evidence/download": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Descargar la evidencia de una respuesta
+         * @description URL prefirmada de corta duración, como las versiones de los documentos, solo si el análisis dejó el archivo limpio. `404` si la respuesta no tiene evidencia. Solo el administrador o el asesor asignado a la solicitud (`403`).
+         */
+        get: operations["filing_responses_evidence_download"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/filings/{filing_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Detalle de una radicación
+         * @description El broker no recibe `comment`.
+         */
+        get: operations["filings_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Corregir la referencia o el comentario
+         * @description Solo `external_reference` y `comment`; `null` o vacío los borra. No cambia el estado, los snapshots ni las respuestas, ni la versión de la solicitud, así que no exige `If-Match`. Solo el administrador o el asesor asignado a la solicitud (`403`).
+         */
+        patch: operations["filings_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/filings/{filing_id}/document-snapshots": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Documentos que se entregaron en la radicación
+         * @description Las versiones exactas del paquete radicado (los exonerados no tienen archivo). Solo el administrador o el asesor asignado a la solicitud (`403`).
+         */
+        get: operations["filings_document_snapshots_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/filings/{filing_id}/responses": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Respuestas del banco a una radicación
+         * @description Historial cronológico, incluidas las correcciones. El broker solo recibe `response_type`, su etiqueta, `received_at` y `public_message`: nunca `internal_comment`, evidencia ni montos.
+         */
+        get: operations["filings_responses_list"];
+        put?: never;
+        /**
+         * Registrar una respuesta del banco
+         * @description Se registra a mano y solo contra la última radicación de la solicitud. Es inmutable: una corrección es otra respuesta con `corrects_response_id`. `expected_version` va en el cuerpo. Responde `ETag` con la versión de la solicitud. Solo el administrador o el asesor asignado a la solicitud (`403`).
+         *
+         *     | `response_type` | Estados admitidos | Obligatorio | Efecto en la solicitud |
+         *     | --- | --- | --- | --- |
+         *     | `RECEIVED` | `FILED`, `FILING_VALIDATION` | — | → `FILING_VALIDATION` (si ya está, no cambia) |
+         *     | `IN_ANALYSIS` | `FILED`, `FILING_VALIDATION` | — | → `CREDIT_ANALYSIS` |
+         *     | `RETURNED` | `FILED`, `FILING_VALIDATION`, `CREDIT_ANALYSIS` | `reason_code`, `public_message`, `observations` | → `BANK_OBSERVATION` |
+         *     | `APPROVED` | `FILED`, `FILING_VALIDATION`, `CREDIT_ANALYSIS` | `approved_amount_cop`, `approved_term_months`, `public_message` | → `APPROVED` |
+         *     | `REJECTED` | `FILED`, `FILING_VALIDATION`, `CREDIT_ANALYSIS`, `BANK_OBSERVATION` | `reason_code`, `public_message` | → `REJECTED` |
+         *     | `DISBURSED` | `LEGALIZATION` | `disbursed_amount_cop` | → `DISBURSED` |
+         *     | `OTHER` | cualquiera no terminal | `internal_comment` | no cambia |
+         *
+         *     Los campos de un tipo (`reason_code`, `observations`, montos, plazo y vigencia) no se admiten en otro (`400`). Cada observación de un `RETURNED` rechaza la versión vigente del documento con su motivo y mensaje: el comprador la ve como "Corrígelo" y, después de radicar, solo reemplaza esos documentos. Aprobar la versión nueva resuelve la observación.
+         */
+        post: operations["filings_responses_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/financial-profiles/{profile_id}/income-sources": {
         parameters: {
             query?: never;
@@ -3259,6 +3425,8 @@ export interface components {
             readonly participants: components["schemas"]["BuyerParticipant"][];
             readonly property: components["schemas"]["BuyerProperty"] | null;
             readonly financing: components["schemas"]["BuyerFinancing"] | null;
+            /** @description Última respuesta del banco con mensaje público; nulo si no hay. Nunca trae el comentario interno. */
+            readonly latest_bank_update: components["schemas"]["BuyerBankUpdate"] | null;
         };
         BuyerApplicationRef: {
             /** Format: uuid */
@@ -3268,6 +3436,14 @@ export interface components {
             readonly public_status_label: string;
             readonly is_editable: boolean;
             readonly is_closed: boolean;
+        };
+        /** @description Última novedad del banco para el comprador: nunca el comentario interno. */
+        BuyerBankUpdate: {
+            response_type: string;
+            response_type_label: string;
+            /** Format: date-time */
+            received_at: string;
+            public_message: string;
         };
         /** @description Versión vigente de un consentimiento y su estado para el comprador. */
         BuyerConsent: {
@@ -4313,6 +4489,25 @@ export interface components {
             resource_id?: string;
             current_version?: number;
         };
+        Evidence: {
+            readonly filename: string;
+            readonly mime_type: string;
+            readonly size_bytes: number;
+            readonly scan_status: components["schemas"]["ScanStatusEnum"];
+            /** Format: date-time */
+            readonly scanned_at: string | null;
+            /** Format: date-time */
+            readonly uploaded_at: string;
+        };
+        /**
+         * @description Serializer que rechaza campos no declarados (``additionalProperties: false``).
+         *
+         *     Evita la asignación masiva: el cliente solo puede enviar los campos permitidos.
+         */
+        EvidenceUploadRequest: {
+            /** Format: binary */
+            file: string;
+        };
         FileMetadata: {
             /** Format: uuid */
             readonly id: string;
@@ -4323,6 +4518,183 @@ export interface components {
             /** Format: date-time */
             readonly scanned_at: string | null;
         };
+        /** @description Radicación. Con ``context["restricted"]`` (el broker) no sale ``comment``. */
+        Filing: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: uuid */
+            readonly application_id: string;
+            readonly sequence_number: number;
+            readonly status: components["schemas"]["FilingStatusEnum"];
+            readonly status_label: string;
+            readonly bank_product: components["schemas"]["BankProductRef"];
+            /** @description Catálogo `filing_channel`. */
+            readonly channel: components["schemas"]["CatalogItemRef"];
+            readonly external_reference: string | null;
+            /** Format: uuid */
+            readonly package_job_id: string;
+            readonly filed_by: components["schemas"]["UserRef"];
+            /** Format: date-time */
+            readonly filed_at: string;
+            /** Format: date-time */
+            readonly target_response_at: string | null;
+            /** @description Nota interna. No sale para el broker. */
+            comment?: string | null;
+            /** @description Respuestas del banco registradas, incluidas las correcciones. */
+            readonly responses_count: number;
+            readonly application_status: components["schemas"]["ApplicationStatusEnum"];
+            readonly application_status_label: string;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly updated_at: string;
+        };
+        /**
+         * @description ``POST /applications/{id}/filings``. Lleva ``expected_version`` en el cuerpo, como
+         *     ``/status-transitions``, en lugar de ``If-Match``.
+         */
+        FilingCreateRequest: {
+            /**
+             * Format: uuid
+             * @description Producto de la financiación de la solicitud.
+             */
+            bank_product_id: string;
+            /**
+             * Format: uuid
+             * @description Paquete terminado y vigente de esta solicitud, con la huella documental actual y sin radicar.
+             */
+            package_job_id: string;
+            /** @description Canal de entrega (catálogo `filing_channel`). */
+            channel_code: string;
+            /** @description Número o código que dio el banco. Único por producto. */
+            external_reference?: string | null;
+            /**
+             * Format: date-time
+             * @description Cuándo se entregó; no puede ser futura.
+             */
+            filed_at: string;
+            /** @description Nota interna; el broker no la ve. */
+            comment?: string | null;
+            /** @description Versión de la solicitud que se consultó (`ETag`). */
+            expected_version: number;
+        };
+        /** @description Versión exacta que se entregó al banco en la radicación. */
+        FilingDocumentSnapshot: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: uuid */
+            readonly slot_id: string;
+            /** Format: uuid */
+            readonly document_file_id: string;
+            readonly version_number: number;
+            readonly document_type_code: string;
+            readonly client_filename: string;
+            readonly mime_type: string;
+            readonly size_bytes: number;
+            readonly sha256: string;
+            /** Format: date-time */
+            readonly created_at: string;
+        };
+        /**
+         * @description Respuesta del banco. Con ``context["restricted"]`` (el broker) solo salen
+         *     ``PUBLIC_RESPONSE_FIELDS``. Los demás no son de solo lectura para que OpenAPI no los
+         *     marque obligatorios.
+         */
+        FilingResponse: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: uuid */
+            readonly filing_id: string;
+            readonly response_type: string;
+            readonly response_type_label: string;
+            /** Format: date-time */
+            readonly received_at: string;
+            readonly public_message: string | null;
+            external_reference?: string | null;
+            /** @description `filing_return_reason` o `filing_rejection_reason`. */
+            reason?: components["schemas"]["CatalogItemRef"] | null;
+            internal_comment?: string | null;
+            observations?: components["schemas"]["FilingResponseObservation"][];
+            /** Format: int64 */
+            approved_amount_cop?: number | null;
+            approved_term_months?: number | null;
+            /** Format: date */
+            valid_until?: string | null;
+            /** Format: int64 */
+            disbursed_amount_cop?: number | null;
+            /** @description Se descarga en `/evidence/download` si `scan_status` es `CLEAN`. */
+            evidence?: components["schemas"]["Evidence"] | null;
+            recorded_by?: components["schemas"]["UserRef"];
+            /** Format: uuid */
+            corrects_response_id?: string | null;
+            /** Format: date-time */
+            readonly created_at: string;
+        };
+        /**
+         * @description ``POST /filings/{id}/responses``. Los obligatorios y los campos que admite cada
+         *     tipo están en la descripción del endpoint; los demás responden ``400``.
+         */
+        FilingResponseCreateRequest: {
+            /** @description `RECEIVED`, `IN_ANALYSIS`, `RETURNED`, `APPROVED`, `REJECTED`, `DISBURSED` u `OTHER` (catálogo `filing_response_type`). */
+            response_type: string;
+            /**
+             * Format: date-time
+             * @description Cuándo respondió el banco: no futura y no anterior a la radicación.
+             */
+            received_at: string;
+            external_reference?: string | null;
+            /** @description `RETURNED`: catálogo `filing_return_reason`. `REJECTED`: catálogo `filing_rejection_reason`. */
+            reason_code?: string | null;
+            /** @description Lo ve el comprador. Obligatorio en `RETURNED`, `APPROVED` y `REJECTED`. */
+            public_message?: string | null;
+            /** @description Texto completo del banco o nota del asesor; nunca sale hacia el comprador ni el broker. Obligatorio en `OTHER`. */
+            internal_comment?: string | null;
+            /** @description Solo `RETURNED`, al menos una: los documentos que el banco observó. */
+            observations?: components["schemas"]["ObservationInputRequest"][];
+            /** @description Solo `APPROVED` (obligatorio). */
+            approved_amount_cop?: number | null;
+            /** @description Solo `APPROVED` (obligatorio). */
+            approved_term_months?: number | null;
+            /**
+             * Format: date
+             * @description Solo `APPROVED` (opcional): vigencia de la aprobación.
+             */
+            valid_until?: string | null;
+            /** @description Solo `DISBURSED` (obligatorio). */
+            disbursed_amount_cop?: number | null;
+            /**
+             * Format: uuid
+             * @description Corrige la última respuesta de la radicación, del mismo tipo, si es `RECEIVED`, `IN_ANALYSIS` u `OTHER`. No cambia ningún estado.
+             */
+            corrects_response_id?: string | null;
+            /** @description Versión de la solicitud que se consultó (`ETag`). */
+            expected_version: number;
+        };
+        FilingResponseObservation: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: uuid */
+            readonly document_slot_id: string;
+            readonly reason: components["schemas"]["CatalogItemRef"];
+            readonly message: string;
+            /** Format: date-time */
+            readonly resolved_at: string | null;
+            /** Format: uuid */
+            readonly resolved_by_file_id: string | null;
+            /** Format: date-time */
+            readonly created_at: string;
+        };
+        /**
+         * @description * `FILED` - Radicada
+         *     * `RECEIVED` - Recibida
+         *     * `IN_ANALYSIS` - En análisis
+         *     * `RETURNED` - Devuelta
+         *     * `APPROVED` - Aprobada
+         *     * `REJECTED` - Rechazada
+         *     * `DISBURSED` - Desembolsada
+         * @enum {string}
+         */
+        FilingStatusEnum: "FILED" | "RECEIVED" | "IN_ANALYSIS" | "RETURNED" | "APPROVED" | "REJECTED" | "DISBURSED";
         FinancialProfile: {
             /** Format: uuid */
             readonly id: string;
@@ -4612,6 +4984,22 @@ export interface components {
             name: string;
         };
         NullEnum: null;
+        /**
+         * @description Serializer que rechaza campos no declarados (``additionalProperties: false``).
+         *
+         *     Evita la asignación masiva: el cliente solo puede enviar los campos permitidos.
+         */
+        ObservationInputRequest: {
+            /**
+             * Format: uuid
+             * @description Documento observado: de esta solicitud, vigente y con una versión cargada.
+             */
+            document_slot_id: string;
+            /** @description Motivo que ve el comprador (catálogo `document_rejection_reason`). */
+            reason_code: string;
+            /** @description Qué debe corregir el comprador; lo ve tal cual. */
+            message: string;
+        };
         Opportunity: {
             /** Format: uuid */
             readonly id: string;
@@ -5056,6 +5444,45 @@ export interface components {
             /** @example null */
             previous: string | null;
         };
+        PaginatedFilingDocumentSnapshotList: {
+            items: components["schemas"]["FilingDocumentSnapshot"][];
+            /** @example 1 */
+            page: number;
+            /** @example 25 */
+            page_size: number;
+            /** @example 128 */
+            total: number;
+            /** @example /api/v1/x?page=2 */
+            next: string | null;
+            /** @example null */
+            previous: string | null;
+        };
+        PaginatedFilingList: {
+            items: components["schemas"]["Filing"][];
+            /** @example 1 */
+            page: number;
+            /** @example 25 */
+            page_size: number;
+            /** @example 128 */
+            total: number;
+            /** @example /api/v1/x?page=2 */
+            next: string | null;
+            /** @example null */
+            previous: string | null;
+        };
+        PaginatedFilingResponseList: {
+            items: components["schemas"]["FilingResponse"][];
+            /** @example 1 */
+            page: number;
+            /** @example 25 */
+            page_size: number;
+            /** @example 128 */
+            total: number;
+            /** @example /api/v1/x?page=2 */
+            next: string | null;
+            /** @example null */
+            previous: string | null;
+        };
         PaginatedIncomeSourceList: {
             items: components["schemas"]["IncomeSource"][];
             /** @example 1 */
@@ -5463,6 +5890,14 @@ export interface components {
              *     * `APPLICATION` - Solicitud
              */
             holder_scope?: components["schemas"]["HolderScopeEnum"];
+        };
+        /**
+         * @description ``PATCH /filings/{id}``: solo la referencia del banco y el comentario. Enviar
+         *     ``null`` o vacío los borra.
+         */
+        PatchedFilingUpdateRequest: {
+            external_reference?: string | null;
+            comment?: string | null;
         };
         /**
          * @description Serializer que rechaza campos no declarados (``additionalProperties: false``).
@@ -6033,6 +6468,8 @@ export interface components {
             readonly guard_code: string | null;
             readonly roles: string[];
             readonly is_active: boolean;
+            /** @description La ejecuta solo el servicio de su módulo (radicación o respuesta del banco): `POST /status-transitions` la rechaza y no sale en las acciones disponibles. */
+            readonly system_only: boolean;
             /** Format: date-time */
             readonly created_at: string;
             /** Format: date-time */
@@ -7323,6 +7760,129 @@ export interface operations {
             };
             /** @description RESOURCE_NOT_FOUND (inexistente o fuera del alcance) */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    applications_filings_list: {
+        parameters: {
+            query?: {
+                /** @description Un número de página dentro del conjunto de resultados paginado. */
+                page?: number;
+                /** @description Número de resultados a devolver por página. */
+                page_size?: number;
+            };
+            header?: never;
+            path: {
+                application_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedFilingList"];
+                };
+            };
+            /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description PERMISSION_DENIED o CSRF_FAILED */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description RESOURCE_NOT_FOUND (inexistente o fuera del alcance) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    applications_filings_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                application_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FilingCreateRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Filing"];
+                };
+            };
+            /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description PERMISSION_DENIED o CSRF_FAILED */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description RESOURCE_NOT_FOUND (inexistente o fuera del alcance) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description STALE_VERSION, APPLICATION_CLOSED, INVALID_STATE_TRANSITION (no está en READY_TO_FILE), PACKAGE_NOT_READY, PACKAGE_EXPIRED, PACKAGE_OUTDATED, PACKAGE_ALREADY_FILED o FILING_REFERENCE_EXISTS */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description BANK_PRODUCT_MISMATCH o APPLICATION_NOT_READY (documentos o reglas del banco, en `details`) */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -13515,6 +14075,502 @@ export interface operations {
             };
             /** @description RESOURCE_NOT_FOUND */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    filing_responses_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                response_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FilingResponse"];
+                };
+            };
+            /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description PERMISSION_DENIED o CSRF_FAILED */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description RESOURCE_NOT_FOUND (inexistente o fuera del alcance) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    filing_responses_evidence_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                response_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["EvidenceUploadRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FilingResponse"];
+                };
+            };
+            /** @description VALIDATION_ERROR (sin archivo o vacío) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description PERMISSION_DENIED o CSRF_FAILED */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description RESOURCE_NOT_FOUND (inexistente o fuera del alcance) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description EVIDENCE_ALREADY_ATTACHED */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description PAYLOAD_TOO_LARGE */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description UNSUPPORTED_FILE_TYPE o FILE_TOO_LARGE */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description SERVICE_UNAVAILABLE (almacenamiento no disponible) */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    filing_responses_evidence_download: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                response_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentDownload"];
+                };
+            };
+            /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description PERMISSION_DENIED o CSRF_FAILED */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description RESOURCE_NOT_FOUND (inexistente o fuera del alcance) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description FILE_NOT_CLEAN */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description SERVICE_UNAVAILABLE (almacenamiento no disponible) */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    filings_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                filing_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Filing"];
+                };
+            };
+            /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description PERMISSION_DENIED o CSRF_FAILED */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description RESOURCE_NOT_FOUND (inexistente o fuera del alcance) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    filings_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                filing_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedFilingUpdateRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Filing"];
+                };
+            };
+            /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description PERMISSION_DENIED o CSRF_FAILED */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description RESOURCE_NOT_FOUND (inexistente o fuera del alcance) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description FILING_REFERENCE_EXISTS */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    filings_document_snapshots_list: {
+        parameters: {
+            query?: {
+                /** @description Un número de página dentro del conjunto de resultados paginado. */
+                page?: number;
+                /** @description Número de resultados a devolver por página. */
+                page_size?: number;
+            };
+            header?: never;
+            path: {
+                filing_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedFilingDocumentSnapshotList"];
+                };
+            };
+            /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description PERMISSION_DENIED o CSRF_FAILED */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description RESOURCE_NOT_FOUND (inexistente o fuera del alcance) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    filings_responses_list: {
+        parameters: {
+            query?: {
+                /** @description Un número de página dentro del conjunto de resultados paginado. */
+                page?: number;
+                /** @description Número de resultados a devolver por página. */
+                page_size?: number;
+            };
+            header?: never;
+            path: {
+                filing_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedFilingResponseList"];
+                };
+            };
+            /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description PERMISSION_DENIED o CSRF_FAILED */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description RESOURCE_NOT_FOUND (inexistente o fuera del alcance) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    filings_responses_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                filing_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FilingResponseCreateRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FilingResponse"];
+                };
+            };
+            /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description PERMISSION_DENIED o CSRF_FAILED */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description RESOURCE_NOT_FOUND (inexistente o fuera del alcance) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description STALE_VERSION, APPLICATION_CLOSED, INVALID_STATE_TRANSITION (el tipo no se admite en el estado actual), FILING_NOT_LATEST o RESPONSE_CORRECTION_NOT_ALLOWED */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

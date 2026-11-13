@@ -7,7 +7,8 @@ APPLICATION_NOT_READY``. No evalúa ni guarda reglas bancarias. **El contenido s
 aquí**: ``manifest`` guarda las versiones (ids, tamaño y SHA-256), la ruta de cada una
 dentro del ZIP y la huella documental, y el worker empaqueta exactamente esa lista. Si
 ya hay un trabajo ``PENDING``, ``RUNNING`` o ``COMPLETED`` sin vencer con la misma
-huella, se devuelve ese (decisión 14).
+huella, se devuelve ese (decisión 14), salvo que ya se haya usado en una radicación
+(paso 11): cada radicación necesita su propio paquete.
 
 **Contenido:** la versión vigente de cada slot vigente ``APPROVED`` y no vencido, en
 carpetas ``00_SOLICITUD`` y ``<nn>_<ROL>_<Nombre_Apellido>``, más ``manifest.json``
@@ -309,6 +310,8 @@ def _reusable(application: CreditApplication, fingerprint: str) -> DocumentPacka
             manifest__fingerprint=fingerprint,
         )
         .exclude(status=PackageJobStatus.COMPLETED, expires_at__lte=timezone.now())
+        # Un paquete radicado no se reutiliza (paso 11).
+        .exclude(filing__isnull=False)
         .select_related("requested_by", "output_file_object")
         .order_by("-created_at")
         .first()

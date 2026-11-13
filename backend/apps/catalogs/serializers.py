@@ -187,6 +187,11 @@ class WorkflowTransitionSerializer(serializers.ModelSerializer):
     required_permission = serializers.SerializerMethodField()
     guard_code = serializers.SerializerMethodField()
     roles = serializers.SerializerMethodField()
+    system_only = serializers.BooleanField(
+        read_only=True,
+        help_text="La ejecuta solo el servicio de su módulo (radicación o respuesta del "
+        "banco): `POST /status-transitions` la rechaza y no sale en las acciones disponibles.",
+    )
 
     class Meta:
         model = WorkflowTransition
@@ -201,6 +206,7 @@ class WorkflowTransitionSerializer(serializers.ModelSerializer):
             "guard_code",
             "roles",
             "is_active",
+            "system_only",
             "created_at",
             "updated_at",
         ]

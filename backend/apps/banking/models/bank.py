@@ -32,6 +32,9 @@ class Bank(models.Model):
     status = models.CharField(max_length=20, choices=BankStatus.choices, default=BankStatus.ACTIVE)
     # Indicaciones internas para el asesor; no se muestran al comprador.
     operational_notes = models.TextField(blank=True)
+    # Días que el banco suele tardar en responder una radicación. La radicación calcula
+    # su `target_response_at` (`filed_at` + días); nulo: sin fecha objetivo.
+    filing_response_days = models.PositiveSmallIntegerField(null=True, blank=True)
 
     class Meta:
         db_table = "banks"

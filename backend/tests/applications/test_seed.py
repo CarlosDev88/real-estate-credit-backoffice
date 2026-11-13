@@ -1,6 +1,9 @@
 """Semilla del módulo applications: permisos, catálogos y transiciones."""
 
+import importlib
+
 import pytest
+from django.db.models import QuerySet
 
 from apps.catalogs.models import Catalog, WorkflowTransition
 from apps.catalogs.workflow import (
@@ -45,12 +48,21 @@ def application_permissions(role_code: str) -> set[str]:
     return {code for code in role_permissions(role_code) if code.startswith("applications.")}
 
 
+# Las transiciones de `FILED` en adelante las siembra `filings` (tests/filings/test_seed.py).
+FILINGS_CODES = [
+    code
+    for code, *_ in importlib.import_module(
+        "apps.filings.migrations.0002_seed_catalogs_permissions_transitions"
+    ).TRANSITIONS
+]
+
+
+def own_transitions(flow_type: str) -> QuerySet[WorkflowTransition]:
+    return WorkflowTransition.objects.filter(flow_type=flow_type).exclude(code__in=FILINGS_CODES)
+
+
 def edges(flow_type: str) -> set[tuple[str, str]]:
-    return set(
-        WorkflowTransition.objects.filter(flow_type=flow_type).values_list(
-            "from_status", "to_status"
-        )
-    )
+    return set(own_transitions(flow_type).values_list("from_status", "to_status"))
 
 
 # --- Permisos ---------------------------------------------------------------------------
@@ -169,7 +181,7 @@ def test_only_ready_to_file_has_the_guard() -> None:
 
 
 def test_withdrawal_has_its_own_permission() -> None:
-    transitions = WorkflowTransition.objects.filter(flow_type=FlowType.APPLICATION)
+    transitions = own_transitions(FlowType.APPLICATION)
     for transition in transitions.select_related("required_permission"):
         expected = (
             "applications.withdraw"

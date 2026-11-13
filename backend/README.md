@@ -272,7 +272,7 @@ Each application gets a document checklist built from the published document req
 | `POST` | `/buyer/document-slots/{id}/uploads` | Buyer session, consents accepted |
 | `GET` | `/buyer/document-files/{id}/download` | Buyer session |
 
-Admins see every dossier and advisors the applications assigned to them (`404` outside their scope). Brokers and partners get `403` everywhere. Document operations never change the application version nor require `If-Match`; instead, a **dossier fingerprint** (a hash of the current slots and versions) is stored with every package and will be checked at filing time.
+Admins see every dossier and advisors the applications assigned to them (`404` outside their scope). Brokers and partners get `403` everywhere. Document operations never change the application version nor require `If-Match`; instead, a **dossier fingerprint** (a hash of the current slots and versions) is stored with every package and checked at filing time.
 
 ### Storage and Antivirus
 
@@ -391,6 +391,28 @@ The buyer portal shows the same progress (`progress` in `GET /api/v1/buyer/appli
 | Variable | Default | Purpose |
 | --- | --- | --- |
 | `DOCUMENT_PACKAGE_TTL_DAYS` | `7` | Days a completed package can be downloaded. |
+
+## Manual Filings and Bank Responses
+
+The `filings` module (API §20) records the manual delivery of the package to the bank and every answer the bank gives. The API never talks to a bank.
+
+| Method | Path | Access |
+| --- | --- | --- |
+| `GET` | `/applications/{id}/filings`, `/filings/{id}` | `filings.read` in scope; brokers do not get `comment`. |
+| `POST` | `/applications/{id}/filings` | `filings.create`, admin or assigned advisor. |
+| `PATCH` | `/filings/{id}` | `filings.update`, admin or assigned advisor; only `external_reference` and `comment`. |
+| `GET` | `/filings/{id}/document-snapshots` | Admin or assigned advisor. |
+| `GET` | `/filings/{id}/responses`, `/filing-responses/{id}` | `filings.read` in scope; brokers get only the public fields. |
+| `POST` | `/filings/{id}/responses` | `filings.record_response`, admin or assigned advisor. |
+| `POST` | `/filing-responses/{id}/evidence` | Whoever recorded the response, or an admin; once. |
+| `GET` | `/filing-responses/{id}/evidence/download` | Admin or assigned advisor. |
+
+- **Filing:** needs `READY_TO_FILE`, the financing product, the dossier and bank rules guard, and a completed, unexpired package of the application with the current dossier fingerprint, not used before. It stores one snapshot per packaged version, locks those slots and moves the application to `FILED`.
+- **Responses:** `RECEIVED`, `IN_ANALYSIS`, `RETURNED`, `APPROVED`, `REJECTED`, `DISBURSED` and `OTHER`, only against the latest filing. Each one moves the application through a system transition (`FILE` and `BANK_*`, `workflow_transitions.system_only`), which `/status-transitions` rejects. `START_LEGALIZATION` (`APPROVED` → `LEGALIZATION`) and `MARK_READY_TO_REFILE` (`BANK_OBSERVATION` → `READY_TO_FILE`, with no open bank observation) are manual.
+- **Returns:** each observed slot gets a bank observation and a rejection review. After `FILED` the buyer can replace only those slots; approving a newer version resolves the observation.
+- **Evidence:** PDF, JPG or PNG up to 10 MB, validated like documents and scanned by `scan_filing_evidence`. `requeue_pending_scans` also queues pending evidence again.
+- **Buyer:** `GET /buyer/applications/{id}` includes `latest_bank_update`, the latest response with a public message, never the internal comment.
+- **Events:** `filing_created` and `filing_response_recorded`, sent after commit, following `application_status_changed`.
 
 ## Internal Authentication
 
