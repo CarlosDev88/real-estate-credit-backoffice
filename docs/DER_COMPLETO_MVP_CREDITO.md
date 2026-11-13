@@ -235,6 +235,7 @@ erDiagram
         varchar code UK
         varchar name
         varchar short_name
+        smallint filing_response_days
     }
     BANK_PRODUCTS {
         uuid id PK
@@ -601,6 +602,8 @@ erDiagram
         uuid channel_item_id FK
         uuid filed_by_id FK
         int sequence_number
+        varchar status
+        timestamptz target_response_at
     }
     FILING_DOCUMENT_SNAPSHOTS {
         uuid id PK
@@ -652,6 +655,8 @@ erDiagram
 ```
 
 `filing_document_snapshots` es la tabla intermedia N:M entre radicaciones y versiones documentales. Conserva la evidencia exacta de lo enviado. Una observación señala únicamente el slot que el comprador puede corregir después de radicar.
+
+Catálogos de la radicación: `filing_channel` (canal de entrega), `filing_response_type` (incluye `DISBURSED`), `filing_return_reason` y `filing_rejection_reason` (motivo de la respuesta), y `document_rejection_reason` (motivo de cada observación). `banks.filing_response_days` calcula `filings.target_response_at`. Las transiciones `FILE` y `BANK_*` son de sistema (`workflow_transitions.system_only`).
 
 ## 10. Tareas, actividad, notificaciones y plataforma
 

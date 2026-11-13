@@ -265,6 +265,8 @@ CREATE TABLE banks (
     tax_id VARCHAR(30),
     status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
     operational_notes TEXT,
+    -- Días de respuesta a una radicación: target_response_at = filed_at + días (el FNA: 7).
+    filing_response_days SMALLINT CHECK (filing_response_days IS NULL OR filing_response_days >= 0),
     CONSTRAINT ck_banks_status CHECK (status IN ('ACTIVE', 'INACTIVE'))
 );
 
@@ -340,6 +342,8 @@ CREATE TABLE workflow_transitions (
     required_permission_id UUID REFERENCES permissions(id) ON DELETE RESTRICT,
     guard_code VARCHAR(80),
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    -- TRUE: solo la ejecuta el servicio de su módulo (FILE y BANK_*); /status-transitions la rechaza.
+    system_only BOOLEAN NOT NULL DEFAULT FALSE,
     CONSTRAINT uq_workflow_transitions_flow_code UNIQUE (flow_type, code),
     CONSTRAINT ck_workflow_transitions_flow CHECK (flow_type IN ('OPPORTUNITY', 'APPLICATION', 'PROJECT')),
     CONSTRAINT ck_workflow_transitions_states CHECK (from_status <> to_status)
@@ -797,6 +801,7 @@ CREATE TABLE filings (
     target_response_at TIMESTAMPTZ,
     comment TEXT,
     CONSTRAINT uq_filings_application_sequence UNIQUE (application_id, sequence_number),
+    CONSTRAINT ck_filings_status CHECK (status IN ('FILED', 'RECEIVED', 'IN_ANALYSIS', 'RETURNED', 'APPROVED', 'REJECTED', 'DISBURSED')),
     CONSTRAINT ck_filings_target CHECK (target_response_at IS NULL OR target_response_at >= filed_at)
 );
 

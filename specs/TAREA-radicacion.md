@@ -276,3 +276,38 @@ _(las agrega el agente)_
 7. **`PATCH` sin `If-Match`.** La radicación no tiene versión y corregirla no cambia la versión de la solicitud, así que no lleva `If-Match` ni `ETag`. Se admite en cualquier estado de la solicitud. El `POST` responde `201` con `ETag`, la versión nueva de la solicitud.
 8. **Respuesta.** Además de los campos de la spec, lleva `application_id`, `package_job_id`, `created_at` y `updated_at`. `bank_product` usa la referencia de las solicitudes (`id`, `code`, `name`, `product_type` y `bank`). `responses_count` cuenta todas las respuestas, también las correcciones. Las listas (radicaciones y snapshots) son paginadas, como el resto de la API.
 9. **Snapshot.** Cada uno lleva `slot_id`, `document_file_id`, `version_number`, `document_type_code`, `client_filename`, `mime_type`, `size_bytes`, `sha256` y `created_at`. Los exonerados no tienen archivo, así que no tienen snapshot.
+
+### Parte 3
+1. **Campos por tipo.** Además de los obligatorios, los campos propios de un tipo (`reason_code`, `observations`, montos, plazo y vigencia) se rechazan en otro (`400`, "No aplica a X"). `reason_code` se valida contra el catálogo de su tipo. Los montos y el plazo son ≥ 1 y `valid_until` no puede ser anterior a la fecha de la respuesta.
+2. **Errores nuevos** (en API §5.5):
+   - `409 FILING_NOT_LATEST`: respuesta contra una radicación vieja;
+   - `409 RESPONSE_CORRECTION_NOT_ALLOWED`;
+   - `409 EVIDENCE_ALREADY_ATTACHED`;
+   - `409 DOCUMENT_OBSERVED` (punto 5).
+   Un tipo fuera de sus estados responde `409 INVALID_STATE_TRANSITION`.
+3. **Sin cambio de estado, sin cambio de versión.** Un `RECEIVED` con la solicitud ya en `FILING_VALIDATION`, un `OTHER` o una corrección no aumentan la versión de la solicitud. El `ETag` de la respuesta lo refleja.
+4. **Corrección.** "Última" es la más reciente por `created_at` en esa radicación. Una corrección no revisa los estados admitidos, porque no cambia ninguno; la solicitud terminada sigue rechazándose (`409 APPLICATION_CLOSED`).
+5. **Observaciones.**
+   - Cada slot observado debe ser de la solicitud, estar vigente, tener versión vigente y no estar exonerado, y no repetirse (`400` en `observations[i].document_slot_id`).
+   - Primero se crea la observación y después la revisión de rechazo con `reviews.review_slot`, porque después de `FILED` revisar exige una observación abierta. La revisión queda a nombre del asesor que registra la respuesta, con la nota interna "Observación del banco en la radicación #n.".
+   - Resolver exige aprobar una versión **cargada después** de la observación. Aprobar otra vez la versión observada responde `409 DOCUMENT_OBSERVED`; si no, el slot quedaría aprobado con la observación abierta y la re-radicación bloqueada.
+6. **Evidencia.**
+   - El límite de 10 MB es una constante de `filings` (`EVIDENCE_MAX_BYTES`), porque la spec no permite tocar `settings` fuera de apps y urls. El cuerpo de más de 10,5 MB se corta con el límite que ya usan los documentos.
+   - Se guarda con el prefijo `evidence/`.
+   - El análisis va por una tarea propia, `scan_filing_evidence`, con los mismos reintentos. Usa `scans.inspect_file_object` (antes `_inspect`, ahora público) y solo cambia el estado del archivo.
+   - `requeue_pending_scans` también reencola las evidencias pendientes.
+   - La descarga usa `downloads.file_object_link`, que ahora comparte `download_link`.
+   - Cargar exige además `filings.record_response`, así que el broker recibe `403`. Descargar sin evidencia responde `404`.
+7. **Lo que ve el broker.** `id`, `filing_id`, `response_type`, `response_type_label`, `received_at`, `public_message` y `created_at`. Un usuario que es asesor y broker a la vez no se considera restringido y ve todo, igual que en la radicación.
+8. **Comprador.** `latest_bank_update` busca en todas las radicaciones de la solicitud, la más reciente por `received_at`, con una consulta por detalle. Va en `apps/identity/buyer_portal_serializers.py`, un cambio mínimo de un campo. Se actualizó la prueba del DTO del portal (`tests/applications/buyer_access/test_portal_api.py`).
+9. **Eventos.** `filing_response_recorded` lleva `response`, `filing`, `application`, `status_changed` y `actor`, y se emite después de `application_status_changed`.
+10. **Prueba que ya fallaba.** `tests/identity/test_passwords.py` falla al correrlo solo (error de `freezegun`: `fake_time() takes 0 positional arguments`). Falla igual en el código de `HEAD` exportado con `git archive`. En la suite completa casi siempre pasa; falló una vez en la Parte 1 y otra en la Parte 3. No es de esta rama.
+
+### Cierre (sin traer `master`, según el buzón)
+- **Docs:**
+  - API: §20 reescrita (tipos reales, `expected_version`, precondiciones con sus errores, evidencia y lo que ve cada actor), §27.3 alineada y §5.5 con los códigos nuevos. La fila de §25 también se alineó: broker con seguimiento de las originadas, partner `403` y comprador con `latest_bank_update`.
+  - SQL: `banks.filing_response_days`, `workflow_transitions.system_only` y `ck_filings_status`.
+  - DER: atributos nuevos y los catálogos de la radicación.
+  - Modelo de datos: los campos nuevos y el catálogo de cada FK.
+  - README: sección "Manual Filings and Bank Responses". El módulo ya estaba en la lista.
+- **Pendiente hasta que Carlos traiga `master`:** resolver conflictos (contrato, `schema.d.ts`, README y serializers del comprador), regenerar el contrato y los tipos del front, y extender `seed_demo_data` con las tres solicitudes radicadas.

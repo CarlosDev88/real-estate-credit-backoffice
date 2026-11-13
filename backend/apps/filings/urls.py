@@ -17,4 +17,25 @@ urlpatterns = [
         views.FilingDocumentSnapshotListView.as_view(),
         name="filing-document-snapshots",
     ),
+    # Respuestas del banco (API §20.2)
+    path(
+        "filings/<uuid:filing_id>/responses",
+        views.FilingResponseListView.as_view(),
+        name="filing-responses",
+    ),
+    path(
+        "filing-responses/<uuid:response_id>",
+        views.FilingResponseDetailView.as_view(),
+        name="filing-response-detail",
+    ),
+    path(
+        "filing-responses/<uuid:response_id>/evidence",
+        views.FilingResponseEvidenceView.as_view(),
+        name="filing-response-evidence",
+    ),
+    path(
+        "filing-responses/<uuid:response_id>/evidence/download",
+        views.FilingResponseEvidenceDownloadView.as_view(),
+        name="filing-response-evidence-download",
+    ),
 ]

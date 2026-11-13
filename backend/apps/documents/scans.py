@@ -37,7 +37,9 @@ logger = logging.getLogger(__name__)
 SECURITY_REJECTION_MESSAGE = "El archivo no pasó la validación de seguridad."
 
 
-def _inspect(file_object: FileObject) -> ScanResult:
+def inspect_file_object(file_object: FileObject) -> ScanResult:
+    """Lee el objeto guardado, compara su huella y lo pasa por el antivirus. Lo usan
+    también las evidencias de las respuestas del banco (paso 11)."""
     with get_storage().open(file_object.object_key) as stream:
         content = stream.read()
     if hashlib.sha256(content).hexdigest() != file_object.sha256:
@@ -95,4 +97,4 @@ def scan_document_file(file_object_id: uuid.UUID) -> str | None:
         return None
     if file_object.scan_status != ScanStatus.PENDING:
         return file_object.scan_status
-    return _apply(file_object_id, _inspect(file_object))
+    return _apply(file_object_id, inspect_file_object(file_object))

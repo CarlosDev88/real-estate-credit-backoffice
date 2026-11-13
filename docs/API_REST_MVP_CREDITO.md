@@ -200,6 +200,10 @@ Las cookies de sesión usan `HttpOnly`, `Secure`, `SameSite=Lax` y `Path=/`. La 
 | `PACKAGE_ALREADY_FILED` | Radicación con un paquete que ya se usó en otra radicación (`409`). |
 | `BANK_PRODUCT_MISMATCH` | Radicación con un producto distinto del de la financiación de la solicitud (`422`). |
 | `FILING_REFERENCE_EXISTS` | Ya hay una radicación con esa `external_reference` para el mismo producto (`409`). |
+| `FILING_NOT_LATEST` | Respuesta del banco contra una radicación que no es la última de la solicitud (`409`). |
+| `RESPONSE_CORRECTION_NOT_ALLOWED` | Corrección de una respuesta que no es la última de la radicación, de otro tipo, o de un tipo distinto de `RECEIVED`, `IN_ANALYSIS` u `OTHER` (`409`). |
+| `EVIDENCE_ALREADY_ATTACHED` | La respuesta del banco ya tiene su evidencia; no se reemplaza (`409`). |
+| `DOCUMENT_OBSERVED` | Aprobación de la versión que el banco observó: la observación solo se resuelve aprobando la versión nueva que cargue el comprador (`409`). |
 | `REQUIREMENT_SCOPE_EXISTS` | Ya existe un requisito documental con ese alcance: se edita para crear una versión nueva (`409`). |
 | `REQUIREMENT_DRAFT_EXISTS` | El requisito ya tiene un borrador (`409`). |
 | `REQUIREMENT_EXPIRED` | La vigencia del requisito ya terminó y no se publica (`422`). |
@@ -1302,17 +1306,22 @@ Descarga: `{url, expires_at}` como la de las versiones (§19.1), con `Content-Di
 
 ## 20. Radicación manual y respuestas del banco
 
-La radicación del MVP se registra después de que el asesor descargue el paquete y lo entregue por el canal externo definido por el banco. La API no se comunica con ninguna entidad financiera.
+La radicación del MVP se registra después de que el asesor descarga el paquete y lo entrega por el canal que defina el banco. La API no se comunica con ninguna entidad financiera: la radicación y cada respuesta del banco se registran a mano.
+
+Acceso:
+
+- **Lectura** (`filings.read`): el administrador, el asesor y el broker, sobre las solicitudes de su alcance (el broker, las de las oportunidades que originó). Fuera del alcance: `404`.
+- **Escritura**: `filings.create`, `filings.update` y `filings.record_response`, solo para el administrador o el asesor asignado a la solicitud (`403`). Lo mismo para ver los snapshots y descargar la evidencia.
 
 ### 20.1 Radicaciones
 
 | Método | Ruta | Permiso | Descripción |
 | --- | --- | --- | --- |
-| `GET` | `/applications/{application_id}/filings` | Actor con alcance | Historial de radicaciones y re-radicaciones. |
-| `POST` | `/applications/{application_id}/filings` | `filings.create` | Registra la entrega manual al banco. |
-| `GET` | `/filings/{filing_id}` | Actor con alcance | Detalle y estado de la radicación. |
-| `PATCH` | `/filings/{filing_id}` | `filings.update` | Corrige referencia o comentario, sin alterar evidencias históricas. |
-| `GET` | `/filings/{filing_id}/document-snapshots` | `ADMIN` o asesor asignado | Versiones exactas que conformaron la radicación. |
+| `GET` | `/applications/{application_id}/filings` | `filings.read` y alcance | Historial de radicaciones y re-radicaciones, la más reciente primero (paginado). |
+| `POST` | `/applications/{application_id}/filings` | `filings.create`, administrador o asesor asignado | Registra la entrega manual al banco. |
+| `GET` | `/filings/{filing_id}` | `filings.read` y alcance | Detalle y estado de la radicación. |
+| `PATCH` | `/filings/{filing_id}` | `filings.update`, administrador o asesor asignado | Corrige `external_reference` o `comment`, sin tocar snapshots ni respuestas. |
+| `GET` | `/filings/{filing_id}/document-snapshots` | Administrador o asesor asignado | Versiones exactas que se entregaron al banco (paginado). |
 
 `POST /applications/{application_id}/filings`:
 
@@ -1320,58 +1329,110 @@ La radicación del MVP se registra después de que el asesor descargue el paquet
 {
   "bank_product_id": "uuid",
   "package_job_id": "uuid",
+  "channel_code": "BANK_PORTAL",
   "external_reference": "RAD-2026-008154",
   "filed_at": "2026-08-25T14:30:00Z",
-  "channel_code": "BANK_PORTAL",
-  "comment": "Radicada manualmente por el asesor."
+  "comment": "Radicada manualmente por el asesor.",
+  "expected_version": 4
 }
 ```
 
-Respuesta resumida:
+- `channel_code` es del catálogo `filing_channel` (`BANK_PORTAL`, `EMAIL`, `IN_PERSON`).
+- `filed_at` no puede ser futura.
+- `expected_version` va en el cuerpo, como en `/status-transitions`, en lugar de `If-Match`.
+- `external_reference` es única por producto (`409 FILING_REFERENCE_EXISTS`). Vacía se guarda como nula, igual que `comment`.
+- `Idempotency-Key` queda pendiente, como en el resto de la API (sección 6): la idempotencia natural es que un paquete se radica una sola vez.
+
+Precondiciones, cada una con su error:
+
+| Precondición | Error |
+| --- | --- |
+| `expected_version` coincide | `409 STALE_VERSION` |
+| La solicitud no terminó | `409 APPLICATION_CLOSED` |
+| La solicitud está en `READY_TO_FILE` | `409 INVALID_STATE_TRANSITION` |
+| `bank_product_id` es el producto de la financiación | `422 BANK_PRODUCT_MISMATCH` |
+| Documentos obligatorios `APPROVED` o `WAIVED`, y reglas del banco sin bloqueos | `422 APPLICATION_NOT_READY`, con los `details` de la guarda de `READY_TO_FILE`. La evaluación bancaria que haga queda guardada. |
+| El paquete es de esta solicitud | `400 VALIDATION_ERROR` en `package_job_id` |
+| El paquete no se usó en otra radicación | `409 PACKAGE_ALREADY_FILED` |
+| El paquete está terminado y vigente | `409 PACKAGE_NOT_READY` o `409 PACKAGE_EXPIRED` |
+| La huella documental del paquete es la vigente | `409 PACKAGE_OUTDATED` |
+
+Efectos, en una sola transacción:
+
+- crea la radicación con el `sequence_number` siguiente (1, 2…) y `target_response_at` = `filed_at` + `banks.filing_response_days`, o nulo si el banco no tiene el dato (el FNA: 7 días);
+- guarda un snapshot por cada versión del manifiesto del paquete (los exonerados no tienen archivo) y bloquea esos documentos (`locked_at`);
+- pasa la solicitud a `FILED` con la transición de sistema `FILE`, con historial y `application_status_changed`;
+- emite `filing_created` al confirmar.
+
+Responde `201` con `ETag` (la versión nueva de la solicitud):
 
 ```json
 {
-  "data": {
-    "id": "uuid",
-    "sequence": 1,
-    "status": "FILED",
-    "external_reference": "RAD-2026-008154",
-    "application_status": "FILED",
-    "filed_by": { "id": "uuid", "name": "Ana Gómez" },
-    "filed_at": "2026-08-25T14:30:00Z"
-  }
+  "id": "uuid",
+  "application_id": "uuid",
+  "sequence_number": 1,
+  "status": "FILED",
+  "status_label": "Radicada",
+  "bank_product": { "id": "uuid", "code": "MORTGAGE", "name": "Crédito hipotecario", "product_type": { "code": "MORTGAGE", "label": "Hipotecario" }, "bank": { "id": "uuid", "code": "FNA", "name": "Fondo Nacional del Ahorro", "short_name": "FNA" } },
+  "channel": { "code": "BANK_PORTAL", "label": "Portal del banco" },
+  "external_reference": "RAD-2026-008154",
+  "package_job_id": "uuid",
+  "filed_by": { "id": "uuid", "name": "Ana Gómez" },
+  "filed_at": "2026-08-25T14:30:00Z",
+  "target_response_at": "2026-09-01T14:30:00Z",
+  "comment": "Radicada manualmente por el asesor.",
+  "responses_count": 0,
+  "application_status": "FILED",
+  "application_status_label": "Radicada",
+  "created_at": "2026-08-25T14:31:02Z",
+  "updated_at": "2026-08-25T14:31:02Z"
 }
 ```
 
-Precondiciones:
+El broker no recibe `comment`. `responses_count` cuenta todas las respuestas, también las correcciones.
 
-- La solicitud tiene banco y producto seleccionados.
-- Todos los documentos obligatorios están `APPROVED` o `WAIVED`.
-- La evaluación operativa de reglas no tiene bloqueos.
-- El asesor autenticado está asignado a la solicitud.
-- El paquete corresponde a la versión actual del expediente.
-- La operación exige `Idempotency-Key` e `If-Match`.
+`PATCH /filings/{filing_id}` admite solo `external_reference` y `comment` (`null` o vacío los borra). La radicación no tiene versión y corregirla no cambia la versión de la solicitud: no lleva `If-Match` ni `ETag`.
 
-Al crearla, la API cambia la solicitud a `FILED`, bloquea la edición ordinaria, guarda el snapshot documental y crea el evento de auditoría.
+Snapshot: `id`, `slot_id`, `document_file_id`, `version_number`, `document_type_code`, `client_filename`, `mime_type`, `size_bytes`, `sha256` y `created_at`.
 
 ### 20.2 Respuestas y observaciones del banco
 
 | Método | Ruta | Permiso | Descripción |
 | --- | --- | --- | --- |
-| `GET` | `/filings/{filing_id}/responses` | Actor con alcance | Historial cronológico de respuestas. |
-| `POST` | `/filings/{filing_id}/responses` | `filings.record_response` | Registra una respuesta recibida manualmente. |
-| `GET` | `/filing-responses/{response_id}` | Actor con alcance | Detalle de la respuesta y sus motivos. |
-| `GET` | `/filing-responses/{response_id}/evidence/download` | `ADMIN` o asesor asignado | Descarga evidencia adjunta, si existe. |
+| `GET` | `/filings/{filing_id}/responses` | `filings.read` y alcance | Historial cronológico, incluidas las correcciones (paginado). |
+| `POST` | `/filings/{filing_id}/responses` | `filings.record_response`, administrador o asesor asignado | Registra una respuesta recibida manualmente. |
+| `GET` | `/filing-responses/{response_id}` | `filings.read` y alcance | Detalle de la respuesta, con sus observaciones. |
+| `POST` | `/filing-responses/{response_id}/evidence` | `filings.record_response`; quien la registró o un administrador | Adjunta la evidencia, una sola vez. |
+| `GET` | `/filing-responses/{response_id}/evidence/download` | `filings.read`; administrador o asesor asignado | URL firmada de la evidencia, si el análisis la dejó limpia. |
 
-Tipos admitidos:
+Cuerpo de `POST /filings/{filing_id}/responses`: `response_type`, `received_at` (no futura ni anterior a `filed_at`), `external_reference`, `reason_code`, `public_message`, `internal_comment`, `observations: [{document_slot_id, reason_code, message}]`, `approved_amount_cop`, `approved_term_months`, `valid_until`, `disbursed_amount_cop`, `corrects_response_id` y `expected_version`.
 
-| `response_type` | Nuevo estado de solicitud | Datos obligatorios |
-| --- | --- | --- |
-| `UNDER_REVIEW` | `UNDER_BANK_REVIEW` | Fecha de respuesta. |
-| `RETURNED` | `RETURNED` | Motivo, mensaje para comprador y slots observados. |
-| `APPROVED` | `APPROVED` | Monto aprobado, plazo, vigencia y condiciones conocidas. |
-| `REJECTED` | `REJECTED` | Código de motivo y explicación visible para el comprador. |
-| `DISBURSED` | `DISBURSED` | Fecha y monto desembolsado. |
+Tipos admitidos (catálogo `filing_response_type`):
+
+| `response_type` | Estados de la solicitud admitidos | Obligatorio | Efecto |
+| --- | --- | --- | --- |
+| `RECEIVED` | `FILED`, `FILING_VALIDATION` | — | → `FILING_VALIDATION` (si ya está ahí, no cambia). |
+| `IN_ANALYSIS` | `FILED`, `FILING_VALIDATION` | — | → `CREDIT_ANALYSIS`. |
+| `RETURNED` | `FILED`, `FILING_VALIDATION`, `CREDIT_ANALYSIS` | `reason_code` (`filing_return_reason`), `public_message` y al menos una observación | → `BANK_OBSERVATION`, con las observaciones. |
+| `APPROVED` | `FILED`, `FILING_VALIDATION`, `CREDIT_ANALYSIS` | `approved_amount_cop`, `approved_term_months` y `public_message`; `valid_until` es opcional | → `APPROVED`. |
+| `REJECTED` | `FILED`, `FILING_VALIDATION`, `CREDIT_ANALYSIS`, `BANK_OBSERVATION` | `reason_code` (`filing_rejection_reason`) y `public_message` | → `REJECTED`. |
+| `DISBURSED` | `LEGALIZATION` | `disbursed_amount_cop` | → `DISBURSED`. La fecha es `received_at`; el monto lo usará el módulo de comisiones. |
+| `OTHER` | Cualquiera no terminal | `internal_comment` | No cambia el estado. |
+
+- Un tipo en un estado no admitido: `409 INVALID_STATE_TRANSITION`. Falta un obligatorio, o llega un campo de otro tipo (`reason_code`, `observations`, montos, plazo o vigencia): `400 VALIDATION_ERROR`.
+- Solo se registra contra la **última radicación** de la solicitud: una anterior responde `409 FILING_NOT_LATEST`.
+- La radicación toma el estado del tipo de la respuesta (`RECEIVED`, `IN_ANALYSIS`, `RETURNED`, `APPROVED`, `REJECTED` o `DISBURSED`), salvo con `OTHER`.
+- El cambio de estado usa las transiciones de sistema `BANK_*` (historial y `application_status_changed`). Al confirmar se emite `filing_response_recorded`, que usarán las notificaciones (sección 21) y las tareas.
+- Responde `201` con `ETag` (la versión de la solicitud; solo aumenta si cambió el estado).
+
+**Legalización.** El asesor pasa de `APPROVED` a `LEGALIZATION` por `POST /status-transitions` (transición manual `START_LEGALIZATION`). El desembolso se registra después como una respuesta `DISBURSED`.
+
+**Devolución.** Por cada observación (un slot de la solicitud, vigente, con una versión cargada y no exonerado):
+
+- se crea la observación y se rechaza la versión vigente del slot con el servicio de revisiones (sección 19): motivo `reason_code` (`document_rejection_reason`) y `message` como comentario al comprador, que lo ve como "Corrígelo";
+- después de `FILED`, el comprador solo reemplaza los documentos con una observación abierta;
+- cuando el asesor **aprueba una versión nueva** del slot, la observación queda resuelta. Aprobar otra vez la versión observada responde `409 DOCUMENT_OBSERVED`;
+- con todas resueltas, el asesor marca "Lista para radicar de nuevo" (`MARK_READY_TO_REFILE`, de `BANK_OBSERVATION` a `READY_TO_FILE`; con alguna abierta, `422 APPLICATION_NOT_READY` con `BANK_OBSERVATION_OPEN`), pide un paquete nuevo y crea otra radicación. La solicitud no pasa por `WAITING_DOCUMENTS`.
 
 Ejemplo de devolución:
 
@@ -1380,7 +1441,7 @@ Ejemplo de devolución:
   "response_type": "RETURNED",
   "received_at": "2026-08-29T19:10:00Z",
   "reason_code": "DOCUMENT_CORRECTION",
-  "buyer_message": "El banco solicita actualizar dos documentos.",
+  "public_message": "El banco solicita actualizar dos documentos.",
   "internal_comment": "Respuesta recibida por correo.",
   "observations": [
     {
@@ -1394,7 +1455,7 @@ Ejemplo de devolución:
       "message": "Volver a cargar el desprendible de nómina de julio."
     }
   ],
-  "evidence_file_id": "uuid"
+  "expected_version": 6
 }
 ```
 
@@ -1407,12 +1468,26 @@ Ejemplo de aprobación:
   "approved_amount_cop": 285000000,
   "approved_term_months": 240,
   "valid_until": "2026-12-03",
-  "buyer_message": "Tu crédito fue aprobado. Tu asesor se comunicará contigo para continuar.",
-  "conditions": "Sujeto a legalización del inmueble."
+  "public_message": "Tu crédito fue aprobado. Tu asesor se comunicará contigo para continuar.",
+  "internal_comment": "Sujeto a legalización del inmueble.",
+  "expected_version": 7
 }
 ```
 
-Cada respuesta es inmutable. Una corrección se registra como una nueva respuesta vinculada a la anterior. `RETURNED`, `APPROVED` y `REJECTED` generan una notificación al comprador; una devolución marca únicamente los slots observados como `REJECTED`. Una nueva radicación se crea después de corregir y aprobar esos documentos.
+**Corrección.** Cada respuesta es inmutable. `corrects_response_id` se acepta solo si la respuesta corregida es la última de esa radicación, del mismo tipo, y es `RECEIVED`, `IN_ANALYSIS` u `OTHER`. Corregir no cambia ningún estado. Las demás correcciones quedan fuera del MVP (`409 RESPONSE_CORRECTION_NOT_ALLOWED`).
+
+**Evidencia.** `POST /filing-responses/{response_id}/evidence` es `multipart/form-data` con `file`:
+
+- PDF, JPG o PNG de hasta 10 MB, validados como los documentos: tipo real por su contenido, extensión y tamaño (`422 UNSUPPORTED_FILE_TYPE` o `422 FILE_TOO_LARGE`). Un cuerpo de más de 10,5 MB se corta antes de leerlo (`413 PAYLOAD_TOO_LARGE`).
+- Se guarda en el almacenamiento privado como un `file_object` y pasa por el mismo análisis antivirus (`scan_filing_evidence`; `requeue_pending_scans` también la retoma).
+- Una sola vez por respuesta: `409 EVIDENCE_ALREADY_ATTACHED`.
+- La descarga es una URL prefirmada de corta duración (como las versiones de los documentos), solo con el análisis `CLEAN` (`409 FILE_NOT_CLEAN`); sin evidencia, `404`.
+
+**Lo que ve cada actor de una respuesta:**
+
+- **Administrador y asesor:** todo. Respuesta: `id`, `filing_id`, `response_type`, `response_type_label`, `received_at`, `public_message`, `external_reference`, `reason` (`{code, label}`), `internal_comment`, `observations` (`id`, `document_slot_id`, `reason`, `message`, `resolved_at`, `resolved_by_file_id`, `created_at`), `approved_amount_cop`, `approved_term_months`, `valid_until`, `disbursed_amount_cop`, `evidence` (`filename`, `mime_type`, `size_bytes`, `scan_status`, `scanned_at`, `uploaded_at`), `recorded_by`, `corrects_response_id` y `created_at`.
+- **Broker:** `id`, `filing_id`, `response_type`, `response_type_label`, `received_at`, `public_message` y `created_at`. Nunca `internal_comment`, evidencia ni montos.
+- **Comprador:** `GET /buyer/applications/{id}` trae `latest_bank_update`: la última respuesta con `public_message`, como `{response_type, response_type_label, received_at, public_message}`, o `null` si no hay. Nunca `internal_comment` (REQUERIMIENTOS §4.5).
 
 ## 21. Actividad, notas, consentimientos y notificaciones
 
@@ -1752,7 +1827,7 @@ La auditoría es de solo lectura desde la API. Registra autenticación, enlaces 
 | Proyectos | Todo | Lectura relacionada | Lectura relacionada | CRUD propio | Lectura del asociado |
 | Solicitudes | Todo | Asignadas | Originadas | Originadas | Su solicitud |
 | Expediente | Todo | Revisar, exonerar, descargar y empaquetar asignadas | No (`403`) | No (`403`) | Cargar y ver los suyos |
-| Radicación/respuestas | Todo | Gestionar asignadas | Solo seguimiento | Solo seguimiento | Estado visible |
+| Radicación/respuestas | Todo | Gestionar asignadas | Seguimiento de las originadas: tipo, fecha y mensaje público | No (`403`) | Última novedad pública (`latest_bank_update`) |
 | Bancos, reglas y requisitos | CRUD/publicar | Lectura | Lectura pública aplicable | Lectura pública aplicable | Opciones aplicables |
 | Auditoría | Todo | No, salvo actividad funcional | No | No | No |
 | Comisiones | Planes, liquidación y pagos | Solo su parte | Solo su parte | No | No |
@@ -1807,11 +1882,13 @@ Al superar el límite se retorna `429 RATE_LIMITED` y `Retry-After`. Los número
 1. El asesor genera el paquete con `POST /applications/{id}/document-package-jobs`.
 2. Consulta el trabajo y descarga el resultado.
 3. Entrega manualmente los documentos al banco.
-4. Registra la radicación con `POST /applications/{id}/filings`.
-5. Registra `RETURNED` en `POST /filings/{id}/responses` y señala los slots observados.
-6. El comprador accede con un enlace vigente/nuevo y reemplaza solamente esos documentos.
-7. El asesor revisa las nuevas versiones, genera otro paquete y crea una nueva radicación.
-8. Cuando llega respuesta, registra `APPROVED` o `REJECTED`; el cliente ve estado y motivo permitido.
+4. Registra la radicación con `POST /applications/{id}/filings` (`package_job_id` y `expected_version`). La solicitud pasa a `FILED` y los documentos entregados quedan en `/document-snapshots`.
+5. Registra el avance del banco en `POST /filings/{id}/responses`: `RECEIVED` (→ `FILING_VALIDATION`) e `IN_ANALYSIS` (→ `CREDIT_ANALYSIS`).
+6. Registra `RETURNED` con los slots observados. La solicitud pasa a `BANK_OBSERVATION` y esos documentos quedan `REJECTED` con el mensaje del banco.
+7. El comprador accede con un enlace vigente o nuevo y reemplaza solamente esos documentos.
+8. El asesor aprueba las versiones nuevas, lo que resuelve las observaciones. Marca la solicitud lista para radicar de nuevo (`MARK_READY_TO_REFILE`), genera otro paquete y crea una nueva radicación (`sequence_number` 2).
+9. Cuando llega la decisión, registra `APPROVED` o `REJECTED`. El comprador ve el estado y el mensaje público (`latest_bank_update`), nunca la nota interna.
+10. Con `APPROVED`, inicia la legalización (`START_LEGALIZATION`) y, al desembolsar, registra `DISBURSED` con el monto.
 
 ### 27.4 Solicitud originada por constructora
 
