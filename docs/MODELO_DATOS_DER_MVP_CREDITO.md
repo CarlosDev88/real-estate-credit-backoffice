@@ -1156,6 +1156,8 @@ Línea de tiempo funcional y notas del caso.
 
 Índices: (`application_id`, `created_at DESC`), (`opportunity_id`, `created_at DESC`), (`client_id`, `created_at DESC`).
 
+En la implementación (`apps/activity`): la tabla es inmutable (no hay edición ni borrado); `message` es texto vacío cuando no hay detalle; `event_type` toma los valores de API §21.1 (`APPLICATION_CREATED`, `STATUS_CHANGED`, `DOCUMENT_UPLOADED`, `NOTE_ADDED`, etc.). Las notas internas son filas `NOTE_ADDED` con visibilidad `INTERNAL` y el permiso `applications.add_note` (`ADMIN` y `ADVISOR`).
+
 ### 10.2 `notifications`
 
 Mensaje de negocio que debe conocer un destinatario.

@@ -656,33 +656,46 @@ Si existe `project_id`, debe estar `ACTIVE`. El partner no usa estos endpoints e
 
 | Método | Ruta | Permiso | Filtros | Respuesta |
 | --- | --- | --- | --- | --- |
-| `GET` | `/workday/applications` | `ADMIN`, `ADVISOR` | `stage`, `bank_id`, `purpose`, `attention`, `search`, paginación | Solicitudes asignadas al asesor autenticado. |
-| `GET` | `/workday/summary` | `ADMIN`, `ADVISOR` | Mismos filtros | Conteos por segmento. |
+| `GET` | `/workday/applications` | `workday.read` (`ADMIN`, `ADVISOR`) | `stage`, `bank_id`, `purpose`, `attention`, `search`, `advisor_id` (solo administrador), `ordering`, paginación | Solicitudes en curso del asesor, con su siguiente acción. |
+| `GET` | `/workday/summary` | `workday.read` | Los mismos, salvo `attention` | `{total, segments: [{code, label, count}]}`, en una sola consulta. |
 
-Para `ADVISOR`, la API siempre aplica `assigned_advisor_id=request.user.id`. No acepta otro asesor desde query. Para `ADMIN`, puede recibir `advisor_id` explícito.
+- **Alcance:** el asesor ve siempre sus solicitudes asignadas; si manda `advisor_id`, se ignora. El administrador ve todas, o las de `advisor_id`. Solo entran solicitudes no terminales; el broker y la constructora reciben `403`.
+- **Filtros:** `stage` admite solo estados no terminales; un código desconocido (o terminal), un `purpose` que no existe o un `ordering` no permitido responden `400`. `search` busca como el listado.
+- **Orden:** primero las que tienen `TASKS_DUE`, después las de más `days_in_stage` y después `code`. `ordering` admite `days_in_stage`, `updated_at` y `code` (con `-`).
 
-Respuesta reducida:
+Segmentos de atención (`attention`), no excluyentes:
+
+| `code` | Etiqueta | Regla |
+| --- | --- | --- |
+| `REVIEW_DOCUMENTS` | Documentos por revisar | Al menos un slot vigente en `UPLOADED`. |
+| `READY_TO_FILE` | Listas para radicar | Estado `READY_TO_FILE`. |
+| `FILED` | Radicadas | `FILED` o `FILING_VALIDATION`. |
+| `IN_ANALYSIS` | En análisis | `CREDIT_ANALYSIS`. |
+| `OBSERVED` | Observadas por el banco | `BANK_OBSERVATION`. |
+| `BUYER_INACTIVE` | Comprador sin actividad | La regla de `buyer_inactive` del listado. |
+| `TASKS_DUE` | Con tareas vencidas o de hoy | Una tarea `PENDING` con `due_at` hasta el fin de hoy (Bogotá). |
+
+Fila:
 
 ```json
 {
-  "items": [
-    {
-      "id": "uuid",
-      "code": "SOL-250184",
-      "client_display_name": "Laura Gómez",
-      "bank": "Bancolombia",
-      "product": "Crédito hipotecario",
-      "stage": "DOCUMENTS_REVIEW",
-      "next_action": "REVIEW_DOCUMENTS",
-      "days_in_stage": 2,
-      "updated_at": "2026-08-24T13:34:00Z"
-    }
-  ],
-  "page": 1,
-  "page_size": 25,
-  "total": 24
+  "id": "uuid",
+  "code": "SOL-250184",
+  "client_display_name": "Laura Gómez",
+  "bank": { "id": "uuid", "name": "Bancolombia", "short_name": "Bancolombia" },
+  "bank_product": { "id": "uuid", "name": "Crédito hipotecario" },
+  "status": "DOCUMENTS_REVIEW",
+  "status_label": "Documentos en revisión",
+  "next_action": "REVIEW_DOCUMENTS",
+  "next_action_label": "Revisar documentos",
+  "days_in_stage": 2,
+  "attention": [{ "code": "REVIEW_DOCUMENTS", "label": "Documentos por revisar" }],
+  "pending_tasks_count": 1,
+  "updated_at": "2026-08-24T13:34:00Z"
 }
 ```
+
+`bank` y `bank_product` son nulos sin producto. `days_in_stage` cuenta días entre fechas de Bogotá desde `current_stage_started_at`. `next_action` sale de una tabla fija por estado: `COMPLETE_DRAFT`, `FOLLOW_UP_BUYER_DATA`, `FOLLOW_UP_DOCUMENTS`, `REVIEW_DOCUMENTS`, `FILE_WITH_BANK`, `WAIT_BANK_RESPONSE` (radicada, en validación o en análisis), `RESOLVE_OBSERVATIONS`, `START_LEGALIZATION` y `FOLLOW_UP_LEGALIZATION`.
 
 ### 15.2 Tareas
 
@@ -1593,14 +1606,41 @@ Ejemplo de aprobación:
 
 | Método | Ruta | Permiso | Descripción |
 | --- | --- | --- | --- |
-| `GET` | `/applications/{application_id}/activity` | Actor con alcance o comprador | Línea de tiempo filtrada según actor. |
-| `GET` | `/applications/{application_id}/notes` | Actor interno con alcance | Notas internas paginadas. |
-| `POST` | `/applications/{application_id}/notes` | `applications.add_note` | Agrega nota interna. |
+| `GET` | `/applications/{application_id}/activity` | `applications.read` (con alcance) | Línea de tiempo filtrada según actor. Filtro `event_type` (lista). |
+| `GET` | `/buyer/applications/{application_id}/activity` | Comprador | Solo las filas para el comprador. |
+| `GET` | `/applications/{application_id}/notes` | `applications.add_note` | Notas internas paginadas. |
+| `POST` | `/applications/{application_id}/notes` | `applications.add_note` | Agrega nota interna (`body`, obligatorio, hasta 2000 caracteres). |
 | `GET` | `/applications/{application_id}/consents` | `consents.read` (`ADMIN`, `ADVISOR` asignado) | Evidencias de tratamientos y declaraciones. |
 | `GET` | `/buyer/applications/{application_id}/consents` | Comprador | Versiones vigentes, si son obligatorias y su estado. |
 | `POST` | `/buyer/applications/{application_id}/consents` | Comprador | Acepta o retira una versión vigente del consentimiento. |
 
-El comprador nunca recibe notas internas, comentarios de evaluación, identidades técnicas ni eventos de auditoría. Un consentimiento guarda tipo, versión del texto, fecha, IP, agente de usuario y huella de la sesión.
+El comprador nunca recibe notas internas, comentarios de evaluación, identidades técnicas ni eventos de auditoría.
+
+Actividad (`activity_logs`):
+
+- **Inmutable:** no hay `PATCH` ni `DELETE`. Las filas las crean los suscriptores de las señales de cada módulo (`apps/activity/receivers.py`), después de confirmar la operación; un error al registrar queda en el log y no revierte la operación.
+- **Visibilidad:** cada fila es `INTERNAL` o `BUYER`. El administrador y el asesor (con alcance) ven las internas; el broker (en las solicitudes que originó) y el comprador, solo las `BUYER`. Por eso un evento que el comprador también ve deja dos filas: la interna y la del comprador, con su propio texto.
+- **Fila:** `{id, event_type, event_type_label, title, message, actor, created_at}`, de la más reciente a la más antigua y paginada. `actor` es `{name}` o nulo (evento del sistema). En el backoffice, lo que hizo el comprador sale como "Portal del comprador"; en `/buyer/...`, `actor` es "Tú" o "Tu asesor".
+- **Notas:** `applications.add_note` es de `ADMIN` y `ADVISOR`, y el asesor solo llega a las solicitudes que tiene asignadas. Una nota es una fila `NOTE_ADDED` interna (`{id, body, author, created_at}` en `/notes`). Se admite también en una solicitud terminada.
+
+| `event_type` | Origen | Visibilidad | Título (ejemplo) |
+| --- | --- | --- | --- |
+| `APPLICATION_CREATED` | Crear la solicitud | Interna | Solicitud SOL-000123 creada |
+| `STATUS_CHANGED` | Transición o desistimiento | Interna (etiquetas del backend y comentario) y del comprador (etiquetas públicas, sin comentario) | Pasó de Esperando documentos a Documentos en revisión |
+| `ADVISOR_ASSIGNED` | Reasignación | Interna | Paula Rincón quedó como responsable |
+| `PARTICIPANT_ADDED` / `PARTICIPANT_REMOVED` | Participantes | Interna | Se agregó a Daniel Mejía como co-solicitante |
+| `DOCUMENT_UPLOADED` | Carga del comprador | Interna y del comprador | Sofía Herrera cargó «Certificado laboral» |
+| `DOCUMENT_REVIEWED` | Revisión | Interna; los rechazos también para el comprador, con el mensaje para él | Paula Rincón rechazó «Desprendible de nómina» 2 de 3 |
+| `BUYER_LINK_SENT` | Emisión del enlace | Interna | Andrés Cárdenas envió el enlace de acceso al comprador |
+| `BUYER_SESSION_STARTED` | Consumo del enlace | Interna | El comprador entró al portal |
+| `CONSENT_RECORDED` | Aceptar o retirar un consentimiento | Interna | Sofía Herrera aceptó «Tratamiento de datos personales» |
+| `TASK_CREATED` / `TASK_COMPLETED` / `TASK_CANCELLED` | Tareas (§15.2) | Interna | Tarea completada: Revisar extractos |
+| `NOTE_ADDED` | Notas | Interna | Nota de Paula Rincón |
+| `FILING_CREATED` / `BANK_RESPONSE_RECORDED` | Radicación (§20) | Interna; la respuesta también para el comprador si tiene `public_message` | Radicada en Bancolombia (#1) |
+
+Las solicitudes que existían antes de la actividad la reciben de una migración idempotente desde `application_status_history` (la creación y cada cambio de estado, con su fecha y su actor).
+
+Un consentimiento guarda tipo, versión del texto, fecha, IP, agente de usuario y huella de la sesión.
 
 Consentimientos:
 

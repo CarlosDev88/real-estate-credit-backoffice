@@ -37,6 +37,7 @@ api_v1_patterns = [
     path("", include("apps.identity.consent_urls")),
     path("", include("apps.workday.urls")),
     path("", include("apps.tasks.urls")),
+    path("", include("apps.activity.urls")),
 ]
 
 urlpatterns = [

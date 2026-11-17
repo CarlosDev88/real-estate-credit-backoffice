@@ -35,6 +35,7 @@ INSTALLED_APPS = [
     "apps.filings",
     "apps.tasks",
     "apps.workday",
+    "apps.activity",
 ]
 
 MIDDLEWARE = [
@@ -152,6 +153,8 @@ SPECTACULAR_SETTINGS = {
         "TaskStatusEnum": "apps.tasks.models.TaskStatus",
         "TaskSourceEnum": "apps.tasks.models.TaskSource",
         "TaskParentTypeEnum": "apps.tasks.models.TaskParentType",
+        # Actividad: tipo de evento.
+        "ActivityEventTypeEnum": "apps.activity.models.ActivityEventType",
     },
 }
 

@@ -207,7 +207,8 @@ Las cuatro primeras se resolvieron en `TAREA-applications-listado.md` (PR #16). 
 - `participants_summary` trae solo conteos: el texto "+ 1 co-solicitante" / "deudor solidario" lo arma el frontend. Para sacarlo, el resumen debería traer la etiqueta de cada rol.
 
 **Expediente (`/solicitudes/[id]`):**
-- **Actividad completa:** "Actividad reciente" del mockup (cargas, revisiones, envíos de enlace) se reemplazó por "Últimos cambios de estado", que sale de `status-history`. El registro de actividad completo llega con el módulo de auditoría.
+- **Resuelta en `TAREA-tareas-actividad.md` (Parte 3):** "Actividad reciente" ya tiene endpoint: `GET /applications/{id}/activity` (cargas, revisiones, envíos de enlace, cambios de estado, tareas, notas y radicación; filtro `event_type`), y `GET/POST /applications/{id}/notes` para las notas internas. El comprador tiene `GET /buyer/applications/{id}/activity`. Antes, "Actividad reciente" del mockup se había reemplazado por "Últimos cambios de estado", que sale de `status-history`.
+- **API lista para una pantalla futura (`TAREA-tareas-actividad.md`):** "Mi día" (`/workday/applications` y `/workday/summary`, con siguiente acción, días en la etapa y segmentos de atención) y las tareas (`/tasks`).
 - "Agregar" participantes queda fuera: la edición de los datos del comprador llega con la F2.
 - **Resuelta en `TAREA-tareas-actividad.md` (agregado 2b):** cuál acción es la principal y cuál es destructiva. `AvailableAction` trae `kind` (`primary`, `secondary` o `destructive`) y la lista sale en ese orden, así que el botón principal es la primera `primary` y las `destructive` piden confirmación. Antes, en la demo, la primera acción era "Cancelar solicitud".
 - `AvailableAction` no dice si la transición exige motivo. El frontend siempre ofrece el motivo y muestra el `400` de la API en el campo. Un `reason_required` (o la lista de motivos válidos) evitaría el intento fallido.

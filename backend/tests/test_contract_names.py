@@ -37,6 +37,24 @@ STABLE_ENUMS = {
     "TaskStatusEnum": ["PENDING", "COMPLETED", "CANCELLED"],
     "TaskSourceEnum": ["MANUAL", "AUTOMATIC"],
     "TaskParentTypeEnum": ["APPLICATION", "OPPORTUNITY"],
+    "ActivityEventTypeEnum": [
+        "APPLICATION_CREATED",
+        "STATUS_CHANGED",
+        "ADVISOR_ASSIGNED",
+        "PARTICIPANT_ADDED",
+        "PARTICIPANT_REMOVED",
+        "DOCUMENT_UPLOADED",
+        "DOCUMENT_REVIEWED",
+        "BUYER_LINK_SENT",
+        "BUYER_SESSION_STARTED",
+        "CONSENT_RECORDED",
+        "TASK_CREATED",
+        "TASK_COMPLETED",
+        "TASK_CANCELLED",
+        "NOTE_ADDED",
+        "FILING_CREATED",
+        "BANK_RESPONSE_RECORDED",
+    ],
 }
 
 
