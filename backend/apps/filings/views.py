@@ -33,6 +33,7 @@ from apps.filings.serializers import (
 from apps.identity.models import User
 from apps.identity.permissions import HasPermissionCode
 from apps.identity.throttling import DocumentDownloadRateThrottle
+from config.openapi import etag_response_headers
 from config.serializers import ErrorSerializer
 
 FILINGS_TAG = "Filings"
@@ -115,6 +116,7 @@ class ApplicationFilingListView(FilingView):
             f"{MANAGE_NOTE}"
         ),
         request=FilingCreateSerializer,
+        parameters=[etag_response_headers(201)],
         responses={
             201: FilingSerializer,
             409: _error(
@@ -289,6 +291,7 @@ class FilingResponseListView(ResponseView):
             f"solicitud. {MANAGE_NOTE}\n" + RESPONSE_RULES_DESCRIPTION
         ),
         request=FilingResponseCreateSerializer,
+        parameters=[etag_response_headers(201)],
         responses={
             201: FilingResponseSerializer,
             **_response_errors(

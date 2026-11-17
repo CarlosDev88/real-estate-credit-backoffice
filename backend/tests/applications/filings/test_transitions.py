@@ -253,6 +253,7 @@ def test_refile_action_shows_its_guard(
         "code": "MARK_READY_TO_REFILE",
         "label": "Lista para radicar de nuevo",
         "target_status": "READY_TO_FILE",
+        "target_status_label": "Lista para radicar",
         "guard_code": "APPLICATION_READY_TO_REFILE",
     }
 

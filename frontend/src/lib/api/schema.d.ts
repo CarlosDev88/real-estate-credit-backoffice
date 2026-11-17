@@ -7955,6 +7955,8 @@ export interface operations {
         responses: {
             201: {
                 headers: {
+                    /** @description Versión de la solicitud, por ejemplo `"3"`. Se reenvía en `If-Match` al editar el expediente (API §6). */
+                    ETag: string;
                     [name: string]: unknown;
                 };
                 content: {
@@ -14767,6 +14769,8 @@ export interface operations {
         responses: {
             201: {
                 headers: {
+                    /** @description Versión de la solicitud, por ejemplo `"3"`. Se reenvía en `If-Match` al editar el expediente (API §6). */
+                    ETag: string;
                     [name: string]: unknown;
                 };
                 content: {

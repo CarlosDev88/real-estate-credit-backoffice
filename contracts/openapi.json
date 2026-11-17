@@ -2218,6 +2218,15 @@
                 ],
                 "responses": {
                     "201": {
+                        "headers": {
+                            "ETag": {
+                                "schema": {
+                                    "type": "string"
+                                },
+                                "description": "Versión de la solicitud, por ejemplo `\"3\"`. Se reenvía en `If-Match` al editar el expediente (API §6).",
+                                "required": true
+                            }
+                        },
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -12462,6 +12471,15 @@
                 ],
                 "responses": {
                     "201": {
+                        "headers": {
+                            "ETag": {
+                                "schema": {
+                                    "type": "string"
+                                },
+                                "description": "Versión de la solicitud, por ejemplo `\"3\"`. Se reenvía en `If-Match` al editar el expediente (API §6).",
+                                "required": true
+                            }
+                        },
                         "content": {
                             "application/json": {
                                 "schema": {
