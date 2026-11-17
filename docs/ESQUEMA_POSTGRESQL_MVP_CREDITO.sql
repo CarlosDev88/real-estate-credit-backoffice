@@ -942,7 +942,8 @@ CREATE TABLE audit_events (
     resource_type VARCHAR(80) NOT NULL,
     resource_id UUID,
     result VARCHAR(20) NOT NULL,
-    request_id UUID NOT NULL,
+    -- El X-Request-ID puede venir del cliente y no siempre es un UUID.
+    request_id VARCHAR(64) NOT NULL,
     ip_address INET,
     metadata JSONB NOT NULL DEFAULT '{}'::JSONB,
     CONSTRAINT ck_audit_events_actor CHECK (num_nonnulls(actor_user_id, actor_buyer_session_id) <= 1),
@@ -1087,6 +1088,18 @@ CREATE INDEX ix_idempotency_keys_expires ON idempotency_keys (expires_at);
 CREATE INDEX ix_audit_resource ON audit_events (resource_type, resource_id, created_at DESC);
 CREATE INDEX ix_audit_user ON audit_events (actor_user_id, created_at DESC);
 CREATE INDEX ix_audit_request ON audit_events (request_id);
+CREATE INDEX ix_audit_created ON audit_events (created_at DESC);
+
+-- La auditoría es inmutable: se bloquea UPDATE (DELETE queda para la retención).
+CREATE FUNCTION audit_events_block_update() RETURNS trigger AS $$
+BEGIN
+    RAISE EXCEPTION 'audit_events es inmutable: no se permite UPDATE';
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_audit_events_block_update
+    BEFORE UPDATE ON audit_events
+    FOR EACH ROW EXECUTE FUNCTION audit_events_block_update();
 CREATE INDEX ix_outbox_queue ON outbox_events (available_at, created_at) WHERE status IN ('PENDING', 'FAILED');
 CREATE INDEX ix_report_exports_user ON report_export_jobs (requested_by_id, created_at DESC);
 CREATE INDEX ix_report_exports_queue ON report_export_jobs (status, created_at) WHERE status IN ('PENDING', 'RUNNING');
