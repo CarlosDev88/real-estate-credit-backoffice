@@ -36,10 +36,12 @@ INSTALLED_APPS = [
     "apps.tasks",
     "apps.workday",
     "apps.activity",
+    "apps.audit",
 ]
 
 MIDDLEWARE = [
     "config.middleware.RequestIDMiddleware",
+    "apps.audit.context.AuditContextMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "corsheaders.middleware.CorsMiddleware",
@@ -80,6 +82,14 @@ DATABASES = {
         "PORT": env("DATABASE_PORT", default="5432"),
         "CONN_MAX_AGE": 60,
     }
+}
+# Misma base, otra conexión: la auditoría escribe por aquí lo denegado o fallido que ocurre
+# dentro de una transacción, para que el rollback no lo borre (apps.audit). Con
+# `lock_timeout`, una espera de bloqueos nunca cuelga la petición: la auditoría falla y se
+# registra en el log.
+DATABASES["audit"] = {
+    **DATABASES["default"],
+    "OPTIONS": {"options": "-c lock_timeout=2000"},
 }
 
 AUTH_USER_MODEL = "identity.User"
