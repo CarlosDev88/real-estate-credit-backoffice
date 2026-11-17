@@ -27,6 +27,8 @@ export function useShellTrail(label: string | null | undefined) {
 export interface ShellUser {
   name: string;
   email: string;
+  /** Rol para mostrar (`role_label` de `/auth/me`); sin rol, se ve el correo. */
+  role?: string | null;
 }
 
 interface AppShellProps {
@@ -84,7 +86,9 @@ function UserMenu({ user, onLogout }: { user: ShellUser; onLogout: () => void })
             <span className="text-text-on-sidebar-strong block truncate text-sm font-medium">
               {user.name}
             </span>
-            <span className="block truncate text-xs opacity-70">{user.email}</span>
+            <span className="block truncate text-xs opacity-70" title={user.email}>
+              {user.role || user.email}
+            </span>
           </span>
         </button>
       </Dropdown>

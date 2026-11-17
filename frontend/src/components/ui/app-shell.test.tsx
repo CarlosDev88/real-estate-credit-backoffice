@@ -101,6 +101,39 @@ describe("AppShell", () => {
     );
   });
 
+  it("bajo el nombre va el rol; sin rol, el correo", () => {
+    const { rerender } = render(
+      <ThemeProvider initialMode="light" hasCookie>
+        <AppShell
+          nav={groupNav(ITEMS)}
+          user={{ name: "Paula Rincón", email: "paula@example.com", role: "Asesor" }}
+          onLogout={vi.fn()}
+        >
+          <h1>Contenido</h1>
+        </AppShell>
+      </ThemeProvider>,
+    );
+    const account = screen.getByRole("button", { name: /Paula Rincón/ });
+    expect(account).toHaveTextContent("Paula RincónAsesor");
+    expect(account).not.toHaveTextContent("paula@example.com");
+    expect(screen.getByText("Asesor")).toHaveAttribute("title", "paula@example.com");
+
+    rerender(
+      <ThemeProvider initialMode="light" hasCookie>
+        <AppShell
+          nav={groupNav(ITEMS)}
+          user={{ name: "Paula Rincón", email: "paula@example.com", role: null }}
+          onLogout={vi.fn()}
+        >
+          <h1>Contenido</h1>
+        </AppShell>
+      </ThemeProvider>,
+    );
+    expect(screen.getByRole("button", { name: /Paula Rincón/ })).toHaveTextContent(
+      "paula@example.com",
+    );
+  });
+
   it("el bloque del usuario abre el menú de la cuenta y cierra la sesión", async () => {
     const user = userEvent.setup();
     const onLogout = renderShell();
