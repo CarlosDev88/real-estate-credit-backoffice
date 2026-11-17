@@ -165,6 +165,12 @@ SPECTACULAR_SETTINGS = {
         "TaskParentTypeEnum": "apps.tasks.models.TaskParentType",
         # Actividad: tipo de evento.
         "ActivityEventTypeEnum": "apps.activity.models.ActivityEventType",
+        # El `action` de los consentimientos, ya publicado: la auditoría también tiene un
+        # campo `action` y sin esto drf-spectacular renombraría este enum.
+        "ActionEnum": "apps.identity.models.consent.ConsentAction",
+        # Auditoría: acción y resultado.
+        "AuditActionEnum": "apps.audit.actions.AuditAction",
+        "AuditResultEnum": "apps.audit.actions.AuditResult",
     },
 }
 

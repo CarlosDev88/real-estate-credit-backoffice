@@ -435,6 +435,18 @@ The `filings` module (API §20) records the manual delivery of the package to th
 - **Buyer:** `GET /buyer/applications/{id}` includes `latest_bank_update`, the latest response with a public message, never the internal comment.
 - **Events:** `filing_created` and `filing_response_recorded`, sent after commit, following `application_status_changed`.
 
+## Technical Audit
+
+`apps/audit` keeps an immutable technical log (`audit_events`) of sensitive actions: who did what, on which resource, with which result (`SUCCESS`, `DENIED` or `FAILED`), from which IP and with which `request_id`. It is not the application activity timeline (`apps/activity`): only the administrator reads it, through `GET /audit-events` and `GET /audit-events/{id}` (permission `audit.read`).
+
+- **What is recorded:** logins (successful and failed), logouts, rejected refreshes, password reset requests and resets, rate limiting, buyer links (created, used, rejected), buyer logouts, consents, document uploads and downloads (documents, filing packages and evidence), status changes, withdrawals, reassignments, document reviews, waivers and reopenings, filings and bank responses, configuration changes (catalogs, workflow transitions, banks, products, rules, document types and requirements, users, roles and user status), and every `403` of the API.
+- **How:** subscribers to the domain signals (`apps/audit/receivers.py`) and, for what has no signal, the views declare `audit_actions` or `audit_failure_action` and `AuditContextMiddleware` records them from the DRF response (`apps/audit/hooks.py`).
+- **Never stored:** passwords, tokens, cookies, the `Authorization` header, signed URLs, request bodies or full document numbers. `metadata` keeps codes, ids, states and the **names** of the changed fields; it always goes through `sanitize_metadata`.
+- **Transactions:** a success is written after commit. A denial or failure is written right away; inside a transaction it goes through the separate `audit` database connection (same database, autocommit, `lock_timeout` of 2 s), so a rollback does not erase it. An error while auditing is logged and never breaks the request.
+- **IP:** taken from `REMOTE_ADDR`. `X-Forwarded-For` is not trusted until a trusted proxy is configured (`AUDIT_TRUST_FORWARDED_FOR = False`); locally, behind the Next rewrite, the proxy IP is stored.
+- **Immutable:** the model rejects updates and deletes, and a PostgreSQL trigger blocks `UPDATE` on `audit_events`.
+- **Retention:** `python manage.py purge_audit_events` deletes events older than `AUDIT_RETENTION_DAYS` (365; `--days` changes it). It is the only way to delete them; run it periodically, for example from cron.
+
 ## Internal Authentication
 
 Internal users (admin, advisors, brokers, and partner users) authenticate with email and password. The API never returns tokens in the body; it sets cookies:

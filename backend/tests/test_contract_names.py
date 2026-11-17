@@ -9,6 +9,8 @@ from typing import Any
 import pytest
 from drf_spectacular.generators import SchemaGenerator
 
+from apps.audit.actions import AuditAction
+
 STABLE_ENUMS = {
     "CodeEnum": ["property", "financing", "bank_product", "bank_evaluation", "financial_profile"],
     "AttentionSegmentEnum": [
@@ -37,6 +39,9 @@ STABLE_ENUMS = {
     "TaskStatusEnum": ["PENDING", "COMPLETED", "CANCELLED"],
     "TaskSourceEnum": ["MANUAL", "AUTOMATIC"],
     "TaskParentTypeEnum": ["APPLICATION", "OPPORTUNITY"],
+    "ActionEnum": ["ACCEPTED", "WITHDRAWN"],
+    "AuditResultEnum": ["SUCCESS", "DENIED", "FAILED"],
+    "AuditActionEnum": AuditAction.values,
     "ActivityEventTypeEnum": [
         "APPLICATION_CREATED",
         "STATUS_CHANGED",

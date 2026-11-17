@@ -572,6 +572,43 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/audit-events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Eventos de auditoría
+         * @description Bitácora técnica inmutable, del más nuevo al más viejo. Solo el administrador. Nunca guarda contraseñas, tokens, cookies, la cabecera `Authorization`, URLs firmadas ni números de documento completos.
+         */
+        get: operations["audit_events_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/audit-events/{event_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Detalle de un evento de auditoría */
+        get: operations["audit_events_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/change-password": {
         parameters: {
             query?: never;
@@ -3344,6 +3381,76 @@ export interface components {
          * @enum {string}
          */
         AttentionSegmentEnum: "REVIEW_DOCUMENTS" | "READY_TO_FILE" | "FILED" | "IN_ANALYSIS" | "OBSERVED" | "BUYER_INACTIVE" | "TASKS_DUE";
+        /**
+         * @description * `AUTH_LOGIN` - Inicio de sesión
+         *     * `AUTH_LOGIN_FAILED` - Inicio de sesión fallido
+         *     * `AUTH_LOGOUT` - Cierre de sesión
+         *     * `AUTH_REFRESH_REJECTED` - Renovación de sesión rechazada
+         *     * `AUTH_PASSWORD_RESET_REQUESTED` - Restablecimiento de contraseña solicitado
+         *     * `AUTH_PASSWORD_RESET_COMPLETED` - Contraseña restablecida
+         *     * `AUTH_RATE_LIMITED` - Bloqueo por límite de consumo
+         *     * `BUYER_LINK_CREATED` - Enlace de acceso creado
+         *     * `BUYER_LINK_CONSUMED` - Enlace de acceso usado
+         *     * `BUYER_LINK_FAILED` - Enlace de acceso rechazado
+         *     * `BUYER_SESSION_CLOSED` - Sesión del comprador cerrada
+         *     * `CONSENT_ACCEPTED` - Consentimiento aceptado
+         *     * `CONSENT_WITHDRAWN` - Consentimiento retirado
+         *     * `DOCUMENT_UPLOADED` - Documento cargado
+         *     * `DOCUMENT_DOWNLOADED` - Documento descargado
+         *     * `PACKAGE_DOWNLOADED` - Paquete descargado
+         *     * `EVIDENCE_DOWNLOADED` - Evidencia descargada
+         *     * `APPLICATION_STATUS_CHANGED` - Cambio de estado
+         *     * `APPLICATION_WITHDRAWN` - Desistimiento
+         *     * `APPLICATION_ASSIGNED` - Reasignación
+         *     * `DOCUMENT_REVIEWED` - Revisión de documento
+         *     * `DOCUMENT_WAIVED` - Exoneración de documento
+         *     * `DOCUMENT_WAIVER_REOPENED` - Reapertura de exoneración
+         *     * `FILING_CREATED` - Radicación creada
+         *     * `FILING_UPDATED` - Radicación corregida
+         *     * `BANK_RESPONSE_RECORDED` - Respuesta del banco registrada
+         *     * `CATALOG_CHANGED` - Cambio de catálogo
+         *     * `BANK_CHANGED` - Cambio de banco
+         *     * `BANK_PRODUCT_CHANGED` - Cambio de producto bancario
+         *     * `BANK_RULE_CHANGED` - Cambio de regla bancaria
+         *     * `DOCUMENT_TYPE_CHANGED` - Cambio de tipo documental
+         *     * `DOCUMENT_REQUIREMENT_CHANGED` - Cambio de requisito documental
+         *     * `WORKFLOW_TRANSITION_CHANGED` - Cambio de transición
+         *     * `USER_CHANGED` - Cambio de usuario
+         *     * `USER_ROLES_CHANGED` - Cambio de roles
+         *     * `USER_STATUS_CHANGED` - Cambio de estado de usuario
+         *     * `ACCESS_DENIED` - Acceso denegado
+         * @enum {string}
+         */
+        AuditActionEnum: "AUTH_LOGIN" | "AUTH_LOGIN_FAILED" | "AUTH_LOGOUT" | "AUTH_REFRESH_REJECTED" | "AUTH_PASSWORD_RESET_REQUESTED" | "AUTH_PASSWORD_RESET_COMPLETED" | "AUTH_RATE_LIMITED" | "BUYER_LINK_CREATED" | "BUYER_LINK_CONSUMED" | "BUYER_LINK_FAILED" | "BUYER_SESSION_CLOSED" | "CONSENT_ACCEPTED" | "CONSENT_WITHDRAWN" | "DOCUMENT_UPLOADED" | "DOCUMENT_DOWNLOADED" | "PACKAGE_DOWNLOADED" | "EVIDENCE_DOWNLOADED" | "APPLICATION_STATUS_CHANGED" | "APPLICATION_WITHDRAWN" | "APPLICATION_ASSIGNED" | "DOCUMENT_REVIEWED" | "DOCUMENT_WAIVED" | "DOCUMENT_WAIVER_REOPENED" | "FILING_CREATED" | "FILING_UPDATED" | "BANK_RESPONSE_RECORDED" | "CATALOG_CHANGED" | "BANK_CHANGED" | "BANK_PRODUCT_CHANGED" | "BANK_RULE_CHANGED" | "DOCUMENT_TYPE_CHANGED" | "DOCUMENT_REQUIREMENT_CHANGED" | "WORKFLOW_TRANSITION_CHANGED" | "USER_CHANGED" | "USER_ROLES_CHANGED" | "USER_STATUS_CHANGED" | "ACCESS_DENIED";
+        AuditActor: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+        };
+        AuditEvent: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: date-time */
+            readonly created_at: string;
+            readonly action: components["schemas"]["AuditActionEnum"];
+            readonly action_label: string;
+            readonly result: components["schemas"]["AuditResultEnum"];
+            readonly result_label: string;
+            readonly resource_type: string;
+            /** Format: uuid */
+            readonly resource_id: string | null;
+            readonly actor: components["schemas"]["AuditActor"] | null;
+            readonly request_id: string;
+            readonly ip_address: string | null;
+            readonly metadata: unknown;
+        };
+        /**
+         * @description * `SUCCESS` - Correcto
+         *     * `DENIED` - Denegado
+         *     * `FAILED` - Fallido
+         * @enum {string}
+         */
+        AuditResultEnum: "SUCCESS" | "DENIED" | "FAILED";
         /** @description Transición que el actor puede ejecutar ahora; la guarda se evalúa al ejecutarla. */
         AvailableAction: {
             readonly code: string;
@@ -5506,6 +5613,19 @@ export interface components {
         };
         PaginatedApplicationParticipantList: {
             items: components["schemas"]["ApplicationParticipant"][];
+            /** @example 1 */
+            page: number;
+            /** @example 25 */
+            page_size: number;
+            /** @example 128 */
+            total: number;
+            /** @example /api/v1/x?page=2 */
+            next: string | null;
+            /** @example null */
+            previous: string | null;
+        };
+        PaginatedAuditEventList: {
+            items: components["schemas"]["AuditEvent"][];
             /** @example 1 */
             page: number;
             /** @example 25 */
@@ -9323,6 +9443,118 @@ export interface operations {
             };
             /** @description PERMISSION_DENIED o CSRF_FAILED */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    audit_events_list: {
+        parameters: {
+            query?: {
+                /** @description Una o varias (`?action=A&action=B`). Un código desconocido responde `400`. */
+                action?: ("ACCESS_DENIED" | "APPLICATION_ASSIGNED" | "APPLICATION_STATUS_CHANGED" | "APPLICATION_WITHDRAWN" | "AUTH_LOGIN" | "AUTH_LOGIN_FAILED" | "AUTH_LOGOUT" | "AUTH_PASSWORD_RESET_COMPLETED" | "AUTH_PASSWORD_RESET_REQUESTED" | "AUTH_RATE_LIMITED" | "AUTH_REFRESH_REJECTED" | "BANK_CHANGED" | "BANK_PRODUCT_CHANGED" | "BANK_RESPONSE_RECORDED" | "BANK_RULE_CHANGED" | "BUYER_LINK_CONSUMED" | "BUYER_LINK_CREATED" | "BUYER_LINK_FAILED" | "BUYER_SESSION_CLOSED" | "CATALOG_CHANGED" | "CONSENT_ACCEPTED" | "CONSENT_WITHDRAWN" | "DOCUMENT_DOWNLOADED" | "DOCUMENT_REQUIREMENT_CHANGED" | "DOCUMENT_REVIEWED" | "DOCUMENT_TYPE_CHANGED" | "DOCUMENT_UPLOADED" | "DOCUMENT_WAIVED" | "DOCUMENT_WAIVER_REOPENED" | "EVIDENCE_DOWNLOADED" | "FILING_CREATED" | "FILING_UPDATED" | "PACKAGE_DOWNLOADED" | "USER_CHANGED" | "USER_ROLES_CHANGED" | "USER_STATUS_CHANGED" | "WORKFLOW_TRANSITION_CHANGED")[];
+                actor_buyer_session_id?: string;
+                actor_user_id?: string;
+                /** @description Fecha (`AAAA-MM-DD`, desde el inicio del día en Bogotá) o fecha y hora ISO. */
+                created_from?: string;
+                /** @description Fecha (hasta el fin del día en Bogotá, incluido) o fecha y hora ISO. */
+                created_to?: string;
+                /** @description Un número de página dentro del conjunto de resultados paginado. */
+                page?: number;
+                /** @description Número de resultados a devolver por página. */
+                page_size?: number;
+                request_id?: string;
+                resource_id?: string;
+                /** @description Tabla del recurso. */
+                resource_type?: string;
+                result?: "DENIED" | "FAILED" | "SUCCESS";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedAuditEventList"];
+                };
+            };
+            /** @description VALIDATION_ERROR */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description PERMISSION_DENIED (solo el administrador; el intento queda auditado) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    audit_events_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuditEvent"];
+                };
+            };
+            /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description PERMISSION_DENIED (solo el administrador; el intento queda auditado) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description RESOURCE_NOT_FOUND */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
