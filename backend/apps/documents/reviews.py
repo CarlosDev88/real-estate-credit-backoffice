@@ -20,7 +20,9 @@ decisión es otra fila, nunca se edita la anterior.
 
 Solo antes de `FILED` (``409 APPLICATION_NOT_EDITABLE``; terminada, ``409
 APPLICATION_CLOSED``). Después de `FILED`, aprobar o rechazar se admite solo en un slot
-con una observación abierta del banco (punto de enganche del paso 11). No cambia la
+con una observación abierta del banco (paso 11). Aprobar una versión cargada después de
+la observación la resuelve; aprobar la versión observada responde ``409
+DOCUMENT_OBSERVED``. No cambia la
 versión de la solicitud ni exige ``If-Match`` (acordada 6): bloquea las filas de los
 slots, ordenadas por id.
 """
@@ -204,6 +206,10 @@ def _decide_file(actor: User, slot_id: uuid.UUID, review: Review) -> uuid.UUID:
         if review.decision == ReviewDecision.APPROVED:
             _approve(slot, version, review)
             slot.status = SlotStatus.APPROVED
+            # Import local: `filings` importa los modelos de `documents`.
+            from apps.filings.observations import resolve_on_approval
+
+            resolve_on_approval(slot, version)
         else:
             version.status = DocumentFileStatus.REJECTED
             slot.status = SlotStatus.REJECTED

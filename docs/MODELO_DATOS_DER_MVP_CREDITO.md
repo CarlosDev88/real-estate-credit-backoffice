@@ -679,6 +679,7 @@ Entidades financieras disponibles para selección manual.
 | `tax_id` | `VARCHAR(30)` | Sí | Identificación. |
 | `status` | `VARCHAR(20)` | No | `ACTIVE`/`INACTIVE`. |
 | `operational_notes` | `TEXT` | Sí | Indicaciones internas. |
+| `filing_response_days` | `SMALLINT` | Sí | Días que suele tardar el banco en responder una radicación; `filings.target_response_at` = `filed_at` + días. Nulo: sin fecha objetivo. El FNA: 7. |
 
 Relación 1:N con `bank_products`: un banco puede ofrecer distintos productos. Separarlos evita repetir los datos del banco en cada solicitud.
 
@@ -824,6 +825,7 @@ Acciones permitidas entre estados.
 | `required_permission_id` | `UUID` | Sí | FK `permissions`, `RESTRICT`. |
 | `guard_code` | `VARCHAR(80)` | Sí | Regla de dominio implementada. |
 | `is_active` | `BOOLEAN` | No | Disponibilidad. |
+| `system_only` | `BOOLEAN` | No | `DEFAULT FALSE`. `TRUE`: solo la ejecuta el servicio de su módulo (`FILE` y `BANK_*` de la radicación); `POST /status-transitions` la rechaza y no sale en las acciones disponibles. |
 
 UQ (`flow_type`, `code`). Relación N:M con roles mediante `workflow_transition_roles`; relación opcional con permiso. Sirve para indicar qué pasos puede mostrar la interfaz, aunque el backend sigue validando las reglas esenciales.
 
@@ -1053,15 +1055,15 @@ Cada entrega manual de un expediente al banco.
 | `bank_product_id` | `UUID` | No | FK `bank_products`, `RESTRICT`. |
 | `package_job_id` | `UUID` | No | FK `document_package_jobs`, `RESTRICT`. |
 | `sequence_number` | `INTEGER` | No | Número de intento. |
-| `channel_item_id` | `UUID` | No | FK `catalog_items`, `RESTRICT`. |
+| `channel_item_id` | `UUID` | No | FK `catalog_items`, `RESTRICT`: `filing_channel` (`BANK_PORTAL`, `EMAIL`, `IN_PERSON`). |
 | `external_reference` | `VARCHAR(100)` | Sí | Referencia del banco. |
-| `status` | `VARCHAR(30)` | No | Estado del intento. |
+| `status` | `VARCHAR(30)` | No | `FILED`, `RECEIVED`, `IN_ANALYSIS`, `RETURNED`, `APPROVED`, `REJECTED` o `DISBURSED`: el tipo de la última respuesta que cambió algo. |
 | `filed_by_id` | `UUID` | No | FK `users`, `RESTRICT`. |
 | `filed_at` | `TIMESTAMPTZ` | No | Radicación real. |
-| `target_response_at` | `TIMESTAMPTZ` | Sí | Seguimiento. |
+| `target_response_at` | `TIMESTAMPTZ` | Sí | `filed_at` + `banks.filing_response_days`; nulo si el banco no tiene el dato. |
 | `comment` | `TEXT` | Sí | Nota operativa. |
 
-UQ (`application_id`, `sequence_number`); UQ parcial (`bank_product_id`, `external_reference`) cuando exista. Relaciones: N:1 con solicitud porque puede ser devuelta y radicada de nuevo; N:1 con paquete porque se debe conocer qué se envió; N:1 con asesor porque la entrega es manual.
+UQ (`application_id`, `sequence_number`); UQ parcial (`bank_product_id`, `external_reference`) cuando exista; CHECK de `status` y `sequence_number > 0`. Relaciones: N:1 con solicitud porque puede ser devuelta y radicada de nuevo; N:1 con paquete porque se debe conocer qué se envió; N:1 con asesor porque la entrega es manual.
 
 Índices: (`application_id`, `sequence_number DESC`), (`status`, `target_response_at`).
 
@@ -1090,8 +1092,8 @@ Comunicaciones recibidas manualmente del banco.
 | `id` | `UUID` | No | PK, `DEFAULT gen_random_uuid()`. |
 | `created_at` | `TIMESTAMPTZ` | No | Fecha y hora de creación del registro histórico. |
 | `filing_id` | `UUID` | No | FK `filings`, `RESTRICT`. |
-| `response_type_item_id` | `UUID` | No | FK `catalog_items`, `RESTRICT`. |
-| `reason_item_id` | `UUID` | Sí | FK `catalog_items`, `RESTRICT`. |
+| `response_type_item_id` | `UUID` | No | FK `catalog_items`, `RESTRICT`: `filing_response_type` (`RECEIVED`, `RETURNED`, `IN_ANALYSIS`, `APPROVED`, `REJECTED`, `DISBURSED`, `OTHER`). |
+| `reason_item_id` | `UUID` | Sí | FK `catalog_items`, `RESTRICT`: `filing_return_reason` en `RETURNED`, `filing_rejection_reason` en `REJECTED`. |
 | `received_at` | `TIMESTAMPTZ` | No | Fecha real. |
 | `external_reference` | `VARCHAR(100)` | Sí | Referencia. |
 | `public_message` | `TEXT` | Sí | Visible al comprador. |
@@ -1118,7 +1120,7 @@ Documentos concretos que el banco pide corregir en una devolución.
 | `created_at` | `TIMESTAMPTZ` | No | Fecha y hora de creación del registro histórico. |
 | `filing_response_id` | `UUID` | No | FK `filing_responses`, `CASCADE`. |
 | `document_slot_id` | `UUID` | No | FK `application_document_slots`, `RESTRICT`. |
-| `reason_item_id` | `UUID` | No | FK `catalog_items`, `RESTRICT`. |
+| `reason_item_id` | `UUID` | No | FK `catalog_items`, `RESTRICT`: `document_rejection_reason`. |
 | `buyer_message` | `TEXT` | No | Corrección solicitada. |
 | `resolved_by_file_id` | `UUID` | Sí | FK `document_files`, `RESTRICT`. |
 | `resolved_at` | `TIMESTAMPTZ` | Sí | Cierre de observación. |

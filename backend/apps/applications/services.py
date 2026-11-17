@@ -90,6 +90,7 @@ from apps.crm.services import (
 )
 from apps.documents.slots import sync_slots
 from apps.documents.verification import DossierCheck, check_dossier
+from apps.filings.observations import open_observation_problems
 from apps.identity.models import BuyerSession, User
 from apps.partners.models import Project
 from apps.partners.services import ensure_project_accepts_opportunities, projects_visible_to
@@ -1120,6 +1121,10 @@ def preview_products(
 # --------------------------------------------------------------------------------------
 
 READY_TO_FILE_GUARD = "APPLICATION_READY_TO_FILE"
+# La de `MARK_READY_TO_REFILE` (paso 11): la misma y, además, ninguna observación del
+# banco sin resolver.
+READY_TO_REFILE_GUARD = "APPLICATION_READY_TO_REFILE"
+READY_GUARDS = (READY_TO_FILE_GUARD, READY_TO_REFILE_GUARD)
 # Cierres que exigen `reason_code`.
 REASON_REQUIRED_STATUSES: tuple[str, ...] = (
     ApplicationStatus.CANCELLED,
@@ -1140,7 +1145,7 @@ class StatusChange:
     transitioned_at: datetime
 
 
-def _lock_for_status_change(
+def lock_for_status_change(
     application: CreditApplication, expected_version: int
 ) -> CreditApplication:
     """Bloquea la fila. Terminada: ``409 APPLICATION_CLOSED``; otra versión:
@@ -1317,7 +1322,10 @@ def transition_application(
       dos últimos, la modalidad de financiación correspondiente
       (``422 FINANCING_MODE_MISMATCH``).
     - La guarda `APPLICATION_READY_TO_FILE` responde ``422 APPLICATION_NOT_READY`` con
-      todos los motivos en ``details``.
+      todos los motivos en ``details``. `APPLICATION_READY_TO_REFILE` agrega un
+      ``BANK_OBSERVATION_OPEN`` por cada documento con una observación del banco abierta.
+    - Las transiciones de sistema (``system_only``) no se ejecutan por aquí
+      (``409 INVALID_STATE_TRANSITION``).
     """
     if to_status == ApplicationStatus.WITHDRAWN:
         raise ValidationError(
@@ -1329,15 +1337,17 @@ def transition_application(
     problems: list[dict[str, Any]] = []
     change: StatusChange | None = None
     with transaction.atomic():
-        locked = _lock_for_status_change(application, expected_version)
+        locked = lock_for_status_change(application, expected_version)
         transition = resolve_transition(
             actor, flow_type=FlowType.APPLICATION, from_status=locked.status, to_status=to_status
         )
         _ensure_financing_mode(locked, to_status)
-        if transition.guard_code == READY_TO_FILE_GUARD:
+        if transition.guard_code in READY_GUARDS:
             # Solicitud y después todos sus slots vigentes, en orden (decisión 22).
             dossier = check_dossier(locked, lock=True)
             problems = ready_to_file_problems(locked, dossier=dossier, evaluate_as=actor)
+        if transition.guard_code == READY_TO_REFILE_GUARD:
+            problems.extend(open_observation_problems(locked.pk))
         if not problems:
             change = _apply_status_change(actor, locked, transition, reason=reason, comment=comment)
     if problems:
@@ -1388,11 +1398,45 @@ def withdraw_application(
     comprador como actor, el historial guarda su sesión en ``actor_buyer_session``.
     """
     with transaction.atomic():
-        locked = _lock_for_status_change(application, expected_version)
+        locked = lock_for_status_change(application, expected_version)
         transition = _withdraw_transition(actor, locked.status)
         change = _apply_status_change(actor, locked, transition, reason=reason, comment=comment)
     _notify_status_change(actor, change, transition, reason, comment)
     return change
+
+
+@dataclass(frozen=True)
+class SystemStatusChange:
+    change: StatusChange
+    transition: WorkflowTransition
+
+
+def apply_system_transition(
+    actor: User, locked: CreditApplication, *, to_status: str, comment: str = ""
+) -> SystemStatusChange:
+    """Ejecuta una transición de sistema (``system_only``) para el servicio de otro módulo
+    (la radicación y las respuestas del banco, paso 11).
+
+    Va dentro de la transacción de quien llama, con la solicitud ya bloqueada por
+    ``lock_for_status_change``. Cambia el estado y registra el historial igual que
+    ``transition_application``; sin una transición de sistema activa desde el estado
+    actual: ``409 INVALID_STATE_TRANSITION``. Después de confirmar, quien llama emite
+    el evento con ``notify_system_transition``.
+    """
+    transition = resolve_transition(
+        actor,
+        flow_type=FlowType.APPLICATION,
+        from_status=locked.status,
+        to_status=to_status,
+        system_only=True,
+    )
+    change = _apply_status_change(actor, locked, transition, reason=None, comment=comment)
+    return SystemStatusChange(change=change, transition=transition)
+
+
+def notify_system_transition(actor: User, result: SystemStatusChange, comment: str = "") -> None:
+    """Emite ``application_status_changed`` de una transición de sistema ya confirmada."""
+    _notify_status_change(actor, result.change, result.transition, None, comment)
 
 
 def available_actions(user: User, application: CreditApplication) -> list[WorkflowTransition]:
