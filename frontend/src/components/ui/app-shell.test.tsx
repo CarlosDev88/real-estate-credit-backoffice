@@ -2,7 +2,7 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
-import { AppShell, AppShellSkeleton } from "@/components/ui/app-shell";
+import { AppShell, AppShellSkeleton, useShellTrail } from "@/components/ui/app-shell";
 import { HouseIcon } from "@/components/ui/icons";
 import { groupNav, NAV_ITEMS, type NavItem } from "@/lib/navigation/nav-config";
 import { ThemeProvider } from "@/providers/theme-provider";
@@ -74,6 +74,63 @@ describe("AppShell", () => {
     expect(screen.getByRole("link", { name: "Saltar al contenido" })).toHaveAttribute(
       "href",
       "#contenido",
+    );
+  });
+
+  it("una página agrega su última miga y la entrada del menú pasa a ser enlace", () => {
+    function Page() {
+      useShellTrail("SOL-000182");
+      return <h1>Expediente</h1>;
+    }
+    render(
+      <ThemeProvider initialMode="light" hasCookie>
+        <AppShell
+          nav={groupNav(ITEMS)}
+          user={{ name: "A", email: "a@example.com" }}
+          onLogout={vi.fn()}
+        >
+          <Page />
+        </AppShell>
+      </ThemeProvider>,
+    );
+    const banner = screen.getByRole("banner");
+    expect(banner).toHaveTextContent("Comercial/Solicitudes/SOL-000182");
+    expect(within(banner).getByRole("link", { name: "Solicitudes" })).toHaveAttribute(
+      "href",
+      "/solicitudes",
+    );
+  });
+
+  it("bajo el nombre va el rol; sin rol, el correo", () => {
+    const { rerender } = render(
+      <ThemeProvider initialMode="light" hasCookie>
+        <AppShell
+          nav={groupNav(ITEMS)}
+          user={{ name: "Paula Rincón", email: "paula@example.com", role: "Asesor" }}
+          onLogout={vi.fn()}
+        >
+          <h1>Contenido</h1>
+        </AppShell>
+      </ThemeProvider>,
+    );
+    const account = screen.getByRole("button", { name: /Paula Rincón/ });
+    expect(account).toHaveTextContent("Paula RincónAsesor");
+    expect(account).not.toHaveTextContent("paula@example.com");
+    expect(screen.getByText("Asesor")).toHaveAttribute("title", "paula@example.com");
+
+    rerender(
+      <ThemeProvider initialMode="light" hasCookie>
+        <AppShell
+          nav={groupNav(ITEMS)}
+          user={{ name: "Paula Rincón", email: "paula@example.com", role: null }}
+          onLogout={vi.fn()}
+        >
+          <h1>Contenido</h1>
+        </AppShell>
+      </ThemeProvider>,
+    );
+    expect(screen.getByRole("button", { name: /Paula Rincón/ })).toHaveTextContent(
+      "paula@example.com",
     );
   });
 

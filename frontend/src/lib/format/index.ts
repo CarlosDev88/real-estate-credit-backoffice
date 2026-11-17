@@ -39,6 +39,16 @@ export function formatPercent(value: number | null | undefined): string | null {
 }
 
 const decimalFormat = new Intl.NumberFormat(LOCALE, { maximumFractionDigits: 1 });
+const oneDecimalFormat = new Intl.NumberFormat(LOCALE, {
+  minimumFractionDigits: 1,
+  maximumFractionDigits: 1,
+});
+
+/** "70,2 %": porcentaje con un decimal (financiación sobre el valor del inmueble). */
+export function formatPercentDecimal(value: number | null | undefined): string | null {
+  if (value === null || value === undefined || !Number.isFinite(value)) return null;
+  return `${oneDecimalFormat.format(value)}${NBSP}%`;
+}
 
 /** "850 KB", "1,2 MB" (base 1024). */
 export function formatBytes(bytes: number | null | undefined): string | null {
