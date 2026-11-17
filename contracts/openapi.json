@@ -2499,6 +2499,92 @@
                 }
             }
         },
+        "/api/v1/applications/{application_id}/notifications": {
+            "get": {
+                "operationId": "applications_notifications_list",
+                "description": "Lo que recibió el comprador, de la más nueva a la más vieja, con cada entrega (portal y correo): estado, intentos y último error, para saber si el correo salió. Para el administrador y el asesor asignado (`notifications.read`).",
+                "summary": "Notificaciones de la solicitud y sus entregas",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "application_id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "required": true
+                    },
+                    {
+                        "name": "page",
+                        "required": false,
+                        "in": "query",
+                        "description": "Un número de página dentro del conjunto de resultados paginado.",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "page_size",
+                        "required": false,
+                        "in": "query",
+                        "description": "Número de resultados a devolver por página.",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "tags": [
+                    "Notifications"
+                ],
+                "security": [
+                    {
+                        "internalSession": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PaginatedApplicationNotificationList"
+                                }
+                            }
+                        },
+                        "description": ""
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "NOT_AUTHENTICATED o SESSION_EXPIRED"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "PERMISSION_DENIED"
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "RESOURCE_NOT_FOUND (inexistente o fuera del alcance)"
+                    }
+                }
+            }
+        },
         "/api/v1/applications/{application_id}/participants": {
             "get": {
                 "operationId": "applications_participants_list",
@@ -7856,6 +7942,253 @@
                             }
                         },
                         "description": "RESOURCE_NOT_FOUND"
+                    }
+                }
+            }
+        },
+        "/api/v1/buyer/notifications": {
+            "get": {
+                "operationId": "buyer_notifications_list",
+                "description": "Las de la solicitud de la sesión, de la más nueva a la más vieja. Con `unread=true`, solo las no leídas.",
+                "summary": "Notificaciones del comprador",
+                "parameters": [
+                    {
+                        "name": "page",
+                        "required": false,
+                        "in": "query",
+                        "description": "Un número de página dentro del conjunto de resultados paginado.",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "page_size",
+                        "required": false,
+                        "in": "query",
+                        "description": "Número de resultados a devolver por página.",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "unread",
+                        "schema": {
+                            "type": "boolean"
+                        },
+                        "description": "Solo las no leídas."
+                    }
+                ],
+                "tags": [
+                    "Buyer portal"
+                ],
+                "security": [
+                    {
+                        "buyerSession": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PaginatedBuyerNotificationList"
+                                }
+                            }
+                        },
+                        "description": ""
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "VALIDATION_ERROR"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "NOT_AUTHENTICATED o SESSION_EXPIRED"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "CSRF_FAILED"
+                    }
+                }
+            }
+        },
+        "/api/v1/buyer/notifications/{notification_id}/read": {
+            "patch": {
+                "operationId": "buyer_notifications_read",
+                "description": "Sin cuerpo. Es idempotente: una notificación ya leída conserva su `read_at`. La de otro comprador o de otra solicitud responde `404`.",
+                "summary": "Marcar una notificación como leída",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "notification_id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "Buyer portal"
+                ],
+                "security": [
+                    {
+                        "buyerSession": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/BuyerNotification"
+                                }
+                            }
+                        },
+                        "description": ""
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "RESOURCE_NOT_FOUND (no es una notificación de la sesión)"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "NOT_AUTHENTICATED o SESSION_EXPIRED"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "CSRF_FAILED"
+                    }
+                }
+            }
+        },
+        "/api/v1/buyer/notifications/read-all": {
+            "post": {
+                "operationId": "buyer_notifications_read_all",
+                "description": "Sin cuerpo. `count` es la cantidad que estaba sin leer y se marcó.",
+                "summary": "Marcar todas las notificaciones como leídas",
+                "tags": [
+                    "Buyer portal"
+                ],
+                "security": [
+                    {
+                        "buyerSession": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/NotificationCount"
+                                }
+                            }
+                        },
+                        "description": ""
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "NOT_AUTHENTICATED o SESSION_EXPIRED"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "CSRF_FAILED"
+                    }
+                }
+            }
+        },
+        "/api/v1/buyer/notifications/unread-count": {
+            "get": {
+                "operationId": "buyer_notifications_unread_count",
+                "description": "Para el número de la navegación del portal.",
+                "summary": "Cantidad de notificaciones sin leer",
+                "tags": [
+                    "Buyer portal"
+                ],
+                "security": [
+                    {
+                        "buyerSession": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/NotificationCount"
+                                }
+                            }
+                        },
+                        "description": ""
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "NOT_AUTHENTICATED o SESSION_EXPIRED"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "CSRF_FAILED"
                     }
                 }
             }
@@ -17444,6 +17777,66 @@
                     "withdrawn_at"
                 ]
             },
+            "ApplicationNotification": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "readOnly": true
+                    },
+                    "notification_type": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/NotificationTypeEnum"
+                            }
+                        ],
+                        "readOnly": true
+                    },
+                    "notification_type_label": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "title": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "message": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "readOnly": true
+                    },
+                    "read_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time",
+                        "readOnly": true
+                    },
+                    "deliveries": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/NotificationDelivery"
+                        },
+                        "readOnly": true
+                    }
+                },
+                "required": [
+                    "created_at",
+                    "deliveries",
+                    "id",
+                    "message",
+                    "notification_type",
+                    "notification_type_label",
+                    "read_at",
+                    "title"
+                ]
+            },
             "ApplicationParticipant": {
                 "type": "object",
                 "properties": {
@@ -19995,6 +20388,58 @@
                 "required": [
                     "monthly_amount_cop",
                     "source_type_code"
+                ]
+            },
+            "BuyerNotification": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "readOnly": true
+                    },
+                    "notification_type": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/NotificationTypeEnum"
+                            }
+                        ],
+                        "readOnly": true
+                    },
+                    "notification_type_label": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "title": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "message": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "readOnly": true
+                    },
+                    "read_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time",
+                        "readOnly": true
+                    }
+                },
+                "required": [
+                    "created_at",
+                    "id",
+                    "message",
+                    "notification_type",
+                    "notification_type_label",
+                    "read_at",
+                    "title"
                 ]
             },
             "BuyerParticipant": {
@@ -24662,6 +25107,129 @@
                     "name"
                 ]
             },
+            "NotificationChannelEnum": {
+                "enum": [
+                    "EMAIL",
+                    "PORTAL"
+                ],
+                "type": "string",
+                "description": "* `EMAIL` - Correo electrónico\n* `PORTAL` - Portal"
+            },
+            "NotificationCount": {
+                "type": "object",
+                "properties": {
+                    "count": {
+                        "type": "integer",
+                        "minimum": 0
+                    }
+                },
+                "required": [
+                    "count"
+                ]
+            },
+            "NotificationDelivery": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "readOnly": true
+                    },
+                    "channel": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/NotificationChannelEnum"
+                            }
+                        ],
+                        "readOnly": true
+                    },
+                    "channel_label": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "destination": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "readOnly": true
+                    },
+                    "status": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/NotificationDeliveryStatusEnum"
+                            }
+                        ],
+                        "readOnly": true
+                    },
+                    "status_label": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "attempt_count": {
+                        "type": "integer",
+                        "readOnly": true
+                    },
+                    "next_attempt_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time",
+                        "readOnly": true
+                    },
+                    "sent_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time",
+                        "readOnly": true
+                    },
+                    "last_error_code": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "readOnly": true
+                    }
+                },
+                "required": [
+                    "attempt_count",
+                    "channel",
+                    "channel_label",
+                    "destination",
+                    "id",
+                    "last_error_code",
+                    "next_attempt_at",
+                    "sent_at",
+                    "status",
+                    "status_label"
+                ]
+            },
+            "NotificationDeliveryStatusEnum": {
+                "enum": [
+                    "PENDING",
+                    "SENT",
+                    "FAILED"
+                ],
+                "type": "string",
+                "description": "* `PENDING` - Pendiente\n* `SENT` - Enviada\n* `FAILED` - Fallida"
+            },
+            "NotificationTypeEnum": {
+                "enum": [
+                    "ACCESS_GRANTED",
+                    "DOCUMENT_REJECTED",
+                    "READY_TO_FILE",
+                    "FILED",
+                    "BANK_RETURNED",
+                    "BANK_APPROVED",
+                    "BANK_REJECTED",
+                    "DISBURSED"
+                ],
+                "type": "string",
+                "description": "* `ACCESS_GRANTED` - Acceso al portal\n* `DOCUMENT_REJECTED` - Documento por corregir\n* `READY_TO_FILE` - Expediente completo\n* `FILED` - Solicitud radicada\n* `BANK_RETURNED` - Devolución del banco\n* `BANK_APPROVED` - Crédito aprobado\n* `BANK_REJECTED` - Crédito rechazado\n* `DISBURSED` - Crédito desembolsado"
+            },
             "NullEnum": {
                 "type": "null"
             },
@@ -25259,6 +25827,47 @@
                     }
                 }
             },
+            "PaginatedApplicationNotificationList": {
+                "type": "object",
+                "required": [
+                    "items",
+                    "page",
+                    "page_size",
+                    "total",
+                    "next",
+                    "previous"
+                ],
+                "properties": {
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/ApplicationNotification"
+                        }
+                    },
+                    "page": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "page_size": {
+                        "type": "integer",
+                        "example": 25
+                    },
+                    "total": {
+                        "type": "integer",
+                        "example": 128
+                    },
+                    "next": {
+                        "type": "string",
+                        "nullable": true,
+                        "example": "/api/v1/x?page=2"
+                    },
+                    "previous": {
+                        "type": "string",
+                        "nullable": true,
+                        "example": null
+                    }
+                }
+            },
             "PaginatedApplicationParticipantList": {
                 "type": "object",
                 "required": [
@@ -25684,6 +26293,47 @@
                         "type": "array",
                         "items": {
                             "$ref": "#/components/schemas/BuyerIncomeSource"
+                        }
+                    },
+                    "page": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "page_size": {
+                        "type": "integer",
+                        "example": 25
+                    },
+                    "total": {
+                        "type": "integer",
+                        "example": 128
+                    },
+                    "next": {
+                        "type": "string",
+                        "nullable": true,
+                        "example": "/api/v1/x?page=2"
+                    },
+                    "previous": {
+                        "type": "string",
+                        "nullable": true,
+                        "example": null
+                    }
+                }
+            },
+            "PaginatedBuyerNotificationList": {
+                "type": "object",
+                "required": [
+                    "items",
+                    "page",
+                    "page_size",
+                    "total",
+                    "next",
+                    "previous"
+                ],
+                "properties": {
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/BuyerNotification"
                         }
                     },
                     "page": {

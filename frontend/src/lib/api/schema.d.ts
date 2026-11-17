@@ -380,6 +380,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/applications/{application_id}/notifications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Notificaciones de la solicitud y sus entregas
+         * @description Lo que recibió el comprador, de la más nueva a la más vieja, con cada entrega (portal y correo): estado, intentos y último error, para saber si el correo salió. Para el administrador y el asesor asignado (`notifications.read`).
+         */
+        get: operations["applications_notifications_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/applications/{application_id}/participants": {
         parameters: {
             query?: never;
@@ -1328,6 +1348,86 @@ export interface paths {
          * @description Para catálogos grandes o dependientes, como `municipality`. Filtra por `parent_code` (ej. el código DANE del departamento) o `parent_id`. Soporta `If-None-Match`. Misma respuesta que `GET /metadata/catalogs/{catalog_code}`, solo para los catálogos que usan los formularios del portal: `address_type`, `amortization_mode`, `application_withdrawal_reason`, `contract_type`, `currency_mode`, `department`, `employment_profile`, `financing_mode`, `funds_origin`, `income_source_type`, `municipality`, `property_condition`, `property_type`. Cualquier otro código responde `404`, igual que uno inexistente.
          */
         get: operations["buyer_metadata_catalogs_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/buyer/notifications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Notificaciones del comprador
+         * @description Las de la solicitud de la sesión, de la más nueva a la más vieja. Con `unread=true`, solo las no leídas.
+         */
+        get: operations["buyer_notifications_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/buyer/notifications/{notification_id}/read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Marcar una notificación como leída
+         * @description Sin cuerpo. Es idempotente: una notificación ya leída conserva su `read_at`. La de otro comprador o de otra solicitud responde `404`.
+         */
+        patch: operations["buyer_notifications_read"];
+        trace?: never;
+    };
+    "/api/v1/buyer/notifications/read-all": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Marcar todas las notificaciones como leídas
+         * @description Sin cuerpo. `count` es la cantidad que estaba sin leer y se marcó.
+         */
+        post: operations["buyer_notifications_read_all"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/buyer/notifications/unread-count": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Cantidad de notificaciones sin leer
+         * @description Para el número de la navegación del portal.
+         */
+        get: operations["buyer_notifications_unread_count"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3006,6 +3106,19 @@ export interface components {
             /** @description Transiciones que el actor puede ejecutar ahora (rol y permiso; la guarda se evalúa al ejecutarla). `WITHDRAW_*` se ejecuta por `/withdrawals`. */
             readonly available_actions: components["schemas"]["AvailableAction"][];
         };
+        ApplicationNotification: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly notification_type: components["schemas"]["NotificationTypeEnum"];
+            readonly notification_type_label: string;
+            readonly title: string;
+            readonly message: string;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly read_at: string | null;
+            readonly deliveries: components["schemas"]["NotificationDelivery"][];
+        };
         ApplicationParticipant: {
             /** Format: uuid */
             readonly id: string;
@@ -3718,6 +3831,18 @@ export interface components {
             start_date?: string | null;
             /** @default false */
             is_primary: boolean;
+        };
+        BuyerNotification: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly notification_type: components["schemas"]["NotificationTypeEnum"];
+            readonly notification_type_label: string;
+            readonly title: string;
+            readonly message: string;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly read_at: string | null;
         };
         BuyerParticipant: {
             /** Format: uuid */
@@ -5041,6 +5166,49 @@ export interface components {
             id: string;
             name: string;
         };
+        /**
+         * @description * `EMAIL` - Correo electrónico
+         *     * `PORTAL` - Portal
+         * @enum {string}
+         */
+        NotificationChannelEnum: "EMAIL" | "PORTAL";
+        NotificationCount: {
+            count: number;
+        };
+        NotificationDelivery: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly channel: components["schemas"]["NotificationChannelEnum"];
+            readonly channel_label: string;
+            readonly destination: string | null;
+            readonly status: components["schemas"]["NotificationDeliveryStatusEnum"];
+            readonly status_label: string;
+            readonly attempt_count: number;
+            /** Format: date-time */
+            readonly next_attempt_at: string | null;
+            /** Format: date-time */
+            readonly sent_at: string | null;
+            readonly last_error_code: string | null;
+        };
+        /**
+         * @description * `PENDING` - Pendiente
+         *     * `SENT` - Enviada
+         *     * `FAILED` - Fallida
+         * @enum {string}
+         */
+        NotificationDeliveryStatusEnum: "PENDING" | "SENT" | "FAILED";
+        /**
+         * @description * `ACCESS_GRANTED` - Acceso al portal
+         *     * `DOCUMENT_REJECTED` - Documento por corregir
+         *     * `READY_TO_FILE` - Expediente completo
+         *     * `FILED` - Solicitud radicada
+         *     * `BANK_RETURNED` - Devolución del banco
+         *     * `BANK_APPROVED` - Crédito aprobado
+         *     * `BANK_REJECTED` - Crédito rechazado
+         *     * `DISBURSED` - Crédito desembolsado
+         * @enum {string}
+         */
+        NotificationTypeEnum: "ACCESS_GRANTED" | "DOCUMENT_REJECTED" | "READY_TO_FILE" | "FILED" | "BANK_RETURNED" | "BANK_APPROVED" | "BANK_REJECTED" | "DISBURSED";
         NullEnum: null;
         /**
          * @description Serializer que rechaza campos no declarados (``additionalProperties: false``).
@@ -5216,6 +5384,19 @@ export interface components {
             /** @example null */
             previous: string | null;
         };
+        PaginatedApplicationNotificationList: {
+            items: components["schemas"]["ApplicationNotification"][];
+            /** @example 1 */
+            page: number;
+            /** @example 25 */
+            page_size: number;
+            /** @example 128 */
+            total: number;
+            /** @example /api/v1/x?page=2 */
+            next: string | null;
+            /** @example null */
+            previous: string | null;
+        };
         PaginatedApplicationParticipantList: {
             items: components["schemas"]["ApplicationParticipant"][];
             /** @example 1 */
@@ -5348,6 +5529,19 @@ export interface components {
         };
         PaginatedBuyerIncomeSourceList: {
             items: components["schemas"]["BuyerIncomeSource"][];
+            /** @example 1 */
+            page: number;
+            /** @example 25 */
+            page_size: number;
+            /** @example 128 */
+            total: number;
+            /** @example /api/v1/x?page=2 */
+            next: string | null;
+            /** @example null */
+            previous: string | null;
+        };
+        PaginatedBuyerNotificationList: {
+            items: components["schemas"]["BuyerNotification"][];
             /** @example 1 */
             page: number;
             /** @example 25 */
@@ -8136,6 +8330,59 @@ export interface operations {
             };
             /** @description PRECONDITION_REQUIRED (falta If-Match) */
             428: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    applications_notifications_list: {
+        parameters: {
+            query?: {
+                /** @description Un número de página dentro del conjunto de resultados paginado. */
+                page?: number;
+                /** @description Número de resultados a devolver por página. */
+                page_size?: number;
+            };
+            header?: never;
+            path: {
+                application_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedApplicationNotificationList"];
+                };
+            };
+            /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description PERMISSION_DENIED */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description RESOURCE_NOT_FOUND (inexistente o fuera del alcance) */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -11684,6 +11931,181 @@ export interface operations {
             };
             /** @description RESOURCE_NOT_FOUND */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    buyer_notifications_list: {
+        parameters: {
+            query?: {
+                /** @description Un número de página dentro del conjunto de resultados paginado. */
+                page?: number;
+                /** @description Número de resultados a devolver por página. */
+                page_size?: number;
+                /** @description Solo las no leídas. */
+                unread?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedBuyerNotificationList"];
+                };
+            };
+            /** @description VALIDATION_ERROR */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description CSRF_FAILED */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    buyer_notifications_read: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                notification_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BuyerNotification"];
+                };
+            };
+            /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description CSRF_FAILED */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description RESOURCE_NOT_FOUND (no es una notificación de la sesión) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    buyer_notifications_read_all: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationCount"];
+                };
+            };
+            /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description CSRF_FAILED */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    buyer_notifications_unread_count: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationCount"];
+                };
+            };
+            /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description CSRF_FAILED */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };

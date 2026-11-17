@@ -31,6 +31,7 @@ from apps.identity.exceptions import (
 )
 from apps.identity.models import BuyerAccessLink, BuyerAccessLinkStatus, BuyerSession
 from apps.identity.services import client_ip, user_agent_summary
+from apps.identity.signals import buyer_access_consumed
 from apps.identity.tokens import generate_opaque_token, hash_token
 
 logger = logging.getLogger(__name__)
@@ -125,6 +126,7 @@ def consume_access_link(*, request: HttpRequest, raw_token: str) -> IssuedBuyerS
         session.pk,
         link.application.code,
     )
+    buyer_access_consumed.send(sender=BuyerSession, link=link, session=session)
     return IssuedBuyerSession(session=session, token=session_token)
 
 

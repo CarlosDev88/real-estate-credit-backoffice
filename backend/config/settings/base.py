@@ -33,6 +33,7 @@ INSTALLED_APPS = [
     "apps.documents",
     "apps.applications",
     "apps.filings",
+    "apps.notifications",
 ]
 
 MIDDLEWARE = [
@@ -139,6 +140,9 @@ SPECTACULAR_SETTINGS = {
         # Portal y backoffice: estado público del documento y estado de cada etapa.
         "PublicSlotStatusEnum": "apps.documents.models.PublicSlotStatus",
         "ProgressStageStateEnum": "apps.applications.stages.StageState",
+        # Notificaciones: canal y estado de cada entrega.
+        "NotificationChannelEnum": "apps.notifications.models.DeliveryChannel",
+        "NotificationDeliveryStatusEnum": "apps.notifications.models.DeliveryStatus",
     },
 }
 
