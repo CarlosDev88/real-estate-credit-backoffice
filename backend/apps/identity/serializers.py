@@ -72,6 +72,11 @@ class MeSerializer(serializers.Serializer):
     name = serializers.CharField()
     email = serializers.EmailField()
     role = serializers.CharField(allow_null=True)
+    role_label = serializers.CharField(
+        allow_null=True,
+        help_text="Nombre del rol principal (`role`), para mostrar bajo el nombre del usuario; "
+        "`null` si no tiene rol.",
+    )
     roles = serializers.ListField(child=serializers.CharField())
     permissions = serializers.ListField(child=serializers.CharField())
     scope = ScopeSerializer()

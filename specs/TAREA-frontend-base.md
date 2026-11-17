@@ -192,12 +192,12 @@ Las cuatro primeras se resuelven en `TAREA-applications-listado.md`; mientras ta
 - Monto solicitado, completitud y número de co-solicitantes en cada fila.
 - Conteos de las pestañas del listado y qué estados agrupa cada una (no los puede definir el frontend).
 - Marca de "ya no cumple" en solicitudes `READY_TO_FILE` y nombre corto del banco (filas 9 y 10 de esa spec).
-- Etiqueta pública del estado de cada documento para el comprador ("Te falta", "Corrígelo", "En revisión", "No aplica"). Hoy el DTO del comprador trae el código; el texto no puede escribirse en el frontend. Va en el DTO de `/buyer/.../document-slots` (tarea pequeña aparte, después de la fase 10).
-- Etiqueta del rol del usuario interno: `/auth/me` trae `role` y `roles` como códigos, sin texto. Mientras no exista, bajo el avatar van el nombre y el correo.
+- **Resuelta en `TAREA-brechas.md` (PR #por definir):** `public_status`, `public_status_label` y `needs_action` en `BuyerDocumentSlot` (API §19.1). Etiqueta pública del estado de cada documento para el comprador ("Te falta", "Corrígelo", "En revisión", "No aplica"). Hoy el DTO del comprador trae el código; el texto no puede escribirse en el frontend. Va en el DTO de `/buyer/.../document-slots` (tarea pequeña aparte, después de la fase 10).
+- **Resuelta en `TAREA-brechas.md` (PR #por definir):** `role_label` en `/auth/me` (API §7). Etiqueta del rol del usuario interno: `/auth/me` trae `role` y `roles` como códigos, sin texto. Mientras no exista, bajo el avatar van el nombre y el correo.
 - Casilla "Mantener la sesión en este equipo" del login: `/auth/login` solo recibe correo y contraseña, y la sesión dura 8 h fijas. Se quita.
 - Búsqueda global de la barra superior: no hay endpoint. Se quita.
 - Campana de notificaciones internas de la barra superior: no hay endpoint. Se quita.
-- El contrato (`contracts/openapi.json`) no declara la cabecera `ETag` en ninguna respuesta, aunque exige `If-Match` en 12 escrituras y API §6 dice que toda respuesta del expediente la lleva. El frontend la lee igual desde la respuesta, pero el contrato debe documentarla.
+- **Resuelta en `TAREA-brechas.md` (PR #por definir):** `headers.ETag` en las 56 respuestas que la llevan (API §6). El contrato (`contracts/openapi.json`) no declaraba la cabecera `ETag` en ninguna respuesta, aunque exige `If-Match` en 12 escrituras y API §6 dice que toda respuesta del expediente la lleva. El frontend la lee igual desde la respuesta, pero el contrato debe documentarla.
 - El tipo documental que ve el comprador (`BuyerSlotDocumentType`) no trae `allowed_mime_types` ni `max_size_bytes`; el interno (`SlotDocumentType`) sí. Sin ellos, el uploader del portal no puede validar tipo y tamaño antes de enviar: lo valida solo la API (`422 UNSUPPORTED_FILE_TYPE` / `FILE_TOO_LARGE`, `413 PAYLOAD_TOO_LARGE`).
 
 ## Pruebas

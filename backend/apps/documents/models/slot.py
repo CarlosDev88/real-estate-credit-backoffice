@@ -14,6 +14,28 @@ class SlotStatus(models.TextChoices):
     WAIVED = "WAIVED", "Exonerado"
 
 
+class PublicSlotStatus(models.TextChoices):
+    """Estado del documento como lo ve el comprador, con el texto del portal."""
+
+    TO_UPLOAD = "TO_UPLOAD", "Te falta"
+    TO_FIX = "TO_FIX", "Corrígelo"
+    IN_REVIEW = "IN_REVIEW", "En revisión"
+    DONE = "DONE", "Listo"
+    NOT_APPLICABLE = "NOT_APPLICABLE", "No aplica"
+
+
+# Estado del slot → estado público. Cubre todos los `SlotStatus` (lo verifica una prueba).
+PUBLIC_SLOT_STATUS: dict[str, PublicSlotStatus] = {
+    SlotStatus.PENDING: PublicSlotStatus.TO_UPLOAD,
+    SlotStatus.REJECTED: PublicSlotStatus.TO_FIX,
+    SlotStatus.UPLOADED: PublicSlotStatus.IN_REVIEW,
+    SlotStatus.APPROVED: PublicSlotStatus.DONE,
+    SlotStatus.WAIVED: PublicSlotStatus.NOT_APPLICABLE,
+}
+# Estados públicos en los que el comprador debe actuar si el slot admite una carga.
+ACTIONABLE_PUBLIC_STATUSES = (PublicSlotStatus.TO_UPLOAD, PublicSlotStatus.TO_FIX)
+
+
 class ApplicationDocumentSlot(models.Model):
     """Documento concreto que espera una solicitud, copiado de un requisito publicado.
 

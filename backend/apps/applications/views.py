@@ -71,6 +71,7 @@ from apps.crm.services import CrmScope, clients_visible_to, resolve_visible_clie
 from apps.identity.models import User
 from apps.identity.permissions import HasPermissionCode
 from config.filters import StrictOrderingFilter, parse_bool_param, parse_uuid_param
+from config.openapi import etag_response_headers
 from config.serializers import ErrorSerializer
 
 APPLICATIONS_TAG = "Applications"
@@ -330,6 +331,7 @@ class ApplicationListView(ApplicationView):
             "terminaron en `REJECTED`, `WITHDRAWN` o `CANCELLED`."
         ),
         request=ApplicationCreateSerializer,
+        parameters=[etag_response_headers(201)],
         responses={
             201: ApplicationDetailSerializer,
             409: _error("APPLICATION_ALREADY_OPEN o INVALID_STATE_TRANSITION"),
@@ -427,7 +429,7 @@ class ApplicationDetailView(ApplicationView):
             "`property` y `assignments` salen siempre; `participants` y `financing`, solo "
             "con `include`. El broker recibe solo el resumen."
         ),
-        parameters=[INCLUDE_PARAM],
+        parameters=[INCLUDE_PARAM, etag_response_headers(200)],
         responses={200: ApplicationDetailSerializer, **NOT_FOUND, **COMMON_ERRORS},
     )
     def get(self, request: Request, application_id: Any) -> Response:
@@ -444,7 +446,7 @@ class ApplicationDetailView(ApplicationView):
             "una financiación registrada, el producto debe cuadrar con su modalidad: solo "
             "`BANK_CREDIT` lleva producto, y no se puede dejar sin él."
         ),
-        parameters=[IF_MATCH],
+        parameters=[IF_MATCH, etag_response_headers(200)],
         request=ApplicationUpdateSerializer,
         responses={
             200: ApplicationDetailSerializer,
@@ -499,6 +501,7 @@ class ApplicationAssignmentView(ApplicationView):
             "deja de tener acceso, responde `204`."
         ),
         request=AssignmentCreateSerializer,
+        parameters=[etag_response_headers(200)],
         responses={
             200: ApplicationDetailSerializer,
             204: OpenApiResponse(description="Reasignada; el actor ya no tiene acceso."),
@@ -620,7 +623,8 @@ class ApplicationParticipantListView(ExpedienteView):
                 "include_inactive",
                 OpenApiTypes.BOOL,
                 description="Incluye a los participantes retirados.",
-            )
+            ),
+            etag_response_headers(200),
         ],
         responses={
             200: ApplicationParticipantSerializer(many=True),
@@ -650,6 +654,7 @@ class ApplicationParticipantListView(ExpedienteView):
             f"versión. {ETAG_NOTE}"
         ),
         request=ParticipantCreateSerializer,
+        parameters=[etag_response_headers(201)],
         responses={
             201: ApplicationParticipantSerializer,
             409: _error("APPLICATION_NOT_EDITABLE o DUPLICATE_CLIENT_DOCUMENT"),
@@ -691,6 +696,7 @@ class ApplicationParticipantDetailView(ExpedienteView):
         operation_id="application_participants_retrieve",
         summary="Detalle del participante",
         description=f"También de un participante retirado (`is_active=false`). {ETAG_NOTE}",
+        parameters=[etag_response_headers(200)],
         responses={200: ApplicationParticipantSerializer, **NOT_FOUND, **COMMON_ERRORS},
     )
     def get(self, request: Request, participant_id: Any) -> Response:
@@ -704,7 +710,7 @@ class ApplicationParticipantDetailView(ExpedienteView):
             "El titular no cambia de papel. Los datos personales se corrigen en "
             f"`/clients/{{id}}`. {ETAG_NOTE}"
         ),
-        parameters=[IF_MATCH],
+        parameters=[IF_MATCH, etag_response_headers(200)],
         request=ParticipantUpdateSerializer,
         responses={200: ApplicationParticipantSerializer, **WRITE_ERRORS},
     )
@@ -726,6 +732,7 @@ class ApplicationParticipantDetailView(ExpedienteView):
             "Lo marca `is_active=false`; el titular no se retira. No exige `If-Match`, pero "
             f"aumenta la versión. {ETAG_NOTE}"
         ),
+        parameters=[etag_response_headers(204)],
         responses={
             204: OpenApiResponse(description="Retirado."),
             409: _error("APPLICATION_NOT_EDITABLE"),
@@ -752,6 +759,7 @@ class FinancialProfileView(ExpedienteView):
             "`income_sources_total_cop` suma las fuentes de ingreso; es informativo y puede "
             f"diferir de `monthly_income_cop`. {ETAG_NOTE}"
         ),
+        parameters=[etag_response_headers(200)],
         responses={200: FinancialProfileSerializer, **NOT_FOUND, **COMMON_ERRORS},
     )
     def get(self, request: Request, participant_id: Any) -> Response:
@@ -767,7 +775,7 @@ class FinancialProfileView(ExpedienteView):
             "limpia. Responde `201` si lo creó. "
             f"{ETAG_NOTE}"
         ),
-        parameters=[IF_MATCH],
+        parameters=[IF_MATCH, etag_response_headers(200, 201)],
         request=FinancialProfileInputSerializer,
         responses={
             200: FinancialProfileSerializer,
@@ -796,6 +804,7 @@ class IncomeSourceListView(ExpedienteView):
         operation_id="financial_profiles_income_sources_list",
         summary="Fuentes de ingreso del perfil",
         description=f"La principal primero. {ETAG_NOTE}",
+        parameters=[etag_response_headers(200)],
         responses={200: IncomeSourceSerializer(many=True), **NOT_FOUND, **COMMON_ERRORS},
     )
     def get(self, request: Request, profile_id: Any) -> Response:
@@ -814,6 +823,7 @@ class IncomeSourceListView(ExpedienteView):
             f"`If-Match`, pero aumenta la versión. {ETAG_NOTE}"
         ),
         request=IncomeSourceCreateSerializer,
+        parameters=[etag_response_headers(201)],
         responses={201: IncomeSourceSerializer, **CREATE_ERRORS},
     )
     def post(self, request: Request, profile_id: Any) -> Response:
@@ -838,7 +848,7 @@ class IncomeSourceDetailView(ExpedienteView):
         operation_id="income_sources_partial_update",
         summary="Editar una fuente de ingreso",
         description=f"Marcarla como principal desmarca la anterior. {ETAG_NOTE}",
-        parameters=[IF_MATCH],
+        parameters=[IF_MATCH, etag_response_headers(200)],
         request=IncomeSourceUpdateSerializer,
         responses={200: IncomeSourceSerializer, **WRITE_ERRORS},
     )
@@ -860,6 +870,7 @@ class IncomeSourceDetailView(ExpedienteView):
         operation_id="income_sources_destroy",
         summary="Eliminar una fuente de ingreso",
         description=f"No exige `If-Match`, pero aumenta la versión. {ETAG_NOTE}",
+        parameters=[etag_response_headers(204)],
         responses={
             204: OpenApiResponse(description="Eliminada."),
             **CREATE_ERRORS,
@@ -904,6 +915,7 @@ class ApplicationPropertyView(ExpedienteView):
         operation_id="applications_property_retrieve",
         summary="Inmueble de la solicitud",
         description=f"`404` si todavía no se registró. {ETAG_NOTE}",
+        parameters=[etag_response_headers(200)],
         responses={200: PropertySerializer, **NOT_FOUND, **COMMON_ERRORS},
     )
     def get(self, request: Request, application_id: Any) -> Response:
@@ -920,7 +932,7 @@ class ApplicationPropertyView(ExpedienteView):
             "`PURCHASE_USED` y `HOME_IMPROVEMENT` exigen `address`; `HOME_IMPROVEMENT` "
             f"exige `is_owned_by_applicant`. Responde `201` si lo creó. {ETAG_NOTE}"
         ),
-        parameters=[IF_MATCH],
+        parameters=[IF_MATCH, etag_response_headers(200, 201)],
         request=ApplicationPropertyInputSerializer,
         responses={
             200: PropertySerializer,
@@ -968,6 +980,7 @@ class ApplicationFinancingView(ExpedienteView):
         operation_id="applications_financing_retrieve",
         summary="Preferencia de financiación",
         description=f"`404` si todavía no se registró. {ETAG_NOTE}",
+        parameters=[etag_response_headers(200)],
         responses={200: FinancingSerializer, **NOT_FOUND, **COMMON_ERRORS},
     )
     def get(self, request: Request, application_id: Any) -> Response:
@@ -988,7 +1001,7 @@ class ApplicationFinancingView(ExpedienteView):
             "no se validan al guardar: los verifica la evaluación bancaria. Responde "
             f"`201` si la creó. {ETAG_NOTE}"
         ),
-        parameters=[IF_MATCH],
+        parameters=[IF_MATCH, etag_response_headers(200, 201)],
         request=FinancingInputSerializer,
         responses={
             200: FinancingSerializer,
@@ -1037,6 +1050,7 @@ class ApplicationRuleEvaluationView(ExpedienteView):
             f"exige `If-Match`. Solo antes de radicar. {ETAG_NOTE}"
         ),
         request=None,
+        parameters=[etag_response_headers(201)],
         responses={
             201: BankRuleEvaluationSerializer,
             409: _error("APPLICATION_NOT_EDITABLE"),
@@ -1068,6 +1082,7 @@ class ApplicationLatestRuleEvaluationView(ExpedienteView):
             "si corresponde a la versión y al producto actuales. `404` si nunca se evaluó. "
             f"{ETAG_NOTE}"
         ),
+        parameters=[etag_response_headers(200)],
         responses={200: BankRuleEvaluationSerializer, **NOT_FOUND, **COMMON_ERRORS},
     )
     def get(self, request: Request, application_id: Any) -> Response:
@@ -1092,6 +1107,7 @@ class EligibleBankProductsView(ExpedienteView):
             "actuales: reglas publicadas y rangos del producto. Se listan aunque la "
             f"modalidad registrada no sea `BANK_CREDIT`. {ETAG_NOTE}"
         ),
+        parameters=[etag_response_headers(200)],
         responses={
             200: EligibleBankProductSerializer(many=True),
             **NOT_FOUND,
@@ -1142,6 +1158,7 @@ class ApplicationStatusTransitionView(ExpedienteView):
             f"se rechace. {ETAG_NOTE}"
         ),
         request=StatusTransitionSerializer,
+        parameters=[etag_response_headers(200)],
         responses={
             200: StatusChangeSerializer,
             422: _error("APPLICATION_NOT_READY o FINANCING_MODE_MISMATCH"),
@@ -1177,6 +1194,7 @@ class ApplicationWithdrawalView(ExpedienteView):
             f"`expected_version` son obligatorios. {ETAG_NOTE}"
         ),
         request=WithdrawalSerializer,
+        parameters=[etag_response_headers(200)],
         responses={200: StatusChangeSerializer, **STATUS_ERRORS},
     )
     def post(self, request: Request, application_id: Any) -> Response:
@@ -1205,6 +1223,7 @@ class ApplicationStatusHistoryView(ExpedienteView):
             "De la más reciente a la más antigua, incluido el registro de creación "
             f"(`from_status` nulo). {ETAG_NOTE}"
         ),
+        parameters=[etag_response_headers(200)],
         responses={200: StatusHistorySerializer(many=True), **NOT_FOUND, **COMMON_ERRORS},
     )
     def get(self, request: Request, application_id: Any) -> Response:
@@ -1226,6 +1245,7 @@ class ApplicationAvailableActionsView(ExpedienteView):
             "y permiso. La guarda no se evalúa aquí. `WITHDRAW_*` se ejecuta por "
             f"`/withdrawals`. {ETAG_NOTE}"
         ),
+        parameters=[etag_response_headers(200)],
         responses={200: AvailableActionSerializer(many=True), **NOT_FOUND, **COMMON_ERRORS},
     )
     def get(self, request: Request, application_id: Any) -> Response:
@@ -1255,6 +1275,7 @@ class ApplicationCompletenessView(ExpedienteView):
             "aparece con `ready_to_file = false`. Es solo lectura: si la última evaluación "
             f"bancaria no está vigente, evalúa en memoria sin guardarla. {ETAG_NOTE}"
         ),
+        parameters=[etag_response_headers(200)],
         responses={200: CompletenessSerializer, **NOT_FOUND, **COMMON_ERRORS},
     )
     def get(self, request: Request, application_id: Any) -> Response:

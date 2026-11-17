@@ -512,6 +512,7 @@ def test_the_list_shows_what_the_buyer_needs_to_upload(
     assert payroll_row["participant"] == {
         "id": str(primary.id),
         "role": "PRIMARY",
+        "role_label": "Titular",
         "full_name": "Laura Gómez Vélez",
     }
     assert set(payroll_row) == {
@@ -527,7 +528,10 @@ def test_the_list_shows_what_the_buyer_needs_to_upload(
         "allowed_mime_types",
         "max_size_bytes",
         "status",
+        "public_status",
+        "public_status_label",
         "can_upload",
+        "needs_action",
         "current_file",
         "rejection",
         "updated_at",
@@ -535,6 +539,9 @@ def test_the_list_shows_what_the_buyer_needs_to_upload(
     assert payroll_row["allowed_mime_types"] == ["application/pdf", "image/jpeg", "image/png"]
     assert payroll_row["max_size_bytes"] == 10 * 1024 * 1024
     assert payroll_row["can_upload"] is True
+    assert payroll_row["public_status"] == "TO_UPLOAD"
+    assert payroll_row["public_status_label"] == "Te falta"
+    assert payroll_row["needs_action"] is True
     assert payroll_row["current_file"] is None
     assert payroll_row["rejection"] is None
     assert response["Cache-Control"] == "no-store"
