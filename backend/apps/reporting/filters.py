@@ -134,11 +134,11 @@ class DashboardFilterSerializer(serializers.Serializer):
         if scope.is_restricted:
             for name in BROKER_FORBIDDEN_FILTERS:
                 if attrs.get(name) is not None:
-                    raise _out_of_scope(name)
+                    raise out_of_scope(name)
             return
         advisor_id = attrs.get("advisor_id")
         if advisor_id is not None and advisor_id != user.pk:
-            raise _out_of_scope("advisor_id")
+            raise out_of_scope("advisor_id")
 
     def _ensure_exist(self, attrs: dict[str, Any]) -> None:
         checks: list[tuple[str, QuerySet[Any]]] = [
@@ -184,7 +184,7 @@ class ReportFilterSerializer(DashboardFilterSerializer):
     )
 
 
-def _out_of_scope(name: str) -> FilterOutOfScope:
+def out_of_scope(name: str) -> FilterOutOfScope:
     message = "Este filtro está fuera de tu alcance."
     return FilterOutOfScope(
         details=[{"field": name, "code": FilterOutOfScope.error_code, "message": message}]

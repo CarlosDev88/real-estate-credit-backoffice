@@ -305,7 +305,7 @@ def test_magic_link_is_not_replayed(
     assert record.response_headers == {}
 
 
-def test_the_contract_declares_the_header_in_the_five_operations() -> None:
+def test_the_contract_declares_the_header_in_the_idempotent_operations() -> None:
     schema = SchemaGenerator().get_schema(request=None, public=True)
     expected = {
         "applications_filings_create",
@@ -313,6 +313,7 @@ def test_the_contract_declares_the_header_in_the_five_operations() -> None:
         "applications_status_transitions_create",
         "applications_document_package_jobs_create",
         "buyer_access_links_create",
+        "reports_applications_export_jobs_create",
     }
     declared = set()
     for item in schema["paths"].values():

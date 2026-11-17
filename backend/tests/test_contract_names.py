@@ -63,6 +63,8 @@ STABLE_ENUMS = {
         "APPROVED",
         "DISBURSED",
     ],
+    "ReportExportJobStatusEnum": ["PENDING", "RUNNING", "COMPLETED", "FAILED", "EXPIRED"],
+    "ReportTypeEnum": ["applications"],
 }
 
 

@@ -163,6 +163,9 @@ SPECTACULAR_SETTINGS = {
         "ActivityEventTypeEnum": "apps.activity.models.ActivityEventType",
         # Dashboard: etapas del embudo (`code` choca con `CodeEnum`).
         "FunnelStageEnum": "apps.reporting.services.FunnelStage",
+        # Exportación asíncrona: mismos códigos que el paquete documental, otras etiquetas.
+        "ReportExportJobStatusEnum": "apps.reporting.models.ExportJobStatus",
+        "ReportTypeEnum": "apps.reporting.models.ReportType",
     },
 }
 
@@ -251,6 +254,11 @@ BUYER_INACTIVITY_DAYS = 3
 REPORTS_MAX_RANGE_DAYS = 366
 # Filas máximas de `/reports/applications.csv`; más allá, la exportación asíncrona.
 REPORTS_CSV_MAX_ROWS = 5000
+# Exportación asíncrona: tope duro de filas y horas que el CSV queda disponible.
+REPORTS_EXPORT_MAX_ROWS = 100000
+REPORTS_EXPORT_TTL_HOURS = 24
+# Exportaciones `PENDING` o `RUNNING` a la vez por usuario.
+REPORTS_EXPORT_MAX_ACTIVE = 3
 
 # --- Metadatos para el frontend (sección 9) ------------------------------------------
 # Catálogos grandes que no viajan en /metadata/bootstrap; se piden con

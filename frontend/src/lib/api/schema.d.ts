@@ -2877,6 +2877,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/report-export-jobs/{job_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Estado de una exportación
+         * @description Del propietario, o de cualquiera con `reports.manage`. `FAILED` trae `error_code`; un `FAILED` no se reintenta: se pide otra.
+         */
+        get: operations["report_export_jobs_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/report-export-jobs/{job_id}/download": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Descargar una exportación
+         * @description URL prefirmada de corta duración (`DOCUMENT_DOWNLOAD_URL_SECONDS`, 5 minutos por omisión) del CSV, con `Content-Disposition: attachment`, como la descarga de documentos (comparte su límite de 60 descargas por hora). La URL no se guarda ni va a los logs.
+         */
+        get: operations["report_export_jobs_download"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/reports/applications": {
         parameters: {
             query?: never;
@@ -2911,6 +2951,30 @@ export interface paths {
         get: operations["reports_applications_csv"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/applications/export-jobs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Exportaciones pedidas
+         * @description Las exportaciones propias, de la más nueva a la más vieja. Con `reports.manage` (administrador), `all=true` lista las de todos; sin ese permiso, `all=true` responde `403 FILTER_OUT_OF_SCOPE`.
+         */
+        get: operations["reports_applications_export_jobs_list"];
+        put?: never;
+        /**
+         * Pedir la exportación asíncrona del reporte de solicitudes
+         * @description Exporta en segundo plano, solo en CSV, el reporte de `/reports/applications` con los filtros del cuerpo (los mismos de la consulta, todos opcionales; un campo desconocido responde `400`). Guarda los filtros ya validados, con el rango efectivo. El trabajo se recalcula con el alcance del solicitante al momento de ejecutarse y no tiene el límite de 5000 filas (sí un tope de 100000). Cada usuario tiene como máximo 3 exportaciones pendientes o en proceso: una más responde `429 TOO_MANY_EXPORTS`. Se consulta en `GET /report-export-jobs/{job_id}`.
+         */
+        post: operations["reports_applications_export_jobs_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -5146,6 +5210,43 @@ export interface components {
             /** Format: binary */
             file: string;
         };
+        /** @description Filtros validados que guarda la exportación, con el rango efectivo. */
+        ExportFilters: {
+            /** Format: date */
+            date_from: string;
+            /** Format: date */
+            date_to: string;
+            /** Format: uuid */
+            advisor_id: string | null;
+            /** Format: uuid */
+            partner_id: string | null;
+            /** Format: uuid */
+            project_id: string | null;
+            /** Format: uuid */
+            bank_id: string | null;
+            purpose_code: string | null;
+            status: components["schemas"]["ApplicationStatusEnum"][];
+        };
+        /**
+         * @description Cuerpo de ``POST /reports/applications/export-jobs``: los filtros del reporte, todos
+         *     opcionales. Un campo desconocido responde ``400``.
+         */
+        ExportJobRequestRequest: {
+            /** Format: date */
+            date_from?: string;
+            /** Format: date */
+            date_to?: string;
+            /** Format: uuid */
+            advisor_id?: string;
+            /** Format: uuid */
+            partner_id?: string;
+            /** Format: uuid */
+            project_id?: string;
+            /** Format: uuid */
+            bank_id?: string;
+            purpose_code?: string;
+            status?: components["schemas"]["ApplicationStatusEnum"][];
+        };
         FileMetadata: {
             /** Format: uuid */
             readonly id: string;
@@ -6371,6 +6472,19 @@ export interface components {
             /** @example null */
             previous: string | null;
         };
+        PaginatedReportExportJobList: {
+            items: components["schemas"]["ReportExportJob"][];
+            /** @example 1 */
+            page: number;
+            /** @example 25 */
+            page_size: number;
+            /** @example 128 */
+            total: number;
+            /** @example /api/v1/x?page=2 */
+            next: string | null;
+            /** @example null */
+            previous: string | null;
+        };
         PaginatedRoleList: {
             items: components["schemas"]["Role"][];
             /** @example 1 */
@@ -7071,6 +7185,47 @@ export interface components {
             last_status_change_at: string;
             filings_count: number;
         };
+        ReportExportJob: {
+            /** Format: uuid */
+            id: string;
+            report_type: components["schemas"]["ReportTypeEnum"];
+            readonly report_type_label: string;
+            /** @description Siempre `csv` en el MVP. */
+            readonly format: string;
+            /**
+             * @description `PENDING` → `RUNNING` → `COMPLETED` o `FAILED`; un `COMPLETED` pasa a `EXPIRED` a las 24 horas.
+             *
+             *     * `PENDING` - Pendiente
+             *     * `RUNNING` - En proceso
+             *     * `COMPLETED` - Terminada
+             *     * `FAILED` - Fallida
+             *     * `EXPIRED` - Vencida
+             */
+            status: components["schemas"]["ReportExportJobStatusEnum"];
+            readonly status_label: string;
+            filters: components["schemas"]["ExportFilters"];
+            row_count: number | null;
+            /** @description Solo en `FAILED`: `PERMISSION_REVOKED`, `EXPORT_TOO_LARGE`, `STORAGE_UNAVAILABLE` o `INVALID_FILTERS`. */
+            error_code: string | null;
+            readonly requested_by: components["schemas"]["RequestedByRef"];
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            started_at: string | null;
+            /** Format: date-time */
+            completed_at: string | null;
+            /** Format: date-time */
+            expires_at: string | null;
+        };
+        /**
+         * @description * `PENDING` - Pendiente
+         *     * `RUNNING` - En proceso
+         *     * `COMPLETED` - Terminada
+         *     * `FAILED` - Fallida
+         *     * `EXPIRED` - Vencida
+         * @enum {string}
+         */
+        ReportExportJobStatusEnum: "PENDING" | "RUNNING" | "COMPLETED" | "FAILED" | "EXPIRED";
         ReportFunnel: {
             period: components["schemas"]["Period"];
             group_by: components["schemas"]["GroupByEnum"] | components["schemas"]["NullEnum"];
@@ -7084,6 +7239,16 @@ export interface components {
             key: string | null;
             label: string;
             stages: components["schemas"]["FunnelStage"][];
+        };
+        /**
+         * @description * `applications` - Solicitudes
+         * @enum {string}
+         */
+        ReportTypeEnum: "applications";
+        RequestedByRef: {
+            /** Format: uuid */
+            id: string;
+            name: string;
         };
         Role: {
             /** Format: uuid */
@@ -18673,6 +18838,138 @@ export interface operations {
             };
         };
     };
+    report_export_jobs_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportExportJob"];
+                };
+            };
+            /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description PERMISSION_DENIED */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description RESOURCE_NOT_FOUND (inexistente o de otro usuario) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    report_export_jobs_download: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentDownload"];
+                };
+            };
+            /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description PERMISSION_DENIED */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description RESOURCE_NOT_FOUND (inexistente o de otro usuario) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description EXPORT_NOT_READY (pendiente, en proceso o fallida) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description EXPORT_EXPIRED */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description SERVICE_UNAVAILABLE (almacenamiento no disponible) */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
     reports_applications_list: {
         parameters: {
             query?: {
@@ -18821,6 +19118,139 @@ export interface operations {
                 };
             };
             /** @description RATE_LIMITED: más de 20 consultas por minuto al dashboard y los reportes (cupo compartido, por usuario). `Retry-After` dice cuántos segundos esperar. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    reports_applications_export_jobs_list: {
+        parameters: {
+            query?: {
+                /** @description Solo con `reports.manage`: las exportaciones de todos. */
+                all?: boolean;
+                /** @description Un número de página dentro del conjunto de resultados paginado. */
+                page?: number;
+                /** @description Número de resultados a devolver por página. */
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedReportExportJobList"];
+                };
+            };
+            /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description PERMISSION_DENIED o FILTER_OUT_OF_SCOPE (`all` sin `reports.manage`) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description RATE_LIMITED: más de 20 consultas por minuto al dashboard y los reportes (cupo compartido, por usuario). `Retry-After` dice cuántos segundos esperar. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    reports_applications_export_jobs_create: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Opcional. Clave única de la operación (1 a 100 caracteres visibles; por ejemplo, un UUID), válida 24 horas para el actor, el método y la ruta. Repetirla con el mismo cuerpo devuelve la respuesta original; con otro cuerpo, `422 IDEMPOTENCY_CONFLICT`; mientras la primera sigue en curso, `409 IDEMPOTENCY_IN_PROGRESS`. Solo se guardan las respuestas `2xx`. */
+                "Idempotency-Key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ExportJobRequestRequest"];
+            };
+        };
+        responses: {
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportExportJob"];
+                };
+            };
+            /** @description VALIDATION_ERROR: fecha mal escrita, `date_from > date_to`, rango de más de 366 días, un id que no existe o un `purpose_code` desconocido.; VALIDATION_ERROR (`Idempotency-Key` mal formada) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description PERMISSION_DENIED o FILTER_OUT_OF_SCOPE (un filtro fuera del alcance del usuario). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description IDEMPOTENCY_IN_PROGRESS */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description IDEMPOTENCY_CONFLICT */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description TOO_MANY_EXPORTS (3 exportaciones en curso) o RATE_LIMITED (más de 20 consultas por minuto al dashboard y los reportes) */
             429: {
                 headers: {
                     [name: string]: unknown;

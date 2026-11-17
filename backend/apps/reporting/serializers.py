@@ -1,11 +1,16 @@
 """Respuestas del dashboard. Son de solo lectura y leen los diccionarios de
 ``services``; las etiquetas salen de las ``TextChoices`` (``ChoiceLabelField``)."""
 
+from typing import Any
+
+from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
 from apps.catalogs.workflow import ApplicationStatus
+from apps.reporting.filters import ReportFilterSerializer
+from apps.reporting.models import ExportJobStatus, ReportExportJob, ReportType
 from apps.reporting.services import FunnelGroupBy, FunnelStage
-from config.serializers import ChoiceLabelField
+from config.serializers import ChoiceLabelField, StrictSerializer
 
 
 def _money_field(help_text: str) -> serializers.DecimalField:
@@ -166,3 +171,63 @@ class ReportApplicationSerializer(serializers.Serializer):
     )
     last_status_change_at = serializers.DateTimeField()
     filings_count = serializers.IntegerField()
+
+
+# --- Exportación asíncrona --------------------------------------------------------------
+
+
+class ExportJobRequestSerializer(StrictSerializer, ReportFilterSerializer):
+    """Cuerpo de ``POST /reports/applications/export-jobs``: los filtros del reporte, todos
+    opcionales. Un campo desconocido responde ``400``."""
+
+
+class ExportFiltersSerializer(serializers.Serializer):
+    """Filtros validados que guarda la exportación, con el rango efectivo."""
+
+    date_from = serializers.DateField()
+    date_to = serializers.DateField()
+    advisor_id = serializers.UUIDField(allow_null=True)
+    partner_id = serializers.UUIDField(allow_null=True)
+    project_id = serializers.UUIDField(allow_null=True)
+    bank_id = serializers.UUIDField(allow_null=True)
+    purpose_code = serializers.CharField(allow_null=True)
+    status = serializers.ListField(child=serializers.ChoiceField(choices=ApplicationStatus.choices))
+
+
+class RequestedByRefSerializer(serializers.Serializer):
+    id = serializers.UUIDField()
+    name = serializers.CharField()
+
+
+class ReportExportJobSerializer(serializers.Serializer):
+    id = serializers.UUIDField()
+    report_type = serializers.ChoiceField(choices=ReportType.choices)
+    report_type_label = ChoiceLabelField(ReportType, source="report_type")
+    format = serializers.SerializerMethodField(help_text="Siempre `csv` en el MVP.")
+    status = serializers.ChoiceField(
+        choices=ExportJobStatus.choices,
+        source="effective_status",
+        help_text="`PENDING` → `RUNNING` → `COMPLETED` o `FAILED`; un `COMPLETED` pasa a "
+        "`EXPIRED` a las 24 horas.",
+    )
+    status_label = ChoiceLabelField(ExportJobStatus, source="effective_status")
+    filters = ExportFiltersSerializer()
+    row_count = serializers.IntegerField(allow_null=True)
+    error_code = serializers.CharField(
+        allow_null=True,
+        help_text="Solo en `FAILED`: `PERMISSION_REVOKED`, `EXPORT_TOO_LARGE`, "
+        "`STORAGE_UNAVAILABLE` o `INVALID_FILTERS`.",
+    )
+    requested_by = serializers.SerializerMethodField()
+    created_at = serializers.DateTimeField()
+    started_at = serializers.DateTimeField(allow_null=True)
+    completed_at = serializers.DateTimeField(allow_null=True)
+    expires_at = serializers.DateTimeField(allow_null=True)
+
+    def get_format(self, obj: ReportExportJob) -> str:
+        return "csv"
+
+    @extend_schema_field(RequestedByRefSerializer)
+    def get_requested_by(self, obj: ReportExportJob) -> dict[str, Any]:
+        user = obj.requested_by
+        return {"id": user.pk, "name": user.get_full_name()}

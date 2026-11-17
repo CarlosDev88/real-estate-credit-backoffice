@@ -1,6 +1,6 @@
 from django.urls import path
 
-from apps.reporting import report_views, views
+from apps.reporting import export_views, report_views, views
 
 app_name = "reporting"
 
@@ -14,7 +14,6 @@ urlpatterns = [
         name="dashboard-bank-results",
     ),
     path("reports/funnel", report_views.ReportFunnelView.as_view(), name="reports-funnel"),
-    # `applications.csv` va antes que cualquier ruta con parámetros bajo `applications`.
     path(
         "reports/applications.csv",
         report_views.ReportApplicationsCsvView.as_view(),
@@ -24,5 +23,20 @@ urlpatterns = [
         "reports/applications",
         report_views.ReportApplicationsView.as_view(),
         name="reports-applications",
+    ),
+    path(
+        "reports/applications/export-jobs",
+        export_views.ApplicationExportJobsView.as_view(),
+        name="reports-applications-export-jobs",
+    ),
+    path(
+        "report-export-jobs/<uuid:job_id>",
+        export_views.ReportExportJobDetailView.as_view(),
+        name="report-export-job",
+    ),
+    path(
+        "report-export-jobs/<uuid:job_id>/download",
+        export_views.ReportExportJobDownloadView.as_view(),
+        name="report-export-job-download",
     ),
 ]
