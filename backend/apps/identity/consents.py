@@ -32,6 +32,7 @@ from apps.identity.models import (
     ConsentRecord,
 )
 from apps.identity.services import client_ip, user_agent_summary
+from apps.identity.signals import consent_recorded
 
 logger = logging.getLogger(__name__)
 
@@ -194,6 +195,9 @@ def record_consent(
             ip_address=client_ip(request),
             user_agent_summary=user_agent_summary(request),
             buyer_session=locked,
+        )
+        transaction.on_commit(
+            lambda: consent_recorded.send(sender=ConsentRecord, record=record, session=locked)
         )
     logger.info(
         "Consentimiento %s v%s %s en la sesión de comprador %s",

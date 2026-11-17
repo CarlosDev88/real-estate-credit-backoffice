@@ -208,11 +208,14 @@ Las cookies de sesión usan `HttpOnly`, `Secure`, `SameSite=Lax` y `Path=/`. La 
 | `REQUIREMENT_DRAFT_EXISTS` | El requisito ya tiene un borrador (`409`). |
 | `REQUIREMENT_EXPIRED` | La vigencia del requisito ya terminó y no se publica (`422`). |
 | `DOCUMENT_TYPE_INACTIVE` | Publicar un requisito de un tipo documental inactivo (`422`). |
-| `IDEMPOTENCY_CONFLICT` | Misma clave con cuerpo diferente. |
+| `IDEMPOTENCY_CONFLICT` | `Idempotency-Key` repetida con otro cuerpo (`422`). |
+| `IDEMPOTENCY_IN_PROGRESS` | Otra petición con la misma `Idempotency-Key` sigue en curso; se reintenta (`409`). |
+| `IDEMPOTENCY_REPLAY_UNAVAILABLE` | `Idempotency-Key` repetida en la creación del enlace mágico: la operación ya se hizo y su respuesta, que lleva el token en claro, no se guarda (`409`). |
 | `DUPLICATE_CLIENT_DOCUMENT` | Documento de identidad ya registrado. |
 | `PROJECT_NOT_ACTIVE` | Proyecto borrador/archivado no asociable. |
 | `COMMISSION_PLAN_NOT_FOUND` | No hay plan de comisión vigente para el producto en la fecha de desembolso. |
 | `COMMISSION_PLAN_OVERLAP` | La vigencia se solapa con otro plan del mismo producto. |
+| `TASK_NOT_PENDING` | Editar, completar o cancelar una tarea que ya está completada o cancelada (`409`). |
 | `COMMISSION_PLAN_IN_USE` | El plan ya fue usado por una liquidación. |
 | `APPLICATION_NOT_DISBURSED` | La solicitud no está desembolsada. |
 | `COMMISSION_SETTLEMENT_HAS_PAYMENTS` | La liquidación tiene partes pagadas y no se puede anular. |
@@ -220,10 +223,14 @@ Las cookies de sesión usan `HttpOnly`, `Secure`, `SameSite=Lax` y `Path=/`. La 
 
 ## 6. Idempotencia y concurrencia
 
-- `POST` de radicación, respuesta bancaria, transición de estado, generación de paquete y creación de enlace mágico requieren `Idempotency-Key`.
-- La clave se conserva 24 horas, asociada a actor, método, ruta y hash del cuerpo.
-- Mismo cuerpo y clave: devuelve la respuesta original.
+- `POST` de radicación, respuesta bancaria, transición de estado, generación de paquete y creación de enlace mágico aceptan `Idempotency-Key` (1 a 100 caracteres visibles de ASCII; por ejemplo, un UUID). Por ahora es **opcional**: sin la cabecera, la operación funciona como siempre. Una clave mal formada responde `400 VALIDATION_ERROR`.
+- La clave se conserva 24 horas, asociada a actor (usuario interno o sesión del comprador), método, ruta y hash del cuerpo (JSON con las claves ordenadas). La misma clave de otro actor es independiente.
+- Mismo cuerpo y clave: devuelve la respuesta original, con el mismo código y su `ETag`.
 - Cuerpo distinto con la misma clave: `422 IDEMPOTENCY_CONFLICT`.
+- Misma clave mientras la primera petición sigue en curso: `409 IDEMPOTENCY_IN_PROGRESS`, sin esperar.
+- Solo se guardan las respuestas `2xx`: un error libera la clave y se puede reintentar con ella.
+- Creación de enlace mágico: la respuesta lleva el token en claro, que nunca se guarda. Repetir la clave no crea otro enlace y responde `409 IDEMPOTENCY_REPLAY_UNAVAILABLE`.
+- `purge_idempotency_keys` borra las claves vencidas.
 - `PATCH`/`PUT` sobre solicitudes, bancos, productos, reglas y requisitos usa `If-Match`.
 - Versión obsoleta: `409 STALE_VERSION`, con la versión actual en `details[0].current_version`.
 
@@ -238,7 +245,7 @@ Concurrencia de la solicitud de crédito:
 - **El contrato lo declara.** Cada respuesta que lleva `ETag` lo publica en `contracts/openapi.json` como `headers.ETag` (string), con un solo helper (`config.openapi.etag_response_headers`) aplicado a todas las vistas que lo envían, internas y del comprador. Una prueba recorre el esquema y exige que toda operación con `If-Match` declare `ETag` en sus `2xx`, y que el `GET` del mismo recurso también lo haga. El `204` de la reasignación que deja al actor sin acceso no lleva `ETag` y no lo declara.
 - Los metadatos (`/metadata/bootstrap`, `/metadata/catalogs/{catalog_code}` y `/buyer/metadata/catalogs/{catalog_code}`) usan otro `ETag`: la huella del contenido, que se reenvía en `If-None-Match` y responde `304` si no cambió. El contrato lo declara en el `200` y el `304`.
 
-**Estado de implementación.** `Idempotency-Key` se exigirá cuando exista `idempotency_keys` (notificaciones). Mientras tanto, la creación de solicitudes se protege con la restricción de una sola solicitud no terminal por oportunidad (`409 APPLICATION_ALREADY_OPEN`) y las transiciones con `expected_version`. En la creación de enlaces mágicos, un reintento crea otro enlace y revoca el anterior; el límite de 3 por hora acota el abuso. En el paquete para radicar, un `POST` repetido devuelve el trabajo vivo con la misma huella documental (`200`) en lugar de crear otro (§19.2).
+**Estado de implementación.** `Idempotency-Key` está implementada y es opcional en las cinco operaciones (paso 13); se exigirá cuando el frontend la envíe. Sin la cabecera, la creación de solicitudes se protege con la restricción de una sola solicitud no terminal por oportunidad (`409 APPLICATION_ALREADY_OPEN`) y las transiciones con `expected_version`. En la creación de enlaces mágicos, un reintento crea otro enlace y revoca el anterior; el límite de 3 por hora acota el abuso. En el paquete para radicar, un `POST` repetido devuelve el trabajo vivo con la misma huella documental (`200`) en lugar de crear otro (§19.2).
 
 Concurrencia del expediente documental: cargas, análisis, revisiones, exoneraciones, recálculos y paquetes **no** cambian la versión de la solicitud ni exigen `If-Match`, y sus respuestas no llevan `ETag`. Cada operación bloquea las filas que toca (la solicitud y después los slots, en orden de id). Lo que cambia es la huella documental: el hash de los slots vigentes y sus versiones vigentes, que el paquete guarda y la radicación comparará.
 
@@ -454,7 +461,7 @@ DTO del detalle (`GET /buyer/applications/{application_id}`), además de lo ante
 | `GET` | `/metadata/bootstrap` | Usuario interno o `BUYER` | Catálogos mínimos, permisos, configuración pública y versión. |
 | `GET` | `/metadata/catalogs/{catalog_code}` | Usuario interno (el comprador usa `/buyer/metadata/catalogs/{catalog_code}`, §8) | Ítems activos y vigentes; filtra por `parent_code` o `parent_id`. |
 | `GET` | `/metadata/form-schemas/{form_code}` | Usuario interno o `BUYER` | Campos, tipos, dependencias y validaciones de presentación. |
-| `GET` | `/applications/{application_id}/available-actions` | `applications.read` (no broker) | Transiciones que el actor puede ejecutar desde el estado actual, según rol y permiso: `[{code, label, target_status, target_status_label, guard_code}]`. La guarda se evalúa al ejecutarla. Ver §16.3. |
+| `GET` | `/applications/{application_id}/available-actions` | `applications.read` (no broker) | Transiciones que el actor puede ejecutar desde el estado actual, según rol y permiso: `[{code, label, target_status, target_status_label, guard_code, kind}]`, primero las principales, luego las secundarias y al final las destructivas. La guarda se evalúa al ejecutarla. Ver §16.3. |
 
 ### `GET /metadata/bootstrap`
 
@@ -655,44 +662,100 @@ Si existe `project_id`, debe estar `ACTIVE`. El partner no usa estos endpoints e
 
 | Método | Ruta | Permiso | Filtros | Respuesta |
 | --- | --- | --- | --- | --- |
-| `GET` | `/workday/applications` | `ADMIN`, `ADVISOR` | `stage`, `bank_id`, `purpose`, `attention`, `search`, paginación | Solicitudes asignadas al asesor autenticado. |
-| `GET` | `/workday/summary` | `ADMIN`, `ADVISOR` | Mismos filtros | Conteos por segmento. |
+| `GET` | `/workday/applications` | `workday.read` (`ADMIN`, `ADVISOR`) | `stage`, `bank_id`, `purpose`, `attention`, `search`, `advisor_id` (solo administrador), `ordering`, paginación | Solicitudes en curso del asesor, con su siguiente acción. |
+| `GET` | `/workday/summary` | `workday.read` | Los mismos, salvo `attention` | `{total, segments: [{code, label, count}]}`, en una sola consulta. |
 
-Para `ADVISOR`, la API siempre aplica `assigned_advisor_id=request.user.id`. No acepta otro asesor desde query. Para `ADMIN`, puede recibir `advisor_id` explícito.
+- **Alcance:** el asesor ve siempre sus solicitudes asignadas; si manda `advisor_id`, se ignora. El administrador ve todas, o las de `advisor_id`. Solo entran solicitudes no terminales; el broker y la constructora reciben `403`.
+- **Filtros:** `stage` admite solo estados no terminales; un código desconocido (o terminal), un `purpose` que no existe o un `ordering` no permitido responden `400`. `search` busca como el listado.
+- **Orden:** primero las que tienen `TASKS_DUE`, después las de más `days_in_stage` y después `code`. `ordering` admite `days_in_stage`, `updated_at` y `code` (con `-`).
 
-Respuesta reducida:
+Segmentos de atención (`attention`), no excluyentes:
+
+| `code` | Etiqueta | Regla |
+| --- | --- | --- |
+| `REVIEW_DOCUMENTS` | Documentos por revisar | Al menos un slot vigente en `UPLOADED`. |
+| `READY_TO_FILE` | Listas para radicar | Estado `READY_TO_FILE`. |
+| `FILED` | Radicadas | `FILED` o `FILING_VALIDATION`. |
+| `IN_ANALYSIS` | En análisis | `CREDIT_ANALYSIS`. |
+| `OBSERVED` | Observadas por el banco | `BANK_OBSERVATION`. |
+| `BUYER_INACTIVE` | Comprador sin actividad | La regla de `buyer_inactive` del listado. |
+| `TASKS_DUE` | Con tareas vencidas o de hoy | Una tarea `PENDING` con `due_at` hasta el fin de hoy (Bogotá). |
+
+Fila:
 
 ```json
 {
-  "items": [
-    {
-      "id": "uuid",
-      "code": "SOL-250184",
-      "client_display_name": "Laura Gómez",
-      "bank": "Bancolombia",
-      "product": "Crédito hipotecario",
-      "stage": "DOCUMENTS_REVIEW",
-      "next_action": "REVIEW_DOCUMENTS",
-      "days_in_stage": 2,
-      "updated_at": "2026-08-24T13:34:00Z"
-    }
-  ],
-  "page": 1,
-  "page_size": 25,
-  "total": 24
+  "id": "uuid",
+  "code": "SOL-250184",
+  "client_display_name": "Laura Gómez",
+  "bank": { "id": "uuid", "name": "Bancolombia", "short_name": "Bancolombia" },
+  "bank_product": { "id": "uuid", "name": "Crédito hipotecario" },
+  "status": "DOCUMENTS_REVIEW",
+  "status_label": "Documentos en revisión",
+  "next_action": "REVIEW_DOCUMENTS",
+  "next_action_label": "Revisar documentos",
+  "days_in_stage": 2,
+  "attention": [{ "code": "REVIEW_DOCUMENTS", "label": "Documentos por revisar" }],
+  "pending_tasks_count": 1,
+  "updated_at": "2026-08-24T13:34:00Z"
 }
 ```
+
+`bank` y `bank_product` son nulos sin producto. `days_in_stage` cuenta días entre fechas de Bogotá desde `current_stage_started_at`. `next_action` sale de una tabla fija por estado: `COMPLETE_DRAFT`, `FOLLOW_UP_BUYER_DATA`, `FOLLOW_UP_DOCUMENTS`, `REVIEW_DOCUMENTS`, `FILE_WITH_BANK`, `WAIT_BANK_RESPONSE` (radicada, en validación o en análisis), `RESOLVE_OBSERVATIONS`, `START_LEGALIZATION` y `FOLLOW_UP_LEGALIZATION`.
 
 ### 15.2 Tareas
 
 | Método | Ruta | Permiso | Descripción |
 | --- | --- | --- | --- |
-| `GET` | `/tasks` | `tasks.read` | Lista tareas dentro del alcance. |
+| `GET` | `/tasks` | `tasks.read` | Lista tareas dentro del alcance. Filtros `status`, `application_id`, `opportunity_id`, `assigned_to_id` (solo administrador), `due` y `priority`. |
 | `POST` | `/tasks` | `tasks.create` | Crea tarea manual. |
 | `GET` | `/tasks/{task_id}` | `tasks.read` | Detalle. |
-| `PATCH` | `/tasks/{task_id}` | `tasks.update` | Edita título, responsable, fecha o prioridad. |
+| `PATCH` | `/tasks/{task_id}` | `tasks.update` | Edita título, descripción, responsable, fecha o prioridad. |
 | `POST` | `/tasks/{task_id}/complete` | `tasks.complete` | Completa tarea. |
-| `POST` | `/tasks/{task_id}/cancel` | `tasks.cancel` | Cancela con motivo. |
+| `POST` | `/tasks/{task_id}/cancel` | `tasks.cancel` | Cancela con motivo (`reason`, obligatorio). |
+
+Los cinco permisos son de `ADMIN` y `ADVISOR`; el broker y la constructora reciben `403`.
+
+- **Alcance:** el administrador ve todas las tareas. El asesor ve las asignadas a él y las de sus solicitudes (asesor asignado) u oportunidades (asignadas o capturadas por él). Una tarea fuera del alcance responde `404`.
+- **Crear:** exactamente uno de `application_id` u `opportunity_id`, visible para el actor (si no, `400 VALIDATION_ERROR` en ese campo). Una solicitud terminada responde `409 APPLICATION_CLOSED`. `assigned_to_id` es el actor por omisión y debe ser un usuario activo con rol `ADMIN` o `ADVISOR` (si no, `400`). `priority_code` es `MEDIUM` por omisión. Solo se crean tareas `MANUAL`.
+- **Estados:** una tarea `PENDING` se edita, se completa o se cancela; una `COMPLETED` o `CANCELLED` responde `409 TASK_NOT_PENDING`.
+- **`due`** (fecha de Bogotá, solo tareas `PENDING` con fecha): `overdue` (antes de hoy), `today` y `upcoming` (después de hoy).
+- **Orden:** `due_at`, con las que no tienen fecha al final; después, la fecha de creación.
+
+Respuesta:
+
+```json
+{
+  "id": "uuid",
+  "title": "Revisar extractos corregidos",
+  "description": "",
+  "status": "PENDING",
+  "status_label": "Pendiente",
+  "priority": { "code": "HIGH", "label": "Alta" },
+  "source": "MANUAL",
+  "source_label": "Manual",
+  "assigned_to": { "id": "uuid", "name": "Paula Rincón" },
+  "created_by": { "id": "uuid", "name": "Paula Rincón" },
+  "parent": {
+    "type": "APPLICATION",
+    "type_label": "Solicitud",
+    "id": "uuid",
+    "code": "SOL-000123",
+    "client_display_name": "Sofía Herrera"
+  },
+  "due_at": "2026-08-25T12:00:00-05:00",
+  "is_overdue": false,
+  "completed_at": null,
+  "cancelled_at": null,
+  "cancel_reason": "",
+  "created_at": "2026-08-20T15:02:11-05:00",
+  "updated_at": "2026-08-20T15:02:11-05:00"
+}
+```
+
+`parent.code` es nulo en las oportunidades, que no tienen código. `is_overdue` usa la misma regla que `due=overdue`.
+
+Entrada de `POST /tasks`:
 
 ```json
 {
@@ -922,13 +985,25 @@ Las transiciones de `FILED` en adelante llegan con la radicación (§20).
 
 `available_actions` del detalle y `GET /applications/{application_id}/available-actions` devuelven las transiciones que el actor puede ejecutar desde el estado actual según su rol y permiso. La guarda no se evalúa aquí, sino al ejecutar la transición. Incluyen `WITHDRAW_*`, que se ejecuta por `/withdrawals`.
 
+`kind` dice qué tipo de acción es. Lo decide el backend (`apps/applications/actions.py`), y el frontend usa la primera `primary` como botón principal:
+
+| `kind` | Regla | Ejemplos |
+| --- | --- | --- |
+| `primary` | Avanza en el camino principal. | `REQUEST_BUYER_DATA`, `REQUEST_DOCUMENTS*`, `START_DOCUMENTS_REVIEW`, `MARK_READY_TO_FILE`, `MARK_READY_TO_REFILE`, `START_LEGALIZATION` |
+| `secondary` | Cierra por fuera del banco (destino `OWN_FUNDS` o `EXTERNAL_CREDIT_APPROVED`) o retrocede. | `MARK_OWN_FUNDS_*`, `MARK_EXTERNAL_CREDIT_*`, `RETURN_TO_DOCUMENTS`, `REOPEN_REVIEW` |
+| `destructive` | Termina la solicitud (destino `CANCELLED` o `WITHDRAWN`). | `CANCEL_*`, `WITHDRAW_*` |
+
+La lista sale ordenada por grupo (`primary`, `secondary`, `destructive`) y, dentro de cada grupo, por código.
+
 ```json
 [
   {
     "code": "MARK_READY_TO_FILE",
     "label": "Marcar lista para radicar",
     "target_status": "READY_TO_FILE",
-    "guard_code": "APPLICATION_READY_TO_FILE"
+    "target_status_label": "Lista para radicar",
+    "guard_code": "APPLICATION_READY_TO_FILE",
+    "kind": "primary"
   }
 ]
 ```
@@ -1537,14 +1612,41 @@ Ejemplo de aprobación:
 
 | Método | Ruta | Permiso | Descripción |
 | --- | --- | --- | --- |
-| `GET` | `/applications/{application_id}/activity` | Actor con alcance o comprador | Línea de tiempo filtrada según actor. |
-| `GET` | `/applications/{application_id}/notes` | Actor interno con alcance | Notas internas paginadas. |
-| `POST` | `/applications/{application_id}/notes` | `applications.add_note` | Agrega nota interna. |
+| `GET` | `/applications/{application_id}/activity` | `applications.read` (con alcance) | Línea de tiempo filtrada según actor. Filtro `event_type` (lista). |
+| `GET` | `/buyer/applications/{application_id}/activity` | Comprador | Solo las filas para el comprador. |
+| `GET` | `/applications/{application_id}/notes` | `applications.add_note` | Notas internas paginadas. |
+| `POST` | `/applications/{application_id}/notes` | `applications.add_note` | Agrega nota interna (`body`, obligatorio, hasta 2000 caracteres). |
 | `GET` | `/applications/{application_id}/consents` | `consents.read` (`ADMIN`, `ADVISOR` asignado) | Evidencias de tratamientos y declaraciones. |
 | `GET` | `/buyer/applications/{application_id}/consents` | Comprador | Versiones vigentes, si son obligatorias y su estado. |
 | `POST` | `/buyer/applications/{application_id}/consents` | Comprador | Acepta o retira una versión vigente del consentimiento. |
 
-El comprador nunca recibe notas internas, comentarios de evaluación, identidades técnicas ni eventos de auditoría. Un consentimiento guarda tipo, versión del texto, fecha, IP, agente de usuario y huella de la sesión.
+El comprador nunca recibe notas internas, comentarios de evaluación, identidades técnicas ni eventos de auditoría.
+
+Actividad (`activity_logs`):
+
+- **Inmutable:** no hay `PATCH` ni `DELETE`. Las filas las crean los suscriptores de las señales de cada módulo (`apps/activity/receivers.py`), después de confirmar la operación; un error al registrar queda en el log y no revierte la operación.
+- **Visibilidad:** cada fila es `INTERNAL` o `BUYER`. El administrador y el asesor (con alcance) ven las internas; el broker (en las solicitudes que originó) y el comprador, solo las `BUYER`. Por eso un evento que el comprador también ve deja dos filas: la interna y la del comprador, con su propio texto.
+- **Fila:** `{id, event_type, event_type_label, title, message, actor, created_at}`, de la más reciente a la más antigua y paginada. `actor` es `{name}` o nulo (evento del sistema). En el backoffice, lo que hizo el comprador sale como "Portal del comprador"; en `/buyer/...`, `actor` es "Tú" o "Tu asesor".
+- **Notas:** `applications.add_note` es de `ADMIN` y `ADVISOR`, y el asesor solo llega a las solicitudes que tiene asignadas. Una nota es una fila `NOTE_ADDED` interna (`{id, body, author, created_at}` en `/notes`). Se admite también en una solicitud terminada.
+
+| `event_type` | Origen | Visibilidad | Título (ejemplo) |
+| --- | --- | --- | --- |
+| `APPLICATION_CREATED` | Crear la solicitud | Interna | Solicitud SOL-000123 creada |
+| `STATUS_CHANGED` | Transición o desistimiento | Interna (etiquetas del backend y comentario) y del comprador (etiquetas públicas, sin comentario) | Pasó de Esperando documentos a Documentos en revisión |
+| `ADVISOR_ASSIGNED` | Reasignación | Interna | Paula Rincón quedó como responsable |
+| `PARTICIPANT_ADDED` / `PARTICIPANT_REMOVED` | Participantes | Interna | Se agregó a Daniel Mejía como co-solicitante |
+| `DOCUMENT_UPLOADED` | Carga del comprador | Interna y del comprador | Sofía Herrera cargó «Certificado laboral» |
+| `DOCUMENT_REVIEWED` | Revisión | Interna; los rechazos también para el comprador, con el mensaje para él | Paula Rincón rechazó «Desprendible de nómina» 2 de 3 |
+| `BUYER_LINK_SENT` | Emisión del enlace | Interna | Andrés Cárdenas envió el enlace de acceso al comprador |
+| `BUYER_SESSION_STARTED` | Consumo del enlace | Interna | El comprador entró al portal |
+| `CONSENT_RECORDED` | Aceptar o retirar un consentimiento | Interna | Sofía Herrera aceptó «Tratamiento de datos personales» |
+| `TASK_CREATED` / `TASK_COMPLETED` / `TASK_CANCELLED` | Tareas (§15.2) | Interna | Tarea completada: Revisar extractos |
+| `NOTE_ADDED` | Notas | Interna | Nota de Paula Rincón |
+| `FILING_CREATED` / `BANK_RESPONSE_RECORDED` | Radicación (§20) | Interna; la respuesta también para el comprador si tiene `public_message` | Radicada en Bancolombia (#1) |
+
+Las solicitudes que existían antes de la actividad la reciben de una migración idempotente desde `application_status_history` (la creación y cada cambio de estado, con su fecha y su actor).
+
+Un consentimiento guarda tipo, versión del texto, fecha, IP, agente de usuario y huella de la sesión.
 
 Consentimientos:
 
@@ -1557,11 +1659,30 @@ Consentimientos:
 
 | Método | Ruta | Permiso | Descripción |
 | --- | --- | --- | --- |
-| `GET` | `/buyer/notifications` | Comprador | Notificaciones de su expediente. |
-| `PATCH` | `/buyer/notifications/{notification_id}/read` | Comprador | Marca una notificación como leída. |
-| `POST` | `/buyer/notifications/read-all` | Comprador | Marca todas como leídas. |
+| `GET` | `/buyer/notifications` | Comprador | Notificaciones de su expediente, de la más nueva a la más vieja; `unread=true` filtra las no leídas. |
+| `GET` | `/buyer/notifications/unread-count` | Comprador | `{count}` de no leídas, para la navegación. |
+| `PATCH` | `/buyer/notifications/{notification_id}/read` | Comprador | Marca una notificación como leída; idempotente. |
+| `POST` | `/buyer/notifications/read-all` | Comprador | Marca todas como leídas; `{count}` con las que marcó. |
+| `GET` | `/applications/{application_id}/notifications` | `notifications.read` (`ADMIN`, `ADVISOR` asignado) | Notificaciones de la solicitud con sus entregas. |
 
 Eventos mínimos: invitación, documento rechazado, expediente listo, radicación, devolución, aprobación, rechazo y desembolso. La notificación en la aplicación es la fuente de verdad; el correo es un canal de entrega y sus fallos no revierten la operación principal.
+
+| `notification_type` | Evento | Texto |
+| --- | --- | --- |
+| `ACCESS_GRANTED` | El comprador entra por primera vez con un enlace (una vez por solicitud). | El siguiente paso según el estado. |
+| `DOCUMENT_REJECTED` | Cada rechazo de un documento, también por una observación del banco. | El mensaje al comprador de la revisión. |
+| `READY_TO_FILE` | La solicitud pasa a `READY_TO_FILE` (otra vez si vuelve a quedar lista). | Fijo. |
+| `FILED` | Radicación. | Banco y fecha. |
+| `BANK_RETURNED`, `BANK_APPROVED`, `BANK_REJECTED` | Respuesta del banco de ese tipo. | `public_message`; la aprobación agrega el monto y el plazo. |
+| `DISBURSED` | Desembolso. | Fecha. |
+
+- Solo las del cliente y la solicitud de la sesión; la de otro comprador responde `404`. Campos: `id`, `notification_type`, `notification_type_label`, `title`, `message`, `created_at` y `read_at`.
+- Un consentimiento pendiente (`CONSENT_REQUIRED`) o una solicitud terminada no impiden leerlas ni marcarlas.
+- Un evento repetido no duplica: cada notificación tiene una `deduplication_key` (tipo más el id del objeto que la origina).
+- Los textos nunca llevan notas internas, números de identificación completos ni ingresos.
+- Cada notificación tiene dos entregas: `PORTAL` (`SENT` al crearse) y `EMAIL`. El correo sale después del commit, con el título como asunto, el mensaje y la línea "Entra a tu portal con el enlace que te envió tu asesor; si se venció, pídele uno nuevo"; nunca lleva el enlace mágico ni adjuntos. Sin correo del cliente queda `FAILED` (`NO_DESTINATION`). Un fallo se reintenta hasta 5 veces (1, 5, 15, 60 y 240 minutos) y después queda `FAILED`.
+- El endpoint interno muestra, por entrega, `channel`, `status`, `destination`, `attempt_count`, `next_attempt_at`, `sent_at` y `last_error_code`, para que el asesor sepa si el correo salió. El asesor no asignado recibe `404`; el broker, `403`.
+- Las notificaciones internas (usuarios del backoffice) todavía no se crean.
 
 ## 22. Dashboard, Mi día y reportes
 

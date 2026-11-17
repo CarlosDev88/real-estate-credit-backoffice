@@ -26,6 +26,8 @@ ALL_PERMISSIONS = {
     "applications.transition",
     "applications.assign",
     "applications.withdraw",
+    # Notas internas (paso 12, `activity.0002`).
+    "applications.add_note",
 }
 PRE_FILING = {
     ApplicationStatus.DRAFT,

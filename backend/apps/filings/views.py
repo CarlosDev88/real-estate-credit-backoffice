@@ -30,6 +30,7 @@ from apps.filings.serializers import (
     FilingSerializer,
     FilingUpdateSerializer,
 )
+from apps.idempotency.decorators import IDEMPOTENCY_PARAMETER, idempotency_responses, idempotent
 from apps.identity.models import User
 from apps.identity.permissions import HasPermissionCode
 from apps.identity.throttling import DocumentDownloadRateThrottle
@@ -116,22 +117,25 @@ class ApplicationFilingListView(FilingView):
             f"{MANAGE_NOTE}"
         ),
         request=FilingCreateSerializer,
-        parameters=[etag_response_headers(201)],
-        responses={
-            201: FilingSerializer,
-            409: _error(
-                "STALE_VERSION, APPLICATION_CLOSED, INVALID_STATE_TRANSITION (no está en "
-                "READY_TO_FILE), PACKAGE_NOT_READY, PACKAGE_EXPIRED, PACKAGE_OUTDATED, "
-                "PACKAGE_ALREADY_FILED o FILING_REFERENCE_EXISTS"
-            ),
-            422: _error(
-                "BANK_PRODUCT_MISMATCH o APPLICATION_NOT_READY (documentos o reglas del "
-                "banco, en `details`)"
-            ),
-            **NOT_FOUND,
-            **COMMON_ERRORS,
-        },
+        parameters=[etag_response_headers(201), IDEMPOTENCY_PARAMETER],
+        responses=idempotency_responses(
+            {
+                201: FilingSerializer,
+                409: _error(
+                    "STALE_VERSION, APPLICATION_CLOSED, INVALID_STATE_TRANSITION (no está en "
+                    "READY_TO_FILE), PACKAGE_NOT_READY, PACKAGE_EXPIRED, PACKAGE_OUTDATED, "
+                    "PACKAGE_ALREADY_FILED o FILING_REFERENCE_EXISTS"
+                ),
+                422: _error(
+                    "BANK_PRODUCT_MISMATCH o APPLICATION_NOT_READY (documentos o reglas del "
+                    "banco, en `details`)"
+                ),
+                **NOT_FOUND,
+                **COMMON_ERRORS,
+            }
+        ),
     )
+    @idempotent()
     def post(self, request: Request, application_id: Any) -> Response:
         application = self.get_application(application_id)
         services.ensure_can_manage(self.actor, application)
@@ -291,16 +295,19 @@ class FilingResponseListView(ResponseView):
             f"solicitud. {MANAGE_NOTE}\n" + RESPONSE_RULES_DESCRIPTION
         ),
         request=FilingResponseCreateSerializer,
-        parameters=[etag_response_headers(201)],
-        responses={
-            201: FilingResponseSerializer,
-            **_response_errors(
-                "STALE_VERSION, APPLICATION_CLOSED, INVALID_STATE_TRANSITION (el tipo no se "
-                "admite en el estado actual), FILING_NOT_LATEST o "
-                "RESPONSE_CORRECTION_NOT_ALLOWED"
-            ),
-        },
+        parameters=[etag_response_headers(201), IDEMPOTENCY_PARAMETER],
+        responses=idempotency_responses(
+            {
+                201: FilingResponseSerializer,
+                **_response_errors(
+                    "STALE_VERSION, APPLICATION_CLOSED, INVALID_STATE_TRANSITION (el tipo no "
+                    "se admite en el estado actual), FILING_NOT_LATEST o "
+                    "RESPONSE_CORRECTION_NOT_ALLOWED"
+                ),
+            }
+        ),
     )
+    @idempotent()
     def post(self, request: Request, filing_id: Any) -> Response:
         filing = self.get_filing(filing_id)
         services.ensure_can_manage(self.actor, filing.application)

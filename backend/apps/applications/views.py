@@ -68,6 +68,7 @@ from apps.applications.serializers import (
 from apps.catalogs.models import CatalogItem
 from apps.catalogs.workflow import ApplicationStatus
 from apps.crm.services import CrmScope, clients_visible_to, resolve_visible_client
+from apps.idempotency.decorators import IDEMPOTENCY_PARAMETER, idempotency_responses, idempotent
 from apps.identity.models import User
 from apps.identity.permissions import HasPermissionCode
 from config.filters import StrictOrderingFilter, parse_bool_param, parse_uuid_param
@@ -1158,13 +1159,16 @@ class ApplicationStatusTransitionView(ExpedienteView):
             f"se rechace. {ETAG_NOTE}"
         ),
         request=StatusTransitionSerializer,
-        parameters=[etag_response_headers(200)],
-        responses={
-            200: StatusChangeSerializer,
-            422: _error("APPLICATION_NOT_READY o FINANCING_MODE_MISMATCH"),
-            **STATUS_ERRORS,
-        },
+        parameters=[etag_response_headers(200), IDEMPOTENCY_PARAMETER],
+        responses=idempotency_responses(
+            {
+                200: StatusChangeSerializer,
+                422: _error("APPLICATION_NOT_READY o FINANCING_MODE_MISMATCH"),
+                **STATUS_ERRORS,
+            }
+        ),
     )
+    @idempotent()
     def post(self, request: Request, application_id: Any) -> Response:
         application = self.get_application(application_id)
         serializer = StatusTransitionSerializer(data=request.data)

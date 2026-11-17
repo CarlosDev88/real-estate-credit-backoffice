@@ -473,6 +473,8 @@ Pendientes manuales o automáticos de la operación.
 | `source` | `VARCHAR(20)` | No | `MANUAL` o `AUTOMATIC`. |
 | `due_at` | `TIMESTAMPTZ` | Sí | Vencimiento. |
 | `completed_at` | `TIMESTAMPTZ` | Sí | Finalización. |
+| `cancelled_at` | `TIMESTAMPTZ` | Sí | Cancelación. `CHECK`: existe solo con `status='CANCELLED'`. |
+| `cancel_reason` | `TEXT` | Sí | Motivo de la cancelación; obligatorio al cancelar desde la API. |
 
 `CHECK`: al menos una de oportunidad o solicitud debe existir. Explicación: una tarea se liga al caso que la originó y a la persona que debe resolverla; así “Mi día” puede mostrar pendientes sin convertir la tarea en el estado oficial del crédito.
 
@@ -1154,6 +1156,8 @@ Línea de tiempo funcional y notas del caso.
 
 Índices: (`application_id`, `created_at DESC`), (`opportunity_id`, `created_at DESC`), (`client_id`, `created_at DESC`).
 
+En la implementación (`apps/activity`): la tabla es inmutable (no hay edición ni borrado); `message` es texto vacío cuando no hay detalle; `event_type` toma los valores de API §21.1 (`APPLICATION_CREATED`, `STATUS_CHANGED`, `DOCUMENT_UPLOADED`, `NOTE_ADDED`, etc.). Las notas internas son filas `NOTE_ADDED` con visibilidad `INTERNAL` y el permiso `applications.add_note` (`ADMIN` y `ADVISOR`).
+
 ### 10.2 `notifications`
 
 Mensaje de negocio que debe conocer un destinatario.
@@ -1174,6 +1178,13 @@ Mensaje de negocio que debe conocer un destinatario.
 `CHECK`: exactamente uno de cliente o usuario. Relación N:1 con destinatario y solicitud. La notificación existe aunque el correo falle; por eso el mensaje se separa de sus intentos de entrega.
 
 Índice parcial: (`client_id`, `created_at DESC`) `WHERE read_at IS NULL`; equivalente para usuario.
+
+Implementación (paso 13):
+
+- Por ahora solo se crean para el comprador (`client_id`); las internas quedan pendientes.
+- `notification_type` es `ACCESS_GRANTED`, `DOCUMENT_REJECTED`, `READY_TO_FILE`, `FILED`, `BANK_RETURNED`, `BANK_APPROVED`, `BANK_REJECTED` o `DISBURSED`. No lleva `CHECK`, para admitir los tipos internos sin migrar la restricción.
+- `deduplication_key` es el tipo más el id del objeto que la origina (`BANK_APPROVED:<respuesta>`). `ACCESS_GRANTED` usa la solicitud y el cliente, y `READY_TO_FILE`, la solicitud y su versión.
+- Los textos viven en una sola constante del backend y nunca llevan notas internas, números de identificación ni ingresos.
 
 ### 10.3 `notification_deliveries`
 
@@ -1196,7 +1207,14 @@ Intentos de enviar una notificación por correo u otro canal.
 
 Relación N:1 con notificación: un mismo mensaje puede verse en portal y enviarse por correo, y el canal fallido puede reintentarse sin duplicar el evento de negocio.
 
-Índice parcial: (`status`, `next_attempt_at`) `WHERE status IN ('PENDING','FAILED')`.
+Índice parcial: (`status`, `next_attempt_at`) `WHERE status IN ('PENDING','FAILED')`. En Django se llama `ix_notification_delivery_queue`, porque los nombres admiten 30 caracteres.
+
+Implementación (paso 13):
+
+- **Desvío del DER original:** `UQ (notification_id, channel)`. Una entrega por canal, para que un reintento nunca la duplique.
+- `PORTAL` nace `SENT` (`attempt_count = 1`). `EMAIL` nace `PENDING`, con el correo del cliente en `destination`.
+- `attempt_count` cuenta los intentos de envío: el primero y hasta 5 reintentos (1, 5, 15, 60 y 240 minutos después de cada fallo). Después del último, `FAILED`. Sin correo, `FAILED` con `NO_DESTINATION` y sin intentos.
+- `last_error_code` es `SMTP_ERROR`, `CONNECTION_ERROR`, `SEND_FAILED` o `NO_DESTINATION`. `provider_message_id` es el `Message-ID` del correo.
 
 ### 10.4 `idempotency_keys`
 
@@ -1213,11 +1231,19 @@ Protección contra duplicar operaciones críticas.
 | `route_fingerprint` | `VARCHAR(180)` | No | Endpoint normalizado. |
 | `request_hash` | `CHAR(64)` | No | Cuerpo original. |
 | `response_status` | `SMALLINT` | Sí | HTTP. |
-| `response_body` | `JSONB` | Sí | Respuesta segura. |
+| `response_body` | `JSONB` | Sí | Respuesta segura. Nula mientras la operación corre, y también en la creación del enlace mágico, cuya respuesta lleva el token en claro. |
+| `response_headers` | `JSONB` | No | `ETag` y `Location` de la respuesta original, `DEFAULT '{}'`. **Desvío del DER original (paso 13).** |
 | `resource_id` | `UUID` | Sí | Recurso creado. |
 | `expires_at` | `TIMESTAMPTZ` | No | Retención corta. |
 
 `CHECK`: exactamente un actor. UQ por actor, clave, método y ruta. Relación con usuario o sesión: si se reintenta una radicación o respuesta por mala conexión, se devuelve el resultado anterior en vez de crear otra fila de negocio.
+
+Implementación (paso 13):
+
+- **Corrección:** la UQ por actor son dos índices únicos parciales, (`user_id`, `key`, `method`, `route_fingerprint`) `WHERE user_id IS NOT NULL` y su equivalente para `buyer_session_id`. Con `UNIQUE NULLS NOT DISTINCT`, dos usuarios internos con la misma clave chocaban en la restricción del comprador, porque ambos tienen `buyer_session_id` nulo.
+- `route_fingerprint` es la ruta de la petición, con sus ids. `request_hash` es el SHA-256 del JSON con las claves ordenadas.
+- La clave se reserva al empezar (`response_status` nulo) y solo guarda respuestas `2xx`; un error la libera. Vence a las 24 horas (`expires_at`) y `purge_idempotency_keys` borra las vencidas (índice `ix_idempotency_keys_expires`).
+- Se aplica a cinco `POST`: radicación, respuesta del banco, transición de estado, paquete para radicar y enlace mágico. La cabecera es opcional por ahora.
 
 ### 10.5 `audit_events`
 

@@ -29,7 +29,7 @@ slots, ordenadas por id.
 
 import logging
 import uuid
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from datetime import date
 
@@ -56,6 +56,7 @@ from apps.documents.models import (
     SlotStatus,
 )
 from apps.documents.models.review import FILE_DECISIONS
+from apps.documents.signals import document_reviewed
 from apps.identity.models import User
 from config.exceptions import VALIDATION_MESSAGE, ApiError
 
@@ -78,6 +79,23 @@ class Review:
     buyer_comment: str | None = None
     internal_comment: str | None = None
     document_date: date | None = None
+
+
+def _send_reviewed(actor: User, reviews: Sequence[DocumentReview]) -> None:
+    for row in reviews:
+        document_reviewed.send(
+            sender=DocumentReview,
+            slot=row.slot,
+            document_file=row.document_file,
+            review=row,
+            actor=actor,
+        )
+
+
+def _emit_after_commit(actor: User, reviews: Sequence[DocumentReview]) -> None:
+    """``document_reviewed`` por cada fila, cuando confirme la transacción de afuera."""
+    rows = list(reviews)
+    transaction.on_commit(lambda: _send_reviewed(actor, rows))
 
 
 def _detail(field: str, code: str, message: str, slot: ApplicationDocumentSlot) -> dict[str, str]:
@@ -215,7 +233,7 @@ def _decide_file(actor: User, slot_id: uuid.UUID, review: Review) -> uuid.UUID:
             slot.status = SlotStatus.REJECTED
         version.save(update_fields=["status", "document_date", "expires_at"])
         slot.save(update_fields=["status", "updated_at"])
-        DocumentReview.objects.create(
+        row = DocumentReview.objects.create(
             slot=slot,
             document_file=version,
             reviewer=actor,
@@ -224,6 +242,7 @@ def _decide_file(actor: User, slot_id: uuid.UUID, review: Review) -> uuid.UUID:
             buyer_comment=review.buyer_comment,
             internal_comment=review.internal_comment,
         )
+        _emit_after_commit(actor, [row])
     return slot.pk
 
 
@@ -300,7 +319,7 @@ def _waive(actor: User, slot: ApplicationDocumentSlot, review: Review) -> list[u
             target.status = SlotStatus.WAIVED
             target.waiver_reason_item = reason
             target.save(update_fields=["status", "waiver_reason_item", "updated_at"])
-        DocumentReview.objects.bulk_create(
+        rows = DocumentReview.objects.bulk_create(
             DocumentReview(
                 slot=target,
                 document_file_id=target.current_file_id,
@@ -312,6 +331,7 @@ def _waive(actor: User, slot: ApplicationDocumentSlot, review: Review) -> list[u
             )
             for target in targets
         )
+        _emit_after_commit(actor, rows)
     return [target.pk for target in targets]
 
 
@@ -394,7 +414,7 @@ def _reopen(actor: User, slot: ApplicationDocumentSlot, review: Review) -> list[
             target.status = restored_status(target)
             target.waiver_reason_item = None
             target.save(update_fields=["status", "waiver_reason_item", "updated_at"])
-        DocumentReview.objects.bulk_create(
+        rows = DocumentReview.objects.bulk_create(
             DocumentReview(
                 slot=target,
                 document_file_id=target.current_file_id,
@@ -405,4 +425,5 @@ def _reopen(actor: User, slot: ApplicationDocumentSlot, review: Review) -> list[
             )
             for target in targets
         )
+        _emit_after_commit(actor, rows)
     return [target.pk for target in targets]

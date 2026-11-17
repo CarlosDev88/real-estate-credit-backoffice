@@ -35,6 +35,7 @@ from apps.identity.models import (
     User,
     buyer_access_link_status_filter,
 )
+from apps.identity.signals import buyer_access_link_issued
 from apps.identity.tokens import generate_opaque_token, hash_token
 
 logger = logging.getLogger(__name__)
@@ -112,6 +113,9 @@ def issue_access_link(
             transaction.on_commit(
                 lambda: send_buyer_access_email(client=client, link=link, raw_token=raw_token)
             )
+        transaction.on_commit(
+            lambda: buyer_access_link_issued.send(sender=BuyerAccessLink, link=link, actor=actor)
+        )
 
     logger.info(
         "Enlace de comprador %s emitido para la solicitud %s por %s (%s)",
