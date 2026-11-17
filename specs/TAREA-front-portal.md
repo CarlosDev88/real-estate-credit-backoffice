@@ -207,7 +207,31 @@ Patrón común:
 
 **E2E (adelanto de la Parte 5):** `e2e/portal` con un *setup* que, como el asesor de prueba, crea un enlace en una solicitud `waiting` elegida al azar por cada proyecto (`portal-mobile` a 390 px y `portal-desktop` a 1280 px). `POST /buyer-access/consume` admite 5 intentos por hora por IP: cada corrida gasta 2. Estos archivos y el cambio de `playwright.config.ts` van en el commit de la Parte 5.
 
+### Parte 2
+- **Saludo:** la etiqueta de la finalidad va en minúscula inicial dentro de la frase ("Tu crédito de vivienda…"). Sin banco se omite solo "con <banco>"; el código siempre va. El banco se muestra con `short_name` (o `name`).
+- **Progreso:** sin documentos exigidos (`documents_required_total = 0`) no se muestra la barra. En "N te tocan a ti · M los está revisando tu asesor" se omiten las partes en cero y se usa el singular cuando toca.
+- **Etapas:** el ícono sale de `state` (`done`, `current`, `pending`, del contrato) y siempre va con `label` y `state_label`; la actual lleva `aria-current="step"`.
+- **Respuesta del banco:** título `response_type_label`, arriba "Respuesta del banco · <fecha y hora>" y debajo `public_message`.
+- **"Lo que necesitamos de ti":** el número es el total de slots con `needs_action`; se muestran los 3 primeros en el orden de la API. Cada uno lleva su `public_status_label` además del titular, y el tono del ícono sale de `toneFor("documentSlot", status)`: un pendiente es `neutral` (el mockup lo pinta `warning`) y un rechazado `danger`. El primer botón es el primario. Sin pendientes: "Por ahora no necesitamos ningún documento de ti."
+- **Botón "Subir/Reemplazar documento" (provisional):** hasta la Parte 4 lleva a `/portal/documentos?slot=<id>`; con la hoja de carga se abre en el mismo inicio.
+- **"Tu solicitud":**
+  - "Tus datos personales" lleva debajo el nombre del titular.
+  - "Ingresos y gastos": suma de `monthly_income_cop` de los participantes con `contributes_income`, pidiendo el perfil financiero de cada uno (un `404` es "sin perfil"). Sin ningún perfil: "Sin datos todavía".
+  - Participantes adicionales: todos menos el primero de `participants`, con `role_label` como título y el nombre debajo; enlazan a `/portal/ingresos#participante-<id>`.
+  - Inmueble: el proyecto o, sin proyecto, la dirección, más la unidad. Financiación: "<banco> · <monto> a <plazo>", con el plazo en años si son completos y si no en meses.
+  - Documentos: "X de Y listos" y, si hay, "N pendientes" con tono `warning`.
+  - Sin datos de una sección: "Sin datos todavía".
+- **Asesor:** WhatsApp abre en otra pestaña.
+- **Desistimiento:**
+  - Modal "¿Ya no quieres continuar?" con el botón `danger` "Cerrar mi solicitud".
+  - Motivo, comentario opcional (se envía recortado, vacío si no hay) y la casilla "Entiendo que mi solicitud se cerrará", obligatoria en el cliente.
+  - `expected_version` sale del `ETag` del detalle.
+  - Al terminar: toast "Cerramos tu solicitud" y se recarga todo `["buyer"]`, así aparece la franja y desaparece el enlace.
+  - Los errores con campo van al campo; los demás, al toast.
+- **Compartido:** `FormField` y `useFormErrorHandler` pasan de `features/applications` a `components/ui/form-field.tsx` (commit aparte `refactor(ui)`), para usarlos en el portal.
+
 ### Brechas encontradas
 - **Avisos:** no hay endpoint de notificaciones del comprador (módulo 13). Se quitó de la navegación.
 - **`BuyerConsent` sin `status_label`:** el estado del consentimiento (`PENDING`, `ACCEPTED`, `WITHDRAWN`) llega solo como código.
+- **Ingreso mensual en el inicio:** el detalle del comprador no trae ingresos; la suma de "Ingresos y gastos" pide un perfil financiero por cada participante que aporta ingresos.
 - **Mensaje del `429` de `/buyer-access/consume`:** es el texto por defecto de DRF ("Solicitud fue regulada (throttled). Se espera que esté disponible en 3450 segundos."). El portal lo muestra debajo de su propio título.

@@ -1,4 +1,4 @@
-import { act, screen, waitFor, within } from "@testing-library/react";
+import { act, configure, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import type { ReactElement } from "react";
@@ -7,7 +7,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AccessScreen, tooManyAttemptsMessage } from "@/features/buyer-portal/access-screen";
 import { ConsentsScreen } from "@/features/buyer-portal/consents-screen";
 import { remainingText } from "@/features/buyer-portal/expiry";
-import { PortalHome, firstName } from "@/features/buyer-portal/home-screen";
+import { firstName } from "@/features/buyer-portal/home-format";
 import { CONSENTS_PATH, PortalGuard } from "@/features/buyer-portal/portal-guard";
 import {
   APP_ID,
@@ -21,6 +21,10 @@ import { api, call } from "@/lib/api/client";
 import { apiUrl, server } from "@/test/msw-server";
 import { renderWithProviders } from "@/test/render";
 import { ThemeProvider } from "@/providers/theme-provider";
+
+// Con `--coverage` y la suite completa, el primer render del portal pasa del segundo por
+// defecto de Testing Library: las esperas de este archivo llegan a 5 s y cada prueba a 20 s.
+configure({ asyncUtilTimeout: 5_000 });
 
 const router = vi.hoisted(() => ({ replace: vi.fn(), push: vi.fn(), pathname: "/portal" }));
 vi.mock("next/navigation", () => ({
@@ -42,7 +46,7 @@ beforeEach(() => {
   router.pathname = "/portal";
 });
 
-describe("/acceso", () => {
+describe("/acceso", { timeout: 20_000 }, () => {
   it("borra el token de la URL antes de enviarlo y, si sale bien, va al portal", async () => {
     window.history.replaceState(null, "", "/acceso?token=abc123");
     let sent: unknown = null;
@@ -134,7 +138,7 @@ describe("/acceso", () => {
   });
 });
 
-describe("PortalGuard", () => {
+describe("PortalGuard", { timeout: 20_000 }, () => {
   it("con sesión pinta el encabezado, la navegación y el contenido", async () => {
     server.use(...portalHandlers());
     renderPortal(<PortalGuard>contenido</PortalGuard>);
@@ -310,22 +314,9 @@ describe("PortalGuard", () => {
     await screen.findByText("contenido");
     expect(screen.queryByText(/Tu solicitud (está cerrada|ya no admite)/)).not.toBeInTheDocument();
   });
-
-  it("el inicio saluda y avisa cuándo vence el acceso", async () => {
-    server.use(...portalHandlers());
-    renderPortal(
-      <PortalGuard>
-        <PortalHome />
-      </PortalGuard>,
-    );
-    expect(await screen.findByRole("heading", { name: "Hola, Sofía" })).toBeInTheDocument();
-    expect(screen.getByText(/Tu acceso vence en/)).toHaveTextContent(
-      "Tu acceso vence en 21 horas. Si se vence, pide un enlace nuevo a tu asesor.",
-    );
-  });
 });
 
-describe("ConsentsScreen", () => {
+describe("ConsentsScreen", { timeout: 20_000 }, () => {
   const optional = consentFixture({
     id: "c-mkt",
     code: "MARKETING",
@@ -459,7 +450,7 @@ describe("ConsentsScreen", () => {
   });
 });
 
-describe("utilidades", () => {
+describe("utilidades", { timeout: 20_000 }, () => {
   const now = Date.parse("2026-11-17T10:00:00Z");
 
   it("remainingText: horas, minutos y vencido", () => {

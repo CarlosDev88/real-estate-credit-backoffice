@@ -1,18 +1,88 @@
 "use client";
 
-import { ExpiryNotice } from "@/features/buyer-portal/expiry";
+import { Button } from "antd";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+
+import { firstName, bankName, inSentence } from "@/features/buyer-portal/home-format";
+import {
+  AdvisorCard,
+  ApplicationSection,
+  BankUpdateCard,
+  PORTAL_ROUTES,
+  StatusCard,
+  TodoSection,
+} from "@/features/buyer-portal/home-sections";
 import { usePortal } from "@/features/buyer-portal/portal-context";
 import { PortalPage } from "@/features/buyer-portal/portal-shell";
+import {
+  useBuyerDetail,
+  useBuyerSlots,
+  useMonthlyIncome,
+  type BuyerDocumentSlot,
+} from "@/features/buyer-portal/queries";
+import { WithdrawModal } from "@/features/buyer-portal/withdraw-modal";
 
-/** Primer nombre para el saludo ("Hola, Sofía"). */
-export function firstName(displayName: string): string {
-  return displayName.trim().split(/\s+/)[0] ?? displayName;
+function HomeSkeleton() {
+  return (
+    <div aria-busy="true" className="grid gap-5">
+      <span className="sr-only" role="status">
+        Cargando…
+      </span>
+      <div className="bg-bg-muted h-9 w-48 animate-pulse rounded-md motion-reduce:animate-none" />
+      <div className="bg-bg-muted h-56 animate-pulse rounded-xl motion-reduce:animate-none" />
+      <div className="bg-bg-muted h-32 animate-pulse rounded-xl motion-reduce:animate-none" />
+    </div>
+  );
 }
 
 /** Inicio del portal (`/portal`, mockup `portal.html`). */
 export function PortalHome() {
-  const { session } = usePortal();
-  const { application } = session;
+  const { session, applicationId } = usePortal();
+  const detailQuery = useBuyerDetail(applicationId);
+  const slotsQuery = useBuyerSlots(applicationId);
+  const detail = detailQuery.data?.detail;
+  const monthlyIncome = useMonthlyIncome(detail?.participants ?? []);
+  const [withdrawing, setWithdrawing] = useState(false);
+  const router = useRouter();
+
+  // La hoja de carga llega con la Parte 4; mientras, abre el documento en su pantalla.
+  const openUpload = (slot: BuyerDocumentSlot) =>
+    router.push(`${PORTAL_ROUTES.documents}?slot=${slot.id}`);
+
+  if (detailQuery.isPending || slotsQuery.isPending) {
+    return (
+      <PortalPage>
+        <HomeSkeleton />
+      </PortalPage>
+    );
+  }
+
+  const error = detailQuery.error ?? slotsQuery.error;
+  if (error || !detail || !slotsQuery.data) {
+    return (
+      <PortalPage>
+        <div role="alert" className="grid justify-items-start gap-2">
+          <h1 className="m-0 text-xl font-semibold">No pudimos cargar tu solicitud</h1>
+          {error && <p className="text-text-secondary m-0">{error.message}</p>}
+          <Button
+            onClick={() => {
+              void detailQuery.refetch();
+              void slotsQuery.refetch();
+            }}
+          >
+            Reintentar
+          </Button>
+        </div>
+      </PortalPage>
+    );
+  }
+
+  const slots = slotsQuery.data;
+  const version = detailQuery.data?.version ?? detail.version;
+  const bank = detail.financing?.bank_product?.bank;
+  const pendingDocuments = slots.filter((s) => s.needs_action).length;
+
   return (
     <PortalPage>
       <div>
@@ -20,18 +90,39 @@ export function PortalHome() {
           Hola, {firstName(session.buyer.display_name)}
         </h1>
         <p className="text-text-secondary text-md mt-1 mb-0">
-          <span className="text-text-tertiary font-mono whitespace-nowrap">{application.code}</span>
+          Tu crédito de {inSentence(detail.purpose.label)}
+          {bank && ` con ${bankName(bank)}`} ·{" "}
+          <span className="text-text-tertiary font-mono whitespace-nowrap">{detail.code}</span>
         </p>
       </div>
-      <section
-        aria-labelledby="status-title"
-        className="bg-bg-sidebar text-text-on-sidebar rounded-xl px-4 py-5"
-      >
-        <h2 id="status-title" className="text-text-on-sidebar-strong m-0 text-xl font-semibold">
-          {application.public_status_label}
-        </h2>
-        <ExpiryNotice className="border-sidebar-divider mt-4 border-t pt-3" />
-      </section>
+
+      <StatusCard detail={detail} slots={slots} />
+      {detail.latest_bank_update && <BankUpdateCard update={detail.latest_bank_update} />}
+      <TodoSection slots={slots} onUpload={openUpload} />
+      <ApplicationSection
+        detail={detail}
+        monthlyIncome={monthlyIncome}
+        pendingDocuments={pendingDocuments}
+      />
+      {detail.advisor && <AdvisorCard advisor={detail.advisor} />}
+
+      {!detail.is_closed && (
+        <footer className="grid justify-items-center pb-4">
+          <Button
+            type="link"
+            className="text-text-secondary! text-sm underline"
+            onClick={() => setWithdrawing(true)}
+          >
+            Ya no quiero continuar con la solicitud
+          </Button>
+          <WithdrawModal
+            applicationId={applicationId}
+            version={version}
+            open={withdrawing}
+            onClose={() => setWithdrawing(false)}
+          />
+        </footer>
+      )}
     </PortalPage>
   );
 }
