@@ -143,3 +143,21 @@ El backend ya está en `master` (PR #19, `specs/TAREA-radicacion.md` y API §20)
 10. **Documentos entregados:** se ven si `me.roles` incluye `ADMIN` o si el usuario es el asesor asignado (`detail.assigned_advisor.id`). Se piden al desplegar y llevan la etiqueta del slot (de `document-slots`); si el slot ya no está, se muestra `document_type_code`.
 11. **Corrección:** el `PATCH` siempre envía los dos campos; vacío se manda como `null` (la API lo borra).
 12. **Sin `filings.read`**, `?tab=radicacion` muestra el Resumen.
+
+### Parte 2
+1. **Campos por tipo** en una sola constante, `RESPONSE_FORMS` (`features/filings/response-fields.ts`), copiada de `RULES` del backend (`filings/responses.py`). `received_at` y `external_reference` van siempre; `public_message` e `internal_comment` se ofrecen en todos los tipos (la API los admite), obligatorios donde la API los exige. Un tipo nuevo del catálogo que no esté en la constante muestra solo los campos comunes y la API valida. El cuerpo lleva solo los campos del tipo elegido.
+2. **Los tipos salen todos del catálogo** `filing_response_type`, sin filtrar por el estado de la solicitud (eso sería regla de negocio): si el tipo no aplica, la API responde `409 INVALID_STATE_TRANSITION` y su mensaje sale en el toast.
+3. **Validación local mínima:** los obligatorios del tipo; la fecha de la respuesta, ni futura ni anterior a `filed_at` (con un minuto de margen); y cada observación con motivo y mensaje. Lo demás lo valida la API, y sus `details[].field` van al campo.
+4. **Observaciones:** se eligen con una casilla por documento, agrupados por participante con el mismo `groupSlots` de Documentos. Solo salen los slots vigentes, con versión cargada y no exonerados. Cada documento elegido pide su motivo (`document_rejection_reason`) y su mensaje al comprador.
+5. **Corrección:** "Corregir esta respuesta" se ofrece solo en la última respuesta de la última radicación, con el tipo fijo, y envía `corrects_response_id`. El front no repite qué tipos se pueden corregir: si la API no la admite (`RESPONSE_CORRECTION_NOT_ALLOWED`), se ve su mensaje. Una respuesta que tiene corrección se marca "Corregida después", y la corrección, "Corrige la anterior".
+6. **Evidencia:** al registrar una respuesta (no al corregirla) se abre el paso opcional "Adjuntar evidencia" con el `DocumentUploader` de `components/ui` (PDF, JPG o PNG, hasta 10 MB, validados en local) y `uploadFile`. Si se salta o falla, "Adjuntar evidencia" queda en la respuesta mientras no tenga una, para quien la registró o para un administrador.
+7. **Ver evidencia:** se pide la URL firmada en cada clic y se abre en el `DocumentViewer`. Solo con `scan_status = CLEAN`. Mientras el análisis está `PENDING`, la línea de tiempo se vuelve a leer cada 3 s. `Evidence` no trae etiqueta del análisis: se muestran frases de interfaz (queda en "Brechas").
+8. **Qué se ve según el rol:** la nota interna, el motivo, los montos, las observaciones, la evidencia y quién la registró se pintan solo si la API los manda. No se mira el rol.
+9. **Banners**, arriba de la pestaña y con las respuestas de la última radicación:
+   - en `BANK_OBSERVATION` con observaciones abiertas: "El banco observó N documentos", con un enlace a cada uno en Documentos (`?tab=documentos&slot=`);
+   - con todas resueltas: "Las observaciones del banco están resueltas" y el nombre de `MARK_READY_TO_REFILE` sacado de `available_actions`;
+   - en `APPROVED`: "El banco aprobó el crédito", con el nombre de `START_LEGALIZATION`.
+
+   Si la acción no está en `available_actions`, no se menciona. Las acciones las sigue ejecutando el encabezado de la F1.
+10. **"Registrar respuesta"** es la acción principal de su tarjeta, salvo cuando se ve el panel "Entregar al banco" (re-radicación); en ese caso es un botón normal. No se ofrece con la solicitud cerrada (`closed_at`).
+11. **Pruebas estables en paralelo** (commit aparte, compartido): `src/test/setup.ts` sube `asyncUtilTimeout` de Testing Library a 5 s. Con la suite completa, el primer `findBy` de cada archivo de expediente pasaba de 1 s y fallaba al azar (también una prueba de Documentos de la F1).

@@ -166,3 +166,91 @@ export function useUpdateFiling(applicationId: string) {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: filingKeys.list(applicationId) }),
   });
 }
+
+// ---------- respuestas del banco (parte 2) ----------
+
+export type FilingResponse = Schemas["FilingResponse"];
+export type FilingResponseCreateRequest = Schemas["FilingResponseCreateRequest"];
+export type ObservationInput = Schemas["ObservationInputRequest"];
+
+/** Evidencia que todavía se analiza: mientras tanto, la línea de tiempo se vuelve a leer. */
+export const EVIDENCE_SCAN_PENDING = "PENDING";
+export const EVIDENCE_SCAN_CLEAN = "CLEAN";
+
+export const responseKeys = {
+  list: (filingId: string) => ["filing", filingId, "responses"] as const,
+};
+
+/** Respuestas de una radicación, en orden cronológico (incluidas las correcciones). */
+export function useFilingResponses(filingId: string | undefined) {
+  return useQuery({
+    queryKey: responseKeys.list(filingId ?? ""),
+    queryFn: async () =>
+      (
+        await call(
+          api.GET("/api/v1/filings/{filing_id}/responses", {
+            params: { path: { filing_id: filingId! }, query: { page_size: PAGE_SIZE } },
+          }),
+        )
+      ).data.items,
+    enabled: !!filingId,
+    refetchInterval: (query) =>
+      query.state.data?.some((r) => r.evidence?.scan_status === EVIDENCE_SCAN_PENDING)
+        ? PACKAGE_POLL_MS
+        : false,
+  });
+}
+
+/**
+ * Una respuesta cambia el estado de la solicitud y, si es una devolución, rechaza las
+ * versiones observadas: se refresca todo el expediente (estado, etapas, documentos,
+ * radicaciones e historial).
+ */
+function useInvalidateAfterResponse(applicationId: string) {
+  const queryClient = useQueryClient();
+  return () =>
+    Promise.all([
+      queryClient.invalidateQueries({ queryKey: workspaceKeys.all(applicationId) }),
+      queryClient.invalidateQueries({ queryKey: ["filing"] }),
+      queryClient.invalidateQueries({ queryKey: ["document-file"] }),
+      queryClient.invalidateQueries({ queryKey: ["document-slot"] }),
+      queryClient.invalidateQueries({ queryKey: applicationKeys.all }),
+    ]);
+}
+
+/** Registra una respuesta del banco con `expected_version`. Los errores los maneja el formulario. */
+export function useRecordResponse(applicationId: string, filingId: string) {
+  const invalidate = useInvalidateAfterResponse(applicationId);
+  return useMutation({
+    meta: { handlesErrors: true },
+    mutationFn: async (body: FilingResponseCreateRequest) =>
+      (
+        await call(
+          api.POST("/api/v1/filings/{filing_id}/responses", {
+            params: { path: { filing_id: filingId } },
+            body,
+          }),
+        )
+      ).data,
+    onSuccess: invalidate,
+  });
+}
+
+/** Ruta de la carga de evidencia, para `uploadFile` (multipart, con progreso). */
+export const evidencePath = (responseId: string) =>
+  `/api/v1/filing-responses/${responseId}/evidence`;
+
+/** URL firmada de la evidencia: se pide cada vez y no va a la caché. */
+export function useEvidenceDownload() {
+  return useMutation({
+    meta: { handlesErrors: true },
+    mutationFn: async (responseId: string) =>
+      (
+        await call(
+          api.GET("/api/v1/filing-responses/{response_id}/evidence/download", {
+            params: { path: { response_id: responseId } },
+          }),
+        )
+      ).data,
+  });
+}

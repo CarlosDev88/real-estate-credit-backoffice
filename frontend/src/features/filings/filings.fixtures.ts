@@ -10,7 +10,12 @@ import {
   useWorkspaceApi,
   type WorkspaceApi,
 } from "@/features/applications/workspace.fixtures";
-import type { Filing, FilingSnapshot, PackageJob } from "@/features/filings/queries";
+import type {
+  Filing,
+  FilingResponse,
+  FilingSnapshot,
+  PackageJob,
+} from "@/features/filings/queries";
 import { apiUrl, server } from "@/test/msw-server";
 
 export const FILING_PERMISSIONS = [
@@ -43,6 +48,17 @@ export const FILING_BOOTSTRAP = {
       item("BANK_PORTAL", "Portal del banco", 1),
       item("EMAIL", "Correo electrónico", 2),
     ],
+    filing_response_type: [
+      item("RECEIVED", "Recibida", 1),
+      item("IN_ANALYSIS", "En análisis", 2),
+      item("RETURNED", "Devuelta con observaciones", 3),
+      item("APPROVED", "Aprobada", 4),
+      item("REJECTED", "Rechazada", 5),
+      item("DISBURSED", "Desembolsada", 6),
+      item("OTHER", "Otra", 7),
+    ],
+    filing_return_reason: [item("DOCUMENT_CORRECTION", "Corrección de documentos", 1)],
+    filing_rejection_reason: [item("PAYMENT_CAPACITY", "Capacidad de pago insuficiente", 1)],
   },
 };
 
@@ -118,6 +134,30 @@ export function makeJob(overrides: Partial<PackageJob> = {}): PackageJob {
   } as PackageJob;
 }
 
+export function makeResponse(n: number, overrides: Partial<FilingResponse> = {}): FilingResponse {
+  return {
+    id: `re-${n}`,
+    filing_id: "fi-1",
+    response_type: "RECEIVED",
+    response_type_label: "Recibida",
+    received_at: "2026-11-11T10:00:00Z",
+    public_message: null,
+    external_reference: null,
+    reason: null,
+    internal_comment: null,
+    observations: [],
+    approved_amount_cop: null,
+    approved_term_months: null,
+    valid_until: null,
+    disbursed_amount_cop: null,
+    evidence: null,
+    recorded_by: { id: "u-1", name: "Paula Rincón" },
+    corrects_response_id: null,
+    created_at: "2026-11-11T10:01:00Z",
+    ...overrides,
+  };
+}
+
 export const SNAPSHOT: FilingSnapshot = {
   id: "sn-1",
   slot_id: "s-1",
@@ -146,7 +186,9 @@ export interface FilingsApi extends WorkspaceApi {
   requested: PackageJob;
   /** Lo que responden los `GET` del paquete, en orden (el último se repite). */
   polled: PackageJob[];
-  bodies: { filing: unknown[]; patch: unknown[] };
+  /** Respuestas por radicación. */
+  responses: Record<string, FilingResponse[]>;
+  bodies: { filing: unknown[]; patch: unknown[]; response: Record<string, unknown>[] };
   calls: WorkspaceApi["calls"] & { packageGet: number; filings: number };
 }
 
@@ -154,7 +196,7 @@ export interface FilingsApi extends WorkspaceApi {
 export function useFilingsApi(
   overrides: Partial<Omit<FilingsApi, keyof WorkspaceApi>> & Partial<WorkspaceApi> = {},
 ): FilingsApi {
-  const { filings = [], requested = makeJob(), polled, ...workspace } = overrides;
+  const { filings = [], requested = makeJob(), polled, responses = {}, ...workspace } = overrides;
   const base = useWorkspaceApi({
     detail: makeDetail({ status: "READY_TO_FILE", status_label: "Lista para radicar" }),
     permissions: FILING_PERMISSIONS,
@@ -167,7 +209,8 @@ export function useFilingsApi(
     filings,
     requested,
     polled: polled ?? [requested],
-    bodies: { filing: [], patch: [] },
+    responses,
+    bodies: { filing: [], patch: [], response: [] },
     calls: Object.assign(base.calls, { packageGet: 0, filings: 0 }),
   });
 
@@ -205,6 +248,28 @@ export function useFilingsApi(
       state.filings = state.filings.map((f) => (f.id === params.filingId ? { ...f, ...body } : f));
       return HttpResponse.json(state.filings.find((f) => f.id === params.filingId));
     }),
+    http.get(apiUrl("/filings/:filingId/responses"), ({ params }) =>
+      HttpResponse.json(page(state.responses[params.filingId as string] ?? [])),
+    ),
+    http.post(apiUrl("/filings/:filingId/responses"), async ({ request, params }) => {
+      const body = (await request.json()) as Record<string, unknown>;
+      state.bodies.response.push(body);
+      const id = params.filingId as string;
+      const list = state.responses[id] ?? [];
+      const created = makeResponse(100 + list.length, {
+        filing_id: id,
+        response_type: body.response_type as string,
+        response_type_label: String(body.response_type),
+      });
+      state.responses[id] = [...list, created];
+      return HttpResponse.json(created, { status: 201, headers: { ETag: '"16"' } });
+    }),
+    http.get(apiUrl("/filing-responses/:id/evidence/download"), () =>
+      HttpResponse.json({
+        url: "https://s3.example/evidence?sig=1",
+        expires_at: "2026-11-17T15:00:00Z",
+      }),
+    ),
     http.get(apiUrl("/filings/:filingId/document-snapshots"), () =>
       HttpResponse.json(page([SNAPSHOT])),
     ),

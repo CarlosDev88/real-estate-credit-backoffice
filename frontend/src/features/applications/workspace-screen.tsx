@@ -329,7 +329,12 @@ function Workspace({ detail, version }: { detail: ApplicationDetail; version: nu
 
       {tab === "radicacion" && (
         <section role="tabpanel" aria-label="Radicación">
-          <FilingsTab detail={detail} version={version} permissions={permissions} />
+          <FilingsTab
+            detail={detail}
+            version={version}
+            permissions={permissions}
+            onOpenDocument={(slotId) => go("documentos", { [SLOT_PARAM]: slotId })}
+          />
         </section>
       )}
 
