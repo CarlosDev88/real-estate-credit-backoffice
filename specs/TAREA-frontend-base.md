@@ -187,7 +187,7 @@ git worktree add ..\wt-front-portal -b feat/front-portal
 Cada agente se abre en su carpeta. Al terminar: `git worktree remove ..\wt-front-backoffice` (y lo mismo con el otro).
 
 ## Brechas del backend vistas en los mockups
-Las cuatro primeras se resolvieron en `TAREA-applications-listado.md` (PR #16). Las de la tarea de "brechas" se resolvieron en `TAREA-brechas.md` (PR #18). Al final van las que dejó la F1 (PR #17).
+Las cuatro primeras se resolvieron en `TAREA-applications-listado.md` (PR #16). Las de la tarea de "brechas" se resolvieron en `TAREA-brechas.md` (PR #18). Al final van las que dejaron la F1 (PR #17) y la F3 (radicación).
 - **Resuelta en `TAREA-applications-listado.md` (PR #16):** tipo de crédito (`bank_product_type`) en el listado, y filtro por tipo.
 - **Resuelta en `TAREA-applications-listado.md` (PR #16):** monto solicitado, completitud y número de co-solicitantes en cada fila.
 - **Resuelta en `TAREA-applications-listado.md` (PR #16):** conteos de las pestañas del listado y qué estados agrupa cada una (no los puede definir el frontend).
@@ -218,6 +218,14 @@ Las cuatro primeras se resolvieron en `TAREA-applications-listado.md` (PR #16). 
 - `CurrentFile` (en la lista de slots) no trae `size_bytes`, `detected_mime_type` ni el último `buyer_comment`. El frontend pide `GET /document-files/{id}` por cada archivo vigente (unas 16 peticiones por expediente).
 - `DocumentFile` no dice qué usuario interno cargó un archivo (solo `uploaded_by_buyer_session_id`): "por el comprador" sale cuando viene ese campo; si no, no se dice quién.
 - No hay "deshacer" una aprobación: se corrige decidiendo otra vez sobre la versión vigente (API §19.1).
+
+### Brechas que dejó la F3 (radicación, `TAREA-front-radicacion.md`)
+- **Paquetes de una solicitud:** no hay `GET` que liste los paquetes (`document-package-jobs`) de una solicitud, solo `POST` y `GET /{id}`. El id del paquete vive en la pestaña. Si se sale y se vuelve, hay que pedirlo otra vez; la API devuelve el mismo mientras la huella documental no cambie (`200`).
+- **Estado del paquete sin etiqueta:** `DocumentPackageJob.status` no trae `status_label`. En lugar de un badge se muestran frases de interfaz ("Preparando…", "Paquete listo", "El paquete venció", "No se pudo armar"), y el `error_code` va tal cual.
+- **Análisis de la evidencia sin etiqueta:** `Evidence.scan_status` no trae `scan_status_label`. Solo se abre con `CLEAN`; mientras está `PENDING` o falla, va una frase de interfaz.
+- **Documentos entregados sin nombre:** `FilingDocumentSnapshot` trae `document_type_code`, pero no el nombre del tipo ni la etiqueta del slot. Se usa la etiqueta del slot de `document-slots` y, si el slot ya no está, el código.
+- **Campos por tipo de respuesta:** la API no expone qué campos pide cada tipo (`RULES` de `filings/responses.py`). El formulario los copia en una constante de pantalla (`RESPONSE_FORMS`), con prueba. Si el catálogo trae `fields`/`required` por tipo (por ejemplo, en `metadata`), la constante se puede quitar.
+- **Respuesta vencida:** `Filing` no dice si la respuesta del banco está vencida. El frontend marca "Vencida" cuando pasó `target_response_at` y `responses_count` es 0.
 
 ## Pruebas
 - **Unitarias** (Vitest + Testing Library): componentes de `ui`, formularios con validación, manejo de `ApiError` y formato de montos.
