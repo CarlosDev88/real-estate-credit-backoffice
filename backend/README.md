@@ -52,7 +52,8 @@ flowchart LR
 | `applications` | Credit applications, participants, finances, income, property, financing preferences, assignments, and status history. | Central business record connecting CRM, banking, documents, and filings. |
 | `documents` | Document types and requirements, checklist slots, private file versions, reviews, and ZIP package jobs. | Builds the application checklist and provides the evidence used in bank filings. |
 | `filings` | Manual bank filings, immutable document snapshots, bank responses, and correction observations. | Uses application and document data; produces outcomes that notify buyers. |
-| `notifications` | In-app notifications, delivery attempts, idempotency records, and outbox events. | Communicates application and filing events reliably. |
+| `notifications` | Buyer in-app notifications and their portal and email deliveries, with retries. | Subscribes to identity, document, application, and filing events. |
+| `idempotency` | `Idempotency-Key` records for the critical `POST` operations. | Used by filings, bank responses, status transitions, filing packages, and magic links. |
 | `reporting` | Dashboards, operational reports, and export jobs. | Reads authorized data from CRM, applications, filings, and documents. |
 | `audit` | Immutable technical audit events and request correlation. | Records sensitive actions performed across all modules. |
 

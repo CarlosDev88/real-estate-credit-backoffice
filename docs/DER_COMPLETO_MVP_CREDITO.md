@@ -708,8 +708,8 @@ erDiagram
     }
     NOTIFICATION_DELIVERIES {
         uuid id PK
-        uuid notification_id FK
-        varchar channel
+        uuid notification_id FK, UK
+        varchar channel UK
         varchar status
     }
     IDEMPOTENCY_KEYS {
@@ -717,6 +717,7 @@ erDiagram
         uuid user_id FK
         uuid buyer_session_id FK
         varchar key
+        jsonb response_headers
     }
     AUDIT_EVENTS {
         uuid id PK
@@ -760,6 +761,8 @@ erDiagram
 ```
 
 `outbox_events` no usa una FK física porque puede representar eventos de muchas tablas. Guarda `aggregate_type` y `aggregate_id`; su propósito es asegurar que correos, escaneos y trabajos no se pierdan después de guardar el cambio principal.
+
+Paso 13: `notification_deliveries` tiene una sola entrega por canal (`UQ (notification_id, channel)`). `idempotency_keys` guarda `response_headers` y su unicidad por actor usa índices únicos parciales en lugar de `UNIQUE NULLS NOT DISTINCT` (ver MODELO §10.3 y §10.4). Por ahora `outbox_events` no se implementa: el correo se encola al confirmar y `retry_notification_deliveries` retoma lo pendiente.
 
 ## 11. Las relaciones N:M del modelo
 

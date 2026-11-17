@@ -208,7 +208,9 @@ Las cookies de sesión usan `HttpOnly`, `Secure`, `SameSite=Lax` y `Path=/`. La 
 | `REQUIREMENT_DRAFT_EXISTS` | El requisito ya tiene un borrador (`409`). |
 | `REQUIREMENT_EXPIRED` | La vigencia del requisito ya terminó y no se publica (`422`). |
 | `DOCUMENT_TYPE_INACTIVE` | Publicar un requisito de un tipo documental inactivo (`422`). |
-| `IDEMPOTENCY_CONFLICT` | Misma clave con cuerpo diferente. |
+| `IDEMPOTENCY_CONFLICT` | `Idempotency-Key` repetida con otro cuerpo (`422`). |
+| `IDEMPOTENCY_IN_PROGRESS` | Otra petición con la misma `Idempotency-Key` sigue en curso; se reintenta (`409`). |
+| `IDEMPOTENCY_REPLAY_UNAVAILABLE` | `Idempotency-Key` repetida en la creación del enlace mágico: la operación ya se hizo y su respuesta, que lleva el token en claro, no se guarda (`409`). |
 | `DUPLICATE_CLIENT_DOCUMENT` | Documento de identidad ya registrado. |
 | `PROJECT_NOT_ACTIVE` | Proyecto borrador/archivado no asociable. |
 | `COMMISSION_PLAN_NOT_FOUND` | No hay plan de comisión vigente para el producto en la fecha de desembolso. |
@@ -220,10 +222,14 @@ Las cookies de sesión usan `HttpOnly`, `Secure`, `SameSite=Lax` y `Path=/`. La 
 
 ## 6. Idempotencia y concurrencia
 
-- `POST` de radicación, respuesta bancaria, transición de estado, generación de paquete y creación de enlace mágico requieren `Idempotency-Key`.
-- La clave se conserva 24 horas, asociada a actor, método, ruta y hash del cuerpo.
-- Mismo cuerpo y clave: devuelve la respuesta original.
+- `POST` de radicación, respuesta bancaria, transición de estado, generación de paquete y creación de enlace mágico aceptan `Idempotency-Key` (1 a 100 caracteres visibles de ASCII; por ejemplo, un UUID). Por ahora es **opcional**: sin la cabecera, la operación funciona como siempre. Una clave mal formada responde `400 VALIDATION_ERROR`.
+- La clave se conserva 24 horas, asociada a actor (usuario interno o sesión del comprador), método, ruta y hash del cuerpo (JSON con las claves ordenadas). La misma clave de otro actor es independiente.
+- Mismo cuerpo y clave: devuelve la respuesta original, con el mismo código y su `ETag`.
 - Cuerpo distinto con la misma clave: `422 IDEMPOTENCY_CONFLICT`.
+- Misma clave mientras la primera petición sigue en curso: `409 IDEMPOTENCY_IN_PROGRESS`, sin esperar.
+- Solo se guardan las respuestas `2xx`: un error libera la clave y se puede reintentar con ella.
+- Creación de enlace mágico: la respuesta lleva el token en claro, que nunca se guarda. Repetir la clave no crea otro enlace y responde `409 IDEMPOTENCY_REPLAY_UNAVAILABLE`.
+- `purge_idempotency_keys` borra las claves vencidas.
 - `PATCH`/`PUT` sobre solicitudes, bancos, productos, reglas y requisitos usa `If-Match`.
 - Versión obsoleta: `409 STALE_VERSION`, con la versión actual en `details[0].current_version`.
 
@@ -238,7 +244,7 @@ Concurrencia de la solicitud de crédito:
 - **El contrato lo declara.** Cada respuesta que lleva `ETag` lo publica en `contracts/openapi.json` como `headers.ETag` (string), con un solo helper (`config.openapi.etag_response_headers`) aplicado a todas las vistas que lo envían, internas y del comprador. Una prueba recorre el esquema y exige que toda operación con `If-Match` declare `ETag` en sus `2xx`, y que el `GET` del mismo recurso también lo haga. El `204` de la reasignación que deja al actor sin acceso no lleva `ETag` y no lo declara.
 - Los metadatos (`/metadata/bootstrap`, `/metadata/catalogs/{catalog_code}` y `/buyer/metadata/catalogs/{catalog_code}`) usan otro `ETag`: la huella del contenido, que se reenvía en `If-None-Match` y responde `304` si no cambió. El contrato lo declara en el `200` y el `304`.
 
-**Estado de implementación.** `Idempotency-Key` se exigirá cuando exista `idempotency_keys` (notificaciones). Mientras tanto, la creación de solicitudes se protege con la restricción de una sola solicitud no terminal por oportunidad (`409 APPLICATION_ALREADY_OPEN`) y las transiciones con `expected_version`. En la creación de enlaces mágicos, un reintento crea otro enlace y revoca el anterior; el límite de 3 por hora acota el abuso. En el paquete para radicar, un `POST` repetido devuelve el trabajo vivo con la misma huella documental (`200`) en lugar de crear otro (§19.2).
+**Estado de implementación.** `Idempotency-Key` está implementada y es opcional en las cinco operaciones (paso 13); se exigirá cuando el frontend la envíe. Sin la cabecera, la creación de solicitudes se protege con la restricción de una sola solicitud no terminal por oportunidad (`409 APPLICATION_ALREADY_OPEN`) y las transiciones con `expected_version`. En la creación de enlaces mágicos, un reintento crea otro enlace y revoca el anterior; el límite de 3 por hora acota el abuso. En el paquete para radicar, un `POST` repetido devuelve el trabajo vivo con la misma huella documental (`200`) en lugar de crear otro (§19.2).
 
 Concurrencia del expediente documental: cargas, análisis, revisiones, exoneraciones, recálculos y paquetes **no** cambian la versión de la solicitud ni exigen `If-Match`, y sus respuestas no llevan `ETag`. Cada operación bloquea las filas que toca (la solicitud y después los slots, en orden de id). Lo que cambia es la huella documental: el hash de los slots vigentes y sus versiones vigentes, que el paquete guarda y la radicación comparará.
 
@@ -1557,11 +1563,30 @@ Consentimientos:
 
 | Método | Ruta | Permiso | Descripción |
 | --- | --- | --- | --- |
-| `GET` | `/buyer/notifications` | Comprador | Notificaciones de su expediente. |
-| `PATCH` | `/buyer/notifications/{notification_id}/read` | Comprador | Marca una notificación como leída. |
-| `POST` | `/buyer/notifications/read-all` | Comprador | Marca todas como leídas. |
+| `GET` | `/buyer/notifications` | Comprador | Notificaciones de su expediente, de la más nueva a la más vieja; `unread=true` filtra las no leídas. |
+| `GET` | `/buyer/notifications/unread-count` | Comprador | `{count}` de no leídas, para la navegación. |
+| `PATCH` | `/buyer/notifications/{notification_id}/read` | Comprador | Marca una notificación como leída; idempotente. |
+| `POST` | `/buyer/notifications/read-all` | Comprador | Marca todas como leídas; `{count}` con las que marcó. |
+| `GET` | `/applications/{application_id}/notifications` | `notifications.read` (`ADMIN`, `ADVISOR` asignado) | Notificaciones de la solicitud con sus entregas. |
 
 Eventos mínimos: invitación, documento rechazado, expediente listo, radicación, devolución, aprobación, rechazo y desembolso. La notificación en la aplicación es la fuente de verdad; el correo es un canal de entrega y sus fallos no revierten la operación principal.
+
+| `notification_type` | Evento | Texto |
+| --- | --- | --- |
+| `ACCESS_GRANTED` | El comprador entra por primera vez con un enlace (una vez por solicitud). | El siguiente paso según el estado. |
+| `DOCUMENT_REJECTED` | Cada rechazo de un documento, también por una observación del banco. | El mensaje al comprador de la revisión. |
+| `READY_TO_FILE` | La solicitud pasa a `READY_TO_FILE` (otra vez si vuelve a quedar lista). | Fijo. |
+| `FILED` | Radicación. | Banco y fecha. |
+| `BANK_RETURNED`, `BANK_APPROVED`, `BANK_REJECTED` | Respuesta del banco de ese tipo. | `public_message`; la aprobación agrega el monto y el plazo. |
+| `DISBURSED` | Desembolso. | Fecha. |
+
+- Solo las del cliente y la solicitud de la sesión; la de otro comprador responde `404`. Campos: `id`, `notification_type`, `notification_type_label`, `title`, `message`, `created_at` y `read_at`.
+- Un consentimiento pendiente (`CONSENT_REQUIRED`) o una solicitud terminada no impiden leerlas ni marcarlas.
+- Un evento repetido no duplica: cada notificación tiene una `deduplication_key` (tipo más el id del objeto que la origina).
+- Los textos nunca llevan notas internas, números de identificación completos ni ingresos.
+- Cada notificación tiene dos entregas: `PORTAL` (`SENT` al crearse) y `EMAIL`. El correo sale después del commit, con el título como asunto, el mensaje y la línea "Entra a tu portal con el enlace que te envió tu asesor; si se venció, pídele uno nuevo"; nunca lleva el enlace mágico ni adjuntos. Sin correo del cliente queda `FAILED` (`NO_DESTINATION`). Un fallo se reintenta hasta 5 veces (1, 5, 15, 60 y 240 minutos) y después queda `FAILED`.
+- El endpoint interno muestra, por entrega, `channel`, `status`, `destination`, `attempt_count`, `next_attempt_at`, `sent_at` y `last_error_code`, para que el asesor sepa si el correo salió. El asesor no asignado recibe `404`; el broker, `403`.
+- Las notificaciones internas (usuarios del backoffice) todavía no se crean.
 
 ## 22. Dashboard, Mi día y reportes
 
