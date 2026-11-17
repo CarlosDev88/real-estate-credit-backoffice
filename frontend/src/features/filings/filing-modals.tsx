@@ -6,7 +6,7 @@ import { useId } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 
-import { FormField, useFormErrorHandler } from "@/features/applications/form-field";
+import { FormField, useFormErrorHandler } from "@/components/ui/form-field";
 import { bankLabel, useCatalog } from "@/features/applications/queries";
 import type { ApplicationDetail } from "@/features/applications/workspace-queries";
 import {
