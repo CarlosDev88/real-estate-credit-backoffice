@@ -118,6 +118,23 @@ docker compose exec backend python manage.py shell -c "from apps.identity.models
 
 The frontend end-to-end checks read that user from `frontend/.env.local` (`E2E_USER_EMAIL` and `E2E_USER_PASSWORD`), which is never committed. The login locks for 15 minutes after 5 failed attempts per email and IP.
 
+### Demo Data
+
+To see the screens with real data, fill the local database with demo data:
+
+```powershell
+docker compose exec backend python manage.py seed_demo_data --advisor-email asesor.e2e@example.com
+```
+
+> **Local only.** The command runs only with `DJANGO_DEBUG=true`; without it, it stops with an error and writes nothing. Every demo user shares the password `DemoUmbral2026!`, written in the code: never run it against a shared or real database.
+
+- **Users:** `admin@demo.local` (`ADMIN`), `asesora.lucia@demo.local` and `asesor.andres@demo.local` (`ADVISOR`; Andrés has no phone), and `broker@demo.local` (`INDEPENDENT_BROKER`). `--advisor-email` is optional: that existing advisor also receives applications.
+- **Applications:** 30, spread over the `draft`, `waiting`, `review`, and `ready` tabs, with co-applicants and solidary debtors, financial profiles, property and financing (Bancolombia, FNA, and Banco de Bogotá; mortgage and housing leasing). In `review`, documents to review, some approved and one rejected. In `ready`, one is `ready_to_file_blocked` (a document rejected after it was ready). In `waiting`, one is `buyer_inactive`.
+- **Files:** small PDF and PNG files generated on the fly, without real data, saved with the configured storage.
+- **Buyer portal:** the command prints a valid link (`http://localhost:3000/acceso?token=…`, 72 hours) for an application in `waiting`. To get a new one, issue it from the backoffice.
+- **Idempotent, never deletes:** demo clients have document numbers starting with `9900`. If any exists, the command prints `Los datos de demo ya existen` and creates nothing.
+- Everything is created through the domain services (history, slots, stored completeness, and bank evaluations stay consistent), and the command ends by running `refresh_application_completeness`.
+
 ### Local Modes
 
 `.env` decides how the backend is configured, and the compose profile decides which containers run. Switching modes always takes both steps.

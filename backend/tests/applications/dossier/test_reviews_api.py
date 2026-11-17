@@ -891,6 +891,7 @@ def test_the_slot_detail_shows_who_waived_and_reopened(
         ("REOPENED", str(admin_user.pk)),
         ("WAIVED", str(advisor_user.pk)),
     ]
+    assert [row["decision_label"] for row in history] == ["Exoneración reabierta", "Exonerado"]
     assert history[0]["internal_comment"] == "Se exoneró por error."
     assert history[1]["reason"]["code"] == "NOT_APPLICABLE"
     assert history[0]["decision_batch_id"] != history[1]["decision_batch_id"]

@@ -179,6 +179,7 @@ class MeView(APIView):
                     "name": user.get_full_name(),
                     "email": user.email,
                     "role": profile.role,
+                    "role_label": profile.role_label,
                     "roles": profile.roles,
                     "permissions": profile.permissions,
                     "scope": {

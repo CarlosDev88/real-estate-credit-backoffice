@@ -32,6 +32,15 @@
                 ],
                 "responses": {
                     "200": {
+                        "headers": {
+                            "ETag": {
+                                "schema": {
+                                    "type": "string"
+                                },
+                                "description": "Versión de la solicitud, por ejemplo `\"3\"`. Se reenvía en `If-Match` al editar el expediente (API §6).",
+                                "required": true
+                            }
+                        },
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -116,6 +125,15 @@
                 ],
                 "responses": {
                     "200": {
+                        "headers": {
+                            "ETag": {
+                                "schema": {
+                                    "type": "string"
+                                },
+                                "description": "Versión de la solicitud, por ejemplo `\"3\"`. Se reenvía en `If-Match` al editar el expediente (API §6).",
+                                "required": true
+                            }
+                        },
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -202,6 +220,15 @@
                 ],
                 "responses": {
                     "204": {
+                        "headers": {
+                            "ETag": {
+                                "schema": {
+                                    "type": "string"
+                                },
+                                "description": "Versión de la solicitud, por ejemplo `\"3\"`. Se reenvía en `If-Match` al editar el expediente (API §6).",
+                                "required": true
+                            }
+                        },
                         "description": "Retirado."
                     },
                     "409": {
@@ -273,6 +300,15 @@
                 ],
                 "responses": {
                     "200": {
+                        "headers": {
+                            "ETag": {
+                                "schema": {
+                                    "type": "string"
+                                },
+                                "description": "Versión de la solicitud, por ejemplo `\"3\"`. Se reenvía en `If-Match` al editar el expediente (API §6).",
+                                "required": true
+                            }
+                        },
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -358,6 +394,15 @@
                 ],
                 "responses": {
                     "200": {
+                        "headers": {
+                            "ETag": {
+                                "schema": {
+                                    "type": "string"
+                                },
+                                "description": "Versión de la solicitud, por ejemplo `\"3\"`. Se reenvía en `If-Match` al editar el expediente (API §6).",
+                                "required": true
+                            }
+                        },
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -368,6 +413,15 @@
                         "description": ""
                     },
                     "201": {
+                        "headers": {
+                            "ETag": {
+                                "schema": {
+                                    "type": "string"
+                                },
+                                "description": "Versión de la solicitud, por ejemplo `\"3\"`. Se reenvía en `If-Match` al editar el expediente (API §6).",
+                                "required": true
+                            }
+                        },
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -637,6 +691,15 @@
                 ],
                 "responses": {
                     "201": {
+                        "headers": {
+                            "ETag": {
+                                "schema": {
+                                    "type": "string"
+                                },
+                                "description": "Versión de la solicitud, por ejemplo `\"3\"`. Se reenvía en `If-Match` al editar el expediente (API §6).",
+                                "required": true
+                            }
+                        },
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -723,6 +786,15 @@
                 ],
                 "responses": {
                     "200": {
+                        "headers": {
+                            "ETag": {
+                                "schema": {
+                                    "type": "string"
+                                },
+                                "description": "Versión de la solicitud, por ejemplo `\"3\"`. Se reenvía en `If-Match` al editar el expediente (API §6).",
+                                "required": true
+                            }
+                        },
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -807,6 +879,15 @@
                 ],
                 "responses": {
                     "200": {
+                        "headers": {
+                            "ETag": {
+                                "schema": {
+                                    "type": "string"
+                                },
+                                "description": "Versión de la solicitud, por ejemplo `\"3\"`. Se reenvía en `If-Match` al editar el expediente (API §6).",
+                                "required": true
+                            }
+                        },
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -905,6 +986,15 @@
                 ],
                 "responses": {
                     "200": {
+                        "headers": {
+                            "ETag": {
+                                "schema": {
+                                    "type": "string"
+                                },
+                                "description": "Versión de la solicitud, por ejemplo `\"3\"`. Se reenvía en `If-Match` al editar el expediente (API §6).",
+                                "required": true
+                            }
+                        },
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -1014,6 +1104,15 @@
                 ],
                 "responses": {
                     "200": {
+                        "headers": {
+                            "ETag": {
+                                "schema": {
+                                    "type": "string"
+                                },
+                                "description": "Versión de la solicitud, por ejemplo `\"3\"`. Se reenvía en `If-Match` al editar el expediente (API §6).",
+                                "required": true
+                            }
+                        },
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -1082,6 +1181,15 @@
                 ],
                 "responses": {
                     "201": {
+                        "headers": {
+                            "ETag": {
+                                "schema": {
+                                    "type": "string"
+                                },
+                                "description": "Versión de la solicitud, por ejemplo `\"3\"`. Se reenvía en `If-Match` al editar el expediente (API §6).",
+                                "required": true
+                            }
+                        },
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -1170,6 +1278,15 @@
                 ],
                 "responses": {
                     "200": {
+                        "headers": {
+                            "ETag": {
+                                "schema": {
+                                    "type": "string"
+                                },
+                                "description": "Versión de la solicitud, por ejemplo `\"3\"`. Se reenvía en `If-Match` al editar el expediente (API §6).",
+                                "required": true
+                            }
+                        },
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -1442,6 +1559,15 @@
                 ],
                 "responses": {
                     "200": {
+                        "headers": {
+                            "ETag": {
+                                "schema": {
+                                    "type": "string"
+                                },
+                                "description": "Versión de la solicitud, por ejemplo `\"3\"`. Se reenvía en `If-Match` al editar el expediente (API §6).",
+                                "required": true
+                            }
+                        },
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -1921,6 +2047,15 @@
                 ],
                 "responses": {
                     "200": {
+                        "headers": {
+                            "ETag": {
+                                "schema": {
+                                    "type": "string"
+                                },
+                                "description": "Versión de la solicitud, por ejemplo `\"3\"`. Se reenvía en `If-Match` al editar el expediente (API §6).",
+                                "required": true
+                            }
+                        },
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -2171,6 +2306,15 @@
                 ],
                 "responses": {
                     "200": {
+                        "headers": {
+                            "ETag": {
+                                "schema": {
+                                    "type": "string"
+                                },
+                                "description": "Versión de la solicitud, por ejemplo `\"3\"`. Se reenvía en `If-Match` al editar el expediente (API §6).",
+                                "required": true
+                            }
+                        },
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -2256,6 +2400,15 @@
                 ],
                 "responses": {
                     "200": {
+                        "headers": {
+                            "ETag": {
+                                "schema": {
+                                    "type": "string"
+                                },
+                                "description": "Versión de la solicitud, por ejemplo `\"3\"`. Se reenvía en `If-Match` al editar el expediente (API §6).",
+                                "required": true
+                            }
+                        },
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -2266,6 +2419,15 @@
                         "description": ""
                     },
                     "201": {
+                        "headers": {
+                            "ETag": {
+                                "schema": {
+                                    "type": "string"
+                                },
+                                "description": "Versión de la solicitud, por ejemplo `\"3\"`. Se reenvía en `If-Match` al editar el expediente (API §6).",
+                                "required": true
+                            }
+                        },
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -2380,6 +2542,15 @@
                 ],
                 "responses": {
                     "200": {
+                        "headers": {
+                            "ETag": {
+                                "schema": {
+                                    "type": "string"
+                                },
+                                "description": "Versión de la solicitud, por ejemplo `\"3\"`. Se reenvía en `If-Match` al editar el expediente (API §6).",
+                                "required": true
+                            }
+                        },
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -2456,6 +2627,15 @@
                 ],
                 "responses": {
                     "201": {
+                        "headers": {
+                            "ETag": {
+                                "schema": {
+                                    "type": "string"
+                                },
+                                "description": "Versión de la solicitud, por ejemplo `\"3\"`. Se reenvía en `If-Match` al editar el expediente (API §6).",
+                                "required": true
+                            }
+                        },
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -2534,6 +2714,15 @@
                 ],
                 "responses": {
                     "200": {
+                        "headers": {
+                            "ETag": {
+                                "schema": {
+                                    "type": "string"
+                                },
+                                "description": "Versión de la solicitud, por ejemplo `\"3\"`. Se reenvía en `If-Match` al editar el expediente (API §6).",
+                                "required": true
+                            }
+                        },
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -2619,6 +2808,15 @@
                 ],
                 "responses": {
                     "200": {
+                        "headers": {
+                            "ETag": {
+                                "schema": {
+                                    "type": "string"
+                                },
+                                "description": "Versión de la solicitud, por ejemplo `\"3\"`. Se reenvía en `If-Match` al editar el expediente (API §6).",
+                                "required": true
+                            }
+                        },
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -2629,6 +2827,15 @@
                         "description": ""
                     },
                     "201": {
+                        "headers": {
+                            "ETag": {
+                                "schema": {
+                                    "type": "string"
+                                },
+                                "description": "Versión de la solicitud, por ejemplo `\"3\"`. Se reenvía en `If-Match` al editar el expediente (API §6).",
+                                "required": true
+                            }
+                        },
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -2745,6 +2952,15 @@
                 ],
                 "responses": {
                     "200": {
+                        "headers": {
+                            "ETag": {
+                                "schema": {
+                                    "type": "string"
+                                },
+                                "description": "Versión de la solicitud, por ejemplo `\"3\"`. Se reenvía en `If-Match` al editar el expediente (API §6).",
+                                "required": true
+                            }
+                        },
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -2823,6 +3039,15 @@
                 ],
                 "responses": {
                     "200": {
+                        "headers": {
+                            "ETag": {
+                                "schema": {
+                                    "type": "string"
+                                },
+                                "description": "Versión de la solicitud, por ejemplo `\"3\"`. Se reenvía en `If-Match` al editar el expediente (API §6).",
+                                "required": true
+                            }
+                        },
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -2989,6 +3214,15 @@
                 ],
                 "responses": {
                     "200": {
+                        "headers": {
+                            "ETag": {
+                                "schema": {
+                                    "type": "string"
+                                },
+                                "description": "Versión de la solicitud, por ejemplo `\"3\"`. Se reenvía en `If-Match` al editar el expediente (API §6).",
+                                "required": true
+                            }
+                        },
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -5463,6 +5697,15 @@
                 ],
                 "responses": {
                     "200": {
+                        "headers": {
+                            "ETag": {
+                                "schema": {
+                                    "type": "string"
+                                },
+                                "description": "Versión de la solicitud, por ejemplo `\"3\"`. Se reenvía en `If-Match` al editar el expediente (API §6).",
+                                "required": true
+                            }
+                        },
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -5819,6 +6062,15 @@
                 ],
                 "responses": {
                     "200": {
+                        "headers": {
+                            "ETag": {
+                                "schema": {
+                                    "type": "string"
+                                },
+                                "description": "Versión de la solicitud, por ejemplo `\"3\"`. Se reenvía en `If-Match` al editar el expediente (API §6).",
+                                "required": true
+                            }
+                        },
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -5887,6 +6139,15 @@
                 ],
                 "responses": {
                     "200": {
+                        "headers": {
+                            "ETag": {
+                                "schema": {
+                                    "type": "string"
+                                },
+                                "description": "Versión de la solicitud, por ejemplo `\"3\"`. Se reenvía en `If-Match` al editar el expediente (API §6).",
+                                "required": true
+                            }
+                        },
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -5972,6 +6233,15 @@
                 ],
                 "responses": {
                     "200": {
+                        "headers": {
+                            "ETag": {
+                                "schema": {
+                                    "type": "string"
+                                },
+                                "description": "Versión de la solicitud, por ejemplo `\"3\"`. Se reenvía en `If-Match` al editar el expediente (API §6).",
+                                "required": true
+                            }
+                        },
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -5982,6 +6252,15 @@
                         "description": ""
                     },
                     "201": {
+                        "headers": {
+                            "ETag": {
+                                "schema": {
+                                    "type": "string"
+                                },
+                                "description": "Versión de la solicitud, por ejemplo `\"3\"`. Se reenvía en `If-Match` al editar el expediente (API §6).",
+                                "required": true
+                            }
+                        },
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -6098,6 +6377,15 @@
                 ],
                 "responses": {
                     "200": {
+                        "headers": {
+                            "ETag": {
+                                "schema": {
+                                    "type": "string"
+                                },
+                                "description": "Versión de la solicitud, por ejemplo `\"3\"`. Se reenvía en `If-Match` al editar el expediente (API §6).",
+                                "required": true
+                            }
+                        },
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -6166,6 +6454,15 @@
                 ],
                 "responses": {
                     "200": {
+                        "headers": {
+                            "ETag": {
+                                "schema": {
+                                    "type": "string"
+                                },
+                                "description": "Versión de la solicitud, por ejemplo `\"3\"`. Se reenvía en `If-Match` al editar el expediente (API §6).",
+                                "required": true
+                            }
+                        },
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -6250,6 +6547,15 @@
                 ],
                 "responses": {
                     "200": {
+                        "headers": {
+                            "ETag": {
+                                "schema": {
+                                    "type": "string"
+                                },
+                                "description": "Versión de la solicitud, por ejemplo `\"3\"`. Se reenvía en `If-Match` al editar el expediente (API §6).",
+                                "required": true
+                            }
+                        },
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -6348,6 +6654,15 @@
                 ],
                 "responses": {
                     "200": {
+                        "headers": {
+                            "ETag": {
+                                "schema": {
+                                    "type": "string"
+                                },
+                                "description": "Versión de la solicitud, por ejemplo `\"3\"`. Se reenvía en `If-Match` al editar el expediente (API §6).",
+                                "required": true
+                            }
+                        },
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -6433,6 +6748,15 @@
                 ],
                 "responses": {
                     "200": {
+                        "headers": {
+                            "ETag": {
+                                "schema": {
+                                    "type": "string"
+                                },
+                                "description": "Versión de la solicitud, por ejemplo `\"3\"`. Se reenvía en `If-Match` al editar el expediente (API §6).",
+                                "required": true
+                            }
+                        },
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -6443,6 +6767,15 @@
                         "description": ""
                     },
                     "201": {
+                        "headers": {
+                            "ETag": {
+                                "schema": {
+                                    "type": "string"
+                                },
+                                "description": "Versión de la solicitud, por ejemplo `\"3\"`. Se reenvía en `If-Match` al editar el expediente (API §6).",
+                                "required": true
+                            }
+                        },
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -6551,6 +6884,15 @@
                 ],
                 "responses": {
                     "200": {
+                        "headers": {
+                            "ETag": {
+                                "schema": {
+                                    "type": "string"
+                                },
+                                "description": "Versión de la solicitud, por ejemplo `\"3\"`. Se reenvía en `If-Match` al editar el expediente (API §6).",
+                                "required": true
+                            }
+                        },
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -7047,6 +7389,15 @@
                 ],
                 "responses": {
                     "200": {
+                        "headers": {
+                            "ETag": {
+                                "schema": {
+                                    "type": "string"
+                                },
+                                "description": "Versión de la solicitud, por ejemplo `\"3\"`. Se reenvía en `If-Match` al editar el expediente (API §6).",
+                                "required": true
+                            }
+                        },
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -7123,6 +7474,15 @@
                 ],
                 "responses": {
                     "201": {
+                        "headers": {
+                            "ETag": {
+                                "schema": {
+                                    "type": "string"
+                                },
+                                "description": "Versión de la solicitud, por ejemplo `\"3\"`. Se reenvía en `If-Match` al editar el expediente (API §6).",
+                                "required": true
+                            }
+                        },
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -7229,6 +7589,15 @@
                 ],
                 "responses": {
                     "200": {
+                        "headers": {
+                            "ETag": {
+                                "schema": {
+                                    "type": "string"
+                                },
+                                "description": "Versión de la solicitud, por ejemplo `\"3\"`. Se reenvía en `If-Match` al editar el expediente (API §6).",
+                                "required": true
+                            }
+                        },
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -7325,6 +7694,15 @@
                 ],
                 "responses": {
                     "204": {
+                        "headers": {
+                            "ETag": {
+                                "schema": {
+                                    "type": "string"
+                                },
+                                "description": "Versión de la solicitud, por ejemplo `\"3\"`. Se reenvía en `If-Match` al editar el expediente (API §6).",
+                                "required": true
+                            }
+                        },
                         "description": "Eliminada."
                     },
                     "400": {
@@ -7380,6 +7758,99 @@
                 }
             }
         },
+        "/api/v1/buyer/metadata/catalogs/{catalog_code}": {
+            "get": {
+                "operationId": "buyer_metadata_catalogs_retrieve",
+                "description": "Para catálogos grandes o dependientes, como `municipality`. Filtra por `parent_code` (ej. el código DANE del departamento) o `parent_id`. Soporta `If-None-Match`. Misma respuesta que `GET /metadata/catalogs/{catalog_code}`, solo para los catálogos que usan los formularios del portal: `address_type`, `amortization_mode`, `application_withdrawal_reason`, `contract_type`, `currency_mode`, `department`, `employment_profile`, `financing_mode`, `funds_origin`, `income_source_type`, `municipality`, `property_condition`, `property_type`. Cualquier otro código responde `404`, igual que uno inexistente.",
+                "summary": "Valores activos y vigentes de un catálogo de los formularios del comprador",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "catalog_code",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "required": true
+                    },
+                    {
+                        "in": "query",
+                        "name": "parent_code",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "parent_id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "tags": [
+                    "Buyer portal"
+                ],
+                "security": [
+                    {
+                        "buyerSession": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "headers": {
+                            "ETag": {
+                                "schema": {
+                                    "type": "string"
+                                },
+                                "description": "Huella del contenido. Reenviada en `If-None-Match`, la respuesta es `304` si no cambió.",
+                                "required": true
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/MetadataCatalog"
+                                }
+                            }
+                        },
+                        "description": ""
+                    },
+                    "304": {
+                        "headers": {
+                            "ETag": {
+                                "schema": {
+                                    "type": "string"
+                                },
+                                "description": "Huella del contenido. Reenviada en `If-None-Match`, la respuesta es `304` si no cambió.",
+                                "required": true
+                            }
+                        },
+                        "description": "Sin cambios."
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "NOT_AUTHENTICATED o SESSION_EXPIRED"
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "RESOURCE_NOT_FOUND"
+                    }
+                }
+            }
+        },
         "/api/v1/buyer/participants/{participant_id}/financial-profile": {
             "get": {
                 "operationId": "buyer_financial_profile_retrieve",
@@ -7406,6 +7877,15 @@
                 ],
                 "responses": {
                     "200": {
+                        "headers": {
+                            "ETag": {
+                                "schema": {
+                                    "type": "string"
+                                },
+                                "description": "Versión de la solicitud, por ejemplo `\"3\"`. Se reenvía en `If-Match` al editar el expediente (API §6).",
+                                "required": true
+                            }
+                        },
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -7491,6 +7971,15 @@
                 ],
                 "responses": {
                     "200": {
+                        "headers": {
+                            "ETag": {
+                                "schema": {
+                                    "type": "string"
+                                },
+                                "description": "Versión de la solicitud, por ejemplo `\"3\"`. Se reenvía en `If-Match` al editar el expediente (API §6).",
+                                "required": true
+                            }
+                        },
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -7501,6 +7990,15 @@
                         "description": ""
                     },
                     "201": {
+                        "headers": {
+                            "ETag": {
+                                "schema": {
+                                    "type": "string"
+                                },
+                                "description": "Versión de la solicitud, por ejemplo `\"3\"`. Se reenvía en `If-Match` al editar el expediente (API §6).",
+                                "required": true
+                            }
+                        },
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -7608,6 +8106,15 @@
                 ],
                 "responses": {
                     "200": {
+                        "headers": {
+                            "ETag": {
+                                "schema": {
+                                    "type": "string"
+                                },
+                                "description": "Versión de la solicitud, por ejemplo `\"3\"`. Se reenvía en `If-Match` al editar el expediente (API §6).",
+                                "required": true
+                            }
+                        },
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -12051,6 +12558,15 @@
                 ],
                 "responses": {
                     "200": {
+                        "headers": {
+                            "ETag": {
+                                "schema": {
+                                    "type": "string"
+                                },
+                                "description": "Versión de la solicitud, por ejemplo `\"3\"`. Se reenvía en `If-Match` al editar el expediente (API §6).",
+                                "required": true
+                            }
+                        },
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -12127,6 +12643,15 @@
                 ],
                 "responses": {
                     "201": {
+                        "headers": {
+                            "ETag": {
+                                "schema": {
+                                    "type": "string"
+                                },
+                                "description": "Versión de la solicitud, por ejemplo `\"3\"`. Se reenvía en `If-Match` al editar el expediente (API §6).",
+                                "required": true
+                            }
+                        },
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -12223,6 +12748,15 @@
                 ],
                 "responses": {
                     "200": {
+                        "headers": {
+                            "ETag": {
+                                "schema": {
+                                    "type": "string"
+                                },
+                                "description": "Versión de la solicitud, por ejemplo `\"3\"`. Se reenvía en `If-Match` al editar el expediente (API §6).",
+                                "required": true
+                            }
+                        },
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -12309,6 +12843,15 @@
                 ],
                 "responses": {
                     "204": {
+                        "headers": {
+                            "ETag": {
+                                "schema": {
+                                    "type": "string"
+                                },
+                                "description": "Versión de la solicitud, por ejemplo `\"3\"`. Se reenvía en `If-Match` al editar el expediente (API §6).",
+                                "required": true
+                            }
+                        },
                         "description": "Eliminada."
                     },
                     "409": {
@@ -12778,6 +13321,15 @@
                 ],
                 "responses": {
                     "200": {
+                        "headers": {
+                            "ETag": {
+                                "schema": {
+                                    "type": "string"
+                                },
+                                "description": "Huella del contenido. Reenviada en `If-None-Match`, la respuesta es `304` si no cambió.",
+                                "required": true
+                            }
+                        },
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -12788,6 +13340,15 @@
                         "description": ""
                     },
                     "304": {
+                        "headers": {
+                            "ETag": {
+                                "schema": {
+                                    "type": "string"
+                                },
+                                "description": "Huella del contenido. Reenviada en `If-None-Match`, la respuesta es `304` si no cambió.",
+                                "required": true
+                            }
+                        },
                         "description": "Sin cambios."
                     },
                     "401": {
@@ -12843,6 +13404,15 @@
                 ],
                 "responses": {
                     "200": {
+                        "headers": {
+                            "ETag": {
+                                "schema": {
+                                    "type": "string"
+                                },
+                                "description": "Huella del contenido. Reenviada en `If-None-Match`, la respuesta es `304` si no cambió.",
+                                "required": true
+                            }
+                        },
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -12853,6 +13423,15 @@
                         "description": ""
                     },
                     "304": {
+                        "headers": {
+                            "ETag": {
+                                "schema": {
+                                    "type": "string"
+                                },
+                                "description": "Huella del contenido. Reenviada en `If-None-Match`, la respuesta es `304` si no cambió.",
+                                "required": true
+                            }
+                        },
                         "description": "Sin cambios."
                     },
                     "401": {
@@ -16798,6 +17377,14 @@
                         },
                         "readOnly": true
                     },
+                    "progress_stages": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/ProgressStage"
+                        },
+                        "readOnly": true,
+                        "description": "Las 8 etapas del expediente con su estado (`done`, `current` o `pending`). Vacía en `WITHDRAWN`, `CANCELLED`, `OWN_FUNDS` y `EXTERNAL_CREDIT_APPROVED`."
+                    },
                     "available_actions": {
                         "type": "array",
                         "items": {
@@ -16824,6 +17411,7 @@
                     "opportunity_id",
                     "origin",
                     "participants_summary",
+                    "progress_stages",
                     "project",
                     "property",
                     "purpose",
@@ -16865,6 +17453,10 @@
                                 "$ref": "#/components/schemas/ParticipantRoleEnum"
                             }
                         ],
+                        "readOnly": true
+                    },
+                    "role_label": {
+                        "type": "string",
                         "readOnly": true
                     },
                     "contributes_income": {
@@ -16911,6 +17503,7 @@
                     "income_share_cop",
                     "is_active",
                     "role",
+                    "role_label",
                     "updated_at"
                 ]
             },
@@ -17128,6 +17721,10 @@
                     "target_status": {
                         "$ref": "#/components/schemas/ApplicationStatusEnum"
                     },
+                    "target_status_label": {
+                        "type": "string",
+                        "readOnly": true
+                    },
                     "guard_code": {
                         "type": "string",
                         "readOnly": true
@@ -17137,7 +17734,8 @@
                     "code",
                     "guard_code",
                     "label",
-                    "target_status"
+                    "target_status",
+                    "target_status_label"
                 ]
             },
             "Bank": {
@@ -18239,6 +18837,31 @@
                     "line1"
                 ]
             },
+            "BuyerAdvisor": {
+                "type": "object",
+                "description": "Contacto del asesor para el comprador: solo nombre, correo y teléfono.",
+                "properties": {
+                    "full_name": {
+                        "type": "string"
+                    },
+                    "email": {
+                        "type": "string",
+                        "format": "email"
+                    },
+                    "phone": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "`null` si el asesor no tiene teléfono. Arma el enlace de WhatsApp."
+                    }
+                },
+                "required": [
+                    "email",
+                    "full_name",
+                    "phone"
+                ]
+            },
             "BuyerApplicationDetail": {
                 "type": "object",
                 "description": "Solicitud vista por el comprador. La versión también viaja en ``ETag``.",
@@ -18305,6 +18928,26 @@
                         ],
                         "readOnly": true
                     },
+                    "advisor": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/BuyerAdvisor"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "readOnly": true,
+                        "description": "Asesor asignado; `null` si la solicitud no tiene un asesor activo."
+                    },
+                    "stages": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/ProgressStage"
+                        },
+                        "readOnly": true,
+                        "description": "Las 4 etapas del portal con su estado (`done`, `current` o `pending`). Vacía en `WITHDRAWN`, `CANCELLED`, `OWN_FUNDS` y `EXTERNAL_CREDIT_APPROVED`: el portal oculta las etapas."
+                    },
                     "participants": {
                         "type": "array",
                         "items": {
@@ -18348,6 +18991,7 @@
                     }
                 },
                 "required": [
+                    "advisor",
                     "code",
                     "created_at",
                     "financing",
@@ -18363,6 +19007,7 @@
                     "public_status",
                     "public_status_label",
                     "purpose",
+                    "stages",
                     "updated_at",
                     "version"
                 ]
@@ -18730,9 +19375,28 @@
                         ],
                         "readOnly": true
                     },
+                    "public_status": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/PublicSlotStatusEnum"
+                            }
+                        ],
+                        "description": "Estado para el comprador: `TO_UPLOAD` (`PENDING`), `TO_FIX` (`REJECTED`), `IN_REVIEW` (`UPLOADED`), `DONE` (`APPROVED`) o `NOT_APPLICABLE` (`WAIVED`).",
+                        "readOnly": true
+                    },
+                    "public_status_label": {
+                        "type": "string",
+                        "readOnly": true,
+                        "description": "Texto del estado público: Te falta, Corrígelo, En revisión, Listo o No aplica."
+                    },
                     "can_upload": {
                         "type": "boolean",
                         "readOnly": true
+                    },
+                    "needs_action": {
+                        "type": "boolean",
+                        "readOnly": true,
+                        "description": "`true` si `can_upload` y el estado público es `TO_UPLOAD` o `TO_FIX`: arma la tarjeta «Lo que necesitamos de ti»."
                     },
                     "current_file": {
                         "oneOf": [
@@ -18773,7 +19437,10 @@
                     "label",
                     "max_size_bytes",
                     "minimum_files",
+                    "needs_action",
                     "participant",
+                    "public_status",
+                    "public_status_label",
                     "rejection",
                     "slot_index",
                     "status",
@@ -19328,6 +19995,10 @@
                         ],
                         "readOnly": true
                     },
+                    "role_label": {
+                        "type": "string",
+                        "readOnly": true
+                    },
                     "full_name": {
                         "type": "string",
                         "readOnly": true
@@ -19341,7 +20012,8 @@
                     "contributes_income",
                     "full_name",
                     "id",
-                    "role"
+                    "role",
+                    "role_label"
                 ]
             },
             "BuyerParticipantSummary": {
@@ -19359,6 +20031,10 @@
                                 "$ref": "#/components/schemas/ParticipantRoleEnum"
                             }
                         ],
+                        "readOnly": true
+                    },
+                    "role_label": {
+                        "type": "string",
                         "readOnly": true
                     },
                     "full_name": {
@@ -19392,7 +20068,8 @@
                     "financial_profile_id",
                     "full_name",
                     "id",
-                    "role"
+                    "role",
+                    "role_label"
                 ]
             },
             "BuyerProcess": {
@@ -19887,6 +20564,9 @@
                     "role": {
                         "type": "string"
                     },
+                    "role_label": {
+                        "type": "string"
+                    },
                     "full_name": {
                         "type": "string"
                     }
@@ -19894,7 +20574,8 @@
                 "required": [
                     "full_name",
                     "id",
-                    "role"
+                    "role",
+                    "role_label"
                 ]
             },
             "Catalog": {
@@ -20661,6 +21342,10 @@
                     "status": {
                         "$ref": "#/components/schemas/DocumentSlotStatusEnum"
                     },
+                    "status_label": {
+                        "type": "string",
+                        "readOnly": true
+                    },
                     "alternative_group_code": {
                         "type": [
                             "string",
@@ -20687,7 +21372,8 @@
                     "label",
                     "participant_id",
                     "slot_id",
-                    "status"
+                    "status",
+                    "status_label"
                 ]
             },
             "CompletenessDocumentType": {
@@ -20913,6 +21599,10 @@
                         ],
                         "readOnly": true
                     },
+                    "status_label": {
+                        "type": "string",
+                        "readOnly": true
+                    },
                     "client_filename": {
                         "type": "string",
                         "readOnly": true
@@ -20936,6 +21626,10 @@
                     "scan_status": {
                         "type": "string"
                     },
+                    "scan_status_label": {
+                        "type": "string",
+                        "readOnly": true
+                    },
                     "created_at": {
                         "type": "string",
                         "format": "date-time",
@@ -20949,7 +21643,9 @@
                     "expires_at",
                     "id",
                     "scan_status",
+                    "scan_status_label",
                     "status",
+                    "status_label",
                     "version_number"
                 ]
             },
@@ -21004,6 +21700,10 @@
                                 "$ref": "#/components/schemas/DocumentFileStatusEnum"
                             }
                         ],
+                        "readOnly": true
+                    },
+                    "status_label": {
+                        "type": "string",
                         "readOnly": true
                     },
                     "is_current": {
@@ -21067,6 +21767,7 @@
                     "reviews",
                     "slot_id",
                     "status",
+                    "status_label",
                     "uploaded_by_buyer_session_id",
                     "version_number"
                 ]
@@ -21088,7 +21789,15 @@
                         ],
                         "readOnly": true
                     },
+                    "status_label": {
+                        "type": "string",
+                        "readOnly": true
+                    },
                     "scan_status": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "scan_status_label": {
                         "type": "string",
                         "readOnly": true
                     },
@@ -21117,10 +21826,12 @@
                     "detected_mime_type",
                     "document_file_id",
                     "scan_status",
+                    "scan_status_label",
                     "scanned_at",
                     "sha256",
                     "size_bytes",
-                    "status"
+                    "status",
+                    "status_label"
                 ]
             },
             "DocumentFileStatusEnum": {
@@ -21551,6 +22262,10 @@
                         ],
                         "readOnly": true
                     },
+                    "decision_label": {
+                        "type": "string",
+                        "readOnly": true
+                    },
                     "reason": {
                         "oneOf": [
                             {
@@ -21594,6 +22309,7 @@
                     "buyer_comment",
                     "created_at",
                     "decision",
+                    "decision_label",
                     "id",
                     "internal_comment",
                     "reason",
@@ -21693,6 +22409,10 @@
                         ],
                         "readOnly": true
                     },
+                    "status_label": {
+                        "type": "string",
+                        "readOnly": true
+                    },
                     "waiver_reason": {
                         "oneOf": [
                             {
@@ -21766,6 +22486,7 @@
                     "slot_index",
                     "sort_order",
                     "status",
+                    "status_label",
                     "updated_at",
                     "validity_days",
                     "waiver_reason"
@@ -21865,6 +22586,10 @@
                         ],
                         "readOnly": true
                     },
+                    "status_label": {
+                        "type": "string",
+                        "readOnly": true
+                    },
                     "waiver_reason": {
                         "oneOf": [
                             {
@@ -21945,6 +22670,7 @@
                     "slot_index",
                     "sort_order",
                     "status",
+                    "status_label",
                     "updated_at",
                     "validity_days",
                     "waiver_history",
@@ -22173,6 +22899,10 @@
                         "type": "string",
                         "readOnly": true
                     },
+                    "product_type_label": {
+                        "type": "string",
+                        "readOnly": true
+                    },
                     "min_amount_cop": {
                         "type": [
                             "integer",
@@ -22220,7 +22950,8 @@
                     "min_amount_cop",
                     "min_term_months",
                     "name",
-                    "product_type_code"
+                    "product_type_code",
+                    "product_type_label"
                 ]
             },
             "Error": {
@@ -22369,6 +23100,10 @@
                         ],
                         "readOnly": true
                     },
+                    "scan_status_label": {
+                        "type": "string",
+                        "readOnly": true
+                    },
                     "scanned_at": {
                         "type": [
                             "string",
@@ -22382,6 +23117,7 @@
                     "detected_mime_type",
                     "id",
                     "scan_status",
+                    "scan_status_label",
                     "scanned_at",
                     "sha256",
                     "size_bytes"
@@ -23672,6 +24408,13 @@
                             "null"
                         ]
                     },
+                    "role_label": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Nombre del rol principal (`role`), para mostrar bajo el nombre del usuario; `null` si no tiene rol."
+                    },
                     "roles": {
                         "type": "array",
                         "items": {
@@ -23694,6 +24437,7 @@
                     "name",
                     "permissions",
                     "role",
+                    "role_label",
                     "roles",
                     "scope"
                 ]
@@ -27137,6 +27881,40 @@
                     "purpose_codes"
                 ]
             },
+            "ProgressStage": {
+                "type": "object",
+                "description": "Etapa de avance de la solicitud. La comparten el expediente interno\n(``progress_stages``) y el portal del comprador (``stages``).",
+                "properties": {
+                    "code": {
+                        "type": "string"
+                    },
+                    "label": {
+                        "type": "string"
+                    },
+                    "state": {
+                        "$ref": "#/components/schemas/ProgressStageStateEnum"
+                    },
+                    "state_label": {
+                        "type": "string",
+                        "description": "Listo, En curso o Pendiente."
+                    }
+                },
+                "required": [
+                    "code",
+                    "label",
+                    "state",
+                    "state_label"
+                ]
+            },
+            "ProgressStageStateEnum": {
+                "enum": [
+                    "done",
+                    "current",
+                    "pending"
+                ],
+                "type": "string",
+                "description": "* `done` - Listo\n* `current` - En curso\n* `pending` - Pendiente"
+            },
             "Project": {
                 "type": "object",
                 "properties": {
@@ -27593,6 +28371,16 @@
                     "property_type_code"
                 ]
             },
+            "PublicSlotStatusEnum": {
+                "enum": [
+                    "TO_UPLOAD",
+                    "TO_FIX",
+                    "IN_REVIEW",
+                    "DONE",
+                    "NOT_APPLICABLE"
+                ],
+                "type": "string"
+            },
             "QuickFilter": {
                 "type": "object",
                 "description": "Pestaña rápida del listado con su conteo dentro del alcance del actor.",
@@ -27705,6 +28493,10 @@
                     "outcome": {
                         "$ref": "#/components/schemas/RuleIssueOutcomeEnum"
                     },
+                    "outcome_label": {
+                        "type": "string",
+                        "readOnly": true
+                    },
                     "message": {
                         "type": "string"
                     },
@@ -27726,6 +28518,7 @@
                     "field",
                     "message",
                     "outcome",
+                    "outcome_label",
                     "rule_code",
                     "unresolved_fields"
                 ]
@@ -27945,6 +28738,10 @@
                         ],
                         "readOnly": true
                     },
+                    "decision_label": {
+                        "type": "string",
+                        "readOnly": true
+                    },
                     "reason": {
                         "oneOf": [
                             {
@@ -27997,6 +28794,7 @@
                     "created_at",
                     "decision",
                     "decision_batch_id",
+                    "decision_label",
                     "document_file_id",
                     "id",
                     "internal_comment",
@@ -28023,6 +28821,10 @@
                     "holder_scope": {
                         "type": "string"
                     },
+                    "holder_scope_label": {
+                        "type": "string",
+                        "readOnly": true
+                    },
                     "allowed_mime_types": {
                         "type": "array",
                         "items": {
@@ -28037,6 +28839,7 @@
                     "allowed_mime_types",
                     "code",
                     "holder_scope",
+                    "holder_scope_label",
                     "id",
                     "is_active",
                     "max_size_bytes",
@@ -28051,6 +28854,9 @@
                         "format": "uuid"
                     },
                     "role": {
+                        "type": "string"
+                    },
+                    "role_label": {
                         "type": "string"
                     },
                     "client_id": {
@@ -28069,7 +28875,8 @@
                     "full_name",
                     "id",
                     "is_active",
-                    "role"
+                    "role",
+                    "role_label"
                 ]
             },
             "SlotRefresh": {
@@ -28130,8 +28937,16 @@
                     "previous_status": {
                         "$ref": "#/components/schemas/ApplicationStatusEnum"
                     },
+                    "previous_status_label": {
+                        "type": "string",
+                        "readOnly": true
+                    },
                     "status": {
                         "$ref": "#/components/schemas/ApplicationStatusEnum"
+                    },
+                    "status_label": {
+                        "type": "string",
+                        "readOnly": true
                     },
                     "version": {
                         "type": "integer"
@@ -28144,7 +28959,9 @@
                 "required": [
                     "application_id",
                     "previous_status",
+                    "previous_status_label",
                     "status",
+                    "status_label",
                     "transitioned_at",
                     "version"
                 ]
@@ -28168,12 +28985,23 @@
                             }
                         ]
                     },
+                    "from_status_label": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "readOnly": true
+                    },
                     "to_status": {
                         "allOf": [
                             {
                                 "$ref": "#/components/schemas/ApplicationStatusEnum"
                             }
                         ],
+                        "readOnly": true
+                    },
+                    "to_status_label": {
+                        "type": "string",
                         "readOnly": true
                     },
                     "transition_code": {
@@ -28234,9 +29062,11 @@
                     "comment",
                     "created_at",
                     "from_status",
+                    "from_status_label",
                     "id",
                     "reason",
                     "to_status",
+                    "to_status_label",
                     "transition_code"
                 ]
             },

@@ -46,6 +46,7 @@ from apps.identity.buyer_profile_serializers import (
     BuyerProfileSerializer,
     BuyerProfileUpdateSerializer,
 )
+from config.openapi import etag_response_headers
 from config.serializers import ErrorSerializer
 
 
@@ -113,6 +114,7 @@ class BuyerProfileView(BuyerExpedienteView):
         operation_id="buyer_profile_retrieve",
         summary="Datos personales del titular",
         description=f"El documento va enmascarado. {ETAG_NOTE}",
+        parameters=[etag_response_headers(200)],
         responses={200: BuyerProfileSerializer, **READ_ERRORS},
     )
     def get(self, request: Request, application_id: Any) -> Response:
@@ -129,7 +131,7 @@ class BuyerProfileView(BuyerExpedienteView):
             "actualiza, sin `id` se crea y la que no llega se elimina; si ninguna es "
             f"principal, la primera lo es. Solo antes de `FILED`. {ETAG_NOTE}"
         ),
-        parameters=[IF_MATCH],
+        parameters=[IF_MATCH, etag_response_headers(200)],
         request=BuyerProfileUpdateSerializer,
         responses={200: BuyerProfileSerializer, **VERSIONED_WRITE_ERRORS},
     )
@@ -159,6 +161,7 @@ class BuyerParticipantsView(BuyerExpedienteView):
             "El titular y los co-solicitantes activos, incluidos los deudores solidarios. "
             f"El comprador edita el perfil financiero y los ingresos de todos. {ETAG_NOTE}"
         ),
+        parameters=[etag_response_headers(200)],
         responses={200: BuyerParticipantSummarySerializer(many=True), **READ_ERRORS},
     )
     def get(self, request: Request, application_id: Any) -> Response:
@@ -174,6 +177,7 @@ class BuyerFinancialProfileView(BuyerExpedienteView):
         operation_id="buyer_financial_profile_retrieve",
         summary="Perfil financiero de un participante",
         description=f"`404` si el participante todavía no tiene perfil. {ETAG_NOTE}",
+        parameters=[etag_response_headers(200)],
         responses={200: BuyerFinancialProfileSerializer, **READ_ERRORS},
     )
     def get(self, request: Request, participant_id: Any) -> Response:
@@ -188,7 +192,7 @@ class BuyerFinancialProfileView(BuyerExpedienteView):
             "real limpia `data_confirmed_at`. Responde `201` si lo creó. Solo antes de "
             f"`FILED`. {ETAG_NOTE}"
         ),
-        parameters=[IF_MATCH],
+        parameters=[IF_MATCH, etag_response_headers(200, 201)],
         request=BuyerFinancialProfileInputSerializer,
         responses={
             200: BuyerFinancialProfileSerializer,
@@ -222,7 +226,7 @@ class BuyerFinancialProfileConfirmationView(BuyerExpedienteView):
             "existente (`404` si falta). Confirmar un perfil ya confirmado no cambia "
             f"nada. Solo antes de `FILED`. {ETAG_NOTE}"
         ),
-        parameters=[IF_MATCH],
+        parameters=[IF_MATCH, etag_response_headers(200)],
         request=None,
         responses={200: BuyerFinancialProfileSerializer, **VERSIONED_WRITE_ERRORS},
     )
@@ -244,6 +248,7 @@ class BuyerIncomeSourcesView(BuyerExpedienteView):
         operation_id="buyer_income_sources_list",
         summary="Fuentes de ingreso del perfil",
         description=f"La principal primero. {ETAG_NOTE}",
+        parameters=[etag_response_headers(200)],
         responses={200: BuyerIncomeSourceSerializer(many=True), **READ_ERRORS},
     )
     def get(self, request: Request, profile_id: Any) -> Response:
@@ -262,6 +267,7 @@ class BuyerIncomeSourcesView(BuyerExpedienteView):
             f"del perfil. Solo antes de `FILED`. {ETAG_NOTE}"
         ),
         request=BuyerIncomeSourceCreateSerializer,
+        parameters=[etag_response_headers(201)],
         responses={201: BuyerIncomeSourceSerializer, **WRITE_ERRORS},
     )
     def post(self, request: Request, profile_id: Any) -> Response:
@@ -282,7 +288,7 @@ class BuyerIncomeSourceDetailView(BuyerExpedienteView):
             "Marcarla como principal desmarca la anterior. Un cambio real limpia "
             f"`data_confirmed_at` del perfil. Solo antes de `FILED`. {ETAG_NOTE}"
         ),
-        parameters=[IF_MATCH],
+        parameters=[IF_MATCH, etag_response_headers(200)],
         request=BuyerIncomeSourceUpdateSerializer,
         responses={200: BuyerIncomeSourceSerializer, **VERSIONED_WRITE_ERRORS},
     )
@@ -308,6 +314,7 @@ class BuyerIncomeSourceDetailView(BuyerExpedienteView):
             "No exige `If-Match`, pero aumenta la versión y limpia `data_confirmed_at` "
             f"del perfil. Solo antes de `FILED`. {ETAG_NOTE}"
         ),
+        parameters=[etag_response_headers(204)],
         responses={204: OpenApiResponse(description="Eliminada."), **WRITE_ERRORS},
     )
     def delete(self, request: Request, income_source_id: Any) -> Response:
