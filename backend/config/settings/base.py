@@ -38,6 +38,7 @@ INSTALLED_APPS = [
     "apps.tasks",
     "apps.workday",
     "apps.activity",
+    "apps.reporting",
 ]
 
 MIDDLEWARE = [
@@ -160,6 +161,8 @@ SPECTACULAR_SETTINGS = {
         "TaskParentTypeEnum": "apps.tasks.models.TaskParentType",
         # Actividad: tipo de evento.
         "ActivityEventTypeEnum": "apps.activity.models.ActivityEventType",
+        # Dashboard: etapas del embudo (`code` choca con `CodeEnum`).
+        "FunnelStageEnum": "apps.reporting.services.FunnelStage",
     },
 }
 
@@ -240,6 +243,10 @@ BUYER_ACCESS_URL = env("BUYER_ACCESS_URL", default="http://localhost:3000/acceso
 # Aviso del listado: una solicitud que espera al comprador está inactiva si su última
 # actividad en el portal (o, si nunca entró, el inicio de la etapa) tiene más de estos días.
 BUYER_INACTIVITY_DAYS = 3
+
+# --- Dashboard y reportes (API §22) ---------------------------------------------------
+# Rango máximo de `date_from`/`date_to`, en días incluidos los dos extremos.
+REPORTS_MAX_RANGE_DAYS = 366
 
 # --- Metadatos para el frontend (sección 9) ------------------------------------------
 # Catálogos grandes que no viajan en /metadata/bootstrap; se piden con

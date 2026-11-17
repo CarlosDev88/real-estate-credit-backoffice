@@ -10902,6 +10902,724 @@
                 }
             }
         },
+        "/api/v1/dashboard/bank-results": {
+            "get": {
+                "operationId": "dashboard_bank_results",
+                "description": "Solo administrador y asesor (el broker recibe `403 PERMISSION_DENIED`). Radicaciones con `filed_at` en el periodo, agrupadas por el banco del producto radicado (`bank_id` filtra por ese banco). Una radicación cuenta en `returned`, `approved`, `rejected` o `disbursed` si alguna vez recibió esa respuesta. Solo salen los bancos con radicaciones.",
+                "summary": "Resultados de las radicaciones por banco",
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "advisor_id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "description": "Asesor asignado. El asesor solo puede mandar el suyo y el broker ninguno: otro valor responde `403 FILTER_OUT_OF_SCOPE`."
+                    },
+                    {
+                        "in": "query",
+                        "name": "bank_id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "description": "Banco del producto."
+                    },
+                    {
+                        "in": "query",
+                        "name": "date_from",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        },
+                        "description": "Primer día (`YYYY-MM-DD`, incluido, hora de Bogotá). Sin `date_from` ni `date_to` el rango es el mes en curso (día 1 a hoy); con solo `date_to`, el día 1 de su mes."
+                    },
+                    {
+                        "in": "query",
+                        "name": "date_to",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        },
+                        "description": "Último día (`YYYY-MM-DD`, incluido). Por omisión, hoy; una fecha futura se recorta a hoy. El rango no puede superar 366 días."
+                    },
+                    {
+                        "in": "query",
+                        "name": "partner_id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "description": "Constructora del proyecto de la solicitud (el del inmueble o, si no tiene, el de la oportunidad). El broker no puede usarlo (`403 FILTER_OUT_OF_SCOPE`)."
+                    },
+                    {
+                        "in": "query",
+                        "name": "project_id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "description": "Proyecto de la solicitud (el del inmueble o, si no tiene, el de la oportunidad). El broker no puede usarlo (`403 FILTER_OUT_OF_SCOPE`)."
+                    },
+                    {
+                        "in": "query",
+                        "name": "purpose_code",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Código `loan_purpose`. Uno que no existe responde `400`."
+                    }
+                ],
+                "tags": [
+                    "Dashboard"
+                ],
+                "security": [
+                    {
+                        "internalSession": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DashboardBankResults"
+                                },
+                                "examples": {
+                                    "Bancos": {
+                                        "value": {
+                                            "period": {
+                                                "date_from": "2026-11-01",
+                                                "date_to": "2026-11-17"
+                                            },
+                                            "banks": [
+                                                {
+                                                    "bank_id": "0c5b8d6e-2b8f-4a0e-8f43-6a2d9f1e7b20",
+                                                    "bank_name": "Bancolombia",
+                                                    "filings": 8,
+                                                    "returned": 2,
+                                                    "approved": 4,
+                                                    "rejected": 1,
+                                                    "disbursed": 1,
+                                                    "avg_days_to_response": "3.5"
+                                                }
+                                            ]
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "description": ""
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                },
+                                "examples": {
+                                    "RangoDemasiadoLargo": {
+                                        "value": {
+                                            "code": "VALIDATION_ERROR",
+                                            "message": "Los datos enviados no son válidos.",
+                                            "details": [
+                                                {
+                                                    "field": "date_to",
+                                                    "code": "INVALID",
+                                                    "message": "El rango no puede superar 366 días."
+                                                }
+                                            ],
+                                            "request_id": "req_01J9Z6S4T6R7"
+                                        },
+                                        "summary": "Rango demasiado largo"
+                                    }
+                                }
+                            }
+                        },
+                        "description": "VALIDATION_ERROR: fecha mal escrita, `date_from > date_to`, rango de más de 366 días, un id que no existe o un `purpose_code` desconocido."
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "NOT_AUTHENTICATED o SESSION_EXPIRED"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                },
+                                "examples": {
+                                    "FiltroFueraDelAlcance": {
+                                        "value": {
+                                            "code": "FILTER_OUT_OF_SCOPE",
+                                            "message": "Uno de los filtros está fuera de tu alcance.",
+                                            "details": [
+                                                {
+                                                    "field": "advisor_id",
+                                                    "code": "FILTER_OUT_OF_SCOPE",
+                                                    "message": "Este filtro está fuera de tu alcance."
+                                                }
+                                            ],
+                                            "request_id": "req_01J9Z6S4T6R7"
+                                        },
+                                        "summary": "Filtro fuera del alcance"
+                                    }
+                                }
+                            }
+                        },
+                        "description": "PERMISSION_DENIED o FILTER_OUT_OF_SCOPE (un filtro fuera del alcance del usuario)."
+                    }
+                }
+            }
+        },
+        "/api/v1/dashboard/funnel": {
+            "get": {
+                "operationId": "dashboard_funnel",
+                "description": "Cohorte de las solicitudes creadas en el periodo: cuántas llegaron alguna vez a cada etapa, en orden (`CREATED`, `DOCUMENTS_COMPLETE`, `READY_TO_FILE`, `FILED`, `APPROVED`, `DISBURSED`). Una solicitud que llegó a una etapa posterior cuenta en las anteriores. `DOCUMENTS_COMPLETE` es haber llegado a `DOCUMENTS_REVIEW`. `conversion` es contra `CREATED` y `step_conversion` contra la etapa anterior, como decimal en texto con 4 decimales.",
+                "summary": "Embudo de conversión del periodo",
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "advisor_id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "description": "Asesor asignado. El asesor solo puede mandar el suyo y el broker ninguno: otro valor responde `403 FILTER_OUT_OF_SCOPE`."
+                    },
+                    {
+                        "in": "query",
+                        "name": "bank_id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "description": "Banco del producto."
+                    },
+                    {
+                        "in": "query",
+                        "name": "date_from",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        },
+                        "description": "Primer día (`YYYY-MM-DD`, incluido, hora de Bogotá). Sin `date_from` ni `date_to` el rango es el mes en curso (día 1 a hoy); con solo `date_to`, el día 1 de su mes."
+                    },
+                    {
+                        "in": "query",
+                        "name": "date_to",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        },
+                        "description": "Último día (`YYYY-MM-DD`, incluido). Por omisión, hoy; una fecha futura se recorta a hoy. El rango no puede superar 366 días."
+                    },
+                    {
+                        "in": "query",
+                        "name": "partner_id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "description": "Constructora del proyecto de la solicitud (el del inmueble o, si no tiene, el de la oportunidad). El broker no puede usarlo (`403 FILTER_OUT_OF_SCOPE`)."
+                    },
+                    {
+                        "in": "query",
+                        "name": "project_id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "description": "Proyecto de la solicitud (el del inmueble o, si no tiene, el de la oportunidad). El broker no puede usarlo (`403 FILTER_OUT_OF_SCOPE`)."
+                    },
+                    {
+                        "in": "query",
+                        "name": "purpose_code",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Código `loan_purpose`. Uno que no existe responde `400`."
+                    }
+                ],
+                "tags": [
+                    "Dashboard"
+                ],
+                "security": [
+                    {
+                        "internalSession": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DashboardFunnel"
+                                },
+                                "examples": {
+                                    "Embudo": {
+                                        "value": {
+                                            "period": {
+                                                "date_from": "2026-11-01",
+                                                "date_to": "2026-11-17"
+                                            },
+                                            "stages": [
+                                                {
+                                                    "code": "CREATED",
+                                                    "label": "Creadas",
+                                                    "count": 20,
+                                                    "conversion": "1.0000",
+                                                    "step_conversion": null
+                                                },
+                                                {
+                                                    "code": "DOCUMENTS_COMPLETE",
+                                                    "label": "Documentos completos",
+                                                    "count": 9,
+                                                    "conversion": "0.4500",
+                                                    "step_conversion": "0.4500"
+                                                }
+                                            ]
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "description": ""
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                },
+                                "examples": {
+                                    "RangoDemasiadoLargo": {
+                                        "value": {
+                                            "code": "VALIDATION_ERROR",
+                                            "message": "Los datos enviados no son válidos.",
+                                            "details": [
+                                                {
+                                                    "field": "date_to",
+                                                    "code": "INVALID",
+                                                    "message": "El rango no puede superar 366 días."
+                                                }
+                                            ],
+                                            "request_id": "req_01J9Z6S4T6R7"
+                                        },
+                                        "summary": "Rango demasiado largo"
+                                    }
+                                }
+                            }
+                        },
+                        "description": "VALIDATION_ERROR: fecha mal escrita, `date_from > date_to`, rango de más de 366 días, un id que no existe o un `purpose_code` desconocido."
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "NOT_AUTHENTICATED o SESSION_EXPIRED"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                },
+                                "examples": {
+                                    "FiltroFueraDelAlcance": {
+                                        "value": {
+                                            "code": "FILTER_OUT_OF_SCOPE",
+                                            "message": "Uno de los filtros está fuera de tu alcance.",
+                                            "details": [
+                                                {
+                                                    "field": "advisor_id",
+                                                    "code": "FILTER_OUT_OF_SCOPE",
+                                                    "message": "Este filtro está fuera de tu alcance."
+                                                }
+                                            ],
+                                            "request_id": "req_01J9Z6S4T6R7"
+                                        },
+                                        "summary": "Filtro fuera del alcance"
+                                    }
+                                }
+                            }
+                        },
+                        "description": "PERMISSION_DENIED o FILTER_OUT_OF_SCOPE (un filtro fuera del alcance del usuario)."
+                    }
+                }
+            }
+        },
+        "/api/v1/dashboard/summary": {
+            "get": {
+                "operationId": "dashboard_summary",
+                "description": "Clientes y solicitudes creados en el periodo, la foto de hoy por estado (sin el filtro de fechas), las tareas vencidas y de hoy y, solo para el administrador y el asesor, los montos en COP. El broker recibe solo conteos de las solicitudes de las oportunidades que originó: sin `amounts` y con `tasks` en 0.",
+                "summary": "Indicadores principales del periodo",
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "advisor_id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "description": "Asesor asignado. El asesor solo puede mandar el suyo y el broker ninguno: otro valor responde `403 FILTER_OUT_OF_SCOPE`."
+                    },
+                    {
+                        "in": "query",
+                        "name": "bank_id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "description": "Banco del producto."
+                    },
+                    {
+                        "in": "query",
+                        "name": "date_from",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        },
+                        "description": "Primer día (`YYYY-MM-DD`, incluido, hora de Bogotá). Sin `date_from` ni `date_to` el rango es el mes en curso (día 1 a hoy); con solo `date_to`, el día 1 de su mes."
+                    },
+                    {
+                        "in": "query",
+                        "name": "date_to",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        },
+                        "description": "Último día (`YYYY-MM-DD`, incluido). Por omisión, hoy; una fecha futura se recorta a hoy. El rango no puede superar 366 días."
+                    },
+                    {
+                        "in": "query",
+                        "name": "partner_id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "description": "Constructora del proyecto de la solicitud (el del inmueble o, si no tiene, el de la oportunidad). El broker no puede usarlo (`403 FILTER_OUT_OF_SCOPE`)."
+                    },
+                    {
+                        "in": "query",
+                        "name": "project_id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "description": "Proyecto de la solicitud (el del inmueble o, si no tiene, el de la oportunidad). El broker no puede usarlo (`403 FILTER_OUT_OF_SCOPE`)."
+                    },
+                    {
+                        "in": "query",
+                        "name": "purpose_code",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Código `loan_purpose`. Uno que no existe responde `400`."
+                    }
+                ],
+                "tags": [
+                    "Dashboard"
+                ],
+                "security": [
+                    {
+                        "internalSession": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DashboardSummary"
+                                },
+                                "examples": {
+                                    "Asesor": {
+                                        "value": {
+                                            "period": {
+                                                "date_from": "2026-11-01",
+                                                "date_to": "2026-11-17"
+                                            },
+                                            "clients_created": 12,
+                                            "applications_created": 9,
+                                            "snapshot": [
+                                                {
+                                                    "status": "DRAFT",
+                                                    "status_label": "Borrador",
+                                                    "count": 2
+                                                },
+                                                {
+                                                    "status": "FILED",
+                                                    "status_label": "Radicada",
+                                                    "count": 3
+                                                }
+                                            ],
+                                            "tasks": {
+                                                "overdue": 1,
+                                                "due_today": 4
+                                            },
+                                            "amounts": {
+                                                "requested_total": "1850000000.00",
+                                                "approved_total": "420000000.00",
+                                                "disbursed_total": "0.00"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "description": ""
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                },
+                                "examples": {
+                                    "RangoDemasiadoLargo": {
+                                        "value": {
+                                            "code": "VALIDATION_ERROR",
+                                            "message": "Los datos enviados no son válidos.",
+                                            "details": [
+                                                {
+                                                    "field": "date_to",
+                                                    "code": "INVALID",
+                                                    "message": "El rango no puede superar 366 días."
+                                                }
+                                            ],
+                                            "request_id": "req_01J9Z6S4T6R7"
+                                        },
+                                        "summary": "Rango demasiado largo"
+                                    }
+                                }
+                            }
+                        },
+                        "description": "VALIDATION_ERROR: fecha mal escrita, `date_from > date_to`, rango de más de 366 días, un id que no existe o un `purpose_code` desconocido."
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "NOT_AUTHENTICATED o SESSION_EXPIRED"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                },
+                                "examples": {
+                                    "FiltroFueraDelAlcance": {
+                                        "value": {
+                                            "code": "FILTER_OUT_OF_SCOPE",
+                                            "message": "Uno de los filtros está fuera de tu alcance.",
+                                            "details": [
+                                                {
+                                                    "field": "advisor_id",
+                                                    "code": "FILTER_OUT_OF_SCOPE",
+                                                    "message": "Este filtro está fuera de tu alcance."
+                                                }
+                                            ],
+                                            "request_id": "req_01J9Z6S4T6R7"
+                                        },
+                                        "summary": "Filtro fuera del alcance"
+                                    }
+                                }
+                            }
+                        },
+                        "description": "PERMISSION_DENIED o FILTER_OUT_OF_SCOPE (un filtro fuera del alcance del usuario)."
+                    }
+                }
+            }
+        },
+        "/api/v1/dashboard/workload": {
+            "get": {
+                "operationId": "dashboard_workload",
+                "description": "Solo administrador y asesor (el broker recibe `403 PERMISSION_DENIED`). El asesor ve solo su fila; el administrador, la de cada asesor activo y la de quien tenga solicitudes abiertas asignadas (o solo la de `advisor_id`). Es una foto de hoy: el rango de fechas no aplica. Las tareas son las `PENDING` asignadas al asesor.",
+                "summary": "Carga de hoy por asesor",
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "advisor_id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "description": "Asesor asignado. El asesor solo puede mandar el suyo y el broker ninguno: otro valor responde `403 FILTER_OUT_OF_SCOPE`."
+                    },
+                    {
+                        "in": "query",
+                        "name": "bank_id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "description": "Banco del producto."
+                    },
+                    {
+                        "in": "query",
+                        "name": "date_from",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        },
+                        "description": "Primer día (`YYYY-MM-DD`, incluido, hora de Bogotá). Sin `date_from` ni `date_to` el rango es el mes en curso (día 1 a hoy); con solo `date_to`, el día 1 de su mes."
+                    },
+                    {
+                        "in": "query",
+                        "name": "date_to",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        },
+                        "description": "Último día (`YYYY-MM-DD`, incluido). Por omisión, hoy; una fecha futura se recorta a hoy. El rango no puede superar 366 días."
+                    },
+                    {
+                        "in": "query",
+                        "name": "partner_id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "description": "Constructora del proyecto de la solicitud (el del inmueble o, si no tiene, el de la oportunidad). El broker no puede usarlo (`403 FILTER_OUT_OF_SCOPE`)."
+                    },
+                    {
+                        "in": "query",
+                        "name": "project_id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "description": "Proyecto de la solicitud (el del inmueble o, si no tiene, el de la oportunidad). El broker no puede usarlo (`403 FILTER_OUT_OF_SCOPE`)."
+                    },
+                    {
+                        "in": "query",
+                        "name": "purpose_code",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Código `loan_purpose`. Uno que no existe responde `400`."
+                    }
+                ],
+                "tags": [
+                    "Dashboard"
+                ],
+                "security": [
+                    {
+                        "internalSession": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DashboardWorkload"
+                                },
+                                "examples": {
+                                    "Carga": {
+                                        "value": {
+                                            "advisors": [
+                                                {
+                                                    "advisor_id": "6f1c2c1e-3f0e-4a59-9c39-0b6b5c3a8d11",
+                                                    "advisor_name": "Andrea García",
+                                                    "open_applications": 14,
+                                                    "overdue_tasks": 2,
+                                                    "due_today_tasks": 3,
+                                                    "waiting_buyer": 5,
+                                                    "ready_to_file": 1
+                                                }
+                                            ]
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "description": ""
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                },
+                                "examples": {
+                                    "RangoDemasiadoLargo": {
+                                        "value": {
+                                            "code": "VALIDATION_ERROR",
+                                            "message": "Los datos enviados no son válidos.",
+                                            "details": [
+                                                {
+                                                    "field": "date_to",
+                                                    "code": "INVALID",
+                                                    "message": "El rango no puede superar 366 días."
+                                                }
+                                            ],
+                                            "request_id": "req_01J9Z6S4T6R7"
+                                        },
+                                        "summary": "Rango demasiado largo"
+                                    }
+                                }
+                            }
+                        },
+                        "description": "VALIDATION_ERROR: fecha mal escrita, `date_from > date_to`, rango de más de 366 días, un id que no existe o un `purpose_code` desconocido."
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "NOT_AUTHENTICATED o SESSION_EXPIRED"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                },
+                                "examples": {
+                                    "FiltroFueraDelAlcance": {
+                                        "value": {
+                                            "code": "FILTER_OUT_OF_SCOPE",
+                                            "message": "Uno de los filtros está fuera de tu alcance.",
+                                            "details": [
+                                                {
+                                                    "field": "advisor_id",
+                                                    "code": "FILTER_OUT_OF_SCOPE",
+                                                    "message": "Este filtro está fuera de tu alcance."
+                                                }
+                                            ],
+                                            "request_id": "req_01J9Z6S4T6R7"
+                                        },
+                                        "summary": "Filtro fuera del alcance"
+                                    }
+                                }
+                            }
+                        },
+                        "description": "PERMISSION_DENIED o FILTER_OUT_OF_SCOPE (un filtro fuera del alcance del usuario)."
+                    }
+                }
+            }
+        },
         "/api/v1/document-files/{file_id}": {
             "get": {
                 "operationId": "document_files_retrieve",
@@ -18623,6 +19341,45 @@
                     "line1"
                 ]
             },
+            "AdvisorWorkload": {
+                "type": "object",
+                "properties": {
+                    "advisor_id": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "advisor_name": {
+                        "type": "string"
+                    },
+                    "open_applications": {
+                        "type": "integer",
+                        "description": "Solicitudes no terminales."
+                    },
+                    "overdue_tasks": {
+                        "type": "integer"
+                    },
+                    "due_today_tasks": {
+                        "type": "integer"
+                    },
+                    "waiting_buyer": {
+                        "type": "integer",
+                        "description": "Solicitudes esperando datos o documentos del comprador."
+                    },
+                    "ready_to_file": {
+                        "type": "integer",
+                        "description": "Solicitudes listas para radicar."
+                    }
+                },
+                "required": [
+                    "advisor_id",
+                    "advisor_name",
+                    "due_today_tasks",
+                    "open_applications",
+                    "overdue_tasks",
+                    "ready_to_file",
+                    "waiting_buyer"
+                ]
+            },
             "AllowedMimeTypesEnum": {
                 "enum": [
                     "application/pdf",
@@ -18631,6 +19388,34 @@
                 ],
                 "type": "string",
                 "description": "* `application/pdf` - application/pdf\n* `image/jpeg` - image/jpeg\n* `image/png` - image/png"
+            },
+            "Amounts": {
+                "type": "object",
+                "properties": {
+                    "requested_total": {
+                        "type": "string",
+                        "format": "decimal",
+                        "pattern": "^-?\\d{0,18}(?:\\.\\d{0,2})?$",
+                        "description": "Suma del monto solicitado en la financiación, en COP."
+                    },
+                    "approved_total": {
+                        "type": "string",
+                        "format": "decimal",
+                        "pattern": "^-?\\d{0,18}(?:\\.\\d{0,2})?$",
+                        "description": "Suma del monto de la última aprobación del banco de cada solicitud, en COP."
+                    },
+                    "disbursed_total": {
+                        "type": "string",
+                        "format": "decimal",
+                        "pattern": "^-?\\d{0,18}(?:\\.\\d{0,2})?$",
+                        "description": "Suma del monto del último desembolso registrado de cada solicitud, en COP."
+                    }
+                },
+                "required": [
+                    "approved_total",
+                    "disbursed_total",
+                    "requested_total"
+                ]
             },
             "ApplicantRef": {
                 "type": "object",
@@ -20203,6 +20988,54 @@
                     "id",
                     "name",
                     "short_name"
+                ]
+            },
+            "BankResult": {
+                "type": "object",
+                "properties": {
+                    "bank_id": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "bank_name": {
+                        "type": "string"
+                    },
+                    "filings": {
+                        "type": "integer",
+                        "description": "Radicaciones con `filed_at` en el periodo."
+                    },
+                    "returned": {
+                        "type": "integer",
+                        "description": "Radicaciones que el banco devolvió."
+                    },
+                    "approved": {
+                        "type": "integer"
+                    },
+                    "rejected": {
+                        "type": "integer"
+                    },
+                    "disbursed": {
+                        "type": "integer"
+                    },
+                    "avg_days_to_response": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "decimal",
+                        "pattern": "^-?\\d{0,6}(?:\\.\\d{0,1})?$",
+                        "description": "Promedio de días entre `filed_at` y la primera respuesta, con 1 decimal; `null` si ninguna radicación tiene respuesta."
+                    }
+                },
+                "required": [
+                    "approved",
+                    "avg_days_to_response",
+                    "bank_id",
+                    "bank_name",
+                    "disbursed",
+                    "filings",
+                    "rejected",
+                    "returned"
                 ]
             },
             "BankRuleEvaluation": {
@@ -23542,6 +24375,97 @@
                     "version_number"
                 ]
             },
+            "DashboardBankResults": {
+                "type": "object",
+                "properties": {
+                    "period": {
+                        "$ref": "#/components/schemas/Period"
+                    },
+                    "banks": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/BankResult"
+                        }
+                    }
+                },
+                "required": [
+                    "banks",
+                    "period"
+                ]
+            },
+            "DashboardFunnel": {
+                "type": "object",
+                "properties": {
+                    "period": {
+                        "$ref": "#/components/schemas/Period"
+                    },
+                    "stages": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/FunnelStage"
+                        }
+                    }
+                },
+                "required": [
+                    "period",
+                    "stages"
+                ]
+            },
+            "DashboardSummary": {
+                "type": "object",
+                "properties": {
+                    "period": {
+                        "$ref": "#/components/schemas/Period"
+                    },
+                    "clients_created": {
+                        "type": "integer",
+                        "description": "Clientes creados en el periodo dentro del alcance de CRM del usuario."
+                    },
+                    "applications_created": {
+                        "type": "integer",
+                        "description": "Solicitudes creadas en el periodo, con el alcance y los filtros."
+                    },
+                    "snapshot": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/StatusCount"
+                        },
+                        "description": "Solicitudes que hoy están en cada estado (sin el filtro de fechas). Trae todos los estados, incluso en 0."
+                    },
+                    "tasks": {
+                        "$ref": "#/components/schemas/TaskCounts"
+                    },
+                    "amounts": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/Amounts"
+                            }
+                        ],
+                        "description": "Solo administrador y asesor, sobre las solicitudes creadas en el periodo. El broker no recibe este campo."
+                    }
+                },
+                "required": [
+                    "applications_created",
+                    "clients_created",
+                    "period",
+                    "snapshot",
+                    "tasks"
+                ]
+            },
+            "DashboardWorkload": {
+                "type": "object",
+                "properties": {
+                    "advisors": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/AdvisorWorkload"
+                        }
+                    }
+                },
+                "required": [
+                    "advisors"
+                ]
+            },
             "DecisionEnum": {
                 "enum": [
                     "APPROVED",
@@ -25945,6 +26869,58 @@
                 ],
                 "type": "string",
                 "description": "* `OPPORTUNITY` - Oportunidad comercial\n* `APPLICATION` - Solicitud de crédito\n* `PROJECT` - Proyecto inmobiliario"
+            },
+            "FunnelStage": {
+                "type": "object",
+                "properties": {
+                    "code": {
+                        "$ref": "#/components/schemas/FunnelStageEnum"
+                    },
+                    "label": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "count": {
+                        "type": "integer"
+                    },
+                    "conversion": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "decimal",
+                        "pattern": "^-?\\d{0,1}(?:\\.\\d{0,4})?$",
+                        "description": "`count / CREATED` con 4 decimales; `null` si `CREATED` es 0."
+                    },
+                    "step_conversion": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "decimal",
+                        "pattern": "^-?\\d{0,1}(?:\\.\\d{0,4})?$",
+                        "description": "`count` contra la etapa anterior; `null` en `CREATED` o si la anterior es 0."
+                    }
+                },
+                "required": [
+                    "code",
+                    "conversion",
+                    "count",
+                    "label",
+                    "step_conversion"
+                ]
+            },
+            "FunnelStageEnum": {
+                "enum": [
+                    "CREATED",
+                    "DOCUMENTS_COMPLETE",
+                    "READY_TO_FILE",
+                    "FILED",
+                    "APPROVED",
+                    "DISBURSED"
+                ],
+                "type": "string",
+                "description": "* `CREATED` - Creadas\n* `DOCUMENTS_COMPLETE` - Documentos completos\n* `READY_TO_FILE` - Listas para radicar\n* `FILED` - Radicadas\n* `APPROVED` - Aprobadas\n* `DISBURSED` - Desembolsadas"
             },
             "HolderScopeEnum": {
                 "enum": [
@@ -30092,6 +31068,25 @@
                     }
                 }
             },
+            "Period": {
+                "type": "object",
+                "properties": {
+                    "date_from": {
+                        "type": "string",
+                        "format": "date",
+                        "description": "Primer día del rango efectivo (incluido)."
+                    },
+                    "date_to": {
+                        "type": "string",
+                        "format": "date",
+                        "description": "Último día del rango efectivo (incluido)."
+                    }
+                },
+                "required": [
+                    "date_from",
+                    "date_to"
+                ]
+            },
             "PreviewDocument": {
                 "type": "object",
                 "properties": {
@@ -31321,6 +32316,26 @@
                     "version"
                 ]
             },
+            "StatusCount": {
+                "type": "object",
+                "properties": {
+                    "status": {
+                        "$ref": "#/components/schemas/ApplicationStatusEnum"
+                    },
+                    "status_label": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "count": {
+                        "type": "integer"
+                    }
+                },
+                "required": [
+                    "count",
+                    "status",
+                    "status_label"
+                ]
+            },
             "StatusHistory": {
                 "type": "object",
                 "properties": {
@@ -31610,6 +32625,23 @@
                 },
                 "required": [
                     "reason"
+                ]
+            },
+            "TaskCounts": {
+                "type": "object",
+                "properties": {
+                    "overdue": {
+                        "type": "integer",
+                        "description": "Tareas `PENDING` con fecha anterior a hoy."
+                    },
+                    "due_today": {
+                        "type": "integer",
+                        "description": "Tareas `PENDING` con fecha de hoy."
+                    }
+                },
+                "required": [
+                    "due_today",
+                    "overdue"
                 ]
             },
             "TaskCreateRequest": {
