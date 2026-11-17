@@ -408,6 +408,7 @@ def test_participants_are_the_active_ones(
     assert items[str(co_applicant.pk)] == {
         "id": str(co_applicant.pk),
         "role": "CO_APPLICANT",
+        "role_label": "Co-solicitante",
         "full_name": "Pedro Gómez Vélez",
         "contributes_income": True,
         "financial_profile_id": str(profile.pk),

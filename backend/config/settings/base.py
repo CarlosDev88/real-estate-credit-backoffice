@@ -135,6 +135,9 @@ SPECTACULAR_SETTINGS = {
         "DocumentSlotStatusEnum": "apps.documents.models.SlotStatus",
         "DocumentFileStatusEnum": "apps.documents.models.DocumentFileStatus",
         "DocumentPackageJobStatusEnum": "apps.documents.models.PackageJobStatus",
+        # Portal y backoffice: estado público del documento y estado de cada etapa.
+        "PublicSlotStatusEnum": "apps.documents.models.PublicSlotStatus",
+        "ProgressStageStateEnum": "apps.applications.stages.StageState",
     },
 }
 
