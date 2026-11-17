@@ -47,6 +47,7 @@ from apps.documents.models import (
     FileObject,
     SlotStatus,
 )
+from apps.documents.signals import document_uploaded
 from apps.documents.storage import get_storage, new_document_key
 from apps.identity.models import BuyerSession
 from config.exceptions import ApiError
@@ -202,6 +203,15 @@ def _save_version(
         slot.save(update_fields=["current_file", "status", "updated_at"])
         transaction.on_commit(partial(_enqueue_scan, str(file_object.pk)))
         _schedule_completeness(application.pk)
+        transaction.on_commit(
+            partial(
+                document_uploaded.send,
+                sender=DocumentFile,
+                slot=slot,
+                document_file=version,
+                session=session,
+            )
+        )
     return version
 
 

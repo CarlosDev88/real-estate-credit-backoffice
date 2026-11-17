@@ -370,6 +370,22 @@ def test_latest_is_stale_when_the_product_changes(
     assert latest(advisor_client, ready).json()["is_current"] is False
 
 
+def test_latest_follows_the_version_even_if_the_clock_went_back(
+    advisor_client: APIClient, ready: CreditApplication
+) -> None:
+    old = evaluate(advisor_client, ready).json()
+    put(advisor_client, ready, "property", {**PROPERTY, "estimated_value_cop": 1}, '"3"')
+    new = evaluate(advisor_client, ready).json()
+    # El reloj del servidor retrocedió entre las dos evaluaciones.
+    BankRuleEvaluation.objects.filter(pk=new["id"]).update(
+        created_at=BankRuleEvaluation.objects.get(pk=old["id"]).created_at - timedelta(seconds=10)
+    )
+
+    body = latest(advisor_client, ready).json()
+
+    assert (body["id"], body["is_current"]) == (new["id"], True)
+
+
 # --- Evaluación automática al elegir producto ------------------------------------------
 
 

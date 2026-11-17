@@ -32,9 +32,13 @@ api_v1_patterns = [
     path("", include("apps.documents.urls")),
     path("", include("apps.applications.urls")),
     path("", include("apps.filings.urls")),
+    path("", include("apps.notifications.urls")),
     path("", include("apps.identity.buyer_access_urls")),
     path("", include("apps.identity.buyer_portal_urls")),
     path("", include("apps.identity.consent_urls")),
+    path("", include("apps.workday.urls")),
+    path("", include("apps.tasks.urls")),
+    path("", include("apps.activity.urls")),
 ]
 
 urlpatterns = [

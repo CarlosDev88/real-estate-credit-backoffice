@@ -187,7 +187,7 @@ git worktree add ..\wt-front-portal -b feat/front-portal
 Cada agente se abre en su carpeta. Al terminar: `git worktree remove ..\wt-front-backoffice` (y lo mismo con el otro).
 
 ## Brechas del backend vistas en los mockups
-Las cuatro primeras se resolvieron en `TAREA-applications-listado.md` (PR #16). Las de la tarea de "brechas" se resolvieron en `TAREA-brechas.md` (PR #18). Al final van las que dejó la F1 (PR #17).
+Las cuatro primeras se resolvieron en `TAREA-applications-listado.md` (PR #16). Las de la tarea de "brechas" se resolvieron en `TAREA-brechas.md` (PR #18). Al final van las que dejaron la F1 (PR #17) y la F3 (radicación).
 - **Resuelta en `TAREA-applications-listado.md` (PR #16):** tipo de crédito (`bank_product_type`) en el listado, y filtro por tipo.
 - **Resuelta en `TAREA-applications-listado.md` (PR #16):** monto solicitado, completitud y número de co-solicitantes en cada fila.
 - **Resuelta en `TAREA-applications-listado.md` (PR #16):** conteos de las pestañas del listado y qué estados agrupa cada una (no los puede definir el frontend).
@@ -207,8 +207,10 @@ Las cuatro primeras se resolvieron en `TAREA-applications-listado.md` (PR #16). 
 - `participants_summary` trae solo conteos: el texto "+ 1 co-solicitante" / "deudor solidario" lo arma el frontend. Para sacarlo, el resumen debería traer la etiqueta de cada rol.
 
 **Expediente (`/solicitudes/[id]`):**
-- **Actividad completa:** "Actividad reciente" del mockup (cargas, revisiones, envíos de enlace) se reemplazó por "Últimos cambios de estado", que sale de `status-history`. El registro de actividad completo llega con el módulo de auditoría.
+- **Resuelta en `TAREA-tareas-actividad.md` (Parte 3):** "Actividad reciente" ya tiene endpoint: `GET /applications/{id}/activity` (cargas, revisiones, envíos de enlace, cambios de estado, tareas, notas y radicación; filtro `event_type`), y `GET/POST /applications/{id}/notes` para las notas internas. El comprador tiene `GET /buyer/applications/{id}/activity`. Antes, "Actividad reciente" del mockup se había reemplazado por "Últimos cambios de estado", que sale de `status-history`.
+- **API lista para una pantalla futura (`TAREA-tareas-actividad.md`):** "Mi día" (`/workday/applications` y `/workday/summary`, con siguiente acción, días en la etapa y segmentos de atención) y las tareas (`/tasks`).
 - "Agregar" participantes queda fuera: la edición de los datos del comprador llega con la F2.
+- **Resuelta en `TAREA-tareas-actividad.md` (agregado 2b):** cuál acción es la principal y cuál es destructiva. `AvailableAction` trae `kind` (`primary`, `secondary` o `destructive`) y la lista sale en ese orden, así que el botón principal es la primera `primary` y las `destructive` piden confirmación. Antes, en la demo, la primera acción era "Cancelar solicitud".
 - `AvailableAction` no dice si la transición exige motivo. El frontend siempre ofrece el motivo y muestra el `400` de la API en el campo. Un `reason_required` (o la lista de motivos válidos) evitaría el intento fallido.
 - `BuyerAccessLink.status` no trae `status_label`: la tarjeta "Acceso del comprador" muestra las fechas (enviado, usado, revocado o vence) en lugar del estado.
 - No hay un endpoint interno con los consentimientos requeridos de la solicitud: se ven los aceptados, sin el "de N".
@@ -228,6 +230,20 @@ Las cuatro primeras se resolvieron en `TAREA-applications-listado.md` (PR #16). 
 - **Ingreso mensual en el inicio:** el detalle del comprador no trae ingresos. La fila "Ingresos y gastos" pide un perfil financiero por cada participante que aporta ingresos.
 - **Mensaje del `429` de `/buyer-access/consume` y de `/auth/login`:** es el texto por defecto de DRF ("Solicitud fue regulada (throttled). Se espera que esté disponible en N segundos."). El portal lo muestra debajo de su propio título ("Demasiados intentos, espera N minutos").
 - **Tono de los estados públicos de los documentos:** `status-tones.ts` no tiene los códigos de `public_status` (`TO_UPLOAD`, `TO_FIX`, `IN_REVIEW`, `DONE`, `NOT_APPLICABLE`). El portal usa el tono del estado interno (`status`): un pendiente sale `neutral`, mientras el mockup lo pinta `warning`.
+
+### Brechas que dejó la F3 (radicación, `TAREA-front-radicacion.md`)
+- **Paquetes de una solicitud:** no hay `GET` que liste los paquetes (`document-package-jobs`) de una solicitud, solo `POST` y `GET /{id}`. El id del paquete vive en la pestaña. Si se sale y se vuelve, hay que pedirlo otra vez; la API devuelve el mismo mientras la huella documental no cambie (`200`).
+- **Estado del paquete sin etiqueta:** `DocumentPackageJob.status` no trae `status_label`. En lugar de un badge se muestran frases de interfaz ("Preparando…", "Paquete listo", "El paquete venció", "No se pudo armar"), y el `error_code` va tal cual.
+- **Análisis de la evidencia sin etiqueta:** `Evidence.scan_status` no trae `scan_status_label`. Solo se abre con `CLEAN`; mientras está `PENDING` o falla, va una frase de interfaz.
+- **Documentos entregados sin nombre:** `FilingDocumentSnapshot` trae `document_type_code`, pero no el nombre del tipo ni la etiqueta del slot. Se usa la etiqueta del slot de `document-slots` y, si el slot ya no está, el código.
+- **Campos por tipo de respuesta:** la API no expone qué campos pide cada tipo (`RULES` de `filings/responses.py`). El formulario los copia en una constante de pantalla (`RESPONSE_FORMS`), con prueba. Si el catálogo trae `fields`/`required` por tipo (por ejemplo, en `metadata`), la constante se puede quitar.
+- **Acción principal del encabezado (pendiente del front 1):** `WorkspaceActions` (`features/applications/workspace-header.tsx`) toma como principal la primera transición disponible (`runnable[0]`), sin mirar `AvailableAction.kind`, que llegó con el #20. En `READY_TO_FILE` marca "Crédito externo aprobado" y compite con "Preparar paquete" de la pestaña Radicación. El arreglo es elegir la primera con `kind === "primary"` (y pedir confirmación en las `destructive`). Va en el encabezado, que es del front 1: la F3 no lo toca.
+- **Respuesta vencida:** `Filing` no dice si la respuesta del banco está vencida. El frontend marca "Vencida" cuando pasó `target_response_at` y `responses_count` es 0.
+
+### Notificaciones e idempotencia (`TAREA-notificaciones.md`, módulo 13)
+- **Resuelta (módulo 13):** "Avisos" del portal. Ya hay API: `GET /buyer/notifications` (con `unread=true`), `GET /buyer/notifications/unread-count` para el número de la navegación, `PATCH /buyer/notifications/{id}/read` y `POST /buyer/notifications/read-all` (API §21.2). No las bloquea `CONSENT_REQUIRED`. En el backoffice, `GET /applications/{id}/notifications` muestra cada aviso con sus entregas (portal y correo, intentos y último error).
+- **Pendiente del front:** enviar `Idempotency-Key` (un UUID nuevo por intento del usuario, que se reutiliza en los reintentos automáticos) en las cinco operaciones: radicación, respuesta del banco, transición de estado, paquete para radicar y enlace mágico (API §6). Hoy es opcional. Errores nuevos: `409 IDEMPOTENCY_IN_PROGRESS` (reintentar), `422 IDEMPOTENCY_CONFLICT` y, en el enlace mágico, `409 IDEMPOTENCY_REPLAY_UNAVAILABLE` (el enlace ya se creó: verlo en la lista y, si hace falta otro, pedirlo con otra clave).
+- **Pendiente del backend:** las notificaciones internas (la campana del backoffice). El modelo las admite (`user_id`), pero ningún evento las crea todavía.
 
 ## Pruebas
 - **Unitarias** (Vitest + Testing Library): componentes de `ui`, formularios con validación, manejo de `ApiError` y formato de montos.

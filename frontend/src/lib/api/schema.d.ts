@@ -104,6 +104,26 @@ export interface paths {
         patch: operations["applications_partial_update"];
         trace?: never;
     };
+    "/api/v1/applications/{application_id}/activity": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Actividad de la solicitud
+         * @description Línea de tiempo del expediente, de la más reciente a la más antigua. El administrador y el asesor ven las filas internas; el broker, solo las del comprador (las mismas de `/buyer/applications/{id}/activity`). `actor` es `{name}` ("Portal del comprador" si lo hizo el comprador) o nulo.
+         */
+        get: operations["applications_activity_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/applications/{application_id}/assignments": {
         parameters: {
             query?: never;
@@ -200,6 +220,8 @@ export interface paths {
         /**
          * Generar un enlace de acceso para el titular
          * @description El enlace es para el titular (`PRIMARY`) y sirve una sola vez. Revoca los enlaces pendientes anteriores de la solicitud; las sesiones abiertas siguen vivas. `url` lleva el token y solo aparece en esta respuesta. Con `EMAIL`, además se envía al correo del titular. Límite: 3 por hora por emisor y solicitud.
+         *
+         *     Con `Idempotency-Key`, repetir la clave no crea otro enlace, pero tampoco devuelve la respuesta original, porque el token en claro no se guarda: responde `409 IDEMPOTENCY_REPLAY_UNAVAILABLE`. Para otro enlace, se usa otra clave.
          */
         post: operations["buyer_access_links_create"];
         delete?: never;
@@ -373,6 +395,50 @@ export interface paths {
          * @description Reemplazo completo. `BANK_CREDIT` exige `bank_product_id` (disponible para la finalidad) y `requested_amount_cop`. Con `OWN_FUNDS` o `EXTERNAL_CREDIT` no se envía producto (se limpia el de la solicitud) y el monto solicitado queda en 0. `external_approved_amount_cop` es obligatorio con `EXTERNAL_CREDIT` y no se acepta en los otros modos. Sin `uses_severance_funds`, `severance_funds_cop` es 0. Los rangos del producto no se validan al guardar: los verifica la evaluación bancaria. Responde `201` si la creó. Responde `ETag` con la versión de la solicitud.
          */
         put: operations["applications_financing_update"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/applications/{application_id}/notes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Notas internas de la solicitud
+         * @description La más reciente primero. Solo el administrador y el asesor asignado.
+         */
+        get: operations["applications_notes_list"];
+        put?: never;
+        /**
+         * Agregar una nota interna
+         * @description `body` obligatorio, hasta 2000 caracteres. Queda en la actividad como `NOTE_ADDED`, interna: el comprador y el broker nunca la ven. Se admite también en una solicitud terminada.
+         */
+        post: operations["applications_notes_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/applications/{application_id}/notifications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Notificaciones de la solicitud y sus entregas
+         * @description Lo que recibió el comprador, de la más nueva a la más vieja, con cada entrega (portal y correo): estado, intentos y último error, para saber si el correo salió. Para el administrador y el asesor asignado (`notifications.read`).
+         */
+        get: operations["applications_notifications_list"];
+        put?: never;
         post?: never;
         delete?: never;
         options?: never;
@@ -1012,6 +1078,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/buyer/applications/{application_id}/activity": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Actividad de la solicitud para el comprador
+         * @description Solo las filas para el comprador, de la más reciente a la más antigua. `actor` es "Tú", "Tu asesor" o nulo.
+         */
+        get: operations["buyer_applications_activity_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/buyer/applications/{application_id}/consents": {
         parameters: {
             query?: never;
@@ -1328,6 +1414,86 @@ export interface paths {
          * @description Para catálogos grandes o dependientes, como `municipality`. Filtra por `parent_code` (ej. el código DANE del departamento) o `parent_id`. Soporta `If-None-Match`. Misma respuesta que `GET /metadata/catalogs/{catalog_code}`, solo para los catálogos que usan los formularios del portal: `address_type`, `amortization_mode`, `application_withdrawal_reason`, `contract_type`, `currency_mode`, `department`, `employment_profile`, `financing_mode`, `funds_origin`, `income_source_type`, `municipality`, `property_condition`, `property_type`. Cualquier otro código responde `404`, igual que uno inexistente.
          */
         get: operations["buyer_metadata_catalogs_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/buyer/notifications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Notificaciones del comprador
+         * @description Las de la solicitud de la sesión, de la más nueva a la más vieja. Con `unread=true`, solo las no leídas.
+         */
+        get: operations["buyer_notifications_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/buyer/notifications/{notification_id}/read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Marcar una notificación como leída
+         * @description Sin cuerpo. Es idempotente: una notificación ya leída conserva su `read_at`. La de otro comprador o de otra solicitud responde `404`.
+         */
+        patch: operations["buyer_notifications_read"];
+        trace?: never;
+    };
+    "/api/v1/buyer/notifications/read-all": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Marcar todas las notificaciones como leídas
+         * @description Sin cuerpo. `count` es la cantidad que estaba sin leer y se marcó.
+         */
+        post: operations["buyer_notifications_read_all"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/buyer/notifications/unread-count": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Cantidad de notificaciones sin leer
+         * @description Para el número de la navegación del portal.
+         */
+        get: operations["buyer_notifications_unread_count"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2648,6 +2814,91 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/tasks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Tareas dentro del alcance
+         * @description El administrador ve todas; el asesor, las asignadas a él y las de sus solicitudes u oportunidades. Ordenadas por `due_at` (las que no tienen fecha al final) y después por creación.
+         */
+        get: operations["tasks_list"];
+        put?: never;
+        /**
+         * Crear una tarea manual
+         * @description Exactamente uno de `application_id` u `opportunity_id`, dentro del alcance del actor (si no, `400`). El responsable (por omisión, el actor) debe ser un usuario activo administrador o asesor. Una solicitud terminada responde `409 APPLICATION_CLOSED`.
+         */
+        post: operations["tasks_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tasks/{task_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Detalle de una tarea */
+        get: operations["tasks_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Editar una tarea pendiente
+         * @description Título, descripción, responsable, `due_at` (nulo la deja sin fecha) y prioridad. Solo una tarea `PENDING`; si no, `409 TASK_NOT_PENDING`.
+         */
+        patch: operations["tasks_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/tasks/{task_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cancelar una tarea con motivo
+         * @description `reason` es obligatorio. Solo desde `PENDING`; si no, `409 TASK_NOT_PENDING`.
+         */
+        post: operations["tasks_cancel"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tasks/{task_id}/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Completar una tarea
+         * @description Solo desde `PENDING`; si no, `409 TASK_NOT_PENDING`.
+         */
+        post: operations["tasks_complete"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/users": {
         parameters: {
             query?: never;
@@ -2734,6 +2985,46 @@ export interface paths {
          * @description Asignar `CONSTRUCTION_PARTNER` a alguien sin membresía exige `partner_id` y crea la membresía. Quitarle ese rol finaliza su membresía.
          */
         put: operations["users_roles_update"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workday/applications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Solicitudes en curso del asesor, con su siguiente acción
+         * @description El asesor ve sus solicitudes asignadas; el administrador, todas (o las de `advisor_id`). Solo las no terminales. Por omisión van primero las que tienen tareas vencidas o de hoy y después las de más días en la etapa. `search` busca por código, nombre o documento del titular, como el listado.
+         */
+        get: operations["workday_applications_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workday/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Conteos de Mi día por segmento de atención
+         * @description `total` y un conteo por segmento, en el orden fijo de los segmentos. Aplica los mismos filtros que `/workday/applications`, salvo `attention`. Los segmentos no son excluyentes.
+         */
+        get: operations["workday_summary"];
+        put?: never;
         post?: never;
         delete?: never;
         options?: never;
@@ -2832,6 +3123,44 @@ export interface components {
          * @enum {string}
          */
         ActionEnum: "ACCEPTED" | "WITHDRAWN";
+        /**
+         * @description Fila de la línea de tiempo. ``actor`` es ``{name}`` o nulo (un evento del sistema).
+         *     Con ``context["buyer"]``, el actor se muestra como "Tú" o "Tu asesor".
+         */
+        Activity: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly event_type: components["schemas"]["ActivityEventTypeEnum"];
+            readonly event_type_label: string;
+            readonly title: string;
+            readonly message: string;
+            readonly actor: components["schemas"]["ActivityActor"] | null;
+            /** Format: date-time */
+            readonly created_at: string;
+        };
+        ActivityActor: {
+            name: string;
+        };
+        /**
+         * @description * `APPLICATION_CREATED` - Solicitud creada
+         *     * `STATUS_CHANGED` - Cambio de estado
+         *     * `ADVISOR_ASSIGNED` - Asesor asignado
+         *     * `PARTICIPANT_ADDED` - Participante agregado
+         *     * `PARTICIPANT_REMOVED` - Participante retirado
+         *     * `DOCUMENT_UPLOADED` - Documento cargado
+         *     * `DOCUMENT_REVIEWED` - Documento revisado
+         *     * `BUYER_LINK_SENT` - Enlace enviado al comprador
+         *     * `BUYER_SESSION_STARTED` - Ingreso del comprador
+         *     * `CONSENT_RECORDED` - Consentimiento registrado
+         *     * `TASK_CREATED` - Tarea creada
+         *     * `TASK_COMPLETED` - Tarea completada
+         *     * `TASK_CANCELLED` - Tarea cancelada
+         *     * `NOTE_ADDED` - Nota interna
+         *     * `FILING_CREATED` - Radicación
+         *     * `BANK_RESPONSE_RECORDED` - Respuesta del banco
+         * @enum {string}
+         */
+        ActivityEventTypeEnum: "APPLICATION_CREATED" | "STATUS_CHANGED" | "ADVISOR_ASSIGNED" | "PARTICIPANT_ADDED" | "PARTICIPANT_REMOVED" | "DOCUMENT_UPLOADED" | "DOCUMENT_REVIEWED" | "BUYER_LINK_SENT" | "BUYER_SESSION_STARTED" | "CONSENT_RECORDED" | "TASK_CREATED" | "TASK_COMPLETED" | "TASK_CANCELLED" | "NOTE_ADDED" | "FILING_CREATED" | "BANK_RESPONSE_RECORDED";
         Address: {
             /** Format: uuid */
             readonly id: string;
@@ -3006,6 +3335,19 @@ export interface components {
             /** @description Transiciones que el actor puede ejecutar ahora (rol y permiso; la guarda se evalúa al ejecutarla). `WITHDRAW_*` se ejecuta por `/withdrawals`. */
             readonly available_actions: components["schemas"]["AvailableAction"][];
         };
+        ApplicationNotification: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly notification_type: components["schemas"]["NotificationTypeEnum"];
+            readonly notification_type_label: string;
+            readonly title: string;
+            readonly message: string;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly read_at: string | null;
+            readonly deliveries: components["schemas"]["NotificationDelivery"][];
+        };
         ApplicationParticipant: {
             /** Format: uuid */
             readonly id: string;
@@ -3102,6 +3444,21 @@ export interface components {
             /** @default  */
             reason: string;
         };
+        AttentionRef: {
+            code: components["schemas"]["AttentionSegmentEnum"];
+            label: string;
+        };
+        /**
+         * @description * `REVIEW_DOCUMENTS` - Documentos por revisar
+         *     * `READY_TO_FILE` - Listas para radicar
+         *     * `FILED` - Radicadas
+         *     * `IN_ANALYSIS` - En análisis
+         *     * `OBSERVED` - Observadas por el banco
+         *     * `BUYER_INACTIVE` - Comprador sin actividad
+         *     * `TASKS_DUE` - Con tareas vencidas o de hoy
+         * @enum {string}
+         */
+        AttentionSegmentEnum: "REVIEW_DOCUMENTS" | "READY_TO_FILE" | "FILED" | "IN_ANALYSIS" | "OBSERVED" | "BUYER_INACTIVE" | "TASKS_DUE";
         /** @description Transición que el actor puede ejecutar ahora; la guarda se evalúa al ejecutarla. */
         AvailableAction: {
             readonly code: string;
@@ -3109,7 +3466,11 @@ export interface components {
             target_status: components["schemas"]["ApplicationStatusEnum"];
             readonly target_status_label: string;
             readonly guard_code: string;
+            /** @description primary: avanza en el camino principal; secondary: cierra por fuera del banco o retrocede; destructive: cancela o desiste. La lista sale en ese orden. */
+            readonly kind: components["schemas"]["AvailableActionKindEnum"];
         };
+        /** @enum {string} */
+        AvailableActionKindEnum: "primary" | "secondary" | "destructive";
         Bank: {
             /** Format: uuid */
             readonly id: string;
@@ -3718,6 +4079,18 @@ export interface components {
             start_date?: string | null;
             /** @default false */
             is_primary: boolean;
+        };
+        BuyerNotification: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly notification_type: components["schemas"]["NotificationTypeEnum"];
+            readonly notification_type_label: string;
+            readonly title: string;
+            readonly message: string;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly read_at: string | null;
         };
         BuyerParticipant: {
             /** Format: uuid */
@@ -5041,6 +5414,78 @@ export interface components {
             id: string;
             name: string;
         };
+        /**
+         * @description * `COMPLETE_DRAFT` - Completar el borrador
+         *     * `FOLLOW_UP_BUYER_DATA` - Hacer seguimiento a los datos del comprador
+         *     * `FOLLOW_UP_DOCUMENTS` - Hacer seguimiento a los documentos
+         *     * `REVIEW_DOCUMENTS` - Revisar documentos
+         *     * `FILE_WITH_BANK` - Radicar en el banco
+         *     * `WAIT_BANK_RESPONSE` - Esperar respuesta del banco
+         *     * `RESOLVE_OBSERVATIONS` - Resolver las observaciones del banco
+         *     * `START_LEGALIZATION` - Iniciar la legalización
+         *     * `FOLLOW_UP_LEGALIZATION` - Hacer seguimiento a la legalización
+         * @enum {string}
+         */
+        NextActionEnum: "COMPLETE_DRAFT" | "FOLLOW_UP_BUYER_DATA" | "FOLLOW_UP_DOCUMENTS" | "REVIEW_DOCUMENTS" | "FILE_WITH_BANK" | "WAIT_BANK_RESPONSE" | "RESOLVE_OBSERVATIONS" | "START_LEGALIZATION" | "FOLLOW_UP_LEGALIZATION";
+        Note: {
+            /** Format: uuid */
+            readonly id: string;
+            body: string;
+            author: components["schemas"]["UserRef"] | null;
+            /** Format: date-time */
+            readonly created_at: string;
+        };
+        /**
+         * @description Serializer que rechaza campos no declarados (``additionalProperties: false``).
+         *
+         *     Evita la asignación masiva: el cliente solo puede enviar los campos permitidos.
+         */
+        NoteCreateRequest: {
+            body: string;
+        };
+        /**
+         * @description * `EMAIL` - Correo electrónico
+         *     * `PORTAL` - Portal
+         * @enum {string}
+         */
+        NotificationChannelEnum: "EMAIL" | "PORTAL";
+        NotificationCount: {
+            count: number;
+        };
+        NotificationDelivery: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly channel: components["schemas"]["NotificationChannelEnum"];
+            readonly channel_label: string;
+            readonly destination: string | null;
+            readonly status: components["schemas"]["NotificationDeliveryStatusEnum"];
+            readonly status_label: string;
+            readonly attempt_count: number;
+            /** Format: date-time */
+            readonly next_attempt_at: string | null;
+            /** Format: date-time */
+            readonly sent_at: string | null;
+            readonly last_error_code: string | null;
+        };
+        /**
+         * @description * `PENDING` - Pendiente
+         *     * `SENT` - Enviada
+         *     * `FAILED` - Fallida
+         * @enum {string}
+         */
+        NotificationDeliveryStatusEnum: "PENDING" | "SENT" | "FAILED";
+        /**
+         * @description * `ACCESS_GRANTED` - Acceso al portal
+         *     * `DOCUMENT_REJECTED` - Documento por corregir
+         *     * `READY_TO_FILE` - Expediente completo
+         *     * `FILED` - Solicitud radicada
+         *     * `BANK_RETURNED` - Devolución del banco
+         *     * `BANK_APPROVED` - Crédito aprobado
+         *     * `BANK_REJECTED` - Crédito rechazado
+         *     * `DISBURSED` - Crédito desembolsado
+         * @enum {string}
+         */
+        NotificationTypeEnum: "ACCESS_GRANTED" | "DOCUMENT_REJECTED" | "READY_TO_FILE" | "FILED" | "BANK_RETURNED" | "BANK_APPROVED" | "BANK_REJECTED" | "DISBURSED";
         NullEnum: null;
         /**
          * @description Serializer que rechaza campos no declarados (``additionalProperties: false``).
@@ -5190,6 +5635,19 @@ export interface components {
             size_bytes: number;
             sha256: string;
         };
+        PaginatedActivityList: {
+            items: components["schemas"]["Activity"][];
+            /** @example 1 */
+            page: number;
+            /** @example 25 */
+            page_size: number;
+            /** @example 128 */
+            total: number;
+            /** @example /api/v1/x?page=2 */
+            next: string | null;
+            /** @example null */
+            previous: string | null;
+        };
         PaginatedAddressList: {
             items: components["schemas"]["Address"][];
             /** @example 1 */
@@ -5205,6 +5663,19 @@ export interface components {
         };
         PaginatedApplicationList: {
             items: components["schemas"]["Application"][];
+            /** @example 1 */
+            page: number;
+            /** @example 25 */
+            page_size: number;
+            /** @example 128 */
+            total: number;
+            /** @example /api/v1/x?page=2 */
+            next: string | null;
+            /** @example null */
+            previous: string | null;
+        };
+        PaginatedApplicationNotificationList: {
+            items: components["schemas"]["ApplicationNotification"][];
             /** @example 1 */
             page: number;
             /** @example 25 */
@@ -5348,6 +5819,19 @@ export interface components {
         };
         PaginatedBuyerIncomeSourceList: {
             items: components["schemas"]["BuyerIncomeSource"][];
+            /** @example 1 */
+            page: number;
+            /** @example 25 */
+            page_size: number;
+            /** @example 128 */
+            total: number;
+            /** @example /api/v1/x?page=2 */
+            next: string | null;
+            /** @example null */
+            previous: string | null;
+        };
+        PaginatedBuyerNotificationList: {
+            items: components["schemas"]["BuyerNotification"][];
             /** @example 1 */
             page: number;
             /** @example 25 */
@@ -5580,6 +6064,19 @@ export interface components {
             /** @example null */
             previous: string | null;
         };
+        PaginatedNoteList: {
+            items: components["schemas"]["Note"][];
+            /** @example 1 */
+            page: number;
+            /** @example 25 */
+            page_size: number;
+            /** @example 128 */
+            total: number;
+            /** @example /api/v1/x?page=2 */
+            next: string | null;
+            /** @example null */
+            previous: string | null;
+        };
         PaginatedOpportunityList: {
             items: components["schemas"]["Opportunity"][];
             /** @example 1 */
@@ -5645,8 +6142,34 @@ export interface components {
             /** @example null */
             previous: string | null;
         };
+        PaginatedTaskList: {
+            items: components["schemas"]["Task"][];
+            /** @example 1 */
+            page: number;
+            /** @example 25 */
+            page_size: number;
+            /** @example 128 */
+            total: number;
+            /** @example /api/v1/x?page=2 */
+            next: string | null;
+            /** @example null */
+            previous: string | null;
+        };
         PaginatedUserList: {
             items: components["schemas"]["User"][];
+            /** @example 1 */
+            page: number;
+            /** @example 25 */
+            page_size: number;
+            /** @example 128 */
+            total: number;
+            /** @example /api/v1/x?page=2 */
+            next: string | null;
+            /** @example null */
+            previous: string | null;
+        };
+        PaginatedWorkdayApplicationList: {
+            items: components["schemas"]["WorkdayApplication"][];
             /** @example 1 */
             page: number;
             /** @example 25 */
@@ -6024,6 +6547,21 @@ export interface components {
             /** Format: date */
             estimated_delivery_date?: string | null;
             name?: string;
+        };
+        /**
+         * @description Serializer que rechaza campos no declarados (``additionalProperties: false``).
+         *
+         *     Evita la asignación masiva: el cliente solo puede enviar los campos permitidos.
+         */
+        PatchedTaskUpdateRequest: {
+            title?: string;
+            description?: string;
+            /** Format: uuid */
+            assigned_to_id?: string;
+            /** Format: date-time */
+            due_at?: string | null;
+            /** @description Código de un valor activo del catálogo `task_priority`. Consulta los valores en `/api/v1/metadata/catalogs/task_priority`. */
+            priority_code?: string;
         };
         /** @description El correo identifica al usuario y no se edita. */
         PatchedUserUpdateRequest: {
@@ -6437,6 +6975,94 @@ export interface components {
             /** @description Obligatorio al pasar a `CANCELLED`, `OWN_FUNDS` y `EXTERNAL_CREDIT_APPROVED`. */
             reason_code?: string | null;
         };
+        Task: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly title: string;
+            readonly description: string;
+            readonly status: components["schemas"]["TaskStatusEnum"];
+            readonly status_label: string;
+            priority: components["schemas"]["CatalogItemRef"];
+            readonly source: components["schemas"]["TaskSourceEnum"];
+            readonly source_label: string;
+            assigned_to: components["schemas"]["UserRef"];
+            created_by: components["schemas"]["UserRef"] | null;
+            readonly parent: components["schemas"]["TaskParent"];
+            /** Format: date-time */
+            readonly due_at: string | null;
+            /** @description Pendiente y con `due_at` antes de hoy (fecha de Bogotá), como `due=overdue`. */
+            readonly is_overdue: boolean;
+            /** Format: date-time */
+            readonly completed_at: string | null;
+            /** Format: date-time */
+            readonly cancelled_at: string | null;
+            readonly cancel_reason: string;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly updated_at: string;
+        };
+        /**
+         * @description Serializer que rechaza campos no declarados (``additionalProperties: false``).
+         *
+         *     Evita la asignación masiva: el cliente solo puede enviar los campos permitidos.
+         */
+        TaskCancelRequest: {
+            reason: string;
+        };
+        /**
+         * @description Serializer que rechaza campos no declarados (``additionalProperties: false``).
+         *
+         *     Evita la asignación masiva: el cliente solo puede enviar los campos permitidos.
+         */
+        TaskCreateRequest: {
+            title: string;
+            description?: string;
+            /** Format: uuid */
+            application_id?: string | null;
+            /** Format: uuid */
+            opportunity_id?: string | null;
+            /**
+             * Format: uuid
+             * @description Por omisión, el actor.
+             */
+            assigned_to_id?: string | null;
+            /** Format: date-time */
+            due_at?: string | null;
+            /** @description Por omisión, `MEDIUM`. */
+            priority_code?: string;
+        };
+        /**
+         * @description Solicitud u oportunidad de la tarea. Las oportunidades no tienen código: ``code``
+         *     es nulo y ``client_display_name`` las identifica.
+         */
+        TaskParent: {
+            type: components["schemas"]["TaskParentTypeEnum"];
+            readonly type_label: string;
+            /** Format: uuid */
+            id: string;
+            code: string | null;
+            client_display_name: string;
+        };
+        /**
+         * @description * `APPLICATION` - Solicitud
+         *     * `OPPORTUNITY` - Oportunidad
+         * @enum {string}
+         */
+        TaskParentTypeEnum: "APPLICATION" | "OPPORTUNITY";
+        /**
+         * @description * `MANUAL` - Manual
+         *     * `AUTOMATIC` - Automática
+         * @enum {string}
+         */
+        TaskSourceEnum: "MANUAL" | "AUTOMATIC";
+        /**
+         * @description * `PENDING` - Pendiente
+         *     * `COMPLETED` - Completada
+         *     * `CANCELLED` - Cancelada
+         * @enum {string}
+         */
+        TaskStatusEnum: "PENDING" | "COMPLETED" | "CANCELLED";
         /** @description Usuario interno. Nunca expone el hash de la contraseña ni tokens. */
         User: {
             /** Format: uuid */
@@ -6541,6 +7167,42 @@ export interface components {
             expected_version: number;
             /** @description Código de un valor activo del catálogo `application_withdrawal_reason`. Consulta los valores en `/api/v1/metadata/catalogs/application_withdrawal_reason`. */
             reason_code: string;
+        };
+        /** @description Fila de "Mi día". Lee las anotaciones de ``services.workday_applications``. */
+        WorkdayApplication: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly code: string;
+            client_display_name: string;
+            bank?: components["schemas"]["WorkdayBank"] | null;
+            bank_product: components["schemas"]["NamedRef"] | null;
+            status: components["schemas"]["ApplicationStatusEnum"];
+            status_label: string;
+            readonly next_action: components["schemas"]["NextActionEnum"];
+            readonly next_action_label: string;
+            /** @description Días enteros desde el inicio de la etapa, según la fecha de Bogotá. */
+            days_in_stage: number;
+            /** @description Segmentos de atención que cumple la solicitud (no son excluyentes). */
+            readonly attention: components["schemas"]["AttentionRef"][];
+            pending_tasks_count: number;
+            /** Format: date-time */
+            readonly updated_at: string;
+        };
+        WorkdayBank: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            short_name: string;
+        };
+        WorkdaySegment: {
+            code: components["schemas"]["AttentionSegmentEnum"];
+            label: string;
+            count: number;
+        };
+        WorkdaySummary: {
+            /** @description Solicitudes con los filtros, sin `attention`. */
+            total: number;
+            segments: components["schemas"]["WorkdaySegment"][];
         };
         WorkflowTransition: {
             /** Format: uuid */
@@ -7151,6 +7813,61 @@ export interface operations {
             };
         };
     };
+    applications_activity_list: {
+        parameters: {
+            query?: {
+                /** @description Uno o varios tipos (`?event_type=A&event_type=B`). Un código desconocido responde `400`. */
+                event_type?: ("ADVISOR_ASSIGNED" | "APPLICATION_CREATED" | "BANK_RESPONSE_RECORDED" | "BUYER_LINK_SENT" | "BUYER_SESSION_STARTED" | "CONSENT_RECORDED" | "DOCUMENT_REVIEWED" | "DOCUMENT_UPLOADED" | "FILING_CREATED" | "NOTE_ADDED" | "PARTICIPANT_ADDED" | "PARTICIPANT_REMOVED" | "STATUS_CHANGED" | "TASK_CANCELLED" | "TASK_COMPLETED" | "TASK_CREATED")[];
+                /** @description Un número de página dentro del conjunto de resultados paginado. */
+                page?: number;
+                /** @description Número de resultados a devolver por página. */
+                page_size?: number;
+            };
+            header?: never;
+            path: {
+                application_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedActivityList"];
+                };
+            };
+            /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description PERMISSION_DENIED o CSRF_FAILED */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description RESOURCE_NOT_FOUND (inexistente o fuera del alcance) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
     applications_assignments_create: {
         parameters: {
             query?: never;
@@ -7460,7 +8177,10 @@ export interface operations {
     buyer_access_links_create: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Opcional. Clave única de la operación (1 a 100 caracteres visibles; por ejemplo, un UUID), válida 24 horas para el actor, el método y la ruta. Repetirla con el mismo cuerpo devuelve la respuesta original; con otro cuerpo, `422 IDEMPOTENCY_CONFLICT`; mientras la primera sigue en curso, `409 IDEMPOTENCY_IN_PROGRESS`. Solo se guardan las respuestas `2xx`. */
+                "Idempotency-Key"?: string;
+            };
             path: {
                 application_id: string;
             };
@@ -7480,7 +8200,7 @@ export interface operations {
                     "application/json": components["schemas"]["BuyerAccessLinkCreated"];
                 };
             };
-            /** @description VALIDATION_ERROR (también: canal EMAIL sin correo del titular) */
+            /** @description VALIDATION_ERROR (también: canal EMAIL sin correo del titular); VALIDATION_ERROR (`Idempotency-Key` mal formada) */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -7516,8 +8236,17 @@ export interface operations {
                     "application/json": components["schemas"]["Error"];
                 };
             };
-            /** @description APPLICATION_CLOSED */
+            /** @description APPLICATION_CLOSED; IDEMPOTENCY_IN_PROGRESS o IDEMPOTENCY_REPLAY_UNAVAILABLE */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description IDEMPOTENCY_CONFLICT */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -7642,7 +8371,10 @@ export interface operations {
     applications_document_package_jobs_create: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Opcional. Clave única de la operación (1 a 100 caracteres visibles; por ejemplo, un UUID), válida 24 horas para el actor, el método y la ruta. Repetirla con el mismo cuerpo devuelve la respuesta original; con otro cuerpo, `422 IDEMPOTENCY_CONFLICT`; mientras la primera sigue en curso, `409 IDEMPOTENCY_IN_PROGRESS`. Solo se guardan las respuestas `2xx`. */
+                "Idempotency-Key"?: string;
+            };
             path: {
                 application_id: string;
             };
@@ -7664,6 +8396,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DocumentPackageJob"];
+                };
+            };
+            /** @description VALIDATION_ERROR (`Idempotency-Key` mal formada) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
                 };
             };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
@@ -7693,7 +8434,7 @@ export interface operations {
                     "application/json": components["schemas"]["Error"];
                 };
             };
-            /** @description APPLICATION_CLOSED */
+            /** @description APPLICATION_CLOSED; IDEMPOTENCY_IN_PROGRESS */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -7702,7 +8443,7 @@ export interface operations {
                     "application/json": components["schemas"]["Error"];
                 };
             };
-            /** @description APPLICATION_NOT_READY, con `DOCUMENT_PENDING`, `DOCUMENT_EXPIRED` o `DOCUMENTS_NOT_CONFIGURED` en `details` */
+            /** @description APPLICATION_NOT_READY, con `DOCUMENT_PENDING`, `DOCUMENT_EXPIRED` o `DOCUMENTS_NOT_CONFIGURED` en `details`; IDEMPOTENCY_CONFLICT */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -7941,7 +8682,10 @@ export interface operations {
     applications_filings_create: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Opcional. Clave única de la operación (1 a 100 caracteres visibles; por ejemplo, un UUID), válida 24 horas para el actor, el método y la ruta. Repetirla con el mismo cuerpo devuelve la respuesta original; con otro cuerpo, `422 IDEMPOTENCY_CONFLICT`; mientras la primera sigue en curso, `409 IDEMPOTENCY_IN_PROGRESS`. Solo se guardan las respuestas `2xx`. */
+                "Idempotency-Key"?: string;
+            };
             path: {
                 application_id: string;
             };
@@ -7961,6 +8705,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Filing"];
+                };
+            };
+            /** @description VALIDATION_ERROR (`Idempotency-Key` mal formada) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
                 };
             };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
@@ -7990,7 +8743,7 @@ export interface operations {
                     "application/json": components["schemas"]["Error"];
                 };
             };
-            /** @description STALE_VERSION, APPLICATION_CLOSED, INVALID_STATE_TRANSITION (no está en READY_TO_FILE), PACKAGE_NOT_READY, PACKAGE_EXPIRED, PACKAGE_OUTDATED, PACKAGE_ALREADY_FILED o FILING_REFERENCE_EXISTS */
+            /** @description STALE_VERSION, APPLICATION_CLOSED, INVALID_STATE_TRANSITION (no está en READY_TO_FILE), PACKAGE_NOT_READY, PACKAGE_EXPIRED, PACKAGE_OUTDATED, PACKAGE_ALREADY_FILED o FILING_REFERENCE_EXISTS; IDEMPOTENCY_IN_PROGRESS */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -7999,7 +8752,7 @@ export interface operations {
                     "application/json": components["schemas"]["Error"];
                 };
             };
-            /** @description BANK_PRODUCT_MISMATCH o APPLICATION_NOT_READY (documentos o reglas del banco, en `details`) */
+            /** @description BANK_PRODUCT_MISMATCH o APPLICATION_NOT_READY (documentos o reglas del banco, en `details`); IDEMPOTENCY_CONFLICT */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -8136,6 +8889,173 @@ export interface operations {
             };
             /** @description PRECONDITION_REQUIRED (falta If-Match) */
             428: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    applications_notes_list: {
+        parameters: {
+            query?: {
+                /** @description Un número de página dentro del conjunto de resultados paginado. */
+                page?: number;
+                /** @description Número de resultados a devolver por página. */
+                page_size?: number;
+            };
+            header?: never;
+            path: {
+                application_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedNoteList"];
+                };
+            };
+            /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description PERMISSION_DENIED o CSRF_FAILED */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description RESOURCE_NOT_FOUND (inexistente o fuera del alcance) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    applications_notes_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                application_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NoteCreateRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Note"];
+                };
+            };
+            /** @description VALIDATION_ERROR */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description PERMISSION_DENIED o CSRF_FAILED */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description RESOURCE_NOT_FOUND (inexistente o fuera del alcance) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    applications_notifications_list: {
+        parameters: {
+            query?: {
+                /** @description Un número de página dentro del conjunto de resultados paginado. */
+                page?: number;
+                /** @description Número de resultados a devolver por página. */
+                page_size?: number;
+            };
+            header?: never;
+            path: {
+                application_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedApplicationNotificationList"];
+                };
+            };
+            /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description PERMISSION_DENIED */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description RESOURCE_NOT_FOUND (inexistente o fuera del alcance) */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -8467,7 +9387,10 @@ export interface operations {
     applications_status_transitions_create: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Opcional. Clave única de la operación (1 a 100 caracteres visibles; por ejemplo, un UUID), válida 24 horas para el actor, el método y la ruta. Repetirla con el mismo cuerpo devuelve la respuesta original; con otro cuerpo, `422 IDEMPOTENCY_CONFLICT`; mientras la primera sigue en curso, `409 IDEMPOTENCY_IN_PROGRESS`. Solo se guardan las respuestas `2xx`. */
+                "Idempotency-Key"?: string;
+            };
             path: {
                 application_id: string;
             };
@@ -8487,6 +9410,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["StatusChange"];
+                };
+            };
+            /** @description VALIDATION_ERROR (`Idempotency-Key` mal formada) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
                 };
             };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
@@ -8516,7 +9448,7 @@ export interface operations {
                     "application/json": components["schemas"]["Error"];
                 };
             };
-            /** @description STALE_VERSION, APPLICATION_CLOSED o INVALID_STATE_TRANSITION */
+            /** @description STALE_VERSION, APPLICATION_CLOSED o INVALID_STATE_TRANSITION; IDEMPOTENCY_IN_PROGRESS */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -8525,7 +9457,7 @@ export interface operations {
                     "application/json": components["schemas"]["Error"];
                 };
             };
-            /** @description APPLICATION_NOT_READY o FINANCING_MODE_MISMATCH */
+            /** @description APPLICATION_NOT_READY o FINANCING_MODE_MISMATCH; IDEMPOTENCY_CONFLICT */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -10288,6 +11220,61 @@ export interface operations {
             };
         };
     };
+    buyer_applications_activity_list: {
+        parameters: {
+            query?: {
+                /** @description Uno o varios tipos (`?event_type=A&event_type=B`). Un código desconocido responde `400`. */
+                event_type?: ("ADVISOR_ASSIGNED" | "APPLICATION_CREATED" | "BANK_RESPONSE_RECORDED" | "BUYER_LINK_SENT" | "BUYER_SESSION_STARTED" | "CONSENT_RECORDED" | "DOCUMENT_REVIEWED" | "DOCUMENT_UPLOADED" | "FILING_CREATED" | "NOTE_ADDED" | "PARTICIPANT_ADDED" | "PARTICIPANT_REMOVED" | "STATUS_CHANGED" | "TASK_CANCELLED" | "TASK_COMPLETED" | "TASK_CREATED")[];
+                /** @description Un número de página dentro del conjunto de resultados paginado. */
+                page?: number;
+                /** @description Número de resultados a devolver por página. */
+                page_size?: number;
+            };
+            header?: never;
+            path: {
+                application_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedActivityList"];
+                };
+            };
+            /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description CSRF_FAILED */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description RESOURCE_NOT_FOUND (no es la solicitud de la sesión) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
     buyer_consents_list: {
         parameters: {
             query?: never;
@@ -11684,6 +12671,181 @@ export interface operations {
             };
             /** @description RESOURCE_NOT_FOUND */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    buyer_notifications_list: {
+        parameters: {
+            query?: {
+                /** @description Un número de página dentro del conjunto de resultados paginado. */
+                page?: number;
+                /** @description Número de resultados a devolver por página. */
+                page_size?: number;
+                /** @description Solo las no leídas. */
+                unread?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedBuyerNotificationList"];
+                };
+            };
+            /** @description VALIDATION_ERROR */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description CSRF_FAILED */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    buyer_notifications_read: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                notification_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BuyerNotification"];
+                };
+            };
+            /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description CSRF_FAILED */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description RESOURCE_NOT_FOUND (no es una notificación de la sesión) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    buyer_notifications_read_all: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationCount"];
+                };
+            };
+            /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description CSRF_FAILED */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    buyer_notifications_unread_count: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationCount"];
+                };
+            };
+            /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description CSRF_FAILED */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -14755,7 +15917,10 @@ export interface operations {
     filings_responses_create: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Opcional. Clave única de la operación (1 a 100 caracteres visibles; por ejemplo, un UUID), válida 24 horas para el actor, el método y la ruta. Repetirla con el mismo cuerpo devuelve la respuesta original; con otro cuerpo, `422 IDEMPOTENCY_CONFLICT`; mientras la primera sigue en curso, `409 IDEMPOTENCY_IN_PROGRESS`. Solo se guardan las respuestas `2xx`. */
+                "Idempotency-Key"?: string;
+            };
             path: {
                 filing_id: string;
             };
@@ -14775,6 +15940,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["FilingResponse"];
+                };
+            };
+            /** @description VALIDATION_ERROR (`Idempotency-Key` mal formada) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
                 };
             };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
@@ -14804,8 +15978,17 @@ export interface operations {
                     "application/json": components["schemas"]["Error"];
                 };
             };
-            /** @description STALE_VERSION, APPLICATION_CLOSED, INVALID_STATE_TRANSITION (el tipo no se admite en el estado actual), FILING_NOT_LATEST o RESPONSE_CORRECTION_NOT_ALLOWED */
+            /** @description STALE_VERSION, APPLICATION_CLOSED, INVALID_STATE_TRANSITION (el tipo no se admite en el estado actual), FILING_NOT_LATEST o RESPONSE_CORRECTION_NOT_ALLOWED; IDEMPOTENCY_IN_PROGRESS */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description IDEMPOTENCY_CONFLICT */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -16931,6 +18114,370 @@ export interface operations {
             };
         };
     };
+    tasks_list: {
+        parameters: {
+            query?: {
+                application_id?: string;
+                /** @description Solo el administrador. Para el asesor se ignora. */
+                assigned_to_id?: string;
+                /** @description Tareas `PENDING` con `due_at` antes de hoy (`overdue`), hoy (`today`) o después de hoy (`upcoming`), con la fecha de Bogotá. Las que no tienen fecha no entran en ninguno. */
+                due?: "overdue" | "today" | "upcoming";
+                opportunity_id?: string;
+                /** @description Un número de página dentro del conjunto de resultados paginado. */
+                page?: number;
+                /** @description Número de resultados a devolver por página. */
+                page_size?: number;
+                /** @description Código `task_priority`. Uno que no existe responde `400`. */
+                priority?: string;
+                status?: "CANCELLED" | "COMPLETED" | "PENDING";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedTaskList"];
+                };
+            };
+            /** @description VALIDATION_ERROR */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description PERMISSION_DENIED o CSRF_FAILED */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    tasks_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TaskCreateRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Task"];
+                };
+            };
+            /** @description VALIDATION_ERROR */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description PERMISSION_DENIED o CSRF_FAILED */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description APPLICATION_CLOSED */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    tasks_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Task"];
+                };
+            };
+            /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description PERMISSION_DENIED o CSRF_FAILED */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description RESOURCE_NOT_FOUND (inexistente o fuera del alcance) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    tasks_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedTaskUpdateRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Task"];
+                };
+            };
+            /** @description VALIDATION_ERROR */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description PERMISSION_DENIED o CSRF_FAILED */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description RESOURCE_NOT_FOUND (inexistente o fuera del alcance) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description TASK_NOT_PENDING (completada o cancelada) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    tasks_cancel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TaskCancelRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Task"];
+                };
+            };
+            /** @description VALIDATION_ERROR */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description PERMISSION_DENIED o CSRF_FAILED */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description RESOURCE_NOT_FOUND (inexistente o fuera del alcance) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description TASK_NOT_PENDING (completada o cancelada) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    tasks_complete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Task"];
+                };
+            };
+            /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description PERMISSION_DENIED o CSRF_FAILED */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description RESOURCE_NOT_FOUND (inexistente o fuera del alcance) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description TASK_NOT_PENDING (completada o cancelada) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
     users_list: {
         parameters: {
             query?: {
@@ -17313,6 +18860,106 @@ export interface operations {
             };
             /** @description PARTNER_NOT_ACTIVE */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    workday_applications_list: {
+        parameters: {
+            query?: {
+                /** @description Solo el administrador. Para el asesor se ignora: siempre ve las suyas. */
+                advisor_id?: string;
+                /** @description Segmento de atención. Un código desconocido responde `400`. */
+                attention?: "BUYER_INACTIVE" | "FILED" | "IN_ANALYSIS" | "OBSERVED" | "READY_TO_FILE" | "REVIEW_DOCUMENTS" | "TASKS_DUE";
+                bank_id?: string;
+                /** @description Qué campo usar para ordenar los resultados. */
+                ordering?: string;
+                /** @description Un número de página dentro del conjunto de resultados paginado. */
+                page?: number;
+                /** @description Número de resultados a devolver por página. */
+                page_size?: number;
+                /** @description Código `loan_purpose`. Uno que no existe responde `400`. */
+                purpose?: string;
+                /** @description Un término de búsqueda. */
+                search?: string;
+                /** @description Estado no terminal de la solicitud. Otro valor responde `400`. */
+                stage?: "APPROVED" | "BANK_OBSERVATION" | "CREDIT_ANALYSIS" | "DOCUMENTS_REVIEW" | "DRAFT" | "FILED" | "FILING_VALIDATION" | "LEGALIZATION" | "READY_TO_FILE" | "WAITING_BUYER_DATA" | "WAITING_DOCUMENTS";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedWorkdayApplicationList"];
+                };
+            };
+            /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description PERMISSION_DENIED o CSRF_FAILED */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    workday_summary: {
+        parameters: {
+            query?: {
+                /** @description Solo el administrador. Para el asesor se ignora: siempre ve las suyas. */
+                advisor_id?: string;
+                bank_id?: string;
+                /** @description Código `loan_purpose`. Uno que no existe responde `400`. */
+                purpose?: string;
+                /** @description Estado no terminal de la solicitud. Otro valor responde `400`. */
+                stage?: "APPROVED" | "BANK_OBSERVATION" | "CREDIT_ANALYSIS" | "DOCUMENTS_REVIEW" | "DRAFT" | "FILED" | "FILING_VALIDATION" | "LEGALIZATION" | "READY_TO_FILE" | "WAITING_BUYER_DATA" | "WAITING_DOCUMENTS";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkdaySummary"];
+                };
+            };
+            /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description PERMISSION_DENIED o CSRF_FAILED */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };

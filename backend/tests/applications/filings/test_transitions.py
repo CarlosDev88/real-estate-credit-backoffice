@@ -255,6 +255,7 @@ def test_refile_action_shows_its_guard(
         "target_status": "READY_TO_FILE",
         "target_status_label": "Lista para radicar",
         "guard_code": "APPLICATION_READY_TO_REFILE",
+        "kind": "primary",
     }
 
 

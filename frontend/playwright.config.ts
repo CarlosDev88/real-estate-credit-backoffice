@@ -9,9 +9,12 @@ try {
   // Sin `.env.local`: las pruebas que necesitan sesión se saltan con un mensaje.
 }
 
-const PORT = 3000;
+// Puerto del front: 3000 por omisión; otro agente en paralelo usa `E2E_PORT` (p. ej. 3001),
+// con su propio archivo de sesión para no pisar el del puerto 3000.
+const PORT = Number(process.env.E2E_PORT || 3000);
 export const BASE_URL = `http://localhost:${PORT}`;
-export const AUTH_FILE = "test-results/.auth/advisor.json";
+export const AUTH_FILE =
+  PORT === 3000 ? "test-results/.auth/advisor.json" : `test-results/.auth/advisor-${PORT}.json`;
 
 export default defineConfig({
   testDir: "./e2e",
@@ -52,9 +55,9 @@ export default defineConfig({
       use: { ...devices["Desktop Chrome"], viewport: { width: 1280, height: 800 } },
     },
   ],
-  // Reutiliza `pnpm dev` si ya corre en :3000; si no, lo levanta.
+  // Reutiliza `pnpm dev` si ya corre en ese puerto; si no, lo levanta.
   webServer: {
-    command: "node ./node_modules/next/dist/bin/next dev --port 3000",
+    command: `node ./node_modules/next/dist/bin/next dev --port ${PORT}`,
     url: `${BASE_URL}/login`,
     reuseExistingServer: true,
     timeout: 180_000,
