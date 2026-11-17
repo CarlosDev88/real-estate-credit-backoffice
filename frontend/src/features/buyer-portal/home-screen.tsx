@@ -42,7 +42,7 @@ export function PortalHome() {
   const detailQuery = useBuyerDetail(applicationId);
   const slotsQuery = useBuyerSlots(applicationId);
   const detail = detailQuery.data?.detail;
-  const monthlyIncome = useMonthlyIncome(detail?.participants ?? []);
+  const monthlyIncome = useMonthlyIncome(applicationId, detail?.participants ?? []);
   const [withdrawing, setWithdrawing] = useState(false);
   const router = useRouter();
 

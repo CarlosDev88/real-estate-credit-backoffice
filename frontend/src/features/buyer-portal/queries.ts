@@ -27,8 +27,8 @@ export const buyerKeys = {
   consents: (id: string) => ["buyer", id, "consents"] as const,
   slots: (id: string) => ["buyer", id, "document-slots"] as const,
   detail: (id: string) => ["buyer", id, "detail"] as const,
-  financialProfile: (participantId: string) =>
-    ["buyer", "financial-profile", participantId] as const,
+  financialProfile: (id: string, participantId: string) =>
+    ["buyer", id, "financial-profile", participantId] as const,
   catalog: (code: string, parentCode?: string | null) =>
     ["buyer", "catalog", code, parentCode ?? null] as const,
 };
@@ -145,14 +145,17 @@ export function useBuyerDetail(applicationId: string) {
   });
 }
 
-async function fetchFinancialProfile(participantId: string): Promise<BuyerFinancialProfile | null> {
+/** Perfil financiero con su versión; `null` si el participante todavía no tiene (`404`). */
+export async function fetchFinancialProfile(
+  participantId: string,
+): Promise<{ data: BuyerFinancialProfile; version: number | null } | null> {
   try {
-    const { data } = await call(
+    const { data, version } = await call(
       api.GET("/api/v1/buyer/participants/{participant_id}/financial-profile", {
         params: { path: { participant_id: participantId } },
       }),
     );
-    return data;
+    return { data, version };
   } catch (error) {
     // Sin perfil todavía: `404`.
     if (isApiError(error) && error.status === 404) return null;
@@ -164,17 +167,19 @@ async function fetchFinancialProfile(participantId: string): Promise<BuyerFinanc
  * Suma del ingreso mensual de los participantes que aportan ingresos. `null` mientras
  * carga o si ninguno tiene perfil.
  */
-export function useMonthlyIncome(participants: BuyerParticipant[]): number | null {
+export function useMonthlyIncome(
+  applicationId: string,
+  participants: BuyerParticipant[],
+): number | null {
   const earners = participants.filter((p) => p.contributes_income);
   const results = useQueries({
     queries: earners.map((p) => ({
-      queryKey: buyerKeys.financialProfile(p.id),
+      queryKey: buyerKeys.financialProfile(applicationId, p.id),
       queryFn: () => fetchFinancialProfile(p.id),
     })),
   });
-  const profiles = results.map((r) => r.data);
-  if (profiles.some((p) => p === undefined)) return null;
-  const present = profiles.filter((p): p is BuyerFinancialProfile => !!p);
+  if (results.some((r) => r.data === undefined)) return null;
+  const present = results.map((r) => r.data?.data).filter((p): p is BuyerFinancialProfile => !!p);
   return present.length ? present.reduce((sum, p) => sum + p.monthly_income_cop, 0) : null;
 }
 

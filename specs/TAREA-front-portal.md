@@ -230,8 +230,46 @@ Patrón común:
   - Los errores con campo van al campo; los demás, al toast.
 - **Compartido:** `FormField` y `useFormErrorHandler` pasan de `features/applications` a `components/ui/form-field.tsx` (commit aparte `refactor(ui)`), para usarlos en el portal.
 
+### Parte 3
+**Patrón común (`features/buyer-portal/forms`):**
+- **Versión de la solicitud:** todas las escrituras del comprador suben la misma versión. Se guarda la mayor que llegó en un `ETag` (lecturas y escrituras) y esa va en `If-Match`. Así dos formularios de la misma página (perfil, fuentes e "Confirmar" en ingresos) no chocan entre sí, y un cambio de otra persona sigue llegando como `409 STALE_VERSION`. Si todavía no llegó ninguna (por ejemplo, el inmueble no existe y su `GET` da `404`), se toma del detalle de la solicitud.
+- Después de guardar se vuelve a pedir todo lo de la solicitud (`["buyer", id, …]`; no la sesión ni los catálogos). Cada formulario toma los datos nuevos del servidor.
+- **Errores:**
+  - `details[].field` va a su campo (`addresses[0].line1` → `addresses.0.line1`).
+  - El resto, y `409 STALE_VERSION` con "Recargar", van al toast global.
+  - Un `409` de solo lectura (`isReadOnlyError`) vuelve a pedir la sesión: aparece la franja y los formularios se bloquean.
+- **Solo lectura:** `ConfigProvider componentDisabled`. Además, sin "Guardar", "Agregar", "Editar", "Eliminar", "Quitar" ni "Confirmar".
+- **"Guardar":** en móvil queda fijo abajo, sobre la barra de navegación (`sticky` dentro de su formulario); en escritorio va al final. En ingresos hay un "Guardar perfil financiero" por participante, fijo mientras su sección está a la vista.
+- **Fechas:** `<input type="date">` (en móvil abre el selector del sistema).
+- **Ciudad:** departamento y municipio. Al cambiar el departamento se limpia el municipio. El departamento de una ciudad ya guardada se busca en el catálogo de municipios (su `parent_code`). Mientras llegan las opciones, el municipio guardado se ve con la etiqueta que trae la API (`city.label`), no con su código, y el selector no se deshabilita.
+- **Requeridos en el cliente:** solo lo que el contrato marca como obligatorio. Las demás validaciones son las longitudes y montos del contrato (enteros ≥ 0).
+
+**Datos personales (`/portal/datos`):**
+- La identificación va en solo lectura, con "Si algo de esto no es correcto, pídele a tu asesor que lo corrija".
+- El `PATCH` envía siempre correo, teléfono, fecha y la lista completa de direcciones (con `id` las existentes).
+- Teléfono: ayuda "Con el indicativo del país, por ejemplo +573001234567" (la API exige E.164).
+- Direcciones: hasta 10. La primera que se agrega es la principal y marcar una desmarca las demás.
+- El GET no tipa las direcciones en el contrato (ver "Brechas"); se leen como `{ id, address_type, city, line1, line2, postal_code, is_primary }`.
+
+**Ingresos (`/portal/ingresos`):**
+- Sin perfil (`404`): formulario vacío. Las fuentes y "Confirmar" aparecen después de guardarlo.
+- Fuentes de ingreso:
+  - en un modal;
+  - crear sin `If-Match`, editar con `If-Match`, eliminar con confirmación;
+  - "Principal" va como texto junto al tipo.
+- Confirmación: "Confirmados el <fecha y hora>" desde `data_confirmed_at` del perfil; un cambio posterior la borra (API) y vuelve el botón.
+- El enlace `#participante-<id>` del inicio desplaza a la sección.
+
+**Inmueble:** el proyecto se muestra en solo lectura si viene. "¿Ya es tuyo?" es un grupo de radios "Sí", "No" y "Sin respuesta" (`null`).
+
+**Financiación:**
+- Productos como tarjetas de radio. Uno no elegible está deshabilitado, con "No disponible para tu caso" en texto, no solo en color.
+- Los rangos se muestran "De X a Y", "Desde X" o "Hasta Y".
+- El monto de cesantías se pide solo si se marca "¿Usarás tus cesantías?"; si no, se envía `0`.
+
 ### Brechas encontradas
 - **Avisos:** no hay endpoint de notificaciones del comprador (módulo 13). Se quitó de la navegación.
 - **`BuyerConsent` sin `status_label`:** el estado del consentimiento (`PENDING`, `ACCEPTED`, `WITHDRAWN`) llega solo como código.
+- **Direcciones del perfil sin tipo en el contrato:** `BuyerProfile.addresses` es `object[]` sin propiedades; el frontend asume la forma de `BuyerAddressSerializer`. Convendría tiparla con `BuyerAddress` en el contrato.
 - **Ingreso mensual en el inicio:** el detalle del comprador no trae ingresos; la suma de "Ingresos y gastos" pide un perfil financiero por cada participante que aporta ingresos.
 - **Mensaje del `429` de `/buyer-access/consume`:** es el texto por defecto de DRF ("Solicitud fue regulada (throttled). Se espera que esté disponible en 3450 segundos."). El portal lo muestra debajo de su propio título.
