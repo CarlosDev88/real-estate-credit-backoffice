@@ -150,3 +150,29 @@ docker run --rm --network mvp_credit_network --env-file C:\Users\ASUS\Documents\
 14. **Respuestas:** `PATCH /read` responde la notificación (`200`, sin cuerpo de entrada). `POST /read-all` y `GET /unread-count` responden `{count}` (en `read-all`, cuántas estaban sin leer y se marcaron). `unread` es booleano; un valor inválido responde `400 VALIDATION_ERROR`.
 15. **Endpoint interno:** permiso nuevo `notifications.read` (`ADMIN`, `ADVISOR`) sembrado por migración, y el alcance de la solicitud: el asesor no asignado recibe `404`, el broker `403`. Cada entrega muestra `channel`, `status` (con etiquetas), `destination`, `attempt_count`, `next_attempt_at`, `sent_at` y `last_error_code`.
 16. **Brecha:** las notificaciones internas (`user`) no se crean en este paso.
+
+### Parte 2
+1. **Un intento por ejecución, hasta 6 en total:** el primero, más 5 reintentos que esperan 1, 5, 15, 60 y 240 minutos después de cada fallo. Si falla el sexto, la entrega queda `FAILED` con `next_attempt_at` nulo.
+2. **La tarea no usa `self.retry` de Celery:** en el modo inmediato correría en el acto, sin esperar. Con worker, la tarea se vuelve a encolar con `apply_async(countdown=…)`. En el modo inmediato no se reencola: la retoma `retry_notification_deliveries` cuando vence `next_attempt_at`.
+3. **Idempotente:** la tarea bloquea la fila (`select_for_update`) y no hace nada si la entrega no es `EMAIL`, no está `PENDING` o su `next_attempt_at` aún no llega. Así, un ETA repetido de Redis o el comando junto con un reintento programado nunca envían dos veces.
+4. **`NO_DESTINATION`** no cuenta como intento (`attempt_count` sigue en 0) y no se reintenta.
+5. **`last_error_code`:** `SMTP_ERROR` (`smtplib.SMTPException`), `CONNECTION_ERROR` (`OSError`) o `SEND_FAILED` (cualquier otro). El log registra la clase del error, nunca el correo del destinatario.
+6. **`provider_message_id`** es el `Message-ID` que genera el backend (`make_msgid`): no hay proveedor externo.
+7. **Encolado:** `on_commit` al crear la notificación. Si el broker no responde (`OperationalError`), queda un `warning` y la entrega sigue `PENDING` para el comando. La operación que avisó no se entera.
+8. **Contenido:** saludo con los nombres del cliente, el título, el mensaje, la línea del portal y "Este es un mensaje automático; no lo respondas". El HTML escapa el texto (`linebreaksbr` para los saltos de línea).
+9. **El comando no tiene opciones:** reencola todas las `EMAIL` `PENDING` con `next_attempt_at` vencido o nulo, de la más antigua a la más nueva.
+10. **README:** la sección "Buyer Notifications" ya documenta los endpoints, el correo, los reintentos y el comando. En el cierre se agrega la idempotencia.
+
+### Parte 3
+1. **App propia `apps/idempotency`** (modelo, servicio, decorador `@idempotent` y comando): es infraestructura de la API, no de las notificaciones.
+2. **Concurrencia: `409 IDEMPOTENCY_IN_PROGRESS`, sin esperar.** La primera petición reserva la clave en su propia transacción (`response_status` nulo) antes de correr la vista. Una segunda petición que la encuentra, o que choca con la restricción única al insertarla, responde `409`. No se retiene ninguna transacción mientras corre la vista, porque los servicios abren las suyas.
+3. **Se libera la clave** si la vista lanza un error o responde algo distinto de `2xx`: el cliente puede reintentar con la misma clave, aunque cambie el cuerpo. Si el proceso muere a mitad, la clave queda "en curso" hasta que vence (24 h). Lo anoto como límite conocido.
+4. **Huella del cuerpo:** SHA-256 del JSON canónico (claves ordenadas, sin espacios). Reordenar el cuerpo no es un conflicto. La ruta (`route_fingerprint`) es `request.path`, con sus ids.
+5. **Respuesta repetida:** el mismo código, el mismo JSON y las cabeceras `ETag` y `Location`, si estaban. **Desvío del SQL:** la columna `response_headers` (JSONB) guarda esas cabeceras. `resource_id` es el `id` de la respuesta, si es un UUID.
+6. **Enlace mágico:** su respuesta lleva el token en claro, que nunca se guarda (solo su hash). Por eso, con `store_response=False`, la clave guarda el código y el id, pero no el cuerpo. Repetir la clave no crea otro enlace y responde **`409 IDEMPOTENCY_REPLAY_UNAVAILABLE`** (error nuevo). Es la única excepción a "devuelve la respuesta original".
+7. **Clave mal formada** (vacía, con espacios, con caracteres no ASCII o de más de 100 caracteres): `400 VALIDATION_ERROR` con `field = "Idempotency-Key"`.
+8. **Desvío del SQL (y corrección del SQL):** las restricciones únicas son **parciales** (`WHERE user_id IS NOT NULL` y `WHERE buyer_session_id IS NOT NULL`) en lugar de `UNIQUE NULLS NOT DISTINCT`. Con `NULLS NOT DISTINCT`, dos usuarios internos con la misma clave (ambos con `buyer_session_id` nulo) chocaban en la restricción del comprador. Lo detectó la prueba "clave de otro actor"; en el cierre se corrige el SQL.
+9. **Solo con actor:** sin usuario autenticado ni sesión del comprador, la cabecera se ignora. Las cinco vistas exigen usuario, así que en la práctica no pasa.
+10. **El límite de consumo** (3 enlaces por hora) se aplica antes que la idempotencia: un reintento también cuenta.
+11. **`purge_idempotency_keys`** borra las vencidas (`expires_at <= now`) y no tiene opciones. Hay un índice `ix_idempotency_keys_expires`.
+12. **Contrato:** cabecera `Idempotency-Key` opcional en las cinco operaciones. Se agregan `400`, `409 IDEMPOTENCY_IN_PROGRESS` y `422 IDEMPOTENCY_CONFLICT` a sus respuestas (con un solo helper, `idempotency_responses`), y en el enlace mágico, también `IDEMPOTENCY_REPLAY_UNAVAILABLE`. Solo son cambios aditivos.

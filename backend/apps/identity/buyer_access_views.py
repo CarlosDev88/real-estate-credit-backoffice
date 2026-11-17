@@ -21,6 +21,7 @@ from rest_framework.response import Response
 
 from apps.applications.models import CreditApplication
 from apps.applications.services import applications_visible_to
+from apps.idempotency.decorators import IDEMPOTENCY_PARAMETER, idempotency_responses, idempotent
 from apps.identity import buyer_access
 from apps.identity.buyer_access_serializers import (
     BuyerAccessLinkCreatedSerializer,
@@ -102,18 +103,27 @@ class ApplicationBuyerAccessLinksView(_BuyerAccessView):
             "enlaces pendientes anteriores de la solicitud; las sesiones abiertas siguen "
             "vivas. `url` lleva el token y solo aparece en esta respuesta. Con "
             "`EMAIL`, además se envía al correo del titular. Límite: 3 por hora por "
-            "emisor y solicitud."
+            "emisor y solicitud.\n\n"
+            "Con `Idempotency-Key`, repetir la clave no crea otro enlace, pero tampoco "
+            "devuelve la respuesta original, porque el token en claro no se guarda: "
+            "responde `409 IDEMPOTENCY_REPLAY_UNAVAILABLE`. Para otro enlace, se usa otra "
+            "clave."
         ),
         request=BuyerAccessLinkCreateSerializer,
-        responses={
-            201: BuyerAccessLinkCreatedSerializer,
-            400: _error("VALIDATION_ERROR (también: canal EMAIL sin correo del titular)"),
-            409: _error("APPLICATION_CLOSED"),
-            429: _error("RATE_LIMITED"),
-            **NOT_FOUND,
-            **COMMON_ERRORS,
-        },
+        parameters=[IDEMPOTENCY_PARAMETER],
+        responses=idempotency_responses(
+            {
+                201: BuyerAccessLinkCreatedSerializer,
+                400: _error("VALIDATION_ERROR (también: canal EMAIL sin correo del titular)"),
+                409: _error("APPLICATION_CLOSED"),
+                429: _error("RATE_LIMITED"),
+                **NOT_FOUND,
+                **COMMON_ERRORS,
+            },
+            extra_409="IDEMPOTENCY_REPLAY_UNAVAILABLE",
+        ),
     )
+    @idempotent(store_response=False)
     def post(self, request: Request, application_id: Any) -> Response:
         application = self.get_application(application_id)
         serializer = BuyerAccessLinkCreateSerializer(data=request.data)

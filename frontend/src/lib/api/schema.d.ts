@@ -200,6 +200,8 @@ export interface paths {
         /**
          * Generar un enlace de acceso para el titular
          * @description El enlace es para el titular (`PRIMARY`) y sirve una sola vez. Revoca los enlaces pendientes anteriores de la solicitud; las sesiones abiertas siguen vivas. `url` lleva el token y solo aparece en esta respuesta. Con `EMAIL`, además se envía al correo del titular. Límite: 3 por hora por emisor y solicitud.
+         *
+         *     Con `Idempotency-Key`, repetir la clave no crea otro enlace, pero tampoco devuelve la respuesta original, porque el token en claro no se guarda: responde `409 IDEMPOTENCY_REPLAY_UNAVAILABLE`. Para otro enlace, se usa otra clave.
          */
         post: operations["buyer_access_links_create"];
         delete?: never;
@@ -7654,7 +7656,10 @@ export interface operations {
     buyer_access_links_create: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Opcional. Clave única de la operación (1 a 100 caracteres visibles; por ejemplo, un UUID), válida 24 horas para el actor, el método y la ruta. Repetirla con el mismo cuerpo devuelve la respuesta original; con otro cuerpo, `422 IDEMPOTENCY_CONFLICT`; mientras la primera sigue en curso, `409 IDEMPOTENCY_IN_PROGRESS`. Solo se guardan las respuestas `2xx`. */
+                "Idempotency-Key"?: string;
+            };
             path: {
                 application_id: string;
             };
@@ -7674,7 +7679,7 @@ export interface operations {
                     "application/json": components["schemas"]["BuyerAccessLinkCreated"];
                 };
             };
-            /** @description VALIDATION_ERROR (también: canal EMAIL sin correo del titular) */
+            /** @description VALIDATION_ERROR (también: canal EMAIL sin correo del titular); VALIDATION_ERROR (`Idempotency-Key` mal formada) */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -7710,8 +7715,17 @@ export interface operations {
                     "application/json": components["schemas"]["Error"];
                 };
             };
-            /** @description APPLICATION_CLOSED */
+            /** @description APPLICATION_CLOSED; IDEMPOTENCY_IN_PROGRESS o IDEMPOTENCY_REPLAY_UNAVAILABLE */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description IDEMPOTENCY_CONFLICT */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -7836,7 +7850,10 @@ export interface operations {
     applications_document_package_jobs_create: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Opcional. Clave única de la operación (1 a 100 caracteres visibles; por ejemplo, un UUID), válida 24 horas para el actor, el método y la ruta. Repetirla con el mismo cuerpo devuelve la respuesta original; con otro cuerpo, `422 IDEMPOTENCY_CONFLICT`; mientras la primera sigue en curso, `409 IDEMPOTENCY_IN_PROGRESS`. Solo se guardan las respuestas `2xx`. */
+                "Idempotency-Key"?: string;
+            };
             path: {
                 application_id: string;
             };
@@ -7858,6 +7875,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DocumentPackageJob"];
+                };
+            };
+            /** @description VALIDATION_ERROR (`Idempotency-Key` mal formada) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
                 };
             };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
@@ -7887,7 +7913,7 @@ export interface operations {
                     "application/json": components["schemas"]["Error"];
                 };
             };
-            /** @description APPLICATION_CLOSED */
+            /** @description APPLICATION_CLOSED; IDEMPOTENCY_IN_PROGRESS */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -7896,7 +7922,7 @@ export interface operations {
                     "application/json": components["schemas"]["Error"];
                 };
             };
-            /** @description APPLICATION_NOT_READY, con `DOCUMENT_PENDING`, `DOCUMENT_EXPIRED` o `DOCUMENTS_NOT_CONFIGURED` en `details` */
+            /** @description APPLICATION_NOT_READY, con `DOCUMENT_PENDING`, `DOCUMENT_EXPIRED` o `DOCUMENTS_NOT_CONFIGURED` en `details`; IDEMPOTENCY_CONFLICT */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -8135,7 +8161,10 @@ export interface operations {
     applications_filings_create: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Opcional. Clave única de la operación (1 a 100 caracteres visibles; por ejemplo, un UUID), válida 24 horas para el actor, el método y la ruta. Repetirla con el mismo cuerpo devuelve la respuesta original; con otro cuerpo, `422 IDEMPOTENCY_CONFLICT`; mientras la primera sigue en curso, `409 IDEMPOTENCY_IN_PROGRESS`. Solo se guardan las respuestas `2xx`. */
+                "Idempotency-Key"?: string;
+            };
             path: {
                 application_id: string;
             };
@@ -8155,6 +8184,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Filing"];
+                };
+            };
+            /** @description VALIDATION_ERROR (`Idempotency-Key` mal formada) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
                 };
             };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
@@ -8184,7 +8222,7 @@ export interface operations {
                     "application/json": components["schemas"]["Error"];
                 };
             };
-            /** @description STALE_VERSION, APPLICATION_CLOSED, INVALID_STATE_TRANSITION (no está en READY_TO_FILE), PACKAGE_NOT_READY, PACKAGE_EXPIRED, PACKAGE_OUTDATED, PACKAGE_ALREADY_FILED o FILING_REFERENCE_EXISTS */
+            /** @description STALE_VERSION, APPLICATION_CLOSED, INVALID_STATE_TRANSITION (no está en READY_TO_FILE), PACKAGE_NOT_READY, PACKAGE_EXPIRED, PACKAGE_OUTDATED, PACKAGE_ALREADY_FILED o FILING_REFERENCE_EXISTS; IDEMPOTENCY_IN_PROGRESS */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -8193,7 +8231,7 @@ export interface operations {
                     "application/json": components["schemas"]["Error"];
                 };
             };
-            /** @description BANK_PRODUCT_MISMATCH o APPLICATION_NOT_READY (documentos o reglas del banco, en `details`) */
+            /** @description BANK_PRODUCT_MISMATCH o APPLICATION_NOT_READY (documentos o reglas del banco, en `details`); IDEMPOTENCY_CONFLICT */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -8714,7 +8752,10 @@ export interface operations {
     applications_status_transitions_create: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Opcional. Clave única de la operación (1 a 100 caracteres visibles; por ejemplo, un UUID), válida 24 horas para el actor, el método y la ruta. Repetirla con el mismo cuerpo devuelve la respuesta original; con otro cuerpo, `422 IDEMPOTENCY_CONFLICT`; mientras la primera sigue en curso, `409 IDEMPOTENCY_IN_PROGRESS`. Solo se guardan las respuestas `2xx`. */
+                "Idempotency-Key"?: string;
+            };
             path: {
                 application_id: string;
             };
@@ -8734,6 +8775,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["StatusChange"];
+                };
+            };
+            /** @description VALIDATION_ERROR (`Idempotency-Key` mal formada) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
                 };
             };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
@@ -8763,7 +8813,7 @@ export interface operations {
                     "application/json": components["schemas"]["Error"];
                 };
             };
-            /** @description STALE_VERSION, APPLICATION_CLOSED o INVALID_STATE_TRANSITION */
+            /** @description STALE_VERSION, APPLICATION_CLOSED o INVALID_STATE_TRANSITION; IDEMPOTENCY_IN_PROGRESS */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -8772,7 +8822,7 @@ export interface operations {
                     "application/json": components["schemas"]["Error"];
                 };
             };
-            /** @description APPLICATION_NOT_READY o FINANCING_MODE_MISMATCH */
+            /** @description APPLICATION_NOT_READY o FINANCING_MODE_MISMATCH; IDEMPOTENCY_CONFLICT */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -15177,7 +15227,10 @@ export interface operations {
     filings_responses_create: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Opcional. Clave única de la operación (1 a 100 caracteres visibles; por ejemplo, un UUID), válida 24 horas para el actor, el método y la ruta. Repetirla con el mismo cuerpo devuelve la respuesta original; con otro cuerpo, `422 IDEMPOTENCY_CONFLICT`; mientras la primera sigue en curso, `409 IDEMPOTENCY_IN_PROGRESS`. Solo se guardan las respuestas `2xx`. */
+                "Idempotency-Key"?: string;
+            };
             path: {
                 filing_id: string;
             };
@@ -15197,6 +15250,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["FilingResponse"];
+                };
+            };
+            /** @description VALIDATION_ERROR (`Idempotency-Key` mal formada) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
                 };
             };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
@@ -15226,8 +15288,17 @@ export interface operations {
                     "application/json": components["schemas"]["Error"];
                 };
             };
-            /** @description STALE_VERSION, APPLICATION_CLOSED, INVALID_STATE_TRANSITION (el tipo no se admite en el estado actual), FILING_NOT_LATEST o RESPONSE_CORRECTION_NOT_ALLOWED */
+            /** @description STALE_VERSION, APPLICATION_CLOSED, INVALID_STATE_TRANSITION (el tipo no se admite en el estado actual), FILING_NOT_LATEST o RESPONSE_CORRECTION_NOT_ALLOWED; IDEMPOTENCY_IN_PROGRESS */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description IDEMPOTENCY_CONFLICT */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };

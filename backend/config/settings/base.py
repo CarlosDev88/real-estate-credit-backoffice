@@ -34,6 +34,7 @@ INSTALLED_APPS = [
     "apps.applications",
     "apps.filings",
     "apps.notifications",
+    "apps.idempotency",
 ]
 
 MIDDLEWARE = [
