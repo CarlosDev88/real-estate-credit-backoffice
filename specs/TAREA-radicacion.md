@@ -311,3 +311,14 @@ _(las agrega el agente)_
   - Modelo de datos: los campos nuevos y el catálogo de cada FK.
   - README: sección "Manual Filings and Bank Responses". El módulo ya estaba en la lista.
 - **Pendiente hasta que Carlos traiga `master`:** resolver conflictos (contrato, `schema.d.ts`, README y serializers del comprador), regenerar el contrato y los tipos del front, y extender `seed_demo_data` con las tres solicitudes radicadas.
+
+### Cierre, después de traer `master` (merge `42975ce`)
+1. **Merge.** No hubo conflictos de texto. Revisé, línea por línea, que estuvieran las dos versiones del README, de `buyer_portal_serializers.py`, de API §§ y de `settings`. A no agregó migraciones, así que no hizo falta `makemigrations --merge`. El contrato y los tipos del front se regeneraron.
+2. **`ETag`.** Mis dos `POST` que responden `ETag` (radicación y respuesta) lo declaran con `config.openapi.etag_response_headers(201)`. Ninguna vista de `filings` pide `If-Match`.
+3. **Prueba ajustada.** Las acciones disponibles ahora traen `target_status_label` (de A); `test_refile_action_shows_its_guard` lo espera.
+4. **Datos de demo.**
+   - Las tres solicitudes radicadas viven en `apps/filings/demo_data.py` (`FILED_DEMO_CASES`). `applications.demo_data.seed_demo_data` las crea después de sus 30 casos y antes de emitir el enlace del portal, para no revocarlo. En el archivo de A, el cambio es solo ese enganche.
+   - Se construyen con `_build_case` de A (hasta `READY_TO_FILE`, con todos los documentos aprobados). Luego cada una pide su paquete y lo arma en el momento (con un worker, espera hasta 60 s a que termine), se radica y recibe sus respuestas, con fechas de los últimos 6 días.
+   - Las tres usan el producto hipotecario de Bancolombia, como los casos `ready` de A, así que su `target_response_at` queda nulo.
+   - Idempotencia: la del comando (si existe un cliente `9900…`, no hace nada). `tests/applications/test_demo_data.py` ahora cuenta 33 solicitudes y, en el segundo `seed`, también las radicaciones y las respuestas.
+5. **Reloj de la VM de Docker.** Durante la verificación, pytest dio `401 SESSION_EXPIRED` al azar en pruebas de cualquier módulo, y también en `master`. El reloj de la VM retrocede hasta 10,5 s (10 veces en 60 s), y eso invalida el `nbf`/`iat` del JWT. Es del entorno: se arregla reiniciando Docker Desktop, lo que decide Carlos.

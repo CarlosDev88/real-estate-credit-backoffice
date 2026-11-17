@@ -1,7 +1,8 @@
 """Datos de demo para correr el proyecto en local (``seed_demo_data``).
 
 Crea usuarios, clientes, oportunidades y unas 30 solicitudes repartidas entre las
-pestañas ``draft``, ``waiting``, ``review`` y ``ready``, con perfiles financieros,
+pestañas ``draft``, ``waiting``, ``review`` y ``ready``, más tres radicadas con respuestas
+del banco (``apps.filings.demo_data``), con perfiles financieros,
 inmueble, financiación, documentos y revisiones. Todo pasa por los servicios del
 dominio, para que el historial, los slots, la completitud guardada y las evaluaciones
 queden como los dejaría un uso real. Solo se escribe una cosa por fuera de ellos:
@@ -686,6 +687,18 @@ def seed_demo_data(*, extra_advisor: User | None = None) -> DemoResult:
         result.applications.append(application)
         if case.portal_link:
             portal = (advisor, application)
+
+    # Tres más, radicadas y con respuestas del banco (paso 11). Import local: `filings`
+    # depende de `applications`.
+    from apps.filings.demo_data import seed_filed_cases
+
+    result.applications += seed_filed_cases(
+        assignments=assignments,
+        admin=admin,
+        broker=broker,
+        names=names,
+        first_index=len(DEMO_CASES),
+    )
 
     # Al final, para que ninguna otra emisión lo revoque.
     assert portal is not None

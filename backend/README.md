@@ -130,6 +130,7 @@ docker compose exec backend python manage.py seed_demo_data --advisor-email ases
 
 - **Users:** `admin@demo.local` (`ADMIN`), `asesora.lucia@demo.local` and `asesor.andres@demo.local` (`ADVISOR`; Andrés has no phone), and `broker@demo.local` (`INDEPENDENT_BROKER`). `--advisor-email` is optional: that existing advisor also receives applications.
 - **Applications:** 30, spread over the `draft`, `waiting`, `review`, and `ready` tabs, with co-applicants and solidary debtors, financial profiles, property and financing (Bancolombia, FNA, and Banco de Bogotá; mortgage and housing leasing). In `review`, documents to review, some approved and one rejected. In `ready`, one is `ready_to_file_blocked` (a document rejected after it was ready). In `waiting`, one is `buyer_inactive`.
+- **Filed applications:** 3 more (33 in total), each with its package built and filed, plus bank responses: one in `CREDIT_ANALYSIS` (received and in analysis), one in `BANK_OBSERVATION` (returned with one observed document the buyer can replace from the portal), and one in `APPROVED` (amount and term approved).
 - **Files:** small PDF and PNG files generated on the fly, without real data, saved with the configured storage.
 - **Buyer portal:** the command prints a valid link (`http://localhost:3000/acceso?token=…`, 72 hours) for an application in `waiting`. To get a new one, issue it from the backoffice.
 - **Idempotent, never deletes:** demo clients have document numbers starting with `9900`. If any exists, the command prints `Los datos de demo ya existen` and creates nothing.
