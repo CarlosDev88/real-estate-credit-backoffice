@@ -19,16 +19,19 @@ import logging
 import uuid
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from functools import partial
 from typing import Any
 
+from django.conf import settings
 from django.db import IntegrityError, transaction
-from django.db.models import Count, OuterRef, Prefetch, Q, QuerySet, Subquery, Sum
+from django.db.models import Count, F, OuterRef, Prefetch, Q, QuerySet, Subquery, Sum
 from django.db.models.functions import Coalesce
+from django.db.models.lookups import LessThan
 from django.utils import timezone
 from rest_framework.exceptions import NotFound, ValidationError
 
+from apps.applications.actions import sort_by_kind
 from apps.applications.bank_evaluation import (
     EvaluationSummary,
     blocking_rows,
@@ -64,6 +67,7 @@ from apps.applications.models import (
     Property,
     next_application_code,
 )
+from apps.applications.quick_filters import WAITING_STATUSES
 from apps.applications.rule_context import build_rule_context
 from apps.applications.signals import (
     application_assigned,
@@ -157,6 +161,17 @@ def _last_buyer_activity() -> Subquery:
         .values("last_seen_at")[:1]
     )
     return Subquery(latest)
+
+
+def buyer_inactive_condition(now: datetime) -> Q:
+    """``buyer_inactive`` del listado como condición de base de datos: en la pestaña
+    `waiting`, la última actividad del comprador (o, si nunca entró, el inicio de la
+    etapa) tiene más de ``BUYER_INACTIVITY_DAYS`` días. La usa "Mi día"; el listado la
+    calcula en el serializer con los mismos campos."""
+
+    cutoff = now - timedelta(days=settings.BUYER_INACTIVITY_DAYS)
+    reference = Coalesce(_last_buyer_activity(), F("current_stage_started_at"))
+    return Q(status__in=WAITING_STATUSES) & Q(LessThan(reference, cutoff))
 
 
 def applications_queryset() -> QuerySet[CreditApplication]:
@@ -1095,8 +1110,13 @@ def evaluate_application(actor: User, application: CreditApplication) -> BankRul
 
 
 def latest_evaluation(application: CreditApplication) -> BankRuleEvaluation | None:
+    """La evaluación de la versión más alta y, dentro de ella, la más reciente. Primero
+    la versión: un ajuste hacia atrás del reloj del servidor no debe hacer pasar una
+    evaluación vieja por la última."""
     return (
-        BankRuleEvaluation.objects.filter(application=application).order_by("-created_at").first()
+        BankRuleEvaluation.objects.filter(application=application)
+        .order_by("-application_version", "-created_at")
+        .first()
     )
 
 
@@ -1443,8 +1463,10 @@ def available_actions(user: User, application: CreditApplication) -> list[Workfl
     """Transiciones que ``user`` puede ejecutar desde el estado actual (rol y permiso).
 
     La guarda no se evalúa. Incluye `WITHDRAW_*`, que se ejecutan por `/withdrawals`.
+    Salen primero las principales, luego las secundarias y al final las destructivas
+    (``apps.applications.actions``).
     """
-    return list(
+    return sort_by_kind(
         available_transitions(user, flow_type=FlowType.APPLICATION, from_status=application.status)
     )
 

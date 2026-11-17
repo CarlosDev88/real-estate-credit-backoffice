@@ -473,6 +473,8 @@ Pendientes manuales o automáticos de la operación.
 | `source` | `VARCHAR(20)` | No | `MANUAL` o `AUTOMATIC`. |
 | `due_at` | `TIMESTAMPTZ` | Sí | Vencimiento. |
 | `completed_at` | `TIMESTAMPTZ` | Sí | Finalización. |
+| `cancelled_at` | `TIMESTAMPTZ` | Sí | Cancelación. `CHECK`: existe solo con `status='CANCELLED'`. |
+| `cancel_reason` | `TEXT` | Sí | Motivo de la cancelación; obligatorio al cancelar desde la API. |
 
 `CHECK`: al menos una de oportunidad o solicitud debe existir. Explicación: una tarea se liga al caso que la originó y a la persona que debe resolverla; así “Mi día” puede mostrar pendientes sin convertir la tarea en el estado oficial del crédito.
 
@@ -1153,6 +1155,8 @@ Línea de tiempo funcional y notas del caso.
 `CHECK`: al menos un recurso relacionado. Relaciones N:1 opcionales con cliente, oportunidad y solicitud. Una sola línea de tiempo puede contar el avance del caso, pero la visibilidad impide mostrar notas internas al comprador.
 
 Índices: (`application_id`, `created_at DESC`), (`opportunity_id`, `created_at DESC`), (`client_id`, `created_at DESC`).
+
+En la implementación (`apps/activity`): la tabla es inmutable (no hay edición ni borrado); `message` es texto vacío cuando no hay detalle; `event_type` toma los valores de API §21.1 (`APPLICATION_CREATED`, `STATUS_CHANGED`, `DOCUMENT_UPLOADED`, `NOTE_ADDED`, etc.). Las notas internas son filas `NOTE_ADDED` con visibilidad `INTERNAL` y el permiso `applications.add_note` (`ADMIN` y `ADVISOR`).
 
 ### 10.2 `notifications`
 

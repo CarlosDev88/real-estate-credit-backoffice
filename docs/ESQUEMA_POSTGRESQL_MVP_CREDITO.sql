@@ -614,10 +614,13 @@ CREATE TABLE tasks (
     source VARCHAR(20) NOT NULL DEFAULT 'MANUAL',
     due_at TIMESTAMPTZ,
     completed_at TIMESTAMPTZ,
+    cancelled_at TIMESTAMPTZ,
+    cancel_reason TEXT,
     CONSTRAINT ck_tasks_parent CHECK (num_nonnulls(opportunity_id, application_id) >= 1),
     CONSTRAINT ck_tasks_status CHECK (status IN ('PENDING', 'COMPLETED', 'CANCELLED')),
     CONSTRAINT ck_tasks_source CHECK (source IN ('MANUAL', 'AUTOMATIC')),
-    CONSTRAINT ck_tasks_completion CHECK ((status = 'COMPLETED') = (completed_at IS NOT NULL))
+    CONSTRAINT ck_tasks_completion CHECK ((status = 'COMPLETED') = (completed_at IS NOT NULL)),
+    CONSTRAINT ck_tasks_cancellation CHECK ((status = 'CANCELLED') = (cancelled_at IS NOT NULL))
 );
 
 CREATE TABLE application_status_history (

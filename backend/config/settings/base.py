@@ -35,6 +35,9 @@ INSTALLED_APPS = [
     "apps.filings",
     "apps.notifications",
     "apps.idempotency",
+    "apps.tasks",
+    "apps.workday",
+    "apps.activity",
 ]
 
 MIDDLEWARE = [
@@ -144,6 +147,19 @@ SPECTACULAR_SETTINGS = {
         # Notificaciones: canal y estado de cada entrega.
         "NotificationChannelEnum": "apps.notifications.models.DeliveryChannel",
         "NotificationDeliveryStatusEnum": "apps.notifications.models.DeliveryStatus",
+        # Ítems de la completitud: el nombre publicado antes de "Mi día", que no cambia.
+        "CodeEnum": "apps.applications.serializers.COMPLETENESS_ITEM_CODES",
+        # Mi día: segmentos de atención y siguiente acción.
+        "AttentionSegmentEnum": "apps.workday.rules.AttentionSegment",
+        "NextActionEnum": "apps.workday.rules.NextAction",
+        # Tipo de cada acción disponible de la solicitud.
+        "AvailableActionKindEnum": "apps.applications.actions.ActionKind",
+        # Tareas: estado, origen y tipo de padre.
+        "TaskStatusEnum": "apps.tasks.models.TaskStatus",
+        "TaskSourceEnum": "apps.tasks.models.TaskSource",
+        "TaskParentTypeEnum": "apps.tasks.models.TaskParentType",
+        # Actividad: tipo de evento.
+        "ActivityEventTypeEnum": "apps.activity.models.ActivityEventType",
     },
 }
 

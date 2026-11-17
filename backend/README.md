@@ -47,11 +47,14 @@ flowchart LR
 | `identity` | Internal users, roles, permissions, internal sessions, invitations, buyer magic links, and consent records. | Authorizes all other modules; buyer access is tied to clients and applications. |
 | `catalogs` | Configurable business catalogs and reusable workflow transitions. | Provides options such as cities, purposes, reasons, and priorities to other modules. |
 | `partners` | Construction partners, memberships, and real-estate projects. | Projects can be linked to CRM opportunities and application properties. |
-| `crm` | Clients, addresses, opportunities, assignments, tasks, and business activity. | An opportunity belongs to a client and can become one or more credit applications. |
+| `crm` | Clients, addresses, opportunities, and assignments. | An opportunity belongs to a client and can become one or more credit applications. |
 | `banking` | Banks, bank products, allowed purposes, and operational bank rules. | Applications select a product; document requirements use the bank-product context. |
 | `applications` | Credit applications, participants, finances, income, property, financing preferences, assignments, and status history. | Central business record connecting CRM, banking, documents, and filings. |
 | `documents` | Document types and requirements, checklist slots, private file versions, reviews, and ZIP package jobs. | Builds the application checklist and provides the evidence used in bank filings. |
 | `filings` | Manual bank filings, immutable document snapshots, bank responses, and correction observations. | Uses application and document data; produces outcomes that notify buyers. |
+| `tasks` | Manual follow-up tasks with assignee, due date, priority, and status. | Belongs to an application or an opportunity; feeds the advisor workday. |
+| `workday` | The advisor workday: open applications with their next action, days in stage, and attention segments. | Reads applications, document slots, buyer activity, and tasks; has no tables of its own. |
+| `activity` | The immutable application timeline (internal and buyer rows) and internal notes. | Subscribes to the signals of applications, documents, identity, tasks, and filings. |
 | `notifications` | Buyer in-app notifications and their portal and email deliveries, with retries. | Subscribes to identity, document, application, and filing events. |
 | `idempotency` | `Idempotency-Key` records for the critical `POST` operations. | Used by filings, bank responses, status transitions, filing packages, and magic links. |
 | `reporting` | Dashboards, operational reports, and export jobs. | Reads authorized data from CRM, applications, filings, and documents. |
@@ -695,7 +698,7 @@ backend/
 
 ## Current Status
 
-Build steps 1 to 10 are complete:
+Build steps 1 to 13 are complete:
 
 1. `identity` core: internal users, roles and permissions, sessions with rotating refresh tokens, password reset, and `/api/v1/auth/*`.
 2. `catalogs`: catalogs and items, workflow transitions, and the metadata endpoints.
@@ -707,5 +710,8 @@ Build steps 1 to 10 are complete:
 8. `applications`: credit applications, participants, financial profiles, income sources, property, financing, bank rule evaluations, status transitions, withdrawals, history, available actions, and completeness.
 9. `identity` buyer access: magic links, buyer sessions, consents, and the buyer portal endpoints.
 10. `documents` dossier: checklist slots, buyer uploads with asynchronous antivirus scanning, review, waivers, downloads, the `READY_TO_FILE` document guard, completeness, and asynchronous filing packages.
+11. `filings`: manual bank filings, document snapshots, bank responses with evidence, returns with document observations, and disbursement.
+12. `tasks`, `workday`, and `activity`: manual follow-up tasks, the advisor workday, and the application timeline with internal notes.
+13. `notifications` and `idempotency`: buyer notifications in the portal and by email with retries, and `Idempotency-Key` on the critical `POST` operations.
 
-Remaining modules follow the documented build order, starting with manual bank filings (step 11).
+Remaining modules follow the documented build order, starting with the audit trail (step 14).

@@ -3,6 +3,9 @@
 La auditoría (paso 14) se suscribirá para registrar quién cambió qué documentos se
 piden. Mientras tanto, el cambio se escribe en el log de la aplicación.
 
+- ``document_uploaded``: ``slot``, ``document_file`` (la versión nueva) y ``session``
+  (la sesión del comprador que cargó). Se envía después de confirmar la transacción
+  (``transaction.on_commit``). Lo usa la actividad (paso 12).
 - ``document_type_status_changed``: ``document_type``, ``is_active``, ``actor`` y
   ``reason``.
 - ``document_requirement_status_changed``: ``requirement``, ``from_status``,
@@ -19,6 +22,7 @@ piden. Mientras tanto, el cambio se escribe en el log de la aplicación.
 
 from django.dispatch import Signal
 
+document_uploaded = Signal()
 document_type_status_changed = Signal()
 document_requirement_status_changed = Signal()
 document_reviewed = Signal()

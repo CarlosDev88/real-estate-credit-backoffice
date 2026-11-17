@@ -950,6 +950,122 @@
                 }
             }
         },
+        "/api/v1/applications/{application_id}/activity": {
+            "get": {
+                "operationId": "applications_activity_list",
+                "description": "Línea de tiempo del expediente, de la más reciente a la más antigua. El administrador y el asesor ven las filas internas; el broker, solo las del comprador (las mismas de `/buyer/applications/{id}/activity`). `actor` es `{name}` (\"Portal del comprador\" si lo hizo el comprador) o nulo.",
+                "summary": "Actividad de la solicitud",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "application_id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "required": true
+                    },
+                    {
+                        "in": "query",
+                        "name": "event_type",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string",
+                                "enum": [
+                                    "ADVISOR_ASSIGNED",
+                                    "APPLICATION_CREATED",
+                                    "BANK_RESPONSE_RECORDED",
+                                    "BUYER_LINK_SENT",
+                                    "BUYER_SESSION_STARTED",
+                                    "CONSENT_RECORDED",
+                                    "DOCUMENT_REVIEWED",
+                                    "DOCUMENT_UPLOADED",
+                                    "FILING_CREATED",
+                                    "NOTE_ADDED",
+                                    "PARTICIPANT_ADDED",
+                                    "PARTICIPANT_REMOVED",
+                                    "STATUS_CHANGED",
+                                    "TASK_CANCELLED",
+                                    "TASK_COMPLETED",
+                                    "TASK_CREATED"
+                                ]
+                            }
+                        },
+                        "description": "Uno o varios tipos (`?event_type=A&event_type=B`). Un código desconocido responde `400`.",
+                        "explode": true
+                    },
+                    {
+                        "name": "page",
+                        "required": false,
+                        "in": "query",
+                        "description": "Un número de página dentro del conjunto de resultados paginado.",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "page_size",
+                        "required": false,
+                        "in": "query",
+                        "description": "Número de resultados a devolver por página.",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "tags": [
+                    "Activity"
+                ],
+                "security": [
+                    {
+                        "internalSession": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PaginatedActivityList"
+                                }
+                            }
+                        },
+                        "description": ""
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "RESOURCE_NOT_FOUND (inexistente o fuera del alcance)"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "NOT_AUTHENTICATED o SESSION_EXPIRED"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    }
+                }
+            }
+        },
         "/api/v1/applications/{application_id}/assignments": {
             "post": {
                 "operationId": "applications_assignments_create",
@@ -2519,6 +2635,178 @@
                             }
                         },
                         "description": "PRECONDITION_REQUIRED (falta If-Match)"
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "RESOURCE_NOT_FOUND (inexistente o fuera del alcance)"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "NOT_AUTHENTICATED o SESSION_EXPIRED"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    }
+                }
+            }
+        },
+        "/api/v1/applications/{application_id}/notes": {
+            "get": {
+                "operationId": "applications_notes_list",
+                "description": "La más reciente primero. Solo el administrador y el asesor asignado.",
+                "summary": "Notas internas de la solicitud",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "application_id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "required": true
+                    },
+                    {
+                        "name": "page",
+                        "required": false,
+                        "in": "query",
+                        "description": "Un número de página dentro del conjunto de resultados paginado.",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "page_size",
+                        "required": false,
+                        "in": "query",
+                        "description": "Número de resultados a devolver por página.",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "tags": [
+                    "Activity"
+                ],
+                "security": [
+                    {
+                        "internalSession": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PaginatedNoteList"
+                                }
+                            }
+                        },
+                        "description": ""
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "RESOURCE_NOT_FOUND (inexistente o fuera del alcance)"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "NOT_AUTHENTICATED o SESSION_EXPIRED"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    }
+                }
+            },
+            "post": {
+                "operationId": "applications_notes_create",
+                "description": "`body` obligatorio, hasta 2000 caracteres. Queda en la actividad como `NOTE_ADDED`, interna: el comprador y el broker nunca la ven. Se admite también en una solicitud terminada.",
+                "summary": "Agregar una nota interna",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "application_id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "Activity"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/NoteCreateRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "security": [
+                    {
+                        "internalSession": []
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Note"
+                                }
+                            }
+                        },
+                        "description": ""
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "VALIDATION_ERROR"
                     },
                     "404": {
                         "content": {
@@ -5877,6 +6165,122 @@
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/BuyerApplicationDetail"
+                                }
+                            }
+                        },
+                        "description": ""
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "RESOURCE_NOT_FOUND (no es la solicitud de la sesión)"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "NOT_AUTHENTICATED o SESSION_EXPIRED"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "CSRF_FAILED"
+                    }
+                }
+            }
+        },
+        "/api/v1/buyer/applications/{application_id}/activity": {
+            "get": {
+                "operationId": "buyer_applications_activity_list",
+                "description": "Solo las filas para el comprador, de la más reciente a la más antigua. `actor` es \"Tú\", \"Tu asesor\" o nulo.",
+                "summary": "Actividad de la solicitud para el comprador",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "application_id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "required": true
+                    },
+                    {
+                        "in": "query",
+                        "name": "event_type",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string",
+                                "enum": [
+                                    "ADVISOR_ASSIGNED",
+                                    "APPLICATION_CREATED",
+                                    "BANK_RESPONSE_RECORDED",
+                                    "BUYER_LINK_SENT",
+                                    "BUYER_SESSION_STARTED",
+                                    "CONSENT_RECORDED",
+                                    "DOCUMENT_REVIEWED",
+                                    "DOCUMENT_UPLOADED",
+                                    "FILING_CREATED",
+                                    "NOTE_ADDED",
+                                    "PARTICIPANT_ADDED",
+                                    "PARTICIPANT_REMOVED",
+                                    "STATUS_CHANGED",
+                                    "TASK_CANCELLED",
+                                    "TASK_COMPLETED",
+                                    "TASK_CREATED"
+                                ]
+                            }
+                        },
+                        "description": "Uno o varios tipos (`?event_type=A&event_type=B`). Un código desconocido responde `400`.",
+                        "explode": true
+                    },
+                    {
+                        "name": "page",
+                        "required": false,
+                        "in": "query",
+                        "description": "Un número de página dentro del conjunto de resultados paginado.",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "page_size",
+                        "required": false,
+                        "in": "query",
+                        "description": "Número de resultados a devolver por página.",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "tags": [
+                    "Buyer portal"
+                ],
+                "security": [
+                    {
+                        "buyerSession": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PaginatedActivityList"
                                 }
                             }
                         },
@@ -16135,6 +16539,554 @@
                 }
             }
         },
+        "/api/v1/tasks": {
+            "get": {
+                "operationId": "tasks_list",
+                "description": "El administrador ve todas; el asesor, las asignadas a él y las de sus solicitudes u oportunidades. Ordenadas por `due_at` (las que no tienen fecha al final) y después por creación.",
+                "summary": "Tareas dentro del alcance",
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "application_id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "assigned_to_id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "description": "Solo el administrador. Para el asesor se ignora."
+                    },
+                    {
+                        "in": "query",
+                        "name": "due",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "overdue",
+                                "today",
+                                "upcoming"
+                            ]
+                        },
+                        "description": "Tareas `PENDING` con `due_at` antes de hoy (`overdue`), hoy (`today`) o después de hoy (`upcoming`), con la fecha de Bogotá. Las que no tienen fecha no entran en ninguno."
+                    },
+                    {
+                        "in": "query",
+                        "name": "opportunity_id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    },
+                    {
+                        "name": "page",
+                        "required": false,
+                        "in": "query",
+                        "description": "Un número de página dentro del conjunto de resultados paginado.",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "page_size",
+                        "required": false,
+                        "in": "query",
+                        "description": "Número de resultados a devolver por página.",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "priority",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Código `task_priority`. Uno que no existe responde `400`."
+                    },
+                    {
+                        "in": "query",
+                        "name": "status",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "CANCELLED",
+                                "COMPLETED",
+                                "PENDING"
+                            ]
+                        }
+                    }
+                ],
+                "tags": [
+                    "Tasks"
+                ],
+                "security": [
+                    {
+                        "internalSession": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PaginatedTaskList"
+                                }
+                            }
+                        },
+                        "description": ""
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "VALIDATION_ERROR"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "NOT_AUTHENTICATED o SESSION_EXPIRED"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    }
+                }
+            },
+            "post": {
+                "operationId": "tasks_create",
+                "description": "Exactamente uno de `application_id` u `opportunity_id`, dentro del alcance del actor (si no, `400`). El responsable (por omisión, el actor) debe ser un usuario activo administrador o asesor. Una solicitud terminada responde `409 APPLICATION_CLOSED`.",
+                "summary": "Crear una tarea manual",
+                "tags": [
+                    "Tasks"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/TaskCreateRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "security": [
+                    {
+                        "internalSession": []
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Task"
+                                }
+                            }
+                        },
+                        "description": ""
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "VALIDATION_ERROR"
+                    },
+                    "409": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "APPLICATION_CLOSED"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "NOT_AUTHENTICATED o SESSION_EXPIRED"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    }
+                }
+            }
+        },
+        "/api/v1/tasks/{task_id}": {
+            "get": {
+                "operationId": "tasks_retrieve",
+                "summary": "Detalle de una tarea",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "task_id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "Tasks"
+                ],
+                "security": [
+                    {
+                        "internalSession": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Task"
+                                }
+                            }
+                        },
+                        "description": ""
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "RESOURCE_NOT_FOUND (inexistente o fuera del alcance)"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "NOT_AUTHENTICATED o SESSION_EXPIRED"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    }
+                }
+            },
+            "patch": {
+                "operationId": "tasks_partial_update",
+                "description": "Título, descripción, responsable, `due_at` (nulo la deja sin fecha) y prioridad. Solo una tarea `PENDING`; si no, `409 TASK_NOT_PENDING`.",
+                "summary": "Editar una tarea pendiente",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "task_id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "Tasks"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PatchedTaskUpdateRequest"
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "internalSession": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Task"
+                                }
+                            }
+                        },
+                        "description": ""
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "VALIDATION_ERROR"
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "RESOURCE_NOT_FOUND (inexistente o fuera del alcance)"
+                    },
+                    "409": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "TASK_NOT_PENDING (completada o cancelada)"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "NOT_AUTHENTICATED o SESSION_EXPIRED"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    }
+                }
+            }
+        },
+        "/api/v1/tasks/{task_id}/cancel": {
+            "post": {
+                "operationId": "tasks_cancel",
+                "description": "`reason` es obligatorio. Solo desde `PENDING`; si no, `409 TASK_NOT_PENDING`.",
+                "summary": "Cancelar una tarea con motivo",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "task_id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "Tasks"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/TaskCancelRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "security": [
+                    {
+                        "internalSession": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Task"
+                                }
+                            }
+                        },
+                        "description": ""
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "VALIDATION_ERROR"
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "RESOURCE_NOT_FOUND (inexistente o fuera del alcance)"
+                    },
+                    "409": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "TASK_NOT_PENDING (completada o cancelada)"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "NOT_AUTHENTICATED o SESSION_EXPIRED"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    }
+                }
+            }
+        },
+        "/api/v1/tasks/{task_id}/complete": {
+            "post": {
+                "operationId": "tasks_complete",
+                "description": "Solo desde `PENDING`; si no, `409 TASK_NOT_PENDING`.",
+                "summary": "Completar una tarea",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "task_id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "Tasks"
+                ],
+                "security": [
+                    {
+                        "internalSession": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Task"
+                                }
+                            }
+                        },
+                        "description": ""
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "RESOURCE_NOT_FOUND (inexistente o fuera del alcance)"
+                    },
+                    "409": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "TASK_NOT_PENDING (completada o cancelada)"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "NOT_AUTHENTICATED o SESSION_EXPIRED"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    }
+                }
+            }
+        },
         "/api/v1/users": {
             "get": {
                 "operationId": "users_list",
@@ -16716,6 +17668,249 @@
                 }
             }
         },
+        "/api/v1/workday/applications": {
+            "get": {
+                "operationId": "workday_applications_list",
+                "description": "El asesor ve sus solicitudes asignadas; el administrador, todas (o las de `advisor_id`). Solo las no terminales. Por omisión van primero las que tienen tareas vencidas o de hoy y después las de más días en la etapa. `search` busca por código, nombre o documento del titular, como el listado.",
+                "summary": "Solicitudes en curso del asesor, con su siguiente acción",
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "advisor_id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "description": "Solo el administrador. Para el asesor se ignora: siempre ve las suyas."
+                    },
+                    {
+                        "in": "query",
+                        "name": "attention",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "BUYER_INACTIVE",
+                                "FILED",
+                                "IN_ANALYSIS",
+                                "OBSERVED",
+                                "READY_TO_FILE",
+                                "REVIEW_DOCUMENTS",
+                                "TASKS_DUE"
+                            ]
+                        },
+                        "description": "Segmento de atención. Un código desconocido responde `400`."
+                    },
+                    {
+                        "in": "query",
+                        "name": "bank_id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    },
+                    {
+                        "name": "ordering",
+                        "required": false,
+                        "in": "query",
+                        "description": "Qué campo usar para ordenar los resultados.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "page",
+                        "required": false,
+                        "in": "query",
+                        "description": "Un número de página dentro del conjunto de resultados paginado.",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "page_size",
+                        "required": false,
+                        "in": "query",
+                        "description": "Número de resultados a devolver por página.",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "purpose",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Código `loan_purpose`. Uno que no existe responde `400`."
+                    },
+                    {
+                        "name": "search",
+                        "required": false,
+                        "in": "query",
+                        "description": "Un término de búsqueda.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "stage",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "APPROVED",
+                                "BANK_OBSERVATION",
+                                "CREDIT_ANALYSIS",
+                                "DOCUMENTS_REVIEW",
+                                "DRAFT",
+                                "FILED",
+                                "FILING_VALIDATION",
+                                "LEGALIZATION",
+                                "READY_TO_FILE",
+                                "WAITING_BUYER_DATA",
+                                "WAITING_DOCUMENTS"
+                            ]
+                        },
+                        "description": "Estado no terminal de la solicitud. Otro valor responde `400`."
+                    }
+                ],
+                "tags": [
+                    "Workday"
+                ],
+                "security": [
+                    {
+                        "internalSession": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PaginatedWorkdayApplicationList"
+                                }
+                            }
+                        },
+                        "description": ""
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "NOT_AUTHENTICATED o SESSION_EXPIRED"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    }
+                }
+            }
+        },
+        "/api/v1/workday/summary": {
+            "get": {
+                "operationId": "workday_summary",
+                "description": "`total` y un conteo por segmento, en el orden fijo de los segmentos. Aplica los mismos filtros que `/workday/applications`, salvo `attention`. Los segmentos no son excluyentes.",
+                "summary": "Conteos de Mi día por segmento de atención",
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "advisor_id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "description": "Solo el administrador. Para el asesor se ignora: siempre ve las suyas."
+                    },
+                    {
+                        "in": "query",
+                        "name": "bank_id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "purpose",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Código `loan_purpose`. Uno que no existe responde `400`."
+                    },
+                    {
+                        "in": "query",
+                        "name": "stage",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "APPROVED",
+                                "BANK_OBSERVATION",
+                                "CREDIT_ANALYSIS",
+                                "DOCUMENTS_REVIEW",
+                                "DRAFT",
+                                "FILED",
+                                "FILING_VALIDATION",
+                                "LEGALIZATION",
+                                "READY_TO_FILE",
+                                "WAITING_BUYER_DATA",
+                                "WAITING_DOCUMENTS"
+                            ]
+                        },
+                        "description": "Estado no terminal de la solicitud. Otro valor responde `400`."
+                    }
+                ],
+                "tags": [
+                    "Workday"
+                ],
+                "security": [
+                    {
+                        "internalSession": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/WorkdaySummary"
+                                }
+                            }
+                        },
+                        "description": ""
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "NOT_AUTHENTICATED o SESSION_EXPIRED"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    }
+                }
+            }
+        },
         "/api/v1/workflow-transitions": {
             "get": {
                 "operationId": "workflow_transitions_list",
@@ -17231,6 +18426,95 @@
                 ],
                 "type": "string",
                 "description": "* `ACCEPTED` - Aceptado\n* `WITHDRAWN` - Retirado"
+            },
+            "Activity": {
+                "type": "object",
+                "description": "Fila de la línea de tiempo. ``actor`` es ``{name}`` o nulo (un evento del sistema).\nCon ``context[\"buyer\"]``, el actor se muestra como \"Tú\" o \"Tu asesor\".",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "readOnly": true
+                    },
+                    "event_type": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/ActivityEventTypeEnum"
+                            }
+                        ],
+                        "readOnly": true
+                    },
+                    "event_type_label": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "title": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "message": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "actor": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/ActivityActor"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "readOnly": true
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "readOnly": true
+                    }
+                },
+                "required": [
+                    "actor",
+                    "created_at",
+                    "event_type",
+                    "event_type_label",
+                    "id",
+                    "message",
+                    "title"
+                ]
+            },
+            "ActivityActor": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "name"
+                ]
+            },
+            "ActivityEventTypeEnum": {
+                "enum": [
+                    "APPLICATION_CREATED",
+                    "STATUS_CHANGED",
+                    "ADVISOR_ASSIGNED",
+                    "PARTICIPANT_ADDED",
+                    "PARTICIPANT_REMOVED",
+                    "DOCUMENT_UPLOADED",
+                    "DOCUMENT_REVIEWED",
+                    "BUYER_LINK_SENT",
+                    "BUYER_SESSION_STARTED",
+                    "CONSENT_RECORDED",
+                    "TASK_CREATED",
+                    "TASK_COMPLETED",
+                    "TASK_CANCELLED",
+                    "NOTE_ADDED",
+                    "FILING_CREATED",
+                    "BANK_RESPONSE_RECORDED"
+                ],
+                "type": "string",
+                "description": "* `APPLICATION_CREATED` - Solicitud creada\n* `STATUS_CHANGED` - Cambio de estado\n* `ADVISOR_ASSIGNED` - Asesor asignado\n* `PARTICIPANT_ADDED` - Participante agregado\n* `PARTICIPANT_REMOVED` - Participante retirado\n* `DOCUMENT_UPLOADED` - Documento cargado\n* `DOCUMENT_REVIEWED` - Documento revisado\n* `BUYER_LINK_SENT` - Enlace enviado al comprador\n* `BUYER_SESSION_STARTED` - Ingreso del comprador\n* `CONSENT_RECORDED` - Consentimiento registrado\n* `TASK_CREATED` - Tarea creada\n* `TASK_COMPLETED` - Tarea completada\n* `TASK_CANCELLED` - Tarea cancelada\n* `NOTE_ADDED` - Nota interna\n* `FILING_CREATED` - Radicación\n* `BANK_RESPONSE_RECORDED` - Respuesta del banco"
             },
             "Address": {
                 "type": "object",
@@ -18217,6 +19501,34 @@
                     "advisor_id"
                 ]
             },
+            "AttentionRef": {
+                "type": "object",
+                "properties": {
+                    "code": {
+                        "$ref": "#/components/schemas/AttentionSegmentEnum"
+                    },
+                    "label": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "code",
+                    "label"
+                ]
+            },
+            "AttentionSegmentEnum": {
+                "enum": [
+                    "REVIEW_DOCUMENTS",
+                    "READY_TO_FILE",
+                    "FILED",
+                    "IN_ANALYSIS",
+                    "OBSERVED",
+                    "BUYER_INACTIVE",
+                    "TASKS_DUE"
+                ],
+                "type": "string",
+                "description": "* `REVIEW_DOCUMENTS` - Documentos por revisar\n* `READY_TO_FILE` - Listas para radicar\n* `FILED` - Radicadas\n* `IN_ANALYSIS` - En análisis\n* `OBSERVED` - Observadas por el banco\n* `BUYER_INACTIVE` - Comprador sin actividad\n* `TASKS_DUE` - Con tareas vencidas o de hoy"
+            },
             "AvailableAction": {
                 "type": "object",
                 "description": "Transición que el actor puede ejecutar ahora; la guarda se evalúa al ejecutarla.",
@@ -18239,15 +19551,33 @@
                     "guard_code": {
                         "type": "string",
                         "readOnly": true
+                    },
+                    "kind": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/AvailableActionKindEnum"
+                            }
+                        ],
+                        "description": "primary: avanza en el camino principal; secondary: cierra por fuera del banco o retrocede; destructive: cancela o desiste. La lista sale en ese orden.",
+                        "readOnly": true
                     }
                 },
                 "required": [
                     "code",
                     "guard_code",
+                    "kind",
                     "label",
                     "target_status",
                     "target_status_label"
                 ]
+            },
+            "AvailableActionKindEnum": {
+                "enum": [
+                    "primary",
+                    "secondary",
+                    "destructive"
+                ],
+                "type": "string"
             },
             "Bank": {
                 "type": "object",
@@ -25207,6 +26537,69 @@
                     "name"
                 ]
             },
+            "NextActionEnum": {
+                "enum": [
+                    "COMPLETE_DRAFT",
+                    "FOLLOW_UP_BUYER_DATA",
+                    "FOLLOW_UP_DOCUMENTS",
+                    "REVIEW_DOCUMENTS",
+                    "FILE_WITH_BANK",
+                    "WAIT_BANK_RESPONSE",
+                    "RESOLVE_OBSERVATIONS",
+                    "START_LEGALIZATION",
+                    "FOLLOW_UP_LEGALIZATION"
+                ],
+                "type": "string",
+                "description": "* `COMPLETE_DRAFT` - Completar el borrador\n* `FOLLOW_UP_BUYER_DATA` - Hacer seguimiento a los datos del comprador\n* `FOLLOW_UP_DOCUMENTS` - Hacer seguimiento a los documentos\n* `REVIEW_DOCUMENTS` - Revisar documentos\n* `FILE_WITH_BANK` - Radicar en el banco\n* `WAIT_BANK_RESPONSE` - Esperar respuesta del banco\n* `RESOLVE_OBSERVATIONS` - Resolver las observaciones del banco\n* `START_LEGALIZATION` - Iniciar la legalización\n* `FOLLOW_UP_LEGALIZATION` - Hacer seguimiento a la legalización"
+            },
+            "Note": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "readOnly": true
+                    },
+                    "body": {
+                        "type": "string"
+                    },
+                    "author": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/UserRef"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "readOnly": true
+                    }
+                },
+                "required": [
+                    "author",
+                    "body",
+                    "created_at",
+                    "id"
+                ]
+            },
+            "NoteCreateRequest": {
+                "type": "object",
+                "description": "Serializer que rechaza campos no declarados (``additionalProperties: false``).\n\nEvita la asignación masiva: el cliente solo puede enviar los campos permitidos.",
+                "properties": {
+                    "body": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 2000
+                    }
+                },
+                "required": [
+                    "body"
+                ]
+            },
             "NotificationChannelEnum": {
                 "enum": [
                     "EMAIL",
@@ -25844,6 +27237,47 @@
                     "sha256",
                     "size_bytes"
                 ]
+            },
+            "PaginatedActivityList": {
+                "type": "object",
+                "required": [
+                    "items",
+                    "page",
+                    "page_size",
+                    "total",
+                    "next",
+                    "previous"
+                ],
+                "properties": {
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/Activity"
+                        }
+                    },
+                    "page": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "page_size": {
+                        "type": "integer",
+                        "example": 25
+                    },
+                    "total": {
+                        "type": "integer",
+                        "example": 128
+                    },
+                    "next": {
+                        "type": "string",
+                        "nullable": true,
+                        "example": "/api/v1/x?page=2"
+                    },
+                    "previous": {
+                        "type": "string",
+                        "nullable": true,
+                        "example": null
+                    }
+                }
             },
             "PaginatedAddressList": {
                 "type": "object",
@@ -27157,6 +28591,47 @@
                     }
                 }
             },
+            "PaginatedNoteList": {
+                "type": "object",
+                "required": [
+                    "items",
+                    "page",
+                    "page_size",
+                    "total",
+                    "next",
+                    "previous"
+                ],
+                "properties": {
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/Note"
+                        }
+                    },
+                    "page": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "page_size": {
+                        "type": "integer",
+                        "example": 25
+                    },
+                    "total": {
+                        "type": "integer",
+                        "example": 128
+                    },
+                    "next": {
+                        "type": "string",
+                        "nullable": true,
+                        "example": "/api/v1/x?page=2"
+                    },
+                    "previous": {
+                        "type": "string",
+                        "nullable": true,
+                        "example": null
+                    }
+                }
+            },
             "PaginatedOpportunityList": {
                 "type": "object",
                 "required": [
@@ -27362,6 +28837,47 @@
                     }
                 }
             },
+            "PaginatedTaskList": {
+                "type": "object",
+                "required": [
+                    "items",
+                    "page",
+                    "page_size",
+                    "total",
+                    "next",
+                    "previous"
+                ],
+                "properties": {
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/Task"
+                        }
+                    },
+                    "page": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "page_size": {
+                        "type": "integer",
+                        "example": 25
+                    },
+                    "total": {
+                        "type": "integer",
+                        "example": 128
+                    },
+                    "next": {
+                        "type": "string",
+                        "nullable": true,
+                        "example": "/api/v1/x?page=2"
+                    },
+                    "previous": {
+                        "type": "string",
+                        "nullable": true,
+                        "example": null
+                    }
+                }
+            },
             "PaginatedUserList": {
                 "type": "object",
                 "required": [
@@ -27377,6 +28893,47 @@
                         "type": "array",
                         "items": {
                             "$ref": "#/components/schemas/User"
+                        }
+                    },
+                    "page": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "page_size": {
+                        "type": "integer",
+                        "example": 25
+                    },
+                    "total": {
+                        "type": "integer",
+                        "example": 128
+                    },
+                    "next": {
+                        "type": "string",
+                        "nullable": true,
+                        "example": "/api/v1/x?page=2"
+                    },
+                    "previous": {
+                        "type": "string",
+                        "nullable": true,
+                        "example": null
+                    }
+                }
+            },
+            "PaginatedWorkdayApplicationList": {
+                "type": "object",
+                "required": [
+                    "items",
+                    "page",
+                    "page_size",
+                    "total",
+                    "next",
+                    "previous"
+                ],
+                "properties": {
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/WorkdayApplication"
                         }
                     },
                     "page": {
@@ -28438,6 +29995,36 @@
                         "type": "string",
                         "minLength": 1,
                         "maxLength": 180
+                    }
+                }
+            },
+            "PatchedTaskUpdateRequest": {
+                "type": "object",
+                "description": "Serializer que rechaza campos no declarados (``additionalProperties: false``).\n\nEvita la asignación masiva: el cliente solo puede enviar los campos permitidos.",
+                "properties": {
+                    "title": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 180
+                    },
+                    "description": {
+                        "type": "string",
+                        "maxLength": 4000
+                    },
+                    "assigned_to_id": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "due_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    },
+                    "priority_code": {
+                        "type": "string",
+                        "description": "Código de un valor activo del catálogo `task_priority`. Consulta los valores en `/api/v1/metadata/catalogs/task_priority`."
                     }
                 }
             },
@@ -29882,6 +31469,258 @@
                     "target_status"
                 ]
             },
+            "Task": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "readOnly": true
+                    },
+                    "title": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "description": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "status": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/TaskStatusEnum"
+                            }
+                        ],
+                        "readOnly": true
+                    },
+                    "status_label": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "priority": {
+                        "$ref": "#/components/schemas/CatalogItemRef"
+                    },
+                    "source": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/TaskSourceEnum"
+                            }
+                        ],
+                        "readOnly": true
+                    },
+                    "source_label": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "assigned_to": {
+                        "$ref": "#/components/schemas/UserRef"
+                    },
+                    "created_by": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/UserRef"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "parent": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/TaskParent"
+                            }
+                        ],
+                        "readOnly": true
+                    },
+                    "due_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time",
+                        "readOnly": true
+                    },
+                    "is_overdue": {
+                        "type": "boolean",
+                        "readOnly": true,
+                        "description": "Pendiente y con `due_at` antes de hoy (fecha de Bogotá), como `due=overdue`."
+                    },
+                    "completed_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time",
+                        "readOnly": true
+                    },
+                    "cancelled_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time",
+                        "readOnly": true
+                    },
+                    "cancel_reason": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "readOnly": true
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "readOnly": true
+                    }
+                },
+                "required": [
+                    "assigned_to",
+                    "cancel_reason",
+                    "cancelled_at",
+                    "completed_at",
+                    "created_at",
+                    "created_by",
+                    "description",
+                    "due_at",
+                    "id",
+                    "is_overdue",
+                    "parent",
+                    "priority",
+                    "source",
+                    "source_label",
+                    "status",
+                    "status_label",
+                    "title",
+                    "updated_at"
+                ]
+            },
+            "TaskCancelRequest": {
+                "type": "object",
+                "description": "Serializer que rechaza campos no declarados (``additionalProperties: false``).\n\nEvita la asignación masiva: el cliente solo puede enviar los campos permitidos.",
+                "properties": {
+                    "reason": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 1000
+                    }
+                },
+                "required": [
+                    "reason"
+                ]
+            },
+            "TaskCreateRequest": {
+                "type": "object",
+                "description": "Serializer que rechaza campos no declarados (``additionalProperties: false``).\n\nEvita la asignación masiva: el cliente solo puede enviar los campos permitidos.",
+                "properties": {
+                    "title": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 180
+                    },
+                    "description": {
+                        "type": "string",
+                        "maxLength": 4000
+                    },
+                    "application_id": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "uuid"
+                    },
+                    "opportunity_id": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "uuid"
+                    },
+                    "assigned_to_id": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "uuid",
+                        "description": "Por omisión, el actor."
+                    },
+                    "due_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    },
+                    "priority_code": {
+                        "type": "string",
+                        "description": "Por omisión, `MEDIUM`."
+                    }
+                },
+                "required": [
+                    "title"
+                ]
+            },
+            "TaskParent": {
+                "type": "object",
+                "description": "Solicitud u oportunidad de la tarea. Las oportunidades no tienen código: ``code``\nes nulo y ``client_display_name`` las identifica.",
+                "properties": {
+                    "type": {
+                        "$ref": "#/components/schemas/TaskParentTypeEnum"
+                    },
+                    "type_label": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "id": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "code": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "client_display_name": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "client_display_name",
+                    "code",
+                    "id",
+                    "type",
+                    "type_label"
+                ]
+            },
+            "TaskParentTypeEnum": {
+                "enum": [
+                    "APPLICATION",
+                    "OPPORTUNITY"
+                ],
+                "type": "string",
+                "description": "* `APPLICATION` - Solicitud\n* `OPPORTUNITY` - Oportunidad"
+            },
+            "TaskSourceEnum": {
+                "enum": [
+                    "MANUAL",
+                    "AUTOMATIC"
+                ],
+                "type": "string",
+                "description": "* `MANUAL` - Manual\n* `AUTOMATIC` - Automática"
+            },
+            "TaskStatusEnum": {
+                "enum": [
+                    "PENDING",
+                    "COMPLETED",
+                    "CANCELLED"
+                ],
+                "type": "string",
+                "description": "* `PENDING` - Pendiente\n* `COMPLETED` - Completada\n* `CANCELLED` - Cancelada"
+            },
             "User": {
                 "type": "object",
                 "description": "Usuario interno. Nunca expone el hash de la contraseña ni tokens.",
@@ -30192,6 +32031,154 @@
                 "required": [
                     "expected_version",
                     "reason_code"
+                ]
+            },
+            "WorkdayApplication": {
+                "type": "object",
+                "description": "Fila de \"Mi día\". Lee las anotaciones de ``services.workday_applications``.",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "readOnly": true
+                    },
+                    "code": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "client_display_name": {
+                        "type": "string"
+                    },
+                    "bank": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/WorkdayBank"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "bank_product": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/NamedRef"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "status": {
+                        "$ref": "#/components/schemas/ApplicationStatusEnum"
+                    },
+                    "status_label": {
+                        "type": "string"
+                    },
+                    "next_action": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/NextActionEnum"
+                            }
+                        ],
+                        "readOnly": true
+                    },
+                    "next_action_label": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "days_in_stage": {
+                        "type": "integer",
+                        "description": "Días enteros desde el inicio de la etapa, según la fecha de Bogotá."
+                    },
+                    "attention": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/AttentionRef"
+                        },
+                        "readOnly": true,
+                        "description": "Segmentos de atención que cumple la solicitud (no son excluyentes)."
+                    },
+                    "pending_tasks_count": {
+                        "type": "integer"
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "readOnly": true
+                    }
+                },
+                "required": [
+                    "attention",
+                    "bank_product",
+                    "client_display_name",
+                    "code",
+                    "days_in_stage",
+                    "id",
+                    "next_action",
+                    "next_action_label",
+                    "pending_tasks_count",
+                    "status",
+                    "status_label",
+                    "updated_at"
+                ]
+            },
+            "WorkdayBank": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "short_name": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "id",
+                    "name",
+                    "short_name"
+                ]
+            },
+            "WorkdaySegment": {
+                "type": "object",
+                "properties": {
+                    "code": {
+                        "$ref": "#/components/schemas/AttentionSegmentEnum"
+                    },
+                    "label": {
+                        "type": "string"
+                    },
+                    "count": {
+                        "type": "integer"
+                    }
+                },
+                "required": [
+                    "code",
+                    "count",
+                    "label"
+                ]
+            },
+            "WorkdaySummary": {
+                "type": "object",
+                "properties": {
+                    "total": {
+                        "type": "integer",
+                        "description": "Solicitudes con los filtros, sin `attention`."
+                    },
+                    "segments": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/WorkdaySegment"
+                        }
+                    }
+                },
+                "required": [
+                    "segments",
+                    "total"
                 ]
             },
             "WorkflowTransition": {
