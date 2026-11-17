@@ -59,7 +59,11 @@ export function BackofficeGuard({ children }: { children: ReactNode }) {
   return (
     <AppShell
       nav={groupNav(visibleNav(me.data.permissions))}
-      user={{ name: me.data.name || me.data.email, email: me.data.email }}
+      user={{
+        name: me.data.name || me.data.email,
+        email: me.data.email,
+        role: me.data.role_label,
+      }}
       onLogout={handleLogout}
     >
       {children}
