@@ -10,13 +10,27 @@ from collections.abc import Iterator
 from typing import Any
 
 import pytest
-from django.db import connections
 
 from apps.audit.models import AuditEvent
 from apps.audit.sanitize import MAX_TEXT_LENGTH, URL_WITH_QUERY, is_forbidden_key
-from tests.applications.dossier.conftest import buyer_session, make_link, make_session
+from tests.applications.filings.conftest import (
+    accept_consents,
+    approve_stored,
+    buyer_client,
+    buyer_csrf_client,
+    buyer_session,
+    make_document_file,
+    make_file_object,
+    make_filing,
+    make_link,
+    make_session,
+    make_slot,
+    package_dossier,
+    portal,
+    waive_slot,
+)
 
-UUID = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
+UUID = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
 LONG_NUMBER = re.compile(r"\d{6,}")
 
 
@@ -35,7 +49,7 @@ def problems(value: Any, path: str = "metadata") -> list[str]:
             found.append(f"{path}: URL con consulta")
         if len(value) > MAX_TEXT_LENGTH:
             found.append(f"{path}: texto largo")
-        if not UUID.match(value) and LONG_NUMBER.search(value):
+        if LONG_NUMBER.search(UUID.sub("", value)):
             found.append(f"{path}: número que parece un documento ({value})")
     return found
 
@@ -47,15 +61,6 @@ def all_events(request: pytest.FixtureRequest) -> list[AuditEvent]:
     if marker is not None and "audit" in (marker.kwargs.get("databases") or []):
         events += list(AuditEvent.objects.using("audit").all())
     return events
-
-
-@pytest.fixture(scope="session", autouse=True)
-def close_audit_connection(django_db_setup: None, django_db_blocker: Any) -> Iterator[None]:
-    """La conexión ``audit`` queda abierta después de las pruebas que la usan; se cierra
-    antes de borrar la base de prueba, que si no sigue "en uso por otra sesión"."""
-    yield
-    with django_db_blocker.unblock():
-        connections["audit"].close()
 
 
 @pytest.fixture(autouse=True)
@@ -70,4 +75,19 @@ def no_forbidden_data(db: None, request: pytest.FixtureRequest) -> Iterator[None
     assert not found, found
 
 
-__all__ = ["buyer_session", "make_link", "make_session"]
+__all__ = [
+    "accept_consents",
+    "approve_stored",
+    "buyer_client",
+    "buyer_csrf_client",
+    "buyer_session",
+    "make_document_file",
+    "make_file_object",
+    "make_filing",
+    "make_link",
+    "make_session",
+    "make_slot",
+    "package_dossier",
+    "portal",
+    "waive_slot",
+]

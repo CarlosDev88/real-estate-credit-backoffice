@@ -1,7 +1,8 @@
 """Contexto de la petición en curso para la auditoría: la IP de quien llama.
 
 ``AuditContextMiddleware`` la guarda al recibir cada petición, así que un evento que se
-registra desde una señal (sin la petición a mano) también la lleva.
+registra desde una señal (sin la petición a mano) también la lleva. Al devolver la
+respuesta, audita lo que no tiene señal (``apps.audit.hooks``).
 
 La IP sale de ``REMOTE_ADDR``. Mientras no haya un proxy de confianza configurado no se
 usa ``X-Forwarded-For`` (``AUDIT_TRUST_FORWARDED_FOR``): en local la petición llega por
@@ -39,6 +40,16 @@ class AuditContextMiddleware:
         self.get_response = get_response
 
     def __call__(self, request: HttpRequest) -> HttpResponse:
-        # Como el request_id: no se restablece al terminar; cada petición lo sobrescribe.
-        _client_ip.set(request_ip(request))
-        return self.get_response(request)
+        token = _client_ip.set(request_ip(request))
+        try:
+            response = self.get_response(request)
+            # Import diferido: el middleware se carga con la configuración, antes que los
+            # modelos.
+            from apps.audit.hooks import safe_audit_response
+
+            safe_audit_response(response)
+        finally:
+            # A diferencia del request_id, la IP no la usan los logs: se limpia para que un
+            # evento fuera de una petición no herede la de la anterior.
+            _client_ip.reset(token)
+        return response

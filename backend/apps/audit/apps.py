@@ -6,3 +6,7 @@ class AuditConfig(AppConfig):
     name = "apps.audit"
     label = "audit"
     verbose_name = "Auditoría"
+
+    def ready(self) -> None:
+        # Conecta los suscriptores de las señales de los demás módulos.
+        from apps.audit import receivers  # noqa: F401

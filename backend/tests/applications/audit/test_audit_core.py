@@ -7,6 +7,7 @@ from typing import Any
 
 import pytest
 from django.db import DatabaseError, connection, transaction
+from django.http import HttpResponse
 from django.test import RequestFactory
 
 from apps.audit import services
@@ -173,13 +174,20 @@ def test_a_buyer_session_is_the_actor_of_its_requests(buyer_session: BuyerSessio
 
 def test_without_a_request_it_uses_the_middleware_ip_and_a_new_request_id() -> None:
     set_request_id(None)
-    middleware = AuditContextMiddleware(lambda request: None)  # type: ignore[arg-type,return-value]
-    middleware(RequestFactory().get("/", REMOTE_ADDR="192.168.1.20"))
+    seen: list[str | None] = []
 
-    record_audit(AuditAction.AUTH_LOGIN_FAILED, "auth", AuditResult.FAILED)
+    def view(request: Any) -> HttpResponse:
+        # Un evento que llega por una señal, sin la petición a mano.
+        seen.append(get_client_ip())
+        record_audit(AuditAction.AUTH_LOGIN_FAILED, "auth", AuditResult.FAILED)
+        return HttpResponse()
+
+    AuditContextMiddleware(view)(RequestFactory().get("/", REMOTE_ADDR="192.168.1.20"))
 
     event = only()
-    assert get_client_ip() == event.ip_address == "192.168.1.20"
+    assert seen == [event.ip_address] == ["192.168.1.20"]
+    # Al terminar la petición, la IP ya no queda en el contexto.
+    assert get_client_ip() is None
     assert uuid.UUID(event.request_id)
     assert (event.resource_type, event.resource_id, event.actor_user) == ("auth", None, None)
 

@@ -23,6 +23,8 @@ from django.http import HttpRequest
 from django.utils import timezone
 
 from apps.applications.models import ApplicationParticipant, ParticipantRole
+from apps.audit.actions import AuditAction
+from apps.audit.services import record_audit
 from apps.identity.exceptions import (
     MagicLinkConsumed,
     MagicLinkExpired,
@@ -168,3 +170,5 @@ def logout_buyer_session(raw_token: str | None) -> None:
     session.revoked_at = timezone.now()
     session.save(update_fields=["revoked_at"])
     logger.info("Sesión de comprador %s cerrada por el comprador", session.pk)
+    # Auditoría (módulo 14): la vista es pública, así que el actor sale de la cookie.
+    record_audit(AuditAction.BUYER_SESSION_CLOSED, session, actor=session)

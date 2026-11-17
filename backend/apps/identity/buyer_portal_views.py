@@ -25,6 +25,7 @@ from rest_framework.views import APIView
 
 from apps.applications.concurrency import with_etag
 from apps.applications.models import CreditApplication
+from apps.audit.actions import AuditAction
 from apps.catalogs.views import (
     METADATA_CATALOG_DESCRIPTION,
     METADATA_CATALOG_PARAMETERS,
@@ -116,6 +117,10 @@ class BuyerPortalView(GenericAPIView):
 
 class BuyerAccessConsumeView(APIView):
     """Público: una cookie del comprador vencida no debe impedir consumir otro enlace."""
+
+    # Auditoría (módulo 14, apps/audit/hooks.py).
+    audit_failure_action = AuditAction.BUYER_LINK_FAILED
+    audit_resource_type = "buyer_access_links"
 
     authentication_classes: list[Any] = []
     permission_classes = [AllowAny]

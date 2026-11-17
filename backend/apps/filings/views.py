@@ -16,6 +16,7 @@ from rest_framework.response import Response
 from apps.applications.concurrency import with_etag
 from apps.applications.models import CreditApplication
 from apps.applications.services import applications_visible_to
+from apps.audit.actions import AuditAction
 from apps.documents.dossier_serializers import DocumentDownloadSerializer
 from apps.documents.dossier_views import no_store
 from apps.documents.exceptions import PayloadTooLarge
@@ -155,6 +156,9 @@ class ApplicationFilingListView(FilingView):
 
 
 class FilingDetailView(FilingView):
+    # Auditoría (módulo 14, apps/audit/hooks.py).
+    audit_actions = {"PATCH": AuditAction.FILING_UPDATED}
+    audit_resource_type = "filings"
     required_permissions = {"GET": READ, "PATCH": UPDATE}
 
     @extend_schema(
@@ -389,6 +393,9 @@ class FilingResponseEvidenceView(ResponseView):
 
 
 class FilingResponseEvidenceDownloadView(ResponseView):
+    # Auditoría (módulo 14, apps/audit/hooks.py).
+    audit_actions = {"GET": AuditAction.EVIDENCE_DOWNLOADED}
+    audit_resource_type = "filing_responses"
     required_permissions = {"GET": READ}
     throttle_classes = [DocumentDownloadRateThrottle]
 
