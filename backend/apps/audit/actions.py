@@ -56,6 +56,11 @@ class AuditAction(models.TextChoices):
     USER_CHANGED = "USER_CHANGED", "Cambio de usuario"
     USER_ROLES_CHANGED = "USER_ROLES_CHANGED", "Cambio de roles"
     USER_STATUS_CHANGED = "USER_STATUS_CHANGED", "Cambio de estado de usuario"
+    # Comisiones (paso 16).
+    COMMISSION_PLAN_CHANGED = "COMMISSION_PLAN_CHANGED", "Cambio de plan de comisión"
+    COMMISSION_SETTLED = "COMMISSION_SETTLED", "Comisión liquidada"
+    COMMISSION_SETTLEMENT_VOIDED = "COMMISSION_SETTLEMENT_VOIDED", "Liquidación de comisión anulada"
+    COMMISSION_SHARE_PAID = "COMMISSION_SHARE_PAID", "Pago de comisión registrado"
     # Acceso.
     ACCESS_DENIED = "ACCESS_DENIED", "Acceso denegado"
 

@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     "apps.workday",
     "apps.activity",
     "apps.audit",
+    "apps.commissions",
 ]
 
 MIDDLEWARE = [

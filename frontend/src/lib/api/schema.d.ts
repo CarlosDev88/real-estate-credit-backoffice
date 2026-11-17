@@ -1893,6 +1893,71 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/commission-plans": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Planes de comisión
+         * @description Por producto y del más reciente al más antiguo. `vigente_en` deja los planes vigentes en esa fecha (`valid_from` <= fecha < `valid_until`).
+         */
+        get: operations["commission_plans_list"];
+        put?: never;
+        /**
+         * Crear un plan de comisión
+         * @description `rate_pct` mayor que 0 y como mucho 100. `advisor_share_pct` + `broker_share_pct` = 100, y el asesor lleva la porción mayor. La vigencia no puede solaparse con otro plan del mismo producto (`409 COMMISSION_PLAN_OVERLAP`).
+         */
+        post: operations["commission_plans_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/commission-plans/{plan_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Detalle de un plan de comisión */
+        get: operations["commission_plans_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Editar un plan que ninguna liquidación usó
+         * @description Exige `If-Match` con la versión del plan (`428` sin ella, `409 STALE_VERSION` con otra). Un plan en uso no se edita (`409 COMMISSION_PLAN_IN_USE`): se cierra y se crea uno nuevo. El producto no cambia.
+         */
+        patch: operations["commission_plans_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/commission-plans/{plan_id}/close": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cerrar un plan de comisión
+         * @description Fija `valid_until` (exclusivo). Se permite también en un plan en uso. Solo adelanta el fin: un plan ya cerrado no se alarga.
+         */
+        post: operations["commission_plans_close"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/document-files/{file_id}": {
         parameters: {
             query?: never;
@@ -3533,10 +3598,14 @@ export interface components {
          *     * `USER_CHANGED` - Cambio de usuario
          *     * `USER_ROLES_CHANGED` - Cambio de roles
          *     * `USER_STATUS_CHANGED` - Cambio de estado de usuario
+         *     * `COMMISSION_PLAN_CHANGED` - Cambio de plan de comisión
+         *     * `COMMISSION_SETTLED` - Comisión liquidada
+         *     * `COMMISSION_SETTLEMENT_VOIDED` - Liquidación de comisión anulada
+         *     * `COMMISSION_SHARE_PAID` - Pago de comisión registrado
          *     * `ACCESS_DENIED` - Acceso denegado
          * @enum {string}
          */
-        AuditActionEnum: "AUTH_LOGIN" | "AUTH_LOGIN_FAILED" | "AUTH_LOGOUT" | "AUTH_REFRESH_REJECTED" | "AUTH_PASSWORD_RESET_REQUESTED" | "AUTH_PASSWORD_RESET_COMPLETED" | "AUTH_RATE_LIMITED" | "BUYER_LINK_CREATED" | "BUYER_LINK_CONSUMED" | "BUYER_LINK_FAILED" | "BUYER_SESSION_CLOSED" | "CONSENT_ACCEPTED" | "CONSENT_WITHDRAWN" | "DOCUMENT_UPLOADED" | "DOCUMENT_DOWNLOADED" | "PACKAGE_DOWNLOADED" | "EVIDENCE_DOWNLOADED" | "APPLICATION_STATUS_CHANGED" | "APPLICATION_WITHDRAWN" | "APPLICATION_ASSIGNED" | "DOCUMENT_REVIEWED" | "DOCUMENT_WAIVED" | "DOCUMENT_WAIVER_REOPENED" | "FILING_CREATED" | "FILING_UPDATED" | "BANK_RESPONSE_RECORDED" | "CATALOG_CHANGED" | "BANK_CHANGED" | "BANK_PRODUCT_CHANGED" | "BANK_RULE_CHANGED" | "DOCUMENT_TYPE_CHANGED" | "DOCUMENT_REQUIREMENT_CHANGED" | "WORKFLOW_TRANSITION_CHANGED" | "USER_CHANGED" | "USER_ROLES_CHANGED" | "USER_STATUS_CHANGED" | "ACCESS_DENIED";
+        AuditActionEnum: "AUTH_LOGIN" | "AUTH_LOGIN_FAILED" | "AUTH_LOGOUT" | "AUTH_REFRESH_REJECTED" | "AUTH_PASSWORD_RESET_REQUESTED" | "AUTH_PASSWORD_RESET_COMPLETED" | "AUTH_RATE_LIMITED" | "BUYER_LINK_CREATED" | "BUYER_LINK_CONSUMED" | "BUYER_LINK_FAILED" | "BUYER_SESSION_CLOSED" | "CONSENT_ACCEPTED" | "CONSENT_WITHDRAWN" | "DOCUMENT_UPLOADED" | "DOCUMENT_DOWNLOADED" | "PACKAGE_DOWNLOADED" | "EVIDENCE_DOWNLOADED" | "APPLICATION_STATUS_CHANGED" | "APPLICATION_WITHDRAWN" | "APPLICATION_ASSIGNED" | "DOCUMENT_REVIEWED" | "DOCUMENT_WAIVED" | "DOCUMENT_WAIVER_REOPENED" | "FILING_CREATED" | "FILING_UPDATED" | "BANK_RESPONSE_RECORDED" | "CATALOG_CHANGED" | "BANK_CHANGED" | "BANK_PRODUCT_CHANGED" | "BANK_RULE_CHANGED" | "DOCUMENT_TYPE_CHANGED" | "DOCUMENT_REQUIREMENT_CHANGED" | "WORKFLOW_TRANSITION_CHANGED" | "USER_CHANGED" | "USER_ROLES_CHANGED" | "USER_STATUS_CHANGED" | "COMMISSION_PLAN_CHANGED" | "COMMISSION_SETTLED" | "COMMISSION_SETTLEMENT_VOIDED" | "COMMISSION_SHARE_PAID" | "ACCESS_DENIED";
         AuditActor: {
             /** Format: uuid */
             id: string;
@@ -4560,6 +4629,69 @@ export interface components {
         CodeName: {
             code: string;
             name: string;
+        };
+        CommissionPlan: {
+            /** Format: uuid */
+            readonly id: string;
+            bank_product: components["schemas"]["RuleProductRef"];
+            /** Format: decimal */
+            readonly rate_pct: string;
+            /** Format: decimal */
+            readonly advisor_share_pct: string;
+            /** Format: decimal */
+            readonly broker_share_pct: string;
+            /** Format: date */
+            readonly valid_from: string;
+            /** Format: date */
+            readonly valid_until: string | null;
+            readonly notes: string;
+            /** @description Alguna liquidación lo usó: ya no se edita, solo se cierra. */
+            in_use: boolean;
+            readonly version: number;
+            created_by: components["schemas"]["UserRef"];
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly updated_at: string;
+        };
+        /**
+         * @description Serializer que rechaza campos no declarados (``additionalProperties: false``).
+         *
+         *     Evita la asignación masiva: el cliente solo puede enviar los campos permitidos.
+         */
+        CommissionPlanCloseRequest: {
+            /**
+             * Format: date
+             * @description Fin de vigencia (exclusivo).
+             */
+            valid_until: string;
+        };
+        /**
+         * @description Serializer que rechaza campos no declarados (``additionalProperties: false``).
+         *
+         *     Evita la asignación masiva: el cliente solo puede enviar los campos permitidos.
+         */
+        CommissionPlanCreateRequest: {
+            /** Format: uuid */
+            bank_product_id: string;
+            /**
+             * Format: decimal
+             * @description Porcentaje sobre el monto desembolsado.
+             */
+            rate_pct: string;
+            /** Format: decimal */
+            advisor_share_pct: string;
+            /** Format: decimal */
+            broker_share_pct: string;
+            /** Format: date */
+            valid_from: string;
+            /**
+             * Format: date
+             * @description Exclusivo. Nulo: sin fin.
+             */
+            valid_until?: string | null;
+            /** @default  */
+            notes: string;
         };
         Completeness: {
             /** @description Promedio, entero hacia abajo, de `data_percentage` y `documents_percentage`. */
@@ -6028,6 +6160,19 @@ export interface components {
             /** @example null */
             previous: string | null;
         };
+        PaginatedCommissionPlanList: {
+            items: components["schemas"]["CommissionPlan"][];
+            /** @example 1 */
+            page: number;
+            /** @example 25 */
+            page_size: number;
+            /** @example 128 */
+            total: number;
+            /** @example /api/v1/x?page=2 */
+            next: string | null;
+            /** @example null */
+            previous: string | null;
+        };
         PaginatedConsentRecordList: {
             items: components["schemas"]["ConsentRecord"][];
             /** @example 1 */
@@ -6532,6 +6677,24 @@ export interface components {
             document_number?: string;
             /** Format: date */
             birth_date?: string | null;
+        };
+        /**
+         * @description Serializer que rechaza campos no declarados (``additionalProperties: false``).
+         *
+         *     Evita la asignación masiva: el cliente solo puede enviar los campos permitidos.
+         */
+        PatchedCommissionPlanUpdateRequest: {
+            /** Format: decimal */
+            rate_pct?: string;
+            /** Format: decimal */
+            advisor_share_pct?: string;
+            /** Format: decimal */
+            broker_share_pct?: string;
+            /** Format: date */
+            valid_from?: string;
+            /** Format: date */
+            valid_until?: string | null;
+            notes?: string;
         };
         /**
          * @description El alcance (producto, tipo, finalidad, perfil, rol y condición) no se edita: si
@@ -9753,7 +9916,7 @@ export interface operations {
         parameters: {
             query?: {
                 /** @description Una o varias (`?action=A&action=B`). Un código desconocido responde `400`. */
-                action?: ("ACCESS_DENIED" | "APPLICATION_ASSIGNED" | "APPLICATION_STATUS_CHANGED" | "APPLICATION_WITHDRAWN" | "AUTH_LOGIN" | "AUTH_LOGIN_FAILED" | "AUTH_LOGOUT" | "AUTH_PASSWORD_RESET_COMPLETED" | "AUTH_PASSWORD_RESET_REQUESTED" | "AUTH_RATE_LIMITED" | "AUTH_REFRESH_REJECTED" | "BANK_CHANGED" | "BANK_PRODUCT_CHANGED" | "BANK_RESPONSE_RECORDED" | "BANK_RULE_CHANGED" | "BUYER_LINK_CONSUMED" | "BUYER_LINK_CREATED" | "BUYER_LINK_FAILED" | "BUYER_SESSION_CLOSED" | "CATALOG_CHANGED" | "CONSENT_ACCEPTED" | "CONSENT_WITHDRAWN" | "DOCUMENT_DOWNLOADED" | "DOCUMENT_REQUIREMENT_CHANGED" | "DOCUMENT_REVIEWED" | "DOCUMENT_TYPE_CHANGED" | "DOCUMENT_UPLOADED" | "DOCUMENT_WAIVED" | "DOCUMENT_WAIVER_REOPENED" | "EVIDENCE_DOWNLOADED" | "FILING_CREATED" | "FILING_UPDATED" | "PACKAGE_DOWNLOADED" | "USER_CHANGED" | "USER_ROLES_CHANGED" | "USER_STATUS_CHANGED" | "WORKFLOW_TRANSITION_CHANGED")[];
+                action?: ("ACCESS_DENIED" | "APPLICATION_ASSIGNED" | "APPLICATION_STATUS_CHANGED" | "APPLICATION_WITHDRAWN" | "AUTH_LOGIN" | "AUTH_LOGIN_FAILED" | "AUTH_LOGOUT" | "AUTH_PASSWORD_RESET_COMPLETED" | "AUTH_PASSWORD_RESET_REQUESTED" | "AUTH_RATE_LIMITED" | "AUTH_REFRESH_REJECTED" | "BANK_CHANGED" | "BANK_PRODUCT_CHANGED" | "BANK_RESPONSE_RECORDED" | "BANK_RULE_CHANGED" | "BUYER_LINK_CONSUMED" | "BUYER_LINK_CREATED" | "BUYER_LINK_FAILED" | "BUYER_SESSION_CLOSED" | "CATALOG_CHANGED" | "COMMISSION_PLAN_CHANGED" | "COMMISSION_SETTLED" | "COMMISSION_SETTLEMENT_VOIDED" | "COMMISSION_SHARE_PAID" | "CONSENT_ACCEPTED" | "CONSENT_WITHDRAWN" | "DOCUMENT_DOWNLOADED" | "DOCUMENT_REQUIREMENT_CHANGED" | "DOCUMENT_REVIEWED" | "DOCUMENT_TYPE_CHANGED" | "DOCUMENT_UPLOADED" | "DOCUMENT_WAIVED" | "DOCUMENT_WAIVER_REOPENED" | "EVIDENCE_DOWNLOADED" | "FILING_CREATED" | "FILING_UPDATED" | "PACKAGE_DOWNLOADED" | "USER_CHANGED" | "USER_ROLES_CHANGED" | "USER_STATUS_CHANGED" | "WORKFLOW_TRANSITION_CHANGED")[];
                 actor_buyer_session_id?: string;
                 actor_user_id?: string;
                 /** @description Fecha (`AAAA-MM-DD`, desde el inicio del día en Bogotá) o fecha y hora ISO. */
@@ -14544,6 +14707,314 @@ export interface operations {
                 };
             };
             /** @description RESOURCE_NOT_FOUND (inexistente o fuera del alcance) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    commission_plans_list: {
+        parameters: {
+            query?: {
+                bank_product_id?: string;
+                /** @description Un número de página dentro del conjunto de resultados paginado. */
+                page?: number;
+                /** @description Número de resultados a devolver por página. */
+                page_size?: number;
+                vigente_en?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedCommissionPlanList"];
+                };
+            };
+            /** @description VALIDATION_ERROR */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description PERMISSION_DENIED o CSRF_FAILED */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    commission_plans_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CommissionPlanCreateRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    /** @description Versión del plan, por ejemplo `"2"`. Se reenvía en `If-Match` al editarlo. */
+                    ETag: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommissionPlan"];
+                };
+            };
+            /** @description VALIDATION_ERROR */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description PERMISSION_DENIED o CSRF_FAILED */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description COMMISSION_PLAN_OVERLAP */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    commission_plans_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                plan_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    /** @description Versión del plan, por ejemplo `"2"`. Se reenvía en `If-Match` al editarlo. */
+                    ETag: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommissionPlan"];
+                };
+            };
+            /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description PERMISSION_DENIED o CSRF_FAILED */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description RESOURCE_NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    commission_plans_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                plan_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedCommissionPlanUpdateRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    /** @description Versión del plan, por ejemplo `"2"`. Se reenvía en `If-Match` al editarlo. */
+                    ETag: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommissionPlan"];
+                };
+            };
+            /** @description VALIDATION_ERROR */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description PERMISSION_DENIED o CSRF_FAILED */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description RESOURCE_NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description STALE_VERSION, COMMISSION_PLAN_IN_USE o COMMISSION_PLAN_OVERLAP */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description PRECONDITION_REQUIRED */
+            428: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    commission_plans_close: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                plan_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CommissionPlanCloseRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    /** @description Versión del plan, por ejemplo `"2"`. Se reenvía en `If-Match` al editarlo. */
+                    ETag: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommissionPlan"];
+                };
+            };
+            /** @description VALIDATION_ERROR */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description PERMISSION_DENIED o CSRF_FAILED */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description RESOURCE_NOT_FOUND */
             404: {
                 headers: {
                     [name: string]: unknown;
