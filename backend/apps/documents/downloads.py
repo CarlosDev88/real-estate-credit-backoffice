@@ -14,7 +14,7 @@ from django.conf import settings
 from django.utils import timezone
 
 from apps.documents.exceptions import DownloadUnavailable, FileNotClean, StorageUnavailable
-from apps.documents.models import DocumentFile
+from apps.documents.models import DocumentFile, FileObject
 from apps.documents.storage import get_storage
 
 logger = logging.getLogger(__name__)
@@ -29,7 +29,19 @@ class DownloadLink:
 def download_link(version: DocumentFile, *, requested_by: str) -> DownloadLink:
     """Firma la descarga de la versión. ``requested_by`` identifica al actor en el log
     (``user:<id>`` o ``buyer_session:<id>``)."""
-    file_object = version.file_object
+    return file_object_link(
+        version.file_object,
+        filename=version.client_filename,
+        requested_by=requested_by,
+        description=f"la versión {version.pk}",
+    )
+
+
+def file_object_link(
+    file_object: FileObject, *, filename: str, requested_by: str, description: str
+) -> DownloadLink:
+    """Firma la descarga de un archivo limpio (una versión o la evidencia de una
+    respuesta del banco). ``description`` dice en el log qué se descargó."""
     if not file_object.is_clean:
         raise FileNotClean()
     seconds = settings.DOCUMENT_DOWNLOAD_URL_SECONDS
@@ -38,11 +50,11 @@ def download_link(version: DocumentFile, *, requested_by: str) -> DownloadLink:
         url = get_storage().presigned_url(
             file_object.object_key,
             expires_in=seconds,
-            filename=version.client_filename,
+            filename=filename,
             content_type=file_object.detected_mime_type,
         )
     except StorageUnavailable as exc:
-        logger.warning("No se pudo firmar la descarga de la versión %s", version.pk)
+        logger.warning("No se pudo firmar la descarga de %s", description)
         raise DownloadUnavailable() from exc
-    logger.info("Descarga de la versión %s firmada para %s", version.pk, requested_by)
+    logger.info("Descarga de %s firmada para %s", description, requested_by)
     return DownloadLink(url=url, expires_at=expires_at)

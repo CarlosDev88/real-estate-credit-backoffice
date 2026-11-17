@@ -187,18 +187,37 @@ git worktree add ..\wt-front-portal -b feat/front-portal
 Cada agente se abre en su carpeta. Al terminar: `git worktree remove ..\wt-front-backoffice` (y lo mismo con el otro).
 
 ## Brechas del backend vistas en los mockups
-Las cuatro primeras se resuelven en `TAREA-applications-listado.md`; mientras tanto, se simulan con MSW. Al cierre de F0 ese PR todavía no estaba en `master`: se marcan como resueltas cuando se fusione. Las demás quedan para la tarea de "brechas".
-- Tipo de crédito (`bank_product_type`) en el listado, y filtro por tipo.
-- Monto solicitado, completitud y número de co-solicitantes en cada fila.
-- Conteos de las pestañas del listado y qué estados agrupa cada una (no los puede definir el frontend).
-- Marca de "ya no cumple" en solicitudes `READY_TO_FILE` y nombre corto del banco (filas 9 y 10 de esa spec).
-- **Resuelta en `TAREA-brechas.md` (PR #por definir):** `public_status`, `public_status_label` y `needs_action` en `BuyerDocumentSlot` (API §19.1). Etiqueta pública del estado de cada documento para el comprador ("Te falta", "Corrígelo", "En revisión", "No aplica"). Hoy el DTO del comprador trae el código; el texto no puede escribirse en el frontend. Va en el DTO de `/buyer/.../document-slots` (tarea pequeña aparte, después de la fase 10).
-- **Resuelta en `TAREA-brechas.md` (PR #por definir):** `role_label` en `/auth/me` (API §7). Etiqueta del rol del usuario interno: `/auth/me` trae `role` y `roles` como códigos, sin texto. Mientras no exista, bajo el avatar van el nombre y el correo.
+Las cuatro primeras se resolvieron en `TAREA-applications-listado.md` (PR #16). Las de la tarea de "brechas" se resolvieron en `TAREA-brechas.md` (PR #18). Al final van las que dejó la F1 (PR #17).
+- **Resuelta en `TAREA-applications-listado.md` (PR #16):** tipo de crédito (`bank_product_type`) en el listado, y filtro por tipo.
+- **Resuelta en `TAREA-applications-listado.md` (PR #16):** monto solicitado, completitud y número de co-solicitantes en cada fila.
+- **Resuelta en `TAREA-applications-listado.md` (PR #16):** conteos de las pestañas del listado y qué estados agrupa cada una (no los puede definir el frontend).
+- **Resuelta en `TAREA-applications-listado.md` (PR #16):** marca de "ya no cumple" en solicitudes `READY_TO_FILE` y nombre corto del banco (filas 9 y 10 de esa spec).
+- **Resuelta en `TAREA-brechas.md` (PR #18):** `public_status`, `public_status_label` y `needs_action` en `BuyerDocumentSlot` (API §19.1). Etiqueta pública del estado de cada documento para el comprador ("Te falta", "Corrígelo", "En revisión", "No aplica"). Hoy el DTO del comprador trae el código; el texto no puede escribirse en el frontend. Va en el DTO de `/buyer/.../document-slots` (tarea pequeña aparte, después de la fase 10).
+- **Resuelta en `TAREA-brechas.md` (PR #18):** `role_label` en `/auth/me` (API §7). Desde la F1 (PR #17), el shell lo muestra bajo el nombre del usuario; sin rol, el correo. Antes, `/auth/me` traía `role` y `roles` como códigos, sin texto, y bajo el avatar iban el nombre y el correo.
 - Casilla "Mantener la sesión en este equipo" del login: `/auth/login` solo recibe correo y contraseña, y la sesión dura 8 h fijas. Se quita.
 - Búsqueda global de la barra superior: no hay endpoint. Se quita.
 - Campana de notificaciones internas de la barra superior: no hay endpoint. Se quita.
-- **Resuelta en `TAREA-brechas.md` (PR #por definir):** `headers.ETag` en las 56 respuestas que la llevan (API §6). El contrato (`contracts/openapi.json`) no declaraba la cabecera `ETag` en ninguna respuesta, aunque exige `If-Match` en 12 escrituras y API §6 dice que toda respuesta del expediente la lleva. El frontend la lee igual desde la respuesta, pero el contrato debe documentarla.
+- **Resuelta en `TAREA-brechas.md` (PR #18):** `headers.ETag` en las 56 respuestas que la llevan (API §6). El contrato (`contracts/openapi.json`) no declaraba la cabecera `ETag` en ninguna respuesta, aunque exige `If-Match` en 12 escrituras y API §6 dice que toda respuesta del expediente la lleva. El frontend la lee igual desde la respuesta, pero el contrato debe documentarla.
 - El tipo documental que ve el comprador (`BuyerSlotDocumentType`) no trae `allowed_mime_types` ni `max_size_bytes`; el interno (`SlotDocumentType`) sí. Sin ellos, el uploader del portal no puede validar tipo y tamaño antes de enviar: lo valida solo la API (`422 UNSUPPORTED_FILE_TYPE` / `FILE_TOO_LARGE`, `413 PAYLOAD_TOO_LARGE`).
+
+### Brechas que dejó la F1 (PR #17, `TAREA-front-backoffice.md`)
+**Listado (`/solicitudes`):**
+- Se quitaron, porque no tienen API: "Nueva solicitud", "Exportar CSV", la selección masiva ("Reasignar asesor" y "Exportar selección"), "Más filtros" y la opción "Sin banco elegido" del filtro de banco.
+- También se quitaron el filtro de asesor y el botón "⋯" de cada fila (la spec pide los tres filtros del mockup y no hay acciones por fila).
+- `participants_summary` trae solo conteos: el texto "+ 1 co-solicitante" / "deudor solidario" lo arma el frontend. Para sacarlo, el resumen debería traer la etiqueta de cada rol.
+
+**Expediente (`/solicitudes/[id]`):**
+- **Actividad completa:** "Actividad reciente" del mockup (cargas, revisiones, envíos de enlace) se reemplazó por "Últimos cambios de estado", que sale de `status-history`. El registro de actividad completo llega con el módulo de auditoría.
+- "Agregar" participantes queda fuera: la edición de los datos del comprador llega con la F2.
+- `AvailableAction` no dice si la transición exige motivo. El frontend siempre ofrece el motivo y muestra el `400` de la API en el campo. Un `reason_required` (o la lista de motivos válidos) evitaría el intento fallido.
+- `BuyerAccessLink.status` no trae `status_label`: la tarjeta "Acceso del comprador" muestra las fechas (enviado, usado, revocado o vence) en lugar del estado.
+- No hay un endpoint interno con los consentimientos requeridos de la solicitud: se ven los aceptados, sin el "de N".
+- El detalle no trae el nombre del broker que originó la oportunidad: en "Origen" va solo la etiqueta.
+
+**Documentos y revisión:**
+- `CurrentFile` (en la lista de slots) no trae `size_bytes`, `detected_mime_type` ni el último `buyer_comment`. El frontend pide `GET /document-files/{id}` por cada archivo vigente (unas 16 peticiones por expediente).
+- `DocumentFile` no dice qué usuario interno cargó un archivo (solo `uploaded_by_buyer_session_id`): "por el comprador" sale cuando viene ese campo; si no, no se dice quién.
+- No hay "deshacer" una aprobación: se corrige decidiendo otra vez sobre la versión vigente (API §19.1).
 
 ## Pruebas
 - **Unitarias** (Vitest + Testing Library): componentes de `ui`, formularios con validación, manejo de `ApiError` y formato de montos.

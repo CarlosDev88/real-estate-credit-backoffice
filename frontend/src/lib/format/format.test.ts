@@ -7,6 +7,7 @@ import {
   formatDateTime,
   formatInteger,
   formatPercent,
+  formatPercentDecimal,
   formatRelative,
   parseInteger,
   TIME_ZONE,
@@ -38,6 +39,13 @@ describe("montos y porcentajes", () => {
     expect(formatPercent(62)).toBe(`62${NBSP}%`);
     expect(formatPercent(61.6)).toBe(`62${NBSP}%`);
     expect(formatPercent(null)).toBeNull();
+  });
+
+  it('porcentaje con un decimal "70,2 %"', () => {
+    expect(formatPercentDecimal(70.19)).toBe(`70,2${NBSP}%`);
+    expect(formatPercentDecimal(80)).toBe(`80,0${NBSP}%`);
+    expect(formatPercentDecimal(Number.NaN)).toBeNull();
+    expect(formatPercentDecimal(undefined)).toBeNull();
   });
 });
 

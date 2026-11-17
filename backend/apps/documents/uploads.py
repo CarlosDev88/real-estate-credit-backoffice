@@ -58,12 +58,12 @@ UPLOADABLE_STATUSES = (SlotStatus.PENDING, SlotStatus.UPLOADED, SlotStatus.REJEC
 
 
 def slot_has_open_observation(slot: ApplicationDocumentSlot) -> bool:
-    """¿El banco observó este documento y la observación sigue abierta?
+    """¿El banco observó este documento y la observación sigue abierta? Enganche del
+    paso 11 (``filing_response_observations``): después de `FILED`, el comprador solo
+    reemplaza los documentos observados."""
+    from apps.filings.observations import has_open_observation
 
-    Punto de enganche del paso 11 (``filing_response_observations``). Hasta entonces
-    falla cerrado: después de `FILED` no se reemplaza nada.
-    """
-    return False
+    return has_open_observation(slot)
 
 
 def upload_block(application: CreditApplication, slot: ApplicationDocumentSlot) -> ApiError | None:

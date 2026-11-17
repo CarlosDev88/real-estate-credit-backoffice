@@ -25,6 +25,8 @@ from apps.applications.serializers import (
 from apps.applications.stages import BUYER_STAGES, progress_stages
 from apps.catalogs.serializers import CatalogItemRefSerializer
 from apps.catalogs.workflow import ApplicationStatus
+from apps.filings.responses import latest_public_update
+from apps.filings.serializers import BuyerBankUpdateSerializer
 from apps.identity import buyer_portal, consents
 from apps.identity.models import BuyerSession, ConsentAction, ConsentDefinition, ConsentRecord
 from config.serializers import StrictSerializer
@@ -232,6 +234,10 @@ class BuyerApplicationDetailSerializer(BuyerProcessSerializer):
     )
     property = BuyerPropertySerializer(source="financed_property", read_only=True, allow_null=True)
     financing = BuyerFinancingSerializer(read_only=True, allow_null=True)
+    latest_bank_update = serializers.SerializerMethodField(
+        help_text="Última respuesta del banco con mensaje público; nulo si no hay. Nunca "
+        "trae el comentario interno."
+    )
 
     class Meta(BuyerProcessSerializer.Meta):
         fields = [
@@ -243,6 +249,7 @@ class BuyerApplicationDetailSerializer(BuyerProcessSerializer):
             "participants",
             "property",
             "financing",
+            "latest_bank_update",
         ]
         read_only_fields = fields
 
@@ -258,6 +265,11 @@ class BuyerApplicationDetailSerializer(BuyerProcessSerializer):
     @extend_schema_field(BuyerProgressSerializer)
     def get_progress(self, application: CreditApplication) -> dict[str, Any]:
         return dict(BuyerProgressSerializer(self._progress(application)).data)
+
+    @extend_schema_field(BuyerBankUpdateSerializer(allow_null=True))
+    def get_latest_bank_update(self, application: CreditApplication) -> dict[str, Any] | None:
+        update = latest_public_update(application.pk)
+        return None if update is None else dict(BuyerBankUpdateSerializer(update).data)
 
 
 # --- Consentimientos --------------------------------------------------------------------

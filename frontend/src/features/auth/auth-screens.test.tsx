@@ -27,6 +27,7 @@ const ME = {
   name: "Asesora Pruebas E2E",
   email: "asesor@example.com",
   role: "ADVISOR",
+  role_label: "Asesor",
   roles: ["ADVISOR"],
   permissions: ["applications.read"],
   scope: { assigned_applications_only: true, partner_id: null },
@@ -63,6 +64,10 @@ describe("BackofficeGuard", () => {
       "page",
     );
     expect(screen.getByRole("main")).toHaveTextContent("contenido");
+    // Bajo el nombre, el rol de `/auth/me` (`role_label`).
+    expect(screen.getByRole("button", { name: /Asesora Pruebas E2E/ })).toHaveTextContent(
+      "Asesora Pruebas E2EAsesor",
+    );
   });
 
   it("sin el permiso de la ruta lleva al destino por defecto", async () => {

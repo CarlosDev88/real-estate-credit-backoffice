@@ -23,6 +23,8 @@ from apps.applications.models import ApplicationStatusHistory, CreditApplication
 from apps.crm.models import Client
 from apps.documents.file_validation import detect_mime_type
 from apps.documents.models import DocumentFile, DocumentReview, ReviewDecision, SlotStatus
+from apps.filings.demo_data import FILED_DEMO_CASES
+from apps.filings.models import Filing, FilingResponse
 from apps.identity.models import BuyerAccessLink, User
 from tests.applications.conftest import APPLICATIONS_URL
 from tests.helpers import login
@@ -30,6 +32,8 @@ from tests.helpers import login
 pytestmark = pytest.mark.django_db
 
 E2E_EMAIL = "asesor.e2e@example.com"
+# Las 30 de las pestañas, más las 3 radicadas (tests/applications/filings/test_demo_data.py).
+TOTAL_APPLICATIONS = len(DEMO_CASES) + len(FILED_DEMO_CASES)
 
 
 def seed(**options: Any) -> str:
@@ -53,6 +57,8 @@ def counts() -> dict[str, int]:
         "history": ApplicationStatusHistory.objects.count(),
         "files": DocumentFile.objects.count(),
         "links": BuyerAccessLink.objects.count(),
+        "filings": Filing.objects.count(),
+        "filing_responses": FilingResponse.objects.count(),
     }
 
 
@@ -64,7 +70,8 @@ def e2e_advisor(make_user: Callable[..., User]) -> User:
 def test_seed_creates_the_demo_data(e2e_advisor: User) -> None:
     output = seed(advisor_email=E2E_EMAIL)
 
-    assert CreditApplication.objects.count() == len(DEMO_CASES) == 30
+    assert len(DEMO_CASES) == 30
+    assert CreditApplication.objects.count() == TOTAL_APPLICATIONS == 33
     assert "http://localhost:3000/acceso?token=" in output
     for spec in DEMO_USERS:
         assert spec.email in output
@@ -86,7 +93,10 @@ def test_seed_creates_the_demo_data(e2e_advisor: User) -> None:
     # Revisiones: aprobadas y rechazadas; el historial parte siempre de `DRAFT`.
     decisions = set(DocumentReview.objects.values_list("decision", flat=True))
     assert {ReviewDecision.APPROVED, ReviewDecision.REJECTED} <= decisions
-    assert ApplicationStatusHistory.objects.filter(from_status__isnull=True).count() == 30
+    assert (
+        ApplicationStatusHistory.objects.filter(from_status__isnull=True).count()
+        == TOTAL_APPLICATIONS
+    )
     # Un solo enlace pendiente: el que imprime el comando.
     pending = BuyerAccessLink.objects.filter(consumed_at__isnull=True, revoked_at__isnull=True)
     assert pending.count() == 1
@@ -99,7 +109,7 @@ def test_seed_creates_the_demo_data(e2e_advisor: User) -> None:
     tabs = {row["code"]: row["count"] for row in response.json()}
     for code in ("draft", "waiting", "review", "ready"):
         assert tabs[code] > 0, tabs
-    assert tabs["all"] == 30
+    assert tabs["all"] == TOTAL_APPLICATIONS
 
     def rows(quick_filter: str, client: APIClient = admin) -> list[dict[str, Any]]:
         params = {"quick_filter": quick_filter, "page_size": "50"}

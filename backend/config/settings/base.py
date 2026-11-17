@@ -32,6 +32,7 @@ INSTALLED_APPS = [
     "apps.banking",
     "apps.documents",
     "apps.applications",
+    "apps.filings",
     "apps.tasks",
     "apps.workday",
 ]
