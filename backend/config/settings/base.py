@@ -33,6 +33,8 @@ INSTALLED_APPS = [
     "apps.documents",
     "apps.applications",
     "apps.filings",
+    "apps.notifications",
+    "apps.idempotency",
     "apps.tasks",
     "apps.workday",
     "apps.activity",
@@ -152,6 +154,9 @@ SPECTACULAR_SETTINGS = {
         # Portal y backoffice: estado público del documento y estado de cada etapa.
         "PublicSlotStatusEnum": "apps.documents.models.PublicSlotStatus",
         "ProgressStageStateEnum": "apps.applications.stages.StageState",
+        # Notificaciones: canal y estado de cada entrega.
+        "NotificationChannelEnum": "apps.notifications.models.DeliveryChannel",
+        "NotificationDeliveryStatusEnum": "apps.notifications.models.DeliveryStatus",
         # Ítems de la completitud: el nombre publicado antes de "Mi día", que no cambia.
         "CodeEnum": "apps.applications.serializers.COMPLETENESS_ITEM_CODES",
         # Mi día: segmentos de atención y siguiente acción.

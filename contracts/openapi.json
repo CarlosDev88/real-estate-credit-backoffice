@@ -1545,9 +1545,17 @@
             },
             "post": {
                 "operationId": "buyer_access_links_create",
-                "description": "El enlace es para el titular (`PRIMARY`) y sirve una sola vez. Revoca los enlaces pendientes anteriores de la solicitud; las sesiones abiertas siguen vivas. `url` lleva el token y solo aparece en esta respuesta. Con `EMAIL`, además se envía al correo del titular. Límite: 3 por hora por emisor y solicitud.",
+                "description": "El enlace es para el titular (`PRIMARY`) y sirve una sola vez. Revoca los enlaces pendientes anteriores de la solicitud; las sesiones abiertas siguen vivas. `url` lleva el token y solo aparece en esta respuesta. Con `EMAIL`, además se envía al correo del titular. Límite: 3 por hora por emisor y solicitud.\n\nCon `Idempotency-Key`, repetir la clave no crea otro enlace, pero tampoco devuelve la respuesta original, porque el token en claro no se guarda: responde `409 IDEMPOTENCY_REPLAY_UNAVAILABLE`. Para otro enlace, se usa otra clave.",
                 "summary": "Generar un enlace de acceso para el titular",
                 "parameters": [
+                    {
+                        "in": "header",
+                        "name": "Idempotency-Key",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Opcional. Clave única de la operación (1 a 100 caracteres visibles; por ejemplo, un UUID), válida 24 horas para el actor, el método y la ruta. Repetirla con el mismo cuerpo devuelve la respuesta original; con otro cuerpo, `422 IDEMPOTENCY_CONFLICT`; mientras la primera sigue en curso, `409 IDEMPOTENCY_IN_PROGRESS`. Solo se guardan las respuestas `2xx`."
+                    },
                     {
                         "in": "path",
                         "name": "application_id",
@@ -1594,7 +1602,7 @@
                                 }
                             }
                         },
-                        "description": "VALIDATION_ERROR (también: canal EMAIL sin correo del titular)"
+                        "description": "VALIDATION_ERROR (también: canal EMAIL sin correo del titular); VALIDATION_ERROR (`Idempotency-Key` mal formada)"
                     },
                     "409": {
                         "content": {
@@ -1604,7 +1612,7 @@
                                 }
                             }
                         },
-                        "description": "APPLICATION_CLOSED"
+                        "description": "APPLICATION_CLOSED; IDEMPOTENCY_IN_PROGRESS o IDEMPOTENCY_REPLAY_UNAVAILABLE"
                     },
                     "429": {
                         "content": {
@@ -1645,6 +1653,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "422": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "IDEMPOTENCY_CONFLICT"
                     }
                 }
             }
@@ -1819,6 +1837,14 @@
                 "summary": "Pedir el paquete para radicar",
                 "parameters": [
                     {
+                        "in": "header",
+                        "name": "Idempotency-Key",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Opcional. Clave única de la operación (1 a 100 caracteres visibles; por ejemplo, un UUID), válida 24 horas para el actor, el método y la ruta. Repetirla con el mismo cuerpo devuelve la respuesta original; con otro cuerpo, `422 IDEMPOTENCY_CONFLICT`; mientras la primera sigue en curso, `409 IDEMPOTENCY_IN_PROGRESS`. Solo se guardan las respuestas `2xx`."
+                    },
+                    {
                         "in": "path",
                         "name": "application_id",
                         "schema": {
@@ -1865,7 +1891,7 @@
                                 }
                             }
                         },
-                        "description": "APPLICATION_CLOSED"
+                        "description": "APPLICATION_CLOSED; IDEMPOTENCY_IN_PROGRESS"
                     },
                     "422": {
                         "content": {
@@ -1875,7 +1901,7 @@
                                 }
                             }
                         },
-                        "description": "APPLICATION_NOT_READY, con `DOCUMENT_PENDING`, `DOCUMENT_EXPIRED` o `DOCUMENTS_NOT_CONFIGURED` en `details`"
+                        "description": "APPLICATION_NOT_READY, con `DOCUMENT_PENDING`, `DOCUMENT_EXPIRED` o `DOCUMENTS_NOT_CONFIGURED` en `details`; IDEMPOTENCY_CONFLICT"
                     },
                     "404": {
                         "content": {
@@ -1906,6 +1932,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "VALIDATION_ERROR (`Idempotency-Key` mal formada)"
                     }
                 }
             }
@@ -2305,6 +2341,14 @@
                 "summary": "Registrar la radicación manual",
                 "parameters": [
                     {
+                        "in": "header",
+                        "name": "Idempotency-Key",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Opcional. Clave única de la operación (1 a 100 caracteres visibles; por ejemplo, un UUID), válida 24 horas para el actor, el método y la ruta. Repetirla con el mismo cuerpo devuelve la respuesta original; con otro cuerpo, `422 IDEMPOTENCY_CONFLICT`; mientras la primera sigue en curso, `409 IDEMPOTENCY_IN_PROGRESS`. Solo se guardan las respuestas `2xx`."
+                    },
+                    {
                         "in": "path",
                         "name": "application_id",
                         "schema": {
@@ -2360,7 +2404,7 @@
                                 }
                             }
                         },
-                        "description": "STALE_VERSION, APPLICATION_CLOSED, INVALID_STATE_TRANSITION (no está en READY_TO_FILE), PACKAGE_NOT_READY, PACKAGE_EXPIRED, PACKAGE_OUTDATED, PACKAGE_ALREADY_FILED o FILING_REFERENCE_EXISTS"
+                        "description": "STALE_VERSION, APPLICATION_CLOSED, INVALID_STATE_TRANSITION (no está en READY_TO_FILE), PACKAGE_NOT_READY, PACKAGE_EXPIRED, PACKAGE_OUTDATED, PACKAGE_ALREADY_FILED o FILING_REFERENCE_EXISTS; IDEMPOTENCY_IN_PROGRESS"
                     },
                     "422": {
                         "content": {
@@ -2370,7 +2414,7 @@
                                 }
                             }
                         },
-                        "description": "BANK_PRODUCT_MISMATCH o APPLICATION_NOT_READY (documentos o reglas del banco, en `details`)"
+                        "description": "BANK_PRODUCT_MISMATCH o APPLICATION_NOT_READY (documentos o reglas del banco, en `details`); IDEMPOTENCY_CONFLICT"
                     },
                     "404": {
                         "content": {
@@ -2401,6 +2445,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "VALIDATION_ERROR (`Idempotency-Key` mal formada)"
                     }
                 }
             }
@@ -2783,6 +2837,92 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    }
+                }
+            }
+        },
+        "/api/v1/applications/{application_id}/notifications": {
+            "get": {
+                "operationId": "applications_notifications_list",
+                "description": "Lo que recibió el comprador, de la más nueva a la más vieja, con cada entrega (portal y correo): estado, intentos y último error, para saber si el correo salió. Para el administrador y el asesor asignado (`notifications.read`).",
+                "summary": "Notificaciones de la solicitud y sus entregas",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "application_id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "required": true
+                    },
+                    {
+                        "name": "page",
+                        "required": false,
+                        "in": "query",
+                        "description": "Un número de página dentro del conjunto de resultados paginado.",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "page_size",
+                        "required": false,
+                        "in": "query",
+                        "description": "Número de resultados a devolver por página.",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "tags": [
+                    "Notifications"
+                ],
+                "security": [
+                    {
+                        "internalSession": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PaginatedApplicationNotificationList"
+                                }
+                            }
+                        },
+                        "description": ""
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "NOT_AUTHENTICATED o SESSION_EXPIRED"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "PERMISSION_DENIED"
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "RESOURCE_NOT_FOUND (inexistente o fuera del alcance)"
                     }
                 }
             }
@@ -3307,6 +3447,14 @@
                 "summary": "Cambiar el estado de la solicitud",
                 "parameters": [
                     {
+                        "in": "header",
+                        "name": "Idempotency-Key",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Opcional. Clave única de la operación (1 a 100 caracteres visibles; por ejemplo, un UUID), válida 24 horas para el actor, el método y la ruta. Repetirla con el mismo cuerpo devuelve la respuesta original; con otro cuerpo, `422 IDEMPOTENCY_CONFLICT`; mientras la primera sigue en curso, `409 IDEMPOTENCY_IN_PROGRESS`. Solo se guardan las respuestas `2xx`."
+                    },
+                    {
                         "in": "path",
                         "name": "application_id",
                         "schema": {
@@ -3362,7 +3510,7 @@
                                 }
                             }
                         },
-                        "description": "APPLICATION_NOT_READY o FINANCING_MODE_MISMATCH"
+                        "description": "APPLICATION_NOT_READY o FINANCING_MODE_MISMATCH; IDEMPOTENCY_CONFLICT"
                     },
                     "409": {
                         "content": {
@@ -3372,7 +3520,7 @@
                                 }
                             }
                         },
-                        "description": "STALE_VERSION, APPLICATION_CLOSED o INVALID_STATE_TRANSITION"
+                        "description": "STALE_VERSION, APPLICATION_CLOSED o INVALID_STATE_TRANSITION; IDEMPOTENCY_IN_PROGRESS"
                     },
                     "404": {
                         "content": {
@@ -3403,6 +3551,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "VALIDATION_ERROR (`Idempotency-Key` mal formada)"
                     }
                 }
             }
@@ -8526,6 +8684,253 @@
                 }
             }
         },
+        "/api/v1/buyer/notifications": {
+            "get": {
+                "operationId": "buyer_notifications_list",
+                "description": "Las de la solicitud de la sesión, de la más nueva a la más vieja. Con `unread=true`, solo las no leídas.",
+                "summary": "Notificaciones del comprador",
+                "parameters": [
+                    {
+                        "name": "page",
+                        "required": false,
+                        "in": "query",
+                        "description": "Un número de página dentro del conjunto de resultados paginado.",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "page_size",
+                        "required": false,
+                        "in": "query",
+                        "description": "Número de resultados a devolver por página.",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "unread",
+                        "schema": {
+                            "type": "boolean"
+                        },
+                        "description": "Solo las no leídas."
+                    }
+                ],
+                "tags": [
+                    "Buyer portal"
+                ],
+                "security": [
+                    {
+                        "buyerSession": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PaginatedBuyerNotificationList"
+                                }
+                            }
+                        },
+                        "description": ""
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "VALIDATION_ERROR"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "NOT_AUTHENTICATED o SESSION_EXPIRED"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "CSRF_FAILED"
+                    }
+                }
+            }
+        },
+        "/api/v1/buyer/notifications/{notification_id}/read": {
+            "patch": {
+                "operationId": "buyer_notifications_read",
+                "description": "Sin cuerpo. Es idempotente: una notificación ya leída conserva su `read_at`. La de otro comprador o de otra solicitud responde `404`.",
+                "summary": "Marcar una notificación como leída",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "notification_id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "Buyer portal"
+                ],
+                "security": [
+                    {
+                        "buyerSession": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/BuyerNotification"
+                                }
+                            }
+                        },
+                        "description": ""
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "RESOURCE_NOT_FOUND (no es una notificación de la sesión)"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "NOT_AUTHENTICATED o SESSION_EXPIRED"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "CSRF_FAILED"
+                    }
+                }
+            }
+        },
+        "/api/v1/buyer/notifications/read-all": {
+            "post": {
+                "operationId": "buyer_notifications_read_all",
+                "description": "Sin cuerpo. `count` es la cantidad que estaba sin leer y se marcó.",
+                "summary": "Marcar todas las notificaciones como leídas",
+                "tags": [
+                    "Buyer portal"
+                ],
+                "security": [
+                    {
+                        "buyerSession": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/NotificationCount"
+                                }
+                            }
+                        },
+                        "description": ""
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "NOT_AUTHENTICATED o SESSION_EXPIRED"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "CSRF_FAILED"
+                    }
+                }
+            }
+        },
+        "/api/v1/buyer/notifications/unread-count": {
+            "get": {
+                "operationId": "buyer_notifications_unread_count",
+                "description": "Para el número de la navegación del portal.",
+                "summary": "Cantidad de notificaciones sin leer",
+                "tags": [
+                    "Buyer portal"
+                ],
+                "security": [
+                    {
+                        "buyerSession": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/NotificationCount"
+                                }
+                            }
+                        },
+                        "description": ""
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "NOT_AUTHENTICATED o SESSION_EXPIRED"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "CSRF_FAILED"
+                    }
+                }
+            }
+        },
         "/api/v1/buyer/participants/{participant_id}/financial-profile": {
             "get": {
                 "operationId": "buyer_financial_profile_retrieve",
@@ -13108,6 +13513,14 @@
                 "summary": "Registrar una respuesta del banco",
                 "parameters": [
                     {
+                        "in": "header",
+                        "name": "Idempotency-Key",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Opcional. Clave única de la operación (1 a 100 caracteres visibles; por ejemplo, un UUID), válida 24 horas para el actor, el método y la ruta. Repetirla con el mismo cuerpo devuelve la respuesta original; con otro cuerpo, `422 IDEMPOTENCY_CONFLICT`; mientras la primera sigue en curso, `409 IDEMPOTENCY_IN_PROGRESS`. Solo se guardan las respuestas `2xx`."
+                    },
+                    {
                         "in": "path",
                         "name": "filing_id",
                         "schema": {
@@ -13163,7 +13576,7 @@
                                 }
                             }
                         },
-                        "description": "STALE_VERSION, APPLICATION_CLOSED, INVALID_STATE_TRANSITION (el tipo no se admite en el estado actual), FILING_NOT_LATEST o RESPONSE_CORRECTION_NOT_ALLOWED"
+                        "description": "STALE_VERSION, APPLICATION_CLOSED, INVALID_STATE_TRANSITION (el tipo no se admite en el estado actual), FILING_NOT_LATEST o RESPONSE_CORRECTION_NOT_ALLOWED; IDEMPOTENCY_IN_PROGRESS"
                     },
                     "404": {
                         "content": {
@@ -13194,6 +13607,26 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "VALIDATION_ERROR (`Idempotency-Key` mal formada)"
+                    },
+                    "422": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "IDEMPOTENCY_CONFLICT"
                     }
                 }
             }
@@ -18990,6 +19423,66 @@
                     "withdrawn_at"
                 ]
             },
+            "ApplicationNotification": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "readOnly": true
+                    },
+                    "notification_type": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/NotificationTypeEnum"
+                            }
+                        ],
+                        "readOnly": true
+                    },
+                    "notification_type_label": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "title": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "message": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "readOnly": true
+                    },
+                    "read_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time",
+                        "readOnly": true
+                    },
+                    "deliveries": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/NotificationDelivery"
+                        },
+                        "readOnly": true
+                    }
+                },
+                "required": [
+                    "created_at",
+                    "deliveries",
+                    "id",
+                    "message",
+                    "notification_type",
+                    "notification_type_label",
+                    "read_at",
+                    "title"
+                ]
+            },
             "ApplicationParticipant": {
                 "type": "object",
                 "properties": {
@@ -21745,6 +22238,58 @@
                 "required": [
                     "monthly_amount_cop",
                     "source_type_code"
+                ]
+            },
+            "BuyerNotification": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "readOnly": true
+                    },
+                    "notification_type": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/NotificationTypeEnum"
+                            }
+                        ],
+                        "readOnly": true
+                    },
+                    "notification_type_label": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "title": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "message": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "readOnly": true
+                    },
+                    "read_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time",
+                        "readOnly": true
+                    }
+                },
+                "required": [
+                    "created_at",
+                    "id",
+                    "message",
+                    "notification_type",
+                    "notification_type_label",
+                    "read_at",
+                    "title"
                 ]
             },
             "BuyerParticipant": {
@@ -26475,6 +27020,129 @@
                     "body"
                 ]
             },
+            "NotificationChannelEnum": {
+                "enum": [
+                    "EMAIL",
+                    "PORTAL"
+                ],
+                "type": "string",
+                "description": "* `EMAIL` - Correo electrónico\n* `PORTAL` - Portal"
+            },
+            "NotificationCount": {
+                "type": "object",
+                "properties": {
+                    "count": {
+                        "type": "integer",
+                        "minimum": 0
+                    }
+                },
+                "required": [
+                    "count"
+                ]
+            },
+            "NotificationDelivery": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "readOnly": true
+                    },
+                    "channel": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/NotificationChannelEnum"
+                            }
+                        ],
+                        "readOnly": true
+                    },
+                    "channel_label": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "destination": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "readOnly": true
+                    },
+                    "status": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/NotificationDeliveryStatusEnum"
+                            }
+                        ],
+                        "readOnly": true
+                    },
+                    "status_label": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "attempt_count": {
+                        "type": "integer",
+                        "readOnly": true
+                    },
+                    "next_attempt_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time",
+                        "readOnly": true
+                    },
+                    "sent_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time",
+                        "readOnly": true
+                    },
+                    "last_error_code": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "readOnly": true
+                    }
+                },
+                "required": [
+                    "attempt_count",
+                    "channel",
+                    "channel_label",
+                    "destination",
+                    "id",
+                    "last_error_code",
+                    "next_attempt_at",
+                    "sent_at",
+                    "status",
+                    "status_label"
+                ]
+            },
+            "NotificationDeliveryStatusEnum": {
+                "enum": [
+                    "PENDING",
+                    "SENT",
+                    "FAILED"
+                ],
+                "type": "string",
+                "description": "* `PENDING` - Pendiente\n* `SENT` - Enviada\n* `FAILED` - Fallida"
+            },
+            "NotificationTypeEnum": {
+                "enum": [
+                    "ACCESS_GRANTED",
+                    "DOCUMENT_REJECTED",
+                    "READY_TO_FILE",
+                    "FILED",
+                    "BANK_RETURNED",
+                    "BANK_APPROVED",
+                    "BANK_REJECTED",
+                    "DISBURSED"
+                ],
+                "type": "string",
+                "description": "* `ACCESS_GRANTED` - Acceso al portal\n* `DOCUMENT_REJECTED` - Documento por corregir\n* `READY_TO_FILE` - Expediente completo\n* `FILED` - Solicitud radicada\n* `BANK_RETURNED` - Devolución del banco\n* `BANK_APPROVED` - Crédito aprobado\n* `BANK_REJECTED` - Crédito rechazado\n* `DISBURSED` - Crédito desembolsado"
+            },
             "NullEnum": {
                 "type": "null"
             },
@@ -27113,6 +27781,47 @@
                     }
                 }
             },
+            "PaginatedApplicationNotificationList": {
+                "type": "object",
+                "required": [
+                    "items",
+                    "page",
+                    "page_size",
+                    "total",
+                    "next",
+                    "previous"
+                ],
+                "properties": {
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/ApplicationNotification"
+                        }
+                    },
+                    "page": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "page_size": {
+                        "type": "integer",
+                        "example": 25
+                    },
+                    "total": {
+                        "type": "integer",
+                        "example": 128
+                    },
+                    "next": {
+                        "type": "string",
+                        "nullable": true,
+                        "example": "/api/v1/x?page=2"
+                    },
+                    "previous": {
+                        "type": "string",
+                        "nullable": true,
+                        "example": null
+                    }
+                }
+            },
             "PaginatedApplicationParticipantList": {
                 "type": "object",
                 "required": [
@@ -27579,6 +28288,47 @@
                         "type": "array",
                         "items": {
                             "$ref": "#/components/schemas/BuyerIncomeSource"
+                        }
+                    },
+                    "page": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "page_size": {
+                        "type": "integer",
+                        "example": 25
+                    },
+                    "total": {
+                        "type": "integer",
+                        "example": 128
+                    },
+                    "next": {
+                        "type": "string",
+                        "nullable": true,
+                        "example": "/api/v1/x?page=2"
+                    },
+                    "previous": {
+                        "type": "string",
+                        "nullable": true,
+                        "example": null
+                    }
+                }
+            },
+            "PaginatedBuyerNotificationList": {
+                "type": "object",
+                "required": [
+                    "items",
+                    "page",
+                    "page_size",
+                    "total",
+                    "next",
+                    "previous"
+                ],
+                "properties": {
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/BuyerNotification"
                         }
                     },
                     "page": {

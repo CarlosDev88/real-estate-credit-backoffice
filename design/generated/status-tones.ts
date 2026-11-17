@@ -2,7 +2,7 @@
 // Tono visual por código de estado. Es presentación: un código desconocido cae en "neutral".
 
 export type Tone = "neutral" | "info" | "accent" | "success" | "warning" | "danger";
-export type StatusKind = "application" | "documentSlot" | "fileScan" | "ruleOutcome";
+export type StatusKind = "application" | "documentSlot" | "fileScan" | "ruleOutcome" | "filing";
 
 const TONES: Record<StatusKind, Readonly<Record<string, Tone>>> = {
   "application": {
@@ -17,6 +17,7 @@ const TONES: Record<StatusKind, Readonly<Record<string, Tone>>> = {
     "APPROVED": "success",
     "LEGALIZATION": "success",
     "DISBURSED": "success",
+    "BANK_OBSERVATION": "warning",
     "REJECTED": "danger",
     "WITHDRAWN": "neutral",
     "CANCELLED": "neutral",
@@ -40,6 +41,16 @@ const TONES: Record<StatusKind, Readonly<Record<string, Tone>>> = {
     "PASSED": "success",
     "FAILED": "danger",
     "MISSING_DATA": "warning"
+  },
+  "filing": {
+    "FILED": "info",
+    "RECEIVED": "info",
+    "IN_ANALYSIS": "info",
+    "RETURNED": "warning",
+    "APPROVED": "success",
+    "REJECTED": "danger",
+    "DISBURSED": "success",
+    "OTHER": "neutral"
   }
 };
 
