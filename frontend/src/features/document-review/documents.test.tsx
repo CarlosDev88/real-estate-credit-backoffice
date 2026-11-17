@@ -53,6 +53,12 @@ vi.mock("@/components/ui/pdf-loader", () => ({
 const DOCS = "/solicitudes/app-1?tab=documentos";
 const REVIEWER = [...ALL_PERMISSIONS, "documents.review", "documents.waive", "documents.download"];
 
+/**
+ * Primer contenido estable: el primer render del archivo carga Ant Design y el expediente
+ * en frío, y con la instrumentación de `--coverage` pasa del segundo por defecto.
+ */
+const FIRST_RENDER = { timeout: 10_000 };
+
 async function renderDocuments(search = DOCS) {
   window.history.replaceState(null, "", search);
   const user = userEvent.setup();
@@ -63,7 +69,7 @@ async function renderDocuments(search = DOCS) {
       </QueryProvider>
     </App>,
   );
-  await screen.findByRole("heading", { name: /Sofía Herrera/, level: 3 });
+  await screen.findByRole("heading", { name: /Sofía Herrera/, level: 3 }, FIRST_RENDER);
   return user;
 }
 
@@ -74,7 +80,7 @@ const query = () => new URLSearchParams(window.location.search);
 const getDrawer = (label: string) =>
   screen.getByRole("heading", { name: label, level: 2 }).closest<HTMLElement>("[role=dialog]")!;
 const findDrawer = async (label: string) => {
-  await screen.findByRole("heading", { name: label, level: 2 });
+  await screen.findByRole("heading", { name: label, level: 2 }, FIRST_RENDER);
   return getDrawer(label);
 };
 
@@ -90,12 +96,14 @@ describe("pestaña Documentos", { timeout: 20_000 }, () => {
     await renderDocuments();
 
     // El perfil laboral ("Empleada") llega en otra consulta: se espera a que esté.
-    await waitFor(() =>
-      expect(screen.getAllByRole("heading", { level: 3 }).map((h) => h.textContent)).toEqual([
-        "SHSofía Herrera· Titular · Empleada",
-        "DMDaniel Mejía· Co-solicitante",
-        "Solicitud· Inmueble y trámite",
-      ]),
+    await waitFor(
+      () =>
+        expect(screen.getAllByRole("heading", { level: 3 }).map((h) => h.textContent)).toEqual([
+          "SHSofía Herrera· Titular · Empleada",
+          "DMDaniel Mejía· Co-solicitante",
+          "Solicitud· Inmueble y trámite",
+        ]),
+      FIRST_RENDER,
     );
     expect(screen.queryByText("Documento retirado")).toBeNull();
 
