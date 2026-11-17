@@ -11,6 +11,8 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { ScrollTabs } from "@/components/ui/scroll-tabs";
 import { useMe } from "@/features/auth/queries";
 import { DocumentsTab } from "@/features/document-review/documents-tab";
+import { FilingsTab } from "@/features/filings/filings-tab";
+import { useFilings } from "@/features/filings/queries";
 import { ProgressStepper } from "@/features/applications/progress-stepper";
 import { HistoryPanel } from "@/features/applications/status-history";
 import {
@@ -47,7 +49,7 @@ import {
 } from "@/features/applications/workspace-queries";
 import { isApiError } from "@/lib/api/errors";
 
-export const TABS = ["resumen", "documentos", "historial"] as const;
+export const TABS = ["resumen", "documentos", "radicacion", "historial"] as const;
 export type WorkspaceTab = (typeof TABS)[number];
 const DEFAULT_TAB: WorkspaceTab = "resumen";
 /** Parámetro con el slot que abre el panel de revisión (pestaña Documentos). */
@@ -185,7 +187,11 @@ export function WorkspaceScreen({ id }: { id: string }) {
 function Workspace({ detail, version }: { detail: ApplicationDetail; version: number }) {
   const id = detail.id;
   const permissions = usePermissions();
-  const { tab, slot, go } = useWorkspaceTab();
+  const { tab: requested, slot, go } = useWorkspaceTab();
+  // La pestaña Radicación solo existe con `filings.read`; su conteo son las radicaciones.
+  const canReadFilings = permissions.has("filings.read");
+  const filings = useFilings(id, canReadFilings);
+  const tab = requested === "radicacion" && !canReadFilings ? "resumen" : requested;
 
   const completeness = useCompleteness(id);
   const participants = useParticipants(id);
@@ -247,6 +253,9 @@ function Workspace({ detail, version }: { detail: ApplicationDetail; version: nu
         items={[
           { key: "resumen", label: "Resumen" },
           { key: "documentos", label: "Documentos", count: pending ?? undefined },
+          ...(canReadFilings
+            ? [{ key: "radicacion", label: "Radicación", count: filings.data?.total }]
+            : []),
           { key: "historial", label: "Historial" },
         ]}
       />
@@ -315,6 +324,12 @@ function Workspace({ detail, version }: { detail: ApplicationDetail; version: nu
             openSlotId={slot}
             onOpenSlot={(slotId) => go("documentos", slotId ? { [SLOT_PARAM]: slotId } : {})}
           />
+        </section>
+      )}
+
+      {tab === "radicacion" && (
+        <section role="tabpanel" aria-label="Radicación">
+          <FilingsTab detail={detail} version={version} permissions={permissions} />
         </section>
       )}
 
