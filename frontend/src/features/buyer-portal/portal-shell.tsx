@@ -209,7 +209,6 @@ export function PortalShell({
               type="button"
               aria-haspopup="menu"
               aria-expanded={menuOpen}
-              aria-label={`Cuenta de ${buyerName}`}
               className="grid size-11 flex-none cursor-pointer place-items-center rounded-full border-0 bg-transparent p-0"
             >
               <span
@@ -218,6 +217,9 @@ export function PortalShell({
               >
                 {initials(buyerName)}
               </span>
+              {/* Nombre accesible como texto, no `aria-label`: las iniciales visibles no forman
+                  parte de él y axe marcaría la diferencia (label-content-name-mismatch). */}
+              <span className="sr-only">Cuenta de {buyerName}</span>
             </button>
           </Dropdown>
         </div>
