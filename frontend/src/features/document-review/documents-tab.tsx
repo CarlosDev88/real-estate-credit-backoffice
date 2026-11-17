@@ -18,7 +18,6 @@ import {
   isAwaitingReview,
   scanMessage,
   slotActions,
-  useSlotStatusLabel,
   validityText,
   type SlotPermissions,
 } from "@/features/document-review/slot-rules";
@@ -73,7 +72,11 @@ export function groupSlots(
     groups.push({
       key: id,
       title: name,
-      note: profiles.get(id)?.employment_profile.label ?? null,
+      // "Titular · Empleada": rol de la API y perfil laboral del perfil financiero.
+      note:
+        [list[0]!.participant!.role_label, profiles.get(id)?.employment_profile.label]
+          .filter(Boolean)
+          .join(" · ") || null,
       initials: initials(name),
       slots: list,
     });
@@ -108,7 +111,6 @@ function rejectionMessage(slot: DocumentSlot, file: DocumentFile | undefined): s
 interface RowProps {
   slot: DocumentSlot;
   file: DocumentFile | undefined;
-  statusLabel: string;
   can: SlotPermissions;
   viewer: ReturnType<typeof useFileViewer>;
   onReview: () => void;
@@ -116,7 +118,7 @@ interface RowProps {
   onReopen: () => void;
 }
 
-function SlotRow({ slot, file, statusLabel, can, viewer, onReview, onWaive, onReopen }: RowProps) {
+function SlotRow({ slot, file, can, viewer, onReview, onWaive, onReopen }: RowProps) {
   const actions = slotActions(slot, can);
   const current = slot.current_file;
   const facts = current
@@ -142,7 +144,7 @@ function SlotRow({ slot, file, statusLabel, can, viewer, onReview, onWaive, onRe
         </div>
       </div>
       <span className="col-start-2 row-start-2 justify-self-start min-[861px]:col-start-auto min-[861px]:row-start-auto">
-        <StatusBadge kind="documentSlot" code={slot.status} label={statusLabel} />
+        <StatusBadge kind="documentSlot" code={slot.status} label={slot.status_label} />
       </span>
       <div className="col-start-3 row-start-1 flex flex-wrap justify-end gap-1 min-[861px]:col-start-auto">
         {actions.view && current && (
@@ -222,7 +224,6 @@ export function DocumentsTab({
 }: DocumentsTabProps) {
   const slots = useDocumentSlots(applicationId);
   const files = useCurrentFiles(slots.data);
-  const statusLabel = useSlotStatusLabel();
   const viewer = useFileViewer();
   const [waiving, setWaiving] = useState<DocumentSlot | null>(null);
   const [reopening, setReopening] = useState<DocumentSlot | null>(null);
@@ -296,7 +297,6 @@ export function DocumentsTab({
                     key={slot.id}
                     slot={slot}
                     file={slot.current_file ? files.get(slot.current_file.id) : undefined}
-                    statusLabel={statusLabel(slot.status)}
                     can={can}
                     viewer={viewer}
                     onReview={() => onOpenSlot(slot.id)}
@@ -313,7 +313,11 @@ export function DocumentsTab({
       <ReviewDrawer
         applicationId={applicationId}
         slot={open}
-        holder={open?.participant?.full_name ?? APPLICATION_GROUP_TITLE}
+        holder={
+          open?.participant
+            ? `${open.participant.full_name} · ${open.participant.role_label}`
+            : APPLICATION_GROUP_TITLE
+        }
         next={next}
         onNext={(slot) => onOpenSlot(slot.id)}
         onClose={() => onOpenSlot(null)}

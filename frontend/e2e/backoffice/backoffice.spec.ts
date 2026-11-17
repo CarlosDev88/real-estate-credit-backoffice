@@ -101,7 +101,8 @@ test.describe("backoffice del asesor", () => {
       .click();
     await expect(page).toHaveURL(/slot=/);
     const panel = drawer(page);
-    await expect(panel.getByText("Sin amenazas")).toBeVisible();
+    // Análisis limpio, con su tono (el texto es `scan_status_label` de la API).
+    await expect(panel.locator('[data-tone="success"]').first()).toBeVisible();
     const date = panel.getByLabel("Fecha del documento");
     if ((await date.count()) > 0 && !(await date.inputValue())) {
       // Sin fecha del comprador: la de ayer (no puede ser futura ni vencida).

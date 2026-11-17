@@ -83,7 +83,7 @@ describe("expediente: encabezado", { timeout: 20_000 }, () => {
     );
     const head = screen.getByRole("heading", { name: "SOL-000182" }).closest("section")!;
     expect(head).toHaveTextContent(
-      "Sofía Herrera y Daniel Mejía · Vivienda nueva · Torres del Parque",
+      "Sofía Herrera y Daniel Mejía (co-solicitante) · Vivienda nueva · Torres del Parque",
     );
     expect(screen.getByRole("link", { name: "Volver a solicitudes" })).toHaveAttribute(
       "href",
@@ -98,6 +98,16 @@ describe("expediente: encabezado", { timeout: 20_000 }, () => {
     expect(facts).toHaveTextContent("Banco de BogotáLeasing habitacional");
     expect(facts).toHaveTextContent("240meses");
     expect(facts).toHaveTextContent("Broker");
+
+    // Etapas de `progress_stages`, con el estado también en texto.
+    const stages = within(
+      screen.getByRole("region", { name: "Etapas de la solicitud" }),
+    ).getAllByRole("listitem");
+    expect(stages).toHaveLength(8);
+    expect(stages[0]).toHaveTextContent("Datos del comprador: Listo");
+    expect(stages[2]).toHaveAttribute("aria-current", "step");
+    expect(stages[2]).toHaveTextContent("Revisión documental: En curso");
+    expect(stages[7]).toHaveTextContent("Desembolsada: Pendiente");
   });
 
   it("sin inmueble ni financiación muestra '—' en lo que no se puede calcular", async () => {
@@ -200,6 +210,7 @@ describe("expediente: acciones", { timeout: 20_000 }, () => {
 
     await user.click(screen.getByRole("button", { name: "Marcar lista para radicar" }));
     const dialog = await screen.findByRole("dialog");
+    expect(dialog).toHaveTextContent("La solicitud pasa a Lista para radicar.");
     await user.type(within(dialog).getByLabelText(/Comentario/), " Todo revisado ");
     await user.click(within(dialog).getByRole("button", { name: "Marcar lista para radicar" }));
 
@@ -460,6 +471,7 @@ describe("expediente: acciones", { timeout: 20_000 }, () => {
               {
                 rule_code: "LTV",
                 outcome: "FAILED",
+                outcome_label: "Incumplida",
                 message: "El monto supera el 70 % del valor.",
                 field: null,
                 unresolved_fields: [],
@@ -489,10 +501,13 @@ describe("expediente: acciones", { timeout: 20_000 }, () => {
         status_label: "Cancelada",
         closed_at: "2026-11-11T10:00:00Z",
         available_actions: [],
+        progress_stages: [],
       }),
     });
     renderScreen();
     await ready();
+    // Cerrada sin resultado: la API no trae etapas y el stepper no se pinta.
+    expect(screen.queryByRole("region", { name: "Etapas de la solicitud" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Enviar enlace al comprador" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Más acciones" })).toBeNull();
   });
@@ -555,6 +570,7 @@ describe("expediente: resumen", { timeout: 20_000 }, () => {
     expect(
       within(evaluation).getByText("Ingreso del hogar cercano al mínimo del producto."),
     ).toBeInTheDocument();
+    expect(within(evaluation).getByText("Sin datos")).toBeInTheDocument();
   });
 
   it("evaluación vencida sin reglas, y sin evaluar", async () => {
@@ -580,8 +596,10 @@ describe("expediente: resumen", { timeout: 20_000 }, () => {
     renderScreen();
     await ready();
     const people = await waitFor(() => card("Participantes"));
-    await waitFor(() => expect(people).toHaveTextContent("Empleada · Perfil confirmado"));
-    expect(people).toHaveTextContent("Daniel MejíaSin perfil financiero");
+    await waitFor(() =>
+      expect(people).toHaveTextContent("Sofía HerreraTitular · Empleada · Perfil confirmado"),
+    );
+    expect(people).toHaveTextContent("Daniel MejíaCo-solicitante · Sin perfil financiero");
     expect(people).toHaveTextContent("7.800.000");
     expect(within(people).getByText("Ingreso del hogar").nextSibling).toHaveTextContent(
       "7.800.000",
@@ -742,7 +760,9 @@ function makeHistoryEntry() {
   return {
     id: "h",
     from_status: "DRAFT",
+    from_status_label: "Borrador",
     to_status: "WAITING_DOCUMENTS",
+    to_status_label: "Esperando documentos",
     transition_code: null,
     reason: null,
     comment: "",

@@ -60,24 +60,11 @@ export const BOOTSTRAP = {
   on_demand_catalogs: [],
   features: {},
   catalogs: {
-    application_status: [
-      item("DRAFT", "Borrador", 1),
-      item("WAITING_DOCUMENTS", "Esperando documentos", 2),
-      item("DOCUMENTS_REVIEW", "Documentos en revisión", 3),
-      item("READY_TO_FILE", "Lista para radicar", 4),
-    ],
     application_transition_reason: [
       item("CLIENT_UNREACHABLE", "No fue posible contactar al cliente", 1),
     ],
     application_withdrawal_reason: [item("OTHER_FINANCING", "Compró con otra entidad", 1)],
     buyer_access_channel: [item("EMAIL", "Correo", 1), item("COPY_LINK", "Copiar enlace", 2)],
-    document_status: [
-      item("PENDING", "Pendiente", 1),
-      item("UPLOADED", "Cargado", 2),
-      item("APPROVED", "Aprobado", 3),
-      item("REJECTED", "Rechazado", 4),
-      item("WAIVED", "Exonerado", 5),
-    ],
     document_rejection_reason: [
       item("ILLEGIBLE", "Ilegible", 1),
       item("OUTDATED", "Desactualizado", 2),
@@ -91,29 +78,51 @@ export const ACTIONS = {
     code: "MARK_READY_TO_FILE",
     label: "Marcar lista para radicar",
     target_status: "READY_TO_FILE",
+    target_status_label: "Lista para radicar",
     guard_code: "APPLICATION_READY_TO_FILE",
   },
   back: {
     code: "RETURN_TO_DOCUMENTS",
     label: "Devolver a carga de documentos",
     target_status: "WAITING_DOCUMENTS",
+    target_status_label: "Esperando documentos",
     guard_code: "",
   },
   cancel: {
     code: "CANCEL_DOCUMENTS_REVIEW",
     label: "Cancelar solicitud",
     target_status: "CANCELLED",
+    target_status_label: "Cancelada",
     guard_code: "",
   },
   withdraw: {
     code: "WITHDRAW_DOCUMENTS_REVIEW",
     label: "Desistir",
     target_status: "WITHDRAWN",
+    target_status_label: "Desistida",
     guard_code: "",
   },
 } as const;
 
 const BANK = { id: "b-bog", code: "BOG", name: "Banco de Bogotá", short_name: "" };
+
+const stage = (code: string, label: string, state: "done" | "current" | "pending") => ({
+  code,
+  label,
+  state,
+  state_label: { done: "Listo", current: "En curso", pending: "Pendiente" }[state],
+});
+
+export const PROGRESS_STAGES = [
+  stage("BUYER_DATA", "Datos del comprador", "done"),
+  stage("DOCUMENT_UPLOAD", "Carga de documentos", "done"),
+  stage("DOCUMENT_REVIEW", "Revisión documental", "current"),
+  stage("READY_TO_FILE", "Lista para radicar", "pending"),
+  stage("FILED", "Radicada", "pending"),
+  stage("BANK_ANALYSIS", "Análisis del banco", "pending"),
+  stage("APPROVED", "Aprobada", "pending"),
+  stage("DISBURSED", "Desembolsada", "pending"),
+];
 
 export function makeDetail(overrides: Partial<ApplicationDetail> = {}): ApplicationDetail {
   return {
@@ -156,6 +165,7 @@ export function makeDetail(overrides: Partial<ApplicationDetail> = {}): Applicat
     property: null,
     assignments: [],
     available_actions: [ACTIONS.ready, ACTIONS.back, ACTIONS.cancel, ACTIONS.withdraw],
+    progress_stages: PROGRESS_STAGES,
     ...overrides,
   } as ApplicationDetail;
 }
@@ -209,6 +219,7 @@ export const PARTICIPANTS: Participant[] = [
     application_id: APP_ID,
     client: client("cl-1", "Sofía Herrera"),
     role: "PRIMARY",
+    role_label: "Titular",
     contributes_income: true,
     income_share_cop: null,
     is_active: true,
@@ -221,6 +232,7 @@ export const PARTICIPANTS: Participant[] = [
     application_id: APP_ID,
     client: client("cl-2", "Daniel Mejía"),
     role: "CO_APPLICANT",
+    role_label: "Co-solicitante",
     contributes_income: true,
     income_share_cop: null,
     is_active: true,
@@ -293,6 +305,7 @@ export function makeEvaluation(overrides: Partial<BankRuleEvaluation> = {}): Ban
       {
         rule_code: "INCOME_MIN",
         outcome: "MISSING_DATA",
+        outcome_label: "Sin datos",
         message: "Ingreso del hogar cercano al mínimo del producto.",
         field: null,
         unresolved_fields: [],
@@ -352,7 +365,9 @@ export const HISTORY: StatusHistoryEntry[] = [
   {
     id: "h-3",
     from_status: "WAITING_DOCUMENTS",
+    from_status_label: "Esperando documentos",
     to_status: "DOCUMENTS_REVIEW",
+    to_status_label: "Documentos en revisión",
     transition_code: "SUBMIT",
     reason: null,
     comment: "",
@@ -364,7 +379,9 @@ export const HISTORY: StatusHistoryEntry[] = [
   {
     id: "h-2",
     from_status: "DRAFT",
+    from_status_label: "Borrador",
     to_status: "WAITING_DOCUMENTS",
+    to_status_label: "Esperando documentos",
     transition_code: "SEND",
     reason: { code: "OTHER", label: "Otro" },
     comment: "Datos completos por teléfono.",
@@ -376,7 +393,9 @@ export const HISTORY: StatusHistoryEntry[] = [
   {
     id: "h-1",
     from_status: null,
+    from_status_label: null,
     to_status: "DRAFT",
+    to_status_label: "Borrador",
     transition_code: null,
     reason: null,
     comment: "",
@@ -394,6 +413,7 @@ export function makeSlot(n: number, label: string): DocumentSlot {
     participant: {
       id: "pa-1",
       role: "PRIMARY",
+      role_label: "Titular",
       client_id: "cl-1",
       full_name: "Sofía Herrera",
       is_active: true,
@@ -404,6 +424,7 @@ export function makeSlot(n: number, label: string): DocumentSlot {
       name: label,
       is_active: true,
       holder_scope: "PARTICIPANT",
+      holder_scope_label: "Participante",
       allowed_mime_types: [],
       max_size_bytes: 1,
     },
@@ -418,15 +439,18 @@ export function makeSlot(n: number, label: string): DocumentSlot {
     validity_days: null,
     sort_order: n,
     status: "UPLOADED",
+    status_label: "Cargado",
     waiver_reason: null,
     current_file: {
       id: `f-${n}`,
       version_number: 1,
       status: "UPLOADED",
+      status_label: "Cargado",
       client_filename: `archivo-${n}.pdf`,
       document_date: null,
       expires_at: null,
       scan_status: "CLEAN",
+      scan_status_label: "Limpio",
       created_at: "2026-11-10T09:00:00Z",
     },
     locked_at: null,

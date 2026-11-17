@@ -392,3 +392,36 @@ _(las agrega el agente)_
 - En el fixture, el parámetro `use` de Playwright se llama `provide`: con `use`, la regla `react-hooks/rules-of-hooks` lo marca como error.
 
 **Resultado contra :8000:** 6 de 6 pasan, y sin usuario las 6 se saltan. `axe` no encontró violaciones serias ni críticas.
+
+### Cierre de las Partes 2 y 3 (con las brechas del PR #18)
+
+Carlos trajo `master` con la tarea de brechas. `pnpm api:gen` no dejó diferencias. El front no usa `PublicSlotStatusEnum` ni `ProgressStageStateEnum` por nombre: los tipos salen de `components["schemas"]`.
+
+**Stepper (`progress_stages`):**
+- Va en `features/applications/progress-stepper.tsx`, debajo de los datos clave del encabezado, como en el mockup. Muestra las etapas en el orden de la API: lo hecho con check y línea de marca, la actual con punto y anillo (`aria-current="step"`), y lo pendiente en gris.
+- El estado va también en texto oculto ("Revisión documental: En curso"), con `state_label`.
+- En pantallas angostas se desplaza en horizontal. Es una región enfocable con nombre ("Etapas de la solicitud"), para que se pueda recorrer con el teclado (axe: `scrollable-region-focusable`).
+- Con la lista vacía (`WITHDRAWN`, `CANCELLED`, `OWN_FUNDS` y `EXTERNAL_CREDIT_APPROVED`), no se pinta.
+
+**`role_label`:**
+- **Subtítulo:** "Sofía Herrera y Daniel Mejía (co-solicitante)". El rol va entre paréntesis con la primera letra en minúscula, porque queda dentro de la frase, como en el mockup.
+- **Participantes:** "Titular · Empleada · Perfil confirmado".
+- **Documentos:** el encabezado de cada grupo lleva el rol y el perfil laboral ("Sofía Herrera · Titular · Empleada"), y el panel, el nombre y el rol ("Sofía Herrera · Titular").
+
+**Etiquetas de la API en lugar de las del front:**
+- **Slots:** `status_label` del slot. Se quitó `useSlotStatusLabel`, que leía el catálogo `document_status`.
+- **Historial:** `from_status_label` y `to_status_label`. Se quitó `useStatusLabels`, que leía el catálogo `application_status`. Si `from_status_label` es nulo (el registro de creación), dice "Se creó en …".
+- **Análisis antivirus en el panel:** `scan_status_label` (de `scan-status` o de `current_file`), con el tono de `toneFor("fileScan")`. Ya no existe el "Sin amenazas" provisional. Debajo de la etiqueta siguen los avisos de la spec ("Analizando el archivo…", "El archivo no pasó el análisis de seguridad"), que también se ven en la fila: son mensajes que pide la spec, no etiquetas de un estado.
+- **Versiones anteriores:** `status_label` de la versión y `decision_label` de su última revisión ("Rechazado · Rechazado por Paula Rincón").
+- **Modal de transición:** "La solicitud pasa a <`target_status_label`>".
+- **Reglas del banco:** el `outcome_label` debajo del mensaje de cada regla.
+
+**Lo que no cambió:**
+- `role_label` de `/auth/me` llegó, pero es del shell compartido (`AppShell` y `BackofficeGuard`), que está fuera de esta tarea. Queda anotado en "Brechas" de `TAREA-frontend-base.md` para quien toque el shell.
+- `BuyerAccessLink` sigue sin `status_label` (no estaba en la tarea de brechas): la tarjeta de acceso del comprador sigue mostrando las fechas.
+
+**Pruebas:**
+- Los fixtures traen los campos nuevos con las etiquetas del backend (por ejemplo, `scan_status_label` "Limpio").
+- Se quitaron de los fixtures los catálogos `application_status` y `document_status`, para probar que ya no se usan.
+- Pruebas nuevas: el stepper (8 etapas, la actual con `aria-current` y los estados en texto), que no se pinta en una solicitud cerrada, la etiqueta del destino en el modal de transición, el `outcome_label` de las reglas y las etiquetas de las versiones.
+- En el E2E, la comprobación del análisis limpio se hace por el tono, sin depender del texto de la API.

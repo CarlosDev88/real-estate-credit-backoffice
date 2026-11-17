@@ -1,23 +1,7 @@
 "use client";
 
-import { useMemo } from "react";
-
-import { useBootstrap } from "@/features/applications/queries";
 import { SCAN_CLEAN, SCAN_PENDING, type DocumentSlot } from "@/features/document-review/queries";
 import { formatDateOnly } from "@/lib/format";
-
-/**
- * Etiqueta del estado de un slot, del catálogo `document_status` del bootstrap. Cuando
- * la API traiga `status_label` en el slot (tarea de brechas), se usa ese.
- */
-export function useSlotStatusLabel(): (code: string) => string {
-  const bootstrap = useBootstrap();
-  const items = bootstrap.data?.catalogs.document_status;
-  return useMemo(() => {
-    const map = new Map((items ?? []).map((item) => [item.code, item.label]));
-    return (code: string) => map.get(code) ?? code;
-  }, [items]);
-}
 
 export const SCAN_PENDING_TEXT = "Analizando el archivo…";
 export const SCAN_FAILED_TEXT = "El archivo no pasó el análisis de seguridad";

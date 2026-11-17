@@ -11,7 +11,8 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { ScrollTabs } from "@/components/ui/scroll-tabs";
 import { useMe } from "@/features/auth/queries";
 import { DocumentsTab } from "@/features/document-review/documents-tab";
-import { HistoryPanel, useStatusLabels } from "@/features/applications/status-history";
+import { ProgressStepper } from "@/features/applications/progress-stepper";
+import { HistoryPanel } from "@/features/applications/status-history";
 import {
   BuyerAccessCard,
   CompletenessCard,
@@ -197,7 +198,6 @@ function Workspace({ detail, version }: { detail: ApplicationDetail; version: nu
   const link = useLatestBuyerLink(id, canReadLinks);
   const consents = useConsents(id, canReadConsents);
   const recent = useStatusHistory(id, 1);
-  const labels = useStatusLabels(detail.status, detail.status_label);
 
   const pending = completeness.data
     ? Math.max(
@@ -236,6 +236,7 @@ function Workspace({ detail, version }: { detail: ApplicationDetail; version: nu
           />
         </div>
         <KeyFacts detail={detail} property={property.data} financing={financing.data} />
+        <ProgressStepper stages={detail.progress_stages} />
       </section>
 
       <ScrollTabs
@@ -292,7 +293,6 @@ function Workspace({ detail, version }: { detail: ApplicationDetail; version: nu
             {(data) => (
               <RecentChangesCard
                 entries={data.items.slice(0, 3)}
-                labels={labels}
                 onSeeAll={() => go("historial")}
               />
             )}
@@ -323,7 +323,7 @@ function Workspace({ detail, version }: { detail: ApplicationDetail; version: nu
           aria-label="Historial"
           className="bg-bg-surface border-border-default rounded-lg border p-5"
         >
-          <HistoryPanel applicationId={id} labels={labels} />
+          <HistoryPanel applicationId={id} />
         </section>
       )}
     </div>

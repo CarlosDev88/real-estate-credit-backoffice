@@ -9,6 +9,7 @@ const PEOPLE = {
   sofia: {
     id: "pa-1",
     role: "PRIMARY",
+    role_label: "Titular",
     client_id: "cl-1",
     full_name: "Sofía Herrera",
     is_active: true,
@@ -16,10 +17,32 @@ const PEOPLE = {
   daniel: {
     id: "pa-2",
     role: "CO_APPLICANT",
+    role_label: "Co-solicitante",
     client_id: "cl-2",
     full_name: "Daniel Mejía",
     is_active: true,
   },
+};
+
+// Etiquetas como las da la API (DocumentSlot, CurrentFile, FileMetadata y DocumentReview).
+export const SLOT_STATUS_LABEL: Record<string, string> = {
+  PENDING: "Pendiente",
+  UPLOADED: "Cargado",
+  APPROVED: "Aprobado",
+  REJECTED: "Rechazado",
+  WAIVED: "Exonerado",
+};
+const FILE_STATUS_LABEL: Record<string, string> = {
+  UPLOADED: "Cargado",
+  IN_REVIEW: "En revisión",
+  APPROVED: "Aprobado",
+  REJECTED: "Rechazado",
+};
+export const SCAN_LABEL: Record<string, string> = {
+  PENDING: "Pendiente de análisis",
+  CLEAN: "Limpio",
+  INFECTED: "Infectado",
+  INVALID: "Inválido",
 };
 
 interface SlotSpec {
@@ -47,6 +70,7 @@ function slot(spec: SlotSpec, order: number): DocumentSlot {
       name: spec.label,
       is_active: true,
       holder_scope: spec.participant ? "PARTICIPANT" : "APPLICATION",
+      holder_scope_label: spec.participant ? "Participante" : "Solicitud",
       allowed_mime_types: [],
       max_size_bytes: 1,
     },
@@ -61,16 +85,19 @@ function slot(spec: SlotSpec, order: number): DocumentSlot {
     validity_days: spec.validity ?? null,
     sort_order: order,
     status: spec.status,
+    status_label: SLOT_STATUS_LABEL[spec.status]!,
     waiver_reason: spec.waiver ? { code: "NOT_APPLICABLE", label: spec.waiver } : null,
     current_file: hasFile
       ? {
           id: `f-${spec.id}`,
           version_number: 2,
           status: spec.status === "UPLOADED" ? "IN_REVIEW" : spec.status,
+          status_label: FILE_STATUS_LABEL[spec.status === "UPLOADED" ? "IN_REVIEW" : spec.status]!,
           client_filename: `${spec.id}.pdf`,
           document_date: spec.documentDate ?? null,
           expires_at: spec.validity ? "2026-12-02" : null,
           scan_status: spec.scan ?? "CLEAN",
+          scan_status_label: SCAN_LABEL[spec.scan ?? "CLEAN"]!,
           created_at: "2026-11-10T09:00:00Z",
         }
       : null,
@@ -145,6 +172,7 @@ export function makeFile(slotSpec: SlotSpec, overrides: Partial<DocumentFile> = 
     slot_id: slotSpec.id,
     version_number: 2,
     status: "IN_REVIEW",
+    status_label: FILE_STATUS_LABEL.IN_REVIEW!,
     is_current: true,
     client_filename: `${slotSpec.id}.pdf`,
     document_date: slotSpec.documentDate ?? null,
@@ -156,6 +184,7 @@ export function makeFile(slotSpec: SlotSpec, overrides: Partial<DocumentFile> = 
       size_bytes: 421_888,
       sha256: "x",
       scan_status: slotSpec.scan ?? "CLEAN",
+      scan_status_label: SCAN_LABEL[slotSpec.scan ?? "CLEAN"]!,
       scanned_at: null,
     },
     reviews:
@@ -164,6 +193,7 @@ export function makeFile(slotSpec: SlotSpec, overrides: Partial<DocumentFile> = 
             {
               id: "rv-1",
               decision: "REJECTED",
+              decision_label: "Rechazado",
               reason: { code: "ILLEGIBLE", label: "Ilegible" },
               buyer_comment: "La foto está borrosa.",
               internal_comment: null,
@@ -224,7 +254,9 @@ export function useDocumentsApi(overrides: Partial<DocumentsApi> = {}): Document
       return HttpResponse.json({
         document_file_id: params.id,
         status: "IN_REVIEW",
+        status_label: "En revisión",
         scan_status: spec.scan ?? "CLEAN",
+        scan_status_label: SCAN_LABEL[spec.scan ?? "CLEAN"],
         scanned_at: null,
         detected_mime_type: "application/pdf",
         size_bytes: 421_888,
@@ -255,11 +287,14 @@ export function useDocumentsApi(overrides: Partial<DocumentsApi> = {}): Document
         id: `old-${spec.id}`,
         version_number: 1,
         is_current: false,
+        status: "REJECTED",
+        status_label: "Rechazado",
         client_filename: `${spec.id}-v1.pdf`,
         reviews: [
           {
             id: "rv-0",
             decision: "REJECTED",
+            decision_label: "Rechazado",
             reason: null,
             buyer_comment: "Estaba vencido.",
             internal_comment: null,
@@ -285,7 +320,11 @@ export function useDocumentsApi(overrides: Partial<DocumentsApi> = {}): Document
       }
       const decision = String(body.decision);
       const status = decision === "REOPENED" ? "PENDING" : decision;
-      slots = slots.map((s) => (s.id === params.id ? ({ ...s, status } as DocumentSlot) : s));
+      slots = slots.map((s) =>
+        s.id === params.id
+          ? ({ ...s, status, status_label: SLOT_STATUS_LABEL[status] } as DocumentSlot)
+          : s,
+      );
       return HttpResponse.json({ slots: slots.filter((s) => s.id === params.id) });
     }),
   );

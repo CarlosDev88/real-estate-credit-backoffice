@@ -20,15 +20,11 @@ import {
   type DocumentSlot,
 } from "@/features/document-review/queries";
 import type { useFileViewer } from "@/features/document-review/slot-dialogs";
-import {
-  SCAN_FAILED_TEXT,
-  SCAN_PENDING_TEXT,
-  validityText,
-} from "@/features/document-review/slot-rules";
+import { scanMessage, validityText } from "@/features/document-review/slot-rules";
 import { formatBytes, formatDateOnly, formatDateTime } from "@/lib/format";
 import { useMediaQuery } from "@/lib/hooks/use-media-query";
 import { useToast } from "@/providers/toast";
-import { SCAN_CLEAN, SCAN_PENDING } from "@/features/document-review/queries";
+import { SCAN_CLEAN } from "@/features/document-review/queries";
 
 type Viewer = ReturnType<typeof useFileViewer>;
 
@@ -40,23 +36,16 @@ function todayIso(): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Bogota" }).format(new Date());
 }
 
-function ScanBadge({ scanStatus }: { scanStatus: string }) {
+/** Análisis antivirus con la etiqueta de la API (`scan_status_label`) y su tono. */
+function ScanBadge({ scanStatus, label }: { scanStatus: string; label: string }) {
   const tone = toneFor("fileScan", scanStatus);
-  // Mientras la API no traiga la etiqueta del análisis (ver "Brechas"), el texto es el
-  // aviso que pide la spec; un archivo limpio dice que no se encontraron amenazas.
-  const text =
-    scanStatus === SCAN_CLEAN
-      ? "Sin amenazas"
-      : scanStatus === SCAN_PENDING
-        ? SCAN_PENDING_TEXT
-        : SCAN_FAILED_TEXT;
   return (
     <span
       data-tone={tone}
       className={`inline-flex min-h-[22px] items-center gap-1.5 rounded-full border px-2 text-xs font-medium ${TONE_CLASS[tone]}`}
     >
       <span aria-hidden="true" className="size-1.5 flex-none rounded-full bg-current" />
-      {text}
+      {label}
     </span>
   );
 }
@@ -309,6 +298,10 @@ function Versions({
               <span className="min-w-0 flex-1">
                 <b className="font-medium">Versión {version.version_number}</b> ·{" "}
                 {version.client_filename} · {formatDateTime(version.created_at)}
+                <span className="text-text-secondary block text-xs">
+                  {version.status_label}
+                  {last && ` · ${last.decision_label} por ${last.reviewer.name}`}
+                </span>
                 {last?.buyer_comment && (
                   <span className="text-text-tertiary block text-xs">
                     Mensaje al comprador: {last.buyer_comment}
@@ -376,6 +369,8 @@ export function ReviewDrawer({
   const file = useDocumentFile(fileId);
   const scan = useScanStatus(fileId);
   const scanStatus = scan.data?.scan_status ?? slot?.current_file?.scan_status ?? null;
+  const scanLabel = scan.data?.scan_status_label ?? slot?.current_file?.scan_status_label ?? null;
+  const scanNotice = scanMessage(scanStatus);
   const clean = scanStatus === SCAN_CLEAN;
   const canDecide = can.review && clean && !!file.data && slot?.status !== "WAIVED";
   const viewError = viewer.errorFor(fileId);
@@ -458,7 +453,16 @@ export function ReviewDrawer({
                     {file.data?.uploaded_by_buyer_session_id && " · por el comprador"}
                   </dd>
                   <dt className="text-text-tertiary">Análisis antivirus</dt>
-                  <dd className="m-0">{scanStatus && <ScanBadge scanStatus={scanStatus} />}</dd>
+                  <dd className="m-0">
+                    {scanStatus && scanLabel && (
+                      <ScanBadge scanStatus={scanStatus} label={scanLabel} />
+                    )}
+                    {scanNotice && (
+                      <span role="status" className="text-tone-warning-fg mt-1 block text-xs">
+                        {scanNotice}
+                      </span>
+                    )}
+                  </dd>
                   {slot.current_file.document_date && (
                     <>
                       <dt className="text-text-tertiary">Fecha del documento</dt>

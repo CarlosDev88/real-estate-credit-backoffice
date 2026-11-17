@@ -1,35 +1,16 @@
 "use client";
 
 import { Alert, Button, Pagination } from "antd";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 
 import { toneFor, type Tone } from "@design/status-tones";
 import { EmptyState } from "@/components/ui/empty-state";
-import { useBootstrap } from "@/features/applications/queries";
 import {
   HISTORY_PAGE_SIZE,
   useStatusHistory,
   type StatusHistoryEntry,
 } from "@/features/applications/workspace-queries";
 import { formatDateTime } from "@/lib/format";
-
-/** Etiqueta de un estado de solicitud, desde el catálogo `application_status`. */
-export type StatusLabels = (code: string) => string;
-
-/**
- * Etiquetas de estado del catálogo `application_status` de `/metadata/bootstrap`
- * (también los inactivos: el historial puede tenerlos). El estado actual, que ya trae
- * su `status_label`, sirve de respaldo.
- */
-export function useStatusLabels(currentCode?: string, currentLabel?: string): StatusLabels {
-  const bootstrap = useBootstrap();
-  const items = bootstrap.data?.catalogs.application_status;
-  return useMemo(() => {
-    const map = new Map((items ?? []).map((item) => [item.code, item.label]));
-    if (currentCode && currentLabel && !map.has(currentCode)) map.set(currentCode, currentLabel);
-    return (code: string) => map.get(code) ?? code;
-  }, [items, currentCode, currentLabel]);
-}
 
 const DOT: Record<Tone, string> = {
   neutral: "bg-border-strong",
@@ -40,16 +21,11 @@ const DOT: Record<Tone, string> = {
   danger: "bg-tone-danger-fg",
 };
 
-/** "Pasó de <estado> a <estado>", con quién, la versión, el motivo y el comentario. */
-export function HistoryEntry({
-  entry,
-  labels,
-  last,
-}: {
-  entry: StatusHistoryEntry;
-  labels: StatusLabels;
-  last: boolean;
-}) {
+/**
+ * "Pasó de <estado> a <estado>" (etiquetas `from_status_label` y `to_status_label` de la
+ * API), con quién, la versión, el motivo y el comentario.
+ */
+export function HistoryEntry({ entry, last }: { entry: StatusHistoryEntry; last: boolean }) {
   const who = entry.actor?.name ?? (entry.buyer_session_id ? "portal del comprador" : null);
   const meta = [formatDateTime(entry.created_at), who, `versión ${entry.application_version}`]
     .filter(Boolean)
@@ -67,14 +43,14 @@ export function HistoryEntry({
         />
       )}
       <div>
-        {entry.from_status ? (
+        {entry.from_status_label ? (
           <>
-            Pasó de <b className="font-semibold">{labels(entry.from_status)}</b> a{" "}
-            <b className="font-semibold">{labels(entry.to_status)}</b>
+            Pasó de <b className="font-semibold">{entry.from_status_label}</b> a{" "}
+            <b className="font-semibold">{entry.to_status_label}</b>
           </>
         ) : (
           <>
-            Se creó en <b className="font-semibold">{labels(entry.to_status)}</b>
+            Se creó en <b className="font-semibold">{entry.to_status_label}</b>
           </>
         )}
         <small className="text-text-tertiary mt-0.5 block text-xs">{meta}</small>
@@ -92,13 +68,7 @@ export function HistoryEntry({
 }
 
 /** Pestaña "Historial": la lista paginada de `status-history`. */
-export function HistoryPanel({
-  applicationId,
-  labels,
-}: {
-  applicationId: string;
-  labels: StatusLabels;
-}) {
+export function HistoryPanel({ applicationId }: { applicationId: string }) {
   const [page, setPage] = useState(1);
   const history = useStatusHistory(applicationId, page);
 
@@ -130,12 +100,7 @@ export function HistoryPanel({
     <div className="grid gap-4">
       <ul className="m-0 grid list-none gap-4 p-0">
         {items.map((entry, i) => (
-          <HistoryEntry
-            key={entry.id}
-            entry={entry}
-            labels={labels}
-            last={i === items.length - 1}
-          />
+          <HistoryEntry key={entry.id} entry={entry} last={i === items.length - 1} />
         ))}
       </ul>
       {total > HISTORY_PAGE_SIZE && (

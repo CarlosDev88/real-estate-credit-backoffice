@@ -92,8 +92,8 @@ describe("pestaña Documentos", { timeout: 20_000 }, () => {
     const groups = screen.getAllByRole("heading", { level: 3 }).map((h) => h.textContent);
     await waitFor(() => expect(groups[0]).toContain("Sofía Herrera"));
     expect(screen.getAllByRole("heading", { level: 3 }).map((h) => h.textContent)).toEqual([
-      "SHSofía Herrera· Empleada",
-      "DMDaniel Mejía",
+      "SHSofía Herrera· Titular · Empleada",
+      "DMDaniel Mejía· Co-solicitante",
       "Solicitud· Inmueble y trámite",
     ]);
     expect(screen.queryByText("Documento retirado")).toBeNull();
@@ -160,10 +160,11 @@ describe("revisión de documentos", { timeout: 20_000 }, () => {
     await user.click(within(row("Certificado laboral")).getByRole("button", { name: /Revisar/ }));
     expect(query().get("slot")).toBe("laboral");
     const drawer = await findDrawer("Certificado laboral");
-    expect(within(drawer).getByText("Sofía Herrera")).toBeInTheDocument();
+    expect(within(drawer).getByText("Sofía Herrera · Titular")).toBeInTheDocument();
     await within(drawer).findByText("412 KB");
     expect(drawer).toHaveTextContent("por el comprador");
-    expect(within(drawer).getByText("Sin amenazas")).toHaveAttribute("data-tone", "success");
+    // Etiqueta del análisis de la API (`scan_status_label`).
+    expect(within(drawer).getByText("Limpio")).toHaveAttribute("data-tone", "success");
     expect(within(drawer).getByLabelText("Fecha del documento")).toHaveValue("2026-11-02");
 
     await user.click(within(drawer).getByRole("button", { name: "Aprobar documento" }));
@@ -355,6 +356,8 @@ describe("revisión de documentos", { timeout: 20_000 }, () => {
     await user.click(within(drawer).getByRole("button", { name: "Versiones anteriores" }));
     expect(await within(drawer).findByText("Versión 1")).toBeInTheDocument();
     expect(drawer).toHaveTextContent("Mensaje al comprador: Estaba vencido.");
+    // Estado de la versión y decisión, con las etiquetas de la API.
+    expect(drawer).toHaveTextContent("Rechazado · Rechazado por Paula Rincón");
     await user.click(within(drawer).getByRole("button", { name: "Ver versión 1" }));
     await waitFor(() => expect(api.downloads).toEqual(["old-laboral"]));
   });

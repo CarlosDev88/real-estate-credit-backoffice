@@ -9,7 +9,7 @@ import { RelativeTime } from "@/components/ui/relative-time";
 import { TONE_CLASS } from "@/components/ui/status-badge";
 import { toneFor, type Tone } from "@design/status-tones";
 import { bankLabel } from "@/features/applications/queries";
-import { HistoryEntry, type StatusLabels } from "@/features/applications/status-history";
+import { HistoryEntry } from "@/features/applications/status-history";
 import type {
   ApplicationDetail,
   BankRuleEvaluation,
@@ -218,7 +218,10 @@ function RuleRow({ rule }: { rule: BankRuleEvaluation["blocking"][number] }) {
       <span className={`mt-0.5 flex-none ${TONE_CLASS[tone].split(" ")[0]}`}>
         <WarnIcon />
       </span>
-      <span>{rule.message}</span>
+      <span>
+        {rule.message}
+        <small className="text-text-tertiary block text-xs">{rule.outcome_label}</small>
+      </span>
     </li>
   );
 }
@@ -317,12 +320,15 @@ export function ParticipantsCard({
       <ul className="m-0 grid list-none gap-3 p-0">
         {participants.map((participant) => {
           const profile = profiles.get(participant.id);
-          const facts = profile
-            ? [
-                profile.employment_profile.label,
-                profile.data_confirmed_at ? "Perfil confirmado" : "Perfil sin confirmar",
-              ]
-            : ["Sin perfil financiero"];
+          const facts = [
+            participant.role_label,
+            ...(profile
+              ? [
+                  profile.employment_profile.label,
+                  profile.data_confirmed_at ? "Perfil confirmado" : "Perfil sin confirmar",
+                ]
+              : ["Sin perfil financiero"]),
+          ];
           return (
             <li key={participant.id} className="flex items-center gap-3">
               <Avatar name={participant.client.full_name} />
@@ -472,11 +478,9 @@ export function BuyerAccessCard({
 
 export function RecentChangesCard({
   entries,
-  labels,
   onSeeAll,
 }: {
   entries: StatusHistoryEntry[];
-  labels: StatusLabels;
   onSeeAll: () => void;
 }) {
   return (
@@ -493,12 +497,7 @@ export function RecentChangesCard({
       ) : (
         <ul className="m-0 grid list-none gap-4 p-0">
           {entries.map((entry, i) => (
-            <HistoryEntry
-              key={entry.id}
-              entry={entry}
-              labels={labels}
-              last={i === entries.length - 1}
-            />
+            <HistoryEntry key={entry.id} entry={entry} last={i === entries.length - 1} />
           ))}
         </ul>
       )}

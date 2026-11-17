@@ -208,7 +208,11 @@ export function WorkspaceActions({
   );
 }
 
-/** "Sofía Herrera y Daniel Mejía · Vivienda nueva · Torres del Parque". */
+function lowerFirst(text: string): string {
+  return text.charAt(0).toLocaleLowerCase("es-CO") + text.slice(1);
+}
+
+/** "Sofía Herrera y Daniel Mejía (co-solicitante) · Vivienda nueva · Torres del Parque". */
 export function WorkspaceSubtitle({
   detail,
   participants,
@@ -219,7 +223,8 @@ export function WorkspaceSubtitle({
   property: Property | null | undefined;
 }) {
   const others = (participants ?? []).filter((p) => p.client.id !== detail.applicant.id);
-  const names = others.map((p) => p.client.full_name);
+  // "Daniel Mejía (co-solicitante)": el rol de la API, con minúscula inicial en la frase.
+  const names = others.map((p) => `${p.client.full_name} (${lowerFirst(p.role_label)})`);
   const project = property?.project?.name;
   return (
     <p className="text-text-secondary mt-1 mb-0">

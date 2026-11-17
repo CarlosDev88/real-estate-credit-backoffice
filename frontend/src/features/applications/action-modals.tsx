@@ -105,6 +105,11 @@ export function TransitionModal({
       destroyOnHidden
     >
       <form noValidate onSubmit={(e) => void submit(e)} className="grid gap-4 pt-2">
+        {action && (
+          <p className="text-text-secondary m-0 text-sm">
+            La solicitud pasa a <b className="text-text-primary">{action.target_status_label}</b>.
+          </p>
+        )}
         <FormField
           id={`${ids}-reason`}
           label="Motivo"
