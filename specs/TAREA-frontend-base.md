@@ -221,6 +221,11 @@ Las cuatro primeras se resolvieron en `TAREA-applications-listado.md` (PR #16). 
 - `DocumentFile` no dice qué usuario interno cargó un archivo (solo `uploaded_by_buyer_session_id`): "por el comprador" sale cuando viene ese campo; si no, no se dice quién.
 - No hay "deshacer" una aprobación: se corrige decidiendo otra vez sobre la versión vigente (API §19.1).
 
+### Notificaciones e idempotencia (`TAREA-notificaciones.md`, módulo 13)
+- **Resuelta (módulo 13):** "Avisos" del portal. Ya hay API: `GET /buyer/notifications` (con `unread=true`), `GET /buyer/notifications/unread-count` para el número de la navegación, `PATCH /buyer/notifications/{id}/read` y `POST /buyer/notifications/read-all` (API §21.2). No las bloquea `CONSENT_REQUIRED`. En el backoffice, `GET /applications/{id}/notifications` muestra cada aviso con sus entregas (portal y correo, intentos y último error).
+- **Pendiente del front:** enviar `Idempotency-Key` (un UUID nuevo por intento del usuario, que se reutiliza en los reintentos automáticos) en las cinco operaciones: radicación, respuesta del banco, transición de estado, paquete para radicar y enlace mágico (API §6). Hoy es opcional. Errores nuevos: `409 IDEMPOTENCY_IN_PROGRESS` (reintentar), `422 IDEMPOTENCY_CONFLICT` y, en el enlace mágico, `409 IDEMPOTENCY_REPLAY_UNAVAILABLE` (el enlace ya se creó: verlo en la lista y, si hace falta otro, pedirlo con otra clave).
+- **Pendiente del backend:** las notificaciones internas (la campana del backoffice). El modelo las admite (`user_id`), pero ningún evento las crea todavía.
+
 ## Pruebas
 - **Unitarias** (Vitest + Testing Library): componentes de `ui`, formularios con validación, manejo de `ApiError` y formato de montos.
 - **Integración** con MSW: errores de la API, `409 STALE_VERSION`, `CONSENT_REQUIRED`, carga y reemplazo de documentos, filtros en la URL.

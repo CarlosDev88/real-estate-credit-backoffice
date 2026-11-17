@@ -906,7 +906,9 @@ CREATE TABLE notification_deliveries (
     last_error_code VARCHAR(80),
     CONSTRAINT ck_notification_deliveries_channel CHECK (channel IN ('EMAIL', 'PORTAL')),
     CONSTRAINT ck_notification_deliveries_status CHECK (status IN ('PENDING', 'SENT', 'FAILED')),
-    CONSTRAINT ck_notification_deliveries_sent CHECK (status <> 'SENT' OR sent_at IS NOT NULL)
+    CONSTRAINT ck_notification_deliveries_sent CHECK (status <> 'SENT' OR sent_at IS NOT NULL),
+    -- Paso 13: una entrega por canal, para que reintentar nunca la duplique.
+    CONSTRAINT uq_notification_deliveries_channel UNIQUE (notification_id, channel)
 );
 
 CREATE TABLE idempotency_keys (
@@ -920,13 +922,16 @@ CREATE TABLE idempotency_keys (
     request_hash CHAR(64) NOT NULL,
     response_status SMALLINT,
     response_body JSONB,
+    -- Paso 13: cabeceras que la respuesta repetida conserva (ETag, Location).
+    response_headers JSONB NOT NULL DEFAULT '{}'::JSONB,
     resource_id UUID,
     expires_at TIMESTAMPTZ NOT NULL,
     CONSTRAINT ck_idempotency_keys_actor CHECK (num_nonnulls(user_id, buyer_session_id) = 1),
-    CONSTRAINT ck_idempotency_keys_expiry CHECK (expires_at > created_at),
-    CONSTRAINT uq_idempotency_keys_user UNIQUE NULLS NOT DISTINCT (user_id, key, method, route_fingerprint),
-    CONSTRAINT uq_idempotency_keys_buyer UNIQUE NULLS NOT DISTINCT (buyer_session_id, key, method, route_fingerprint)
+    CONSTRAINT ck_idempotency_keys_expiry CHECK (expires_at > created_at)
 );
+-- Corrección del paso 13: la unicidad por actor va en índices únicos parciales (abajo).
+-- Con UNIQUE NULLS NOT DISTINCT, dos usuarios internos con la misma clave (ambos con
+-- buyer_session_id nulo) chocaban en la restricción del comprador.
 
 CREATE TABLE audit_events (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -1074,7 +1079,11 @@ CREATE INDEX ix_activity_opportunity ON activity_logs (opportunity_id, created_a
 CREATE INDEX ix_activity_client ON activity_logs (client_id, created_at DESC);
 CREATE INDEX ix_notifications_client_unread ON notifications (client_id, created_at DESC) WHERE read_at IS NULL;
 CREATE INDEX ix_notifications_user_unread ON notifications (user_id, created_at DESC) WHERE read_at IS NULL;
+-- En Django se llama ix_notification_delivery_queue: los nombres admiten 30 caracteres.
 CREATE INDEX ix_notification_deliveries_queue ON notification_deliveries (status, next_attempt_at) WHERE status IN ('PENDING', 'FAILED');
+CREATE UNIQUE INDEX uq_idempotency_keys_user ON idempotency_keys (user_id, key, method, route_fingerprint) WHERE user_id IS NOT NULL;
+CREATE UNIQUE INDEX uq_idempotency_keys_buyer ON idempotency_keys (buyer_session_id, key, method, route_fingerprint) WHERE buyer_session_id IS NOT NULL;
+CREATE INDEX ix_idempotency_keys_expires ON idempotency_keys (expires_at);
 CREATE INDEX ix_audit_resource ON audit_events (resource_type, resource_id, created_at DESC);
 CREATE INDEX ix_audit_user ON audit_events (actor_user_id, created_at DESC);
 CREATE INDEX ix_audit_request ON audit_events (request_id);

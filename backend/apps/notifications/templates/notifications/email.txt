@@ -1,0 +1,10 @@
+{% autoescape off %}Hola {{ first_names }},
+
+{{ title }}
+
+{{ message }}
+
+{{ portal_line }}
+
+Este es un mensaje automático; no lo respondas.
+{% endautoescape %}

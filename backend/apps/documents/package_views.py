@@ -25,6 +25,7 @@ from apps.documents.dossier_views import (
 )
 from apps.documents.models import DocumentPackageJob
 from apps.documents.package_serializers import DocumentPackageJobSerializer
+from apps.idempotency.decorators import IDEMPOTENCY_PARAMETER, idempotency_responses, idempotent
 from apps.identity.throttling import DocumentDownloadRateThrottle
 
 PREPARE = "filings.prepare"
@@ -54,18 +55,22 @@ class ApplicationDocumentPackageJobView(PackageView):
             "consulta en `GET /document-package-jobs/{job_id}`."
         ),
         request=None,
-        responses={
-            200: DocumentPackageJobSerializer,
-            201: DocumentPackageJobSerializer,
-            409: error_response("APPLICATION_CLOSED"),
-            422: error_response(
-                "APPLICATION_NOT_READY, con `DOCUMENT_PENDING`, `DOCUMENT_EXPIRED` o "
-                "`DOCUMENTS_NOT_CONFIGURED` en `details`"
-            ),
-            **NOT_FOUND,
-            **COMMON_ERRORS,
-        },
+        parameters=[IDEMPOTENCY_PARAMETER],
+        responses=idempotency_responses(
+            {
+                200: DocumentPackageJobSerializer,
+                201: DocumentPackageJobSerializer,
+                409: error_response("APPLICATION_CLOSED"),
+                422: error_response(
+                    "APPLICATION_NOT_READY, con `DOCUMENT_PENDING`, `DOCUMENT_EXPIRED` o "
+                    "`DOCUMENTS_NOT_CONFIGURED` en `details`"
+                ),
+                **NOT_FOUND,
+                **COMMON_ERRORS,
+            }
+        ),
     )
+    @idempotent()
     def post(self, request: Request, application_id: Any) -> Response:
         application = self.get_application(application_id)
         result = packages.request_package(self.actor, application)

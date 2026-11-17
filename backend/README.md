@@ -55,7 +55,8 @@ flowchart LR
 | `tasks` | Manual follow-up tasks with assignee, due date, priority, and status. | Belongs to an application or an opportunity; feeds the advisor workday. |
 | `workday` | The advisor workday: open applications with their next action, days in stage, and attention segments. | Reads applications, document slots, buyer activity, and tasks; has no tables of its own. |
 | `activity` | The immutable application timeline (internal and buyer rows) and internal notes. | Subscribes to the signals of applications, documents, identity, tasks, and filings. |
-| `notifications` | In-app notifications, delivery attempts, idempotency records, and outbox events. | Communicates application and filing events reliably. |
+| `notifications` | Buyer in-app notifications and their portal and email deliveries, with retries. | Subscribes to identity, document, application, and filing events. |
+| `idempotency` | `Idempotency-Key` records for the critical `POST` operations. | Used by filings, bank responses, status transitions, filing packages, and magic links. |
 | `reporting` | Dashboards, operational reports, and export jobs. | Reads authorized data from CRM, applications, filings, and documents. |
 | `audit` | Immutable technical audit events and request correlation. | Records sensitive actions performed across all modules. |
 
@@ -435,6 +436,37 @@ The `filings` module (API §20) records the manual delivery of the package to th
 - **Buyer:** `GET /buyer/applications/{id}` includes `latest_bank_update`, the latest response with a public message, never the internal comment.
 - **Events:** `filing_created` and `filing_response_recorded`, sent after commit, following `application_status_changed`.
 
+## Buyer Notifications
+
+The `notifications` module (API §21.2) tells the buyer about each important event of the application, in the portal and by email. The portal notification is the source of truth: if the email fails, nothing is rolled back.
+
+| Method | Path | Access |
+| --- | --- | --- |
+| `GET` | `/buyer/notifications` (`?unread=true`) | Buyer session; only their client and the session application. |
+| `GET` | `/buyer/notifications/unread-count` | Buyer session. |
+| `PATCH` | `/buyer/notifications/{id}/read` | Buyer session; idempotent. |
+| `POST` | `/buyer/notifications/read-all` | Buyer session; returns how many were marked. |
+| `GET` | `/applications/{id}/notifications` | `notifications.read`, admin or assigned advisor; includes each delivery. |
+
+- **Events:** `ACCESS_GRANTED` (first magic-link access, `buyer_access_consumed`), `DOCUMENT_REJECTED` (`document_reviewed`), `READY_TO_FILE` (`application_status_changed`), `FILED` (`filing_created`), and `BANK_RETURNED`, `BANK_APPROVED`, `BANK_REJECTED` and `DISBURSED` (`filing_response_recorded`). Subscribers live in `apps/notifications/receivers.py`; an error there is logged and never breaks the original operation.
+- **No duplicates:** each notification has a `deduplication_key` (type plus the id of the source object), so a repeated event creates nothing.
+- **Texts:** a single constant, `apps/notifications/messages.py`. They never carry internal notes, identification numbers, or income.
+- **Deliveries:** `PORTAL` is `SENT` at once; `EMAIL` starts `PENDING` and the `deliver_notification_email` task sends it after the commit. In simple mode the task runs in the same process, and with the console `EMAIL_BACKEND` the email is printed in the backend log.
+- **Email content:** the title as subject, the public message and "Entra a tu portal con el enlace que te envió tu asesor; si se venció, pídele uno nuevo", in plain text and simple HTML (`apps/notifications/templates/notifications/`). No magic link, attachments, internal notes, or sensitive financial data.
+- **Retries:** a client without email leaves the delivery `FAILED` with `NO_DESTINATION`. A failed send stays `PENDING` with `next_attempt_at` and `last_error_code` (`SMTP_ERROR`, `CONNECTION_ERROR`, or `SEND_FAILED`), and is retried up to 5 times, 1, 5, 15, 60 and 240 minutes after each failure. After the last one it is `FAILED`. With a worker, the task queues its own retry.
+- **Requeue:** `python manage.py retry_notification_deliveries` queues every `PENDING` email whose next attempt is due. Simple mode has no worker retries and no beat, so run it by hand there. In a real environment it should run periodically, for example every minute from cron. It also picks up emails that could not be queued because the broker was down.
+
+### Idempotency-Key
+
+The `idempotency` module (API §6) protects five critical `POST` operations: the filing, the bank response, the status transition, the filing package, and the magic link. The header is **optional**: without it, the view behaves as before.
+
+- A key is valid for 24 hours, for its actor (internal user or buyer session), method, and path. The same key from another actor is independent.
+- Same key and same JSON body (key order does not matter): the original response, with its status code and `ETag`.
+- Same key and a different body: `422 IDEMPOTENCY_CONFLICT`. Same key while the first request is still running: `409 IDEMPOTENCY_IN_PROGRESS`. A malformed key: `400 VALIDATION_ERROR`.
+- Only `2xx` responses are kept. An error releases the key, so the client can retry with it.
+- The magic link response carries the plain token, which is never stored. Repeating its key creates no second link and answers `409 IDEMPOTENCY_REPLAY_UNAVAILABLE`.
+- `python manage.py purge_idempotency_keys` deletes the expired keys, which are technical data. Run it periodically, for example daily from cron.
+
 ## Internal Authentication
 
 Internal users (admin, advisors, brokers, and partner users) authenticate with email and password. The API never returns tokens in the body; it sets cookies:
@@ -666,7 +698,7 @@ backend/
 
 ## Current Status
 
-Build steps 1 to 10 are complete:
+Build steps 1 to 13 are complete:
 
 1. `identity` core: internal users, roles and permissions, sessions with rotating refresh tokens, password reset, and `/api/v1/auth/*`.
 2. `catalogs`: catalogs and items, workflow transitions, and the metadata endpoints.
@@ -678,5 +710,8 @@ Build steps 1 to 10 are complete:
 8. `applications`: credit applications, participants, financial profiles, income sources, property, financing, bank rule evaluations, status transitions, withdrawals, history, available actions, and completeness.
 9. `identity` buyer access: magic links, buyer sessions, consents, and the buyer portal endpoints.
 10. `documents` dossier: checklist slots, buyer uploads with asynchronous antivirus scanning, review, waivers, downloads, the `READY_TO_FILE` document guard, completeness, and asynchronous filing packages.
+11. `filings`: manual bank filings, document snapshots, bank responses with evidence, returns with document observations, and disbursement.
+12. `tasks`, `workday`, and `activity`: manual follow-up tasks, the advisor workday, and the application timeline with internal notes.
+13. `notifications` and `idempotency`: buyer notifications in the portal and by email with retries, and `Idempotency-Key` on the critical `POST` operations.
 
-Remaining modules follow the documented build order, starting with manual bank filings (step 11).
+Remaining modules follow the documented build order, starting with the audit trail (step 14).
