@@ -9,3 +9,4 @@ backend/
 docs/
 specs/
 **/.env*
+frontend/storybook-static

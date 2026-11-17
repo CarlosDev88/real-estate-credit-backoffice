@@ -1,0 +1,19 @@
+import { Meta, Story } from "@storybook/addon-docs/blocks";
+
+import * as Bloques from "./fundamentos.stories";
+
+<Meta title="Fundamentos/Radios" />
+
+# Radios
+
+<Story of={Bloques.Radios} />
+
+## Cuándo usar cada uno
+
+Según los mockups aprobados (`design/screens/`):
+
+- `radius.sm`: piezas pequeñas dentro de otra, como el botón de orden de un encabezado de tabla.
+- `radius.md`: controles (botones, campos, selects), alertas y enlaces de navegación. Es el `borderRadius` de Ant Design.
+- `radius.lg`: tarjetas, notas y toasts (`borderRadiusLG`).
+- `radius.xl`: contenedores grandes, como la lista y el detalle de documentos del portal o la zona de carga.
+- `radius.full`: píldoras: el badge de estado y los conteos sobre color sólido.

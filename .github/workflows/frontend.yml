@@ -67,7 +67,8 @@ jobs:
             echo "run=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          if grep -qE '^(frontend/|contracts/openapi\.json$|design/generated/|\.github/workflows/frontend\.yml$)' <<< "$files"; then
+          # design/README.md: los fundamentos de Storybook leen de ahí el uso de cada tono.
+          if grep -qE '^(frontend/|contracts/openapi\.json$|design/generated/|design/README\.md$|\.github/workflows/frontend\.yml$)' <<< "$files"; then
             echo "run=true" >> "$GITHUB_OUTPUT"
           else
             echo "El PR no toca el frontend: verificaciones omitidas."
@@ -164,6 +165,13 @@ jobs:
         continue-on-error: true
         run: pnpm build 2>&1 | tee "$CI_REPORT_DIR/build.txt"
 
+      # Storybook estático (la librería de componentes y los fundamentos). Falla si no compila.
+      - name: Storybook
+        id: storybook
+        if: steps.changes.outputs.run == 'true'
+        continue-on-error: true
+        run: pnpm build-storybook 2>&1 | tee "$CI_REPORT_DIR/storybook.txt"
+
       - name: Build CI report
         if: always()
         continue-on-error: true
@@ -178,6 +186,7 @@ jobs:
           OUTCOME_COVERAGE: ${{ steps.coverage.outcome }}
           OUTCOME_API_CONTRACT: ${{ steps.api_contract.outcome }}
           OUTCOME_BUILD: ${{ steps.build.outcome }}
+          OUTCOME_STORYBOOK: ${{ steps.storybook.outcome }}
         run: node scripts/ci-report.ts
 
       - name: Upload CI report
@@ -237,6 +246,7 @@ jobs:
             coverage=${{ steps.coverage.outcome }}
             api_contract=${{ steps.api_contract.outcome }}
             build=${{ steps.build.outcome }}
+            storybook=${{ steps.storybook.outcome }}
         run: |
           if [ "$RUN" = false ]; then
             echo "Sin cambios en el frontend: verificaciones omitidas."

@@ -60,6 +60,7 @@ const TESTS = "Tests";
 const COVERAGE = "Cobertura";
 const CONTRACT = "Contrato API";
 const BUILD = "Build";
+const STORYBOOK = "Storybook";
 
 const ANSI_ESCAPE = /\x1b\[[0-9;]*[A-Za-z]/g;
 const CONTROL_CHARS = /[\x00-\x08\x0b-\x1f\x7f]/g;
@@ -678,20 +679,27 @@ function checkContract(ctx: Context): Verdict {
   return { status: Status.FAILED, summary, details };
 }
 
-// --- Build ---------------------------------------------------------------------------------
+// --- Build y Storybook ---------------------------------------------------------------------
 
-function checkBuild(ctx: Context): Verdict {
-  if (ctx.outcomes.build === SUCCESS) return { status: Status.PASSED, summary: "Compiló" };
-  return {
-    status: Status.FAILED,
-    summary: "No compiló",
-    details: tailDetails(
-      `${BUILD}: últimas ${BUILD_TAIL_LINES} líneas`,
-      readText(ctx, "build.txt"),
-      BUILD_TAIL_LINES,
-    ),
+/** Compiló o no; si no, las últimas líneas del log que dejó el paso. */
+function compileCheck(name: string, outcomeKey: string, logFile: string) {
+  return (ctx: Context): Verdict => {
+    if (ctx.outcomes[outcomeKey] === SUCCESS) return { status: Status.PASSED, summary: "Compiló" };
+    return {
+      status: Status.FAILED,
+      summary: "No compiló",
+      details: tailDetails(
+        `${name}: últimas ${BUILD_TAIL_LINES} líneas`,
+        readText(ctx, logFile),
+        BUILD_TAIL_LINES,
+      ),
+    };
   };
 }
+
+const checkBuild = compileCheck(BUILD, "build", "build.txt");
+// `pnpm build-storybook`: falla si Storybook no compila.
+const checkStorybook = compileCheck(STORYBOOK, "storybook", "storybook.txt");
 
 // --- Reporte -------------------------------------------------------------------------------
 
@@ -715,6 +723,7 @@ const CHECKS: CheckSpec[] = [
   },
   { name: CONTRACT, outcomeKey: "api_contract", build: checkContract },
   { name: BUILD, outcomeKey: "build", build: checkBuild },
+  { name: STORYBOOK, outcomeKey: "storybook", build: checkStorybook },
 ];
 const OUTCOME_KEYS = ["install", ...CHECKS.map((c) => c.outcomeKey)];
 
