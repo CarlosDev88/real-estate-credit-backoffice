@@ -199,6 +199,7 @@ Las cuatro primeras se resolvieron en `TAREA-applications-listado.md` (PR #16). 
 - Campana de notificaciones internas de la barra superior: no hay endpoint. Se quita.
 - **Resuelta en `TAREA-brechas.md` (PR #18):** `headers.ETag` en las 56 respuestas que la llevan (API §6). El contrato (`contracts/openapi.json`) no declaraba la cabecera `ETag` en ninguna respuesta, aunque exige `If-Match` en 12 escrituras y API §6 dice que toda respuesta del expediente la lleva. El frontend la lee igual desde la respuesta, pero el contrato debe documentarla.
 - **Resuelta (vista en la F2):** el tipo documental que ve el comprador (`BuyerSlotDocumentType`) no traía `allowed_mime_types` ni `max_size_bytes`. Hoy los trae el slot (`BuyerDocumentSlot`), y el portal valida tipo y tamaño antes de enviar.
+- **API lista para una pantalla futura (`TAREA-auditoria.md`):** la auditoría técnica para el administrador (`GET /audit-events`, con filtros por actor, acción, recurso, resultado, `request_id` y fechas, y `GET /audit-events/{id}`). Va con las vistas de administración; el asesor, el broker y la constructora reciben `403`.
 
 ### Brechas que dejó la F1 (PR #17, `TAREA-front-backoffice.md`)
 **Listado (`/solicitudes`):**

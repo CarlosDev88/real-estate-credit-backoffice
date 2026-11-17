@@ -3847,6 +3847,268 @@
                 }
             }
         },
+        "/api/v1/audit-events": {
+            "get": {
+                "operationId": "audit_events_list",
+                "description": "Bitácora técnica inmutable, del más nuevo al más viejo. Solo el administrador. Nunca guarda contraseñas, tokens, cookies, la cabecera `Authorization`, URLs firmadas ni números de documento completos.",
+                "summary": "Eventos de auditoría",
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "action",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string",
+                                "enum": [
+                                    "ACCESS_DENIED",
+                                    "APPLICATION_ASSIGNED",
+                                    "APPLICATION_STATUS_CHANGED",
+                                    "APPLICATION_WITHDRAWN",
+                                    "AUTH_LOGIN",
+                                    "AUTH_LOGIN_FAILED",
+                                    "AUTH_LOGOUT",
+                                    "AUTH_PASSWORD_RESET_COMPLETED",
+                                    "AUTH_PASSWORD_RESET_REQUESTED",
+                                    "AUTH_RATE_LIMITED",
+                                    "AUTH_REFRESH_REJECTED",
+                                    "BANK_CHANGED",
+                                    "BANK_PRODUCT_CHANGED",
+                                    "BANK_RESPONSE_RECORDED",
+                                    "BANK_RULE_CHANGED",
+                                    "BUYER_LINK_CONSUMED",
+                                    "BUYER_LINK_CREATED",
+                                    "BUYER_LINK_FAILED",
+                                    "BUYER_SESSION_CLOSED",
+                                    "CATALOG_CHANGED",
+                                    "CONSENT_ACCEPTED",
+                                    "CONSENT_WITHDRAWN",
+                                    "DOCUMENT_DOWNLOADED",
+                                    "DOCUMENT_REQUIREMENT_CHANGED",
+                                    "DOCUMENT_REVIEWED",
+                                    "DOCUMENT_TYPE_CHANGED",
+                                    "DOCUMENT_UPLOADED",
+                                    "DOCUMENT_WAIVED",
+                                    "DOCUMENT_WAIVER_REOPENED",
+                                    "EVIDENCE_DOWNLOADED",
+                                    "FILING_CREATED",
+                                    "FILING_UPDATED",
+                                    "PACKAGE_DOWNLOADED",
+                                    "USER_CHANGED",
+                                    "USER_ROLES_CHANGED",
+                                    "USER_STATUS_CHANGED",
+                                    "WORKFLOW_TRANSITION_CHANGED"
+                                ]
+                            }
+                        },
+                        "description": "Una o varias (`?action=A&action=B`). Un código desconocido responde `400`.",
+                        "explode": true
+                    },
+                    {
+                        "in": "query",
+                        "name": "actor_buyer_session_id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "actor_user_id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "created_from",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Fecha (`AAAA-MM-DD`, desde el inicio del día en Bogotá) o fecha y hora ISO."
+                    },
+                    {
+                        "in": "query",
+                        "name": "created_to",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Fecha (hasta el fin del día en Bogotá, incluido) o fecha y hora ISO."
+                    },
+                    {
+                        "name": "page",
+                        "required": false,
+                        "in": "query",
+                        "description": "Un número de página dentro del conjunto de resultados paginado.",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "page_size",
+                        "required": false,
+                        "in": "query",
+                        "description": "Número de resultados a devolver por página.",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "request_id",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "resource_id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "resource_type",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Tabla del recurso."
+                    },
+                    {
+                        "in": "query",
+                        "name": "result",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "DENIED",
+                                "FAILED",
+                                "SUCCESS"
+                            ]
+                        }
+                    }
+                ],
+                "tags": [
+                    "Audit"
+                ],
+                "security": [
+                    {
+                        "internalSession": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PaginatedAuditEventList"
+                                }
+                            }
+                        },
+                        "description": ""
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "VALIDATION_ERROR"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "NOT_AUTHENTICATED o SESSION_EXPIRED"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "PERMISSION_DENIED (solo el administrador; el intento queda auditado)"
+                    }
+                }
+            }
+        },
+        "/api/v1/audit-events/{event_id}": {
+            "get": {
+                "operationId": "audit_events_retrieve",
+                "summary": "Detalle de un evento de auditoría",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "event_id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "Audit"
+                ],
+                "security": [
+                    {
+                        "internalSession": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AuditEvent"
+                                }
+                            }
+                        },
+                        "description": ""
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "RESOURCE_NOT_FOUND"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "NOT_AUTHENTICATED o SESSION_EXPIRED"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "PERMISSION_DENIED (solo el administrador; el intento queda auditado)"
+                    }
+                }
+            }
+        },
         "/api/v1/auth/change-password": {
             "post": {
                 "operationId": "auth_change_password",
@@ -19529,6 +19791,164 @@
                 "type": "string",
                 "description": "* `REVIEW_DOCUMENTS` - Documentos por revisar\n* `READY_TO_FILE` - Listas para radicar\n* `FILED` - Radicadas\n* `IN_ANALYSIS` - En análisis\n* `OBSERVED` - Observadas por el banco\n* `BUYER_INACTIVE` - Comprador sin actividad\n* `TASKS_DUE` - Con tareas vencidas o de hoy"
             },
+            "AuditActionEnum": {
+                "enum": [
+                    "AUTH_LOGIN",
+                    "AUTH_LOGIN_FAILED",
+                    "AUTH_LOGOUT",
+                    "AUTH_REFRESH_REJECTED",
+                    "AUTH_PASSWORD_RESET_REQUESTED",
+                    "AUTH_PASSWORD_RESET_COMPLETED",
+                    "AUTH_RATE_LIMITED",
+                    "BUYER_LINK_CREATED",
+                    "BUYER_LINK_CONSUMED",
+                    "BUYER_LINK_FAILED",
+                    "BUYER_SESSION_CLOSED",
+                    "CONSENT_ACCEPTED",
+                    "CONSENT_WITHDRAWN",
+                    "DOCUMENT_UPLOADED",
+                    "DOCUMENT_DOWNLOADED",
+                    "PACKAGE_DOWNLOADED",
+                    "EVIDENCE_DOWNLOADED",
+                    "APPLICATION_STATUS_CHANGED",
+                    "APPLICATION_WITHDRAWN",
+                    "APPLICATION_ASSIGNED",
+                    "DOCUMENT_REVIEWED",
+                    "DOCUMENT_WAIVED",
+                    "DOCUMENT_WAIVER_REOPENED",
+                    "FILING_CREATED",
+                    "FILING_UPDATED",
+                    "BANK_RESPONSE_RECORDED",
+                    "CATALOG_CHANGED",
+                    "BANK_CHANGED",
+                    "BANK_PRODUCT_CHANGED",
+                    "BANK_RULE_CHANGED",
+                    "DOCUMENT_TYPE_CHANGED",
+                    "DOCUMENT_REQUIREMENT_CHANGED",
+                    "WORKFLOW_TRANSITION_CHANGED",
+                    "USER_CHANGED",
+                    "USER_ROLES_CHANGED",
+                    "USER_STATUS_CHANGED",
+                    "ACCESS_DENIED"
+                ],
+                "type": "string",
+                "description": "* `AUTH_LOGIN` - Inicio de sesión\n* `AUTH_LOGIN_FAILED` - Inicio de sesión fallido\n* `AUTH_LOGOUT` - Cierre de sesión\n* `AUTH_REFRESH_REJECTED` - Renovación de sesión rechazada\n* `AUTH_PASSWORD_RESET_REQUESTED` - Restablecimiento de contraseña solicitado\n* `AUTH_PASSWORD_RESET_COMPLETED` - Contraseña restablecida\n* `AUTH_RATE_LIMITED` - Bloqueo por límite de consumo\n* `BUYER_LINK_CREATED` - Enlace de acceso creado\n* `BUYER_LINK_CONSUMED` - Enlace de acceso usado\n* `BUYER_LINK_FAILED` - Enlace de acceso rechazado\n* `BUYER_SESSION_CLOSED` - Sesión del comprador cerrada\n* `CONSENT_ACCEPTED` - Consentimiento aceptado\n* `CONSENT_WITHDRAWN` - Consentimiento retirado\n* `DOCUMENT_UPLOADED` - Documento cargado\n* `DOCUMENT_DOWNLOADED` - Documento descargado\n* `PACKAGE_DOWNLOADED` - Paquete descargado\n* `EVIDENCE_DOWNLOADED` - Evidencia descargada\n* `APPLICATION_STATUS_CHANGED` - Cambio de estado\n* `APPLICATION_WITHDRAWN` - Desistimiento\n* `APPLICATION_ASSIGNED` - Reasignación\n* `DOCUMENT_REVIEWED` - Revisión de documento\n* `DOCUMENT_WAIVED` - Exoneración de documento\n* `DOCUMENT_WAIVER_REOPENED` - Reapertura de exoneración\n* `FILING_CREATED` - Radicación creada\n* `FILING_UPDATED` - Radicación corregida\n* `BANK_RESPONSE_RECORDED` - Respuesta del banco registrada\n* `CATALOG_CHANGED` - Cambio de catálogo\n* `BANK_CHANGED` - Cambio de banco\n* `BANK_PRODUCT_CHANGED` - Cambio de producto bancario\n* `BANK_RULE_CHANGED` - Cambio de regla bancaria\n* `DOCUMENT_TYPE_CHANGED` - Cambio de tipo documental\n* `DOCUMENT_REQUIREMENT_CHANGED` - Cambio de requisito documental\n* `WORKFLOW_TRANSITION_CHANGED` - Cambio de transición\n* `USER_CHANGED` - Cambio de usuario\n* `USER_ROLES_CHANGED` - Cambio de roles\n* `USER_STATUS_CHANGED` - Cambio de estado de usuario\n* `ACCESS_DENIED` - Acceso denegado"
+            },
+            "AuditActor": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "name": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "id",
+                    "name"
+                ]
+            },
+            "AuditEvent": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "readOnly": true
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "readOnly": true
+                    },
+                    "action": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/AuditActionEnum"
+                            }
+                        ],
+                        "readOnly": true
+                    },
+                    "action_label": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "result": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/AuditResultEnum"
+                            }
+                        ],
+                        "readOnly": true
+                    },
+                    "result_label": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "resource_type": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "resource_id": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "uuid",
+                        "readOnly": true
+                    },
+                    "actor": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/AuditActor"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "readOnly": true
+                    },
+                    "request_id": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "ip_address": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "readOnly": true
+                    },
+                    "metadata": {
+                        "readOnly": true
+                    }
+                },
+                "required": [
+                    "action",
+                    "action_label",
+                    "actor",
+                    "created_at",
+                    "id",
+                    "ip_address",
+                    "metadata",
+                    "request_id",
+                    "resource_id",
+                    "resource_type",
+                    "result",
+                    "result_label"
+                ]
+            },
+            "AuditResultEnum": {
+                "enum": [
+                    "SUCCESS",
+                    "DENIED",
+                    "FAILED"
+                ],
+                "type": "string",
+                "description": "* `SUCCESS` - Correcto\n* `DENIED` - Denegado\n* `FAILED` - Fallido"
+            },
             "AvailableAction": {
                 "type": "object",
                 "description": "Transición que el actor puede ejecutar ahora; la guarda se evalúa al ejecutarla.",
@@ -27417,6 +27837,47 @@
                         "type": "array",
                         "items": {
                             "$ref": "#/components/schemas/ApplicationParticipant"
+                        }
+                    },
+                    "page": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "page_size": {
+                        "type": "integer",
+                        "example": 25
+                    },
+                    "total": {
+                        "type": "integer",
+                        "example": 128
+                    },
+                    "next": {
+                        "type": "string",
+                        "nullable": true,
+                        "example": "/api/v1/x?page=2"
+                    },
+                    "previous": {
+                        "type": "string",
+                        "nullable": true,
+                        "example": null
+                    }
+                }
+            },
+            "PaginatedAuditEventList": {
+                "type": "object",
+                "required": [
+                    "items",
+                    "page",
+                    "page_size",
+                    "total",
+                    "next",
+                    "previous"
+                ],
+                "properties": {
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/AuditEvent"
                         }
                     },
                     "page": {

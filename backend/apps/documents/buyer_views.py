@@ -22,6 +22,7 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 
 from apps.applications.models import CreditApplication
+from apps.audit.actions import AuditAction
 from apps.documents import dossier, downloads, uploads
 from apps.documents.buyer_serializers import (
     BuyerDocumentSlotSerializer,
@@ -185,6 +186,9 @@ class BuyerDocumentUploadView(BuyerDossierView):
 
 
 class BuyerDocumentFileDownloadView(BuyerDossierView):
+    # Auditoría (módulo 14, apps/audit/hooks.py).
+    audit_actions = {"GET": AuditAction.DOCUMENT_DOWNLOADED}
+    audit_resource_type = "document_files"
     throttle_classes = [DocumentDownloadRateThrottle]
 
     @extend_schema(

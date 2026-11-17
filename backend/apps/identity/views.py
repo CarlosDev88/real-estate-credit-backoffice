@@ -10,6 +10,7 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.audit.actions import AuditAction
 from apps.identity import services
 from apps.identity.authentication import enforce_csrf
 from apps.identity.cookies import clear_session_cookies, refresh_cookie_name, set_session_cookies
@@ -62,6 +63,9 @@ class PublicAuthView(APIView):
 
 
 class LoginView(PublicAuthView):
+    # Auditoría (módulo 14, apps/audit/hooks.py).
+    audit_failure_action = AuditAction.AUTH_LOGIN_FAILED
+    audit_resource_type = "auth"
     throttle_classes = [LoginRateThrottle]
 
     @extend_schema(
@@ -110,6 +114,10 @@ class LoginView(PublicAuthView):
 
 
 class RefreshView(PublicAuthView):
+    # Auditoría (módulo 14, apps/audit/hooks.py).
+    audit_failure_action = AuditAction.AUTH_REFRESH_REJECTED
+    audit_resource_type = "auth"
+
     @extend_schema(
         tags=[AUTH_TAG],
         operation_id="auth_refresh",
@@ -192,6 +200,9 @@ class MeView(APIView):
 
 
 class PasswordResetRequestView(PublicAuthView):
+    # Auditoría (módulo 14, apps/audit/hooks.py).
+    audit_actions = {"POST": AuditAction.AUTH_PASSWORD_RESET_REQUESTED}
+    audit_resource_type = "auth"
     throttle_classes = [PasswordResetRequestRateThrottle]
 
     @extend_schema(
@@ -218,6 +229,9 @@ class PasswordResetRequestView(PublicAuthView):
 
 
 class PasswordResetConfirmView(PublicAuthView):
+    # Auditoría (módulo 14, apps/audit/hooks.py).
+    audit_actions = {"POST": AuditAction.AUTH_PASSWORD_RESET_COMPLETED}
+    audit_resource_type = "auth"
     throttle_classes = [PasswordResetConfirmRateThrottle]
 
     @extend_schema(

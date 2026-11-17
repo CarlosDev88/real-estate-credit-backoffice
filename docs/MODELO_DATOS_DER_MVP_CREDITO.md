@@ -1259,13 +1259,15 @@ Registro técnico inmutable de accesos y cambios sensibles.
 | `resource_type` | `VARCHAR(80)` | No | Tipo de recurso. |
 | `resource_id` | `UUID` | Sí | Identificador. |
 | `result` | `VARCHAR(20)` | No | `SUCCESS`, `DENIED`, `FAILED`. |
-| `request_id` | `UUID` | No | Correlación. |
+| `request_id` | `VARCHAR(64)` | No | Correlación: el `X-Request-ID` de la petición, que puede venir del cliente y no siempre es un UUID; fuera de una petición, un UUID nuevo. |
 | `ip_address` | `INET` | Sí | Origen. |
 | `metadata` | `JSONB` | No | Cambios mínimos y redactados. |
 
 Relación opcional con actor, sin FK genérica al recurso. La auditoría debe sobrevivir aunque una cuenta se desactive; `resource_type` permite registrar muchos tipos sin crear una columna por cada tabla. No contiene tokens, contraseñas ni archivos.
 
-Índices: (`resource_type`, `resource_id`, `created_at DESC`), (`actor_user_id`, `created_at DESC`), `request_id`.
+Índices: (`resource_type`, `resource_id`, `created_at DESC`), (`actor_user_id`, `created_at DESC`), `request_id` y `created_at DESC` (la consulta del administrador).
+
+Inmutable: el modelo rechaza la edición y el borrado, y el trigger `trg_audit_events_block_update` bloquea `UPDATE`. El único borrado es la retención (`purge_audit_events`, 365 días). `metadata` pasa por un saneamiento único (claves prohibidas, documentos enmascarados, URLs firmadas y textos largos); ver API §24.1.
 
 ### 10.6 `outbox_events`
 
