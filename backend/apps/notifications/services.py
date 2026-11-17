@@ -3,13 +3,15 @@
 - Una notificación por ``deduplication_key``: si el evento llega dos veces, la segunda
   no crea nada (``get_or_create``).
 - Al crearla se crean sus dos entregas: ``PORTAL`` (``SENT`` de inmediato) y ``EMAIL``
-  (``PENDING``, con el correo del comprador como destino).
+  (``PENDING``, con el correo del comprador como destino). El correo se encola al
+  confirmar la transacción (``deliver_notification_email``).
 - El comprador solo ve las de su cliente en la solicitud de su sesión.
 """
 
 import logging
 import uuid
 from dataclasses import dataclass
+from functools import partial
 
 from django.db import transaction
 from django.db.models import Prefetch, QuerySet
@@ -25,6 +27,7 @@ from apps.notifications.models import (
     Notification,
     NotificationDelivery,
 )
+from apps.notifications.tasks import enqueue_email
 
 logger = logging.getLogger(__name__)
 
@@ -70,6 +73,13 @@ def notify_client(
         )
         if created:
             now = timezone.now()
+            email = NotificationDelivery(
+                notification=notification,
+                channel=DeliveryChannel.EMAIL,
+                destination=client.email or None,
+                status=DeliveryStatus.PENDING,
+                next_attempt_at=now,
+            )
             NotificationDelivery.objects.bulk_create(
                 [
                     NotificationDelivery(
@@ -79,15 +89,10 @@ def notify_client(
                         attempt_count=1,
                         sent_at=now,
                     ),
-                    NotificationDelivery(
-                        notification=notification,
-                        channel=DeliveryChannel.EMAIL,
-                        destination=client.email or None,
-                        status=DeliveryStatus.PENDING,
-                        next_attempt_at=now,
-                    ),
+                    email,
                 ]
             )
+            transaction.on_commit(partial(enqueue_email, email.pk))
     if created:
         logger.info(
             "Notificación %s (%s) creada para la solicitud %s",
