@@ -227,6 +227,7 @@ Las cuatro primeras se resolvieron en `TAREA-applications-listado.md` (PR #16). 
 - **Análisis de la evidencia sin etiqueta:** `Evidence.scan_status` no trae `scan_status_label`. Solo se abre con `CLEAN`; mientras está `PENDING` o falla, va una frase de interfaz.
 - **Documentos entregados sin nombre:** `FilingDocumentSnapshot` trae `document_type_code`, pero no el nombre del tipo ni la etiqueta del slot. Se usa la etiqueta del slot de `document-slots` y, si el slot ya no está, el código.
 - **Campos por tipo de respuesta:** la API no expone qué campos pide cada tipo (`RULES` de `filings/responses.py`). El formulario los copia en una constante de pantalla (`RESPONSE_FORMS`), con prueba. Si el catálogo trae `fields`/`required` por tipo (por ejemplo, en `metadata`), la constante se puede quitar.
+- **Acción principal del encabezado (pendiente del front 1):** `WorkspaceActions` (`features/applications/workspace-header.tsx`) toma como principal la primera transición disponible (`runnable[0]`), sin mirar `AvailableAction.kind`, que llegó con el #20. En `READY_TO_FILE` marca "Crédito externo aprobado" y compite con "Preparar paquete" de la pestaña Radicación. El arreglo es elegir la primera con `kind === "primary"` (y pedir confirmación en las `destructive`). Va en el encabezado, que es del front 1: la F3 no lo toca.
 - **Respuesta vencida:** `Filing` no dice si la respuesta del banco está vencida. El frontend marca "Vencida" cuando pasó `target_response_at` y `responses_count` es 0.
 
 ### Notificaciones e idempotencia (`TAREA-notificaciones.md`, módulo 13)
