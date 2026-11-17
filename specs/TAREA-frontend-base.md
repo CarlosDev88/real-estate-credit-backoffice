@@ -198,7 +198,7 @@ Las cuatro primeras se resolvieron en `TAREA-applications-listado.md` (PR #16). 
 - Búsqueda global de la barra superior: no hay endpoint. Se quita.
 - Campana de notificaciones internas de la barra superior: no hay endpoint. Se quita.
 - **Resuelta en `TAREA-brechas.md` (PR #18):** `headers.ETag` en las 56 respuestas que la llevan (API §6). El contrato (`contracts/openapi.json`) no declaraba la cabecera `ETag` en ninguna respuesta, aunque exige `If-Match` en 12 escrituras y API §6 dice que toda respuesta del expediente la lleva. El frontend la lee igual desde la respuesta, pero el contrato debe documentarla.
-- El tipo documental que ve el comprador (`BuyerSlotDocumentType`) no trae `allowed_mime_types` ni `max_size_bytes`; el interno (`SlotDocumentType`) sí. Sin ellos, el uploader del portal no puede validar tipo y tamaño antes de enviar: lo valida solo la API (`422 UNSUPPORTED_FILE_TYPE` / `FILE_TOO_LARGE`, `413 PAYLOAD_TOO_LARGE`).
+- **Resuelta (vista en la F2):** el tipo documental que ve el comprador (`BuyerSlotDocumentType`) no traía `allowed_mime_types` ni `max_size_bytes`. Hoy los trae el slot (`BuyerDocumentSlot`), y el portal valida tipo y tamaño antes de enviar.
 
 ### Brechas que dejó la F1 (PR #17, `TAREA-front-backoffice.md`)
 **Listado (`/solicitudes`):**
@@ -218,6 +218,16 @@ Las cuatro primeras se resolvieron en `TAREA-applications-listado.md` (PR #16). 
 - `CurrentFile` (en la lista de slots) no trae `size_bytes`, `detected_mime_type` ni el último `buyer_comment`. El frontend pide `GET /document-files/{id}` por cada archivo vigente (unas 16 peticiones por expediente).
 - `DocumentFile` no dice qué usuario interno cargó un archivo (solo `uploaded_by_buyer_session_id`): "por el comprador" sale cuando viene ese campo; si no, no se dice quién.
 - No hay "deshacer" una aprobación: se corrige decidiendo otra vez sobre la versión vigente (API §19.1).
+
+### Brechas que dejó la F2 (`TAREA-front-portal.md`)
+**Portal del comprador:**
+- **"Avisos":** se quitó de la navegación (mockups `portal.html` y `portal-documentos.html`). La API de notificaciones del comprador llegó con el módulo 13 (PR #23), después de la F2; la pantalla queda para una tarea aparte.
+- **`BuyerConsent` sin `status_label`:** el estado del consentimiento (`PENDING`, `ACCEPTED`, `WITHDRAWN`) llega solo como código. El portal muestra "Obligatorio" u "Opcional" y "Aceptado el <fecha>" (de `accepted_at`), sin escribir los estados.
+- **`BuyerDocumentVersion.status` sin etiqueta:** `UPLOADED`, `IN_REVIEW`, `APPROVED` y `REJECTED` llegan solo como código. La lista de versiones muestra "Vigente" y el motivo del rechazo, pero no el estado.
+- **`BuyerProfile.addresses` sin tipo en el contrato:** es `object[]`, sin propiedades. El frontend asume la forma de `BuyerAddressSerializer` (`id`, `address_type`, `city`, `line1`, `line2`, `postal_code` e `is_primary`).
+- **Ingreso mensual en el inicio:** el detalle del comprador no trae ingresos. La fila "Ingresos y gastos" pide un perfil financiero por cada participante que aporta ingresos.
+- **Mensaje del `429` de `/buyer-access/consume` y de `/auth/login`:** es el texto por defecto de DRF ("Solicitud fue regulada (throttled). Se espera que esté disponible en N segundos."). El portal lo muestra debajo de su propio título ("Demasiados intentos, espera N minutos").
+- **Tono de los estados públicos de los documentos:** `status-tones.ts` no tiene los códigos de `public_status` (`TO_UPLOAD`, `TO_FIX`, `IN_REVIEW`, `DONE`, `NOT_APPLICABLE`). El portal usa el tono del estado interno (`status`): un pendiente sale `neutral`, mientras el mockup lo pinta `warning`.
 
 ## Pruebas
 - **Unitarias** (Vitest + Testing Library): componentes de `ui`, formularios con validación, manejo de `ApiError` y formato de montos.
