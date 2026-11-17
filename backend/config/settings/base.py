@@ -32,6 +32,8 @@ INSTALLED_APPS = [
     "apps.banking",
     "apps.documents",
     "apps.applications",
+    "apps.tasks",
+    "apps.workday",
 ]
 
 MIDDLEWARE = [
@@ -138,6 +140,11 @@ SPECTACULAR_SETTINGS = {
         # Portal y backoffice: estado público del documento y estado de cada etapa.
         "PublicSlotStatusEnum": "apps.documents.models.PublicSlotStatus",
         "ProgressStageStateEnum": "apps.applications.stages.StageState",
+        # Ítems de la completitud: el nombre publicado antes de "Mi día", que no cambia.
+        "CodeEnum": "apps.applications.serializers.COMPLETENESS_ITEM_CODES",
+        # Mi día: segmentos de atención y siguiente acción.
+        "AttentionSegmentEnum": "apps.workday.rules.AttentionSegment",
+        "NextActionEnum": "apps.workday.rules.NextAction",
     },
 }
 

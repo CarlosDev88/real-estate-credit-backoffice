@@ -2575,6 +2575,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/workday/applications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Solicitudes en curso del asesor, con su siguiente acción
+         * @description El asesor ve sus solicitudes asignadas; el administrador, todas (o las de `advisor_id`). Solo las no terminales. Por omisión van primero las que tienen tareas vencidas o de hoy y después las de más días en la etapa. `search` busca por código, nombre o documento del titular, como el listado.
+         */
+        get: operations["workday_applications_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workday/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Conteos de Mi día por segmento de atención
+         * @description `total` y un conteo por segmento, en el orden fijo de los segmentos. Aplica los mismos filtros que `/workday/applications`, salvo `attention`. Los segmentos no son excluyentes.
+         */
+        get: operations["workday_summary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/workflow-transitions": {
         parameters: {
             query?: never;
@@ -2936,6 +2976,21 @@ export interface components {
             /** @default  */
             reason: string;
         };
+        AttentionRef: {
+            code: components["schemas"]["AttentionSegmentEnum"];
+            label: string;
+        };
+        /**
+         * @description * `REVIEW_DOCUMENTS` - Documentos por revisar
+         *     * `READY_TO_FILE` - Listas para radicar
+         *     * `FILED` - Radicadas
+         *     * `IN_ANALYSIS` - En análisis
+         *     * `OBSERVED` - Observadas por el banco
+         *     * `BUYER_INACTIVE` - Comprador sin actividad
+         *     * `TASKS_DUE` - Con tareas vencidas o de hoy
+         * @enum {string}
+         */
+        AttentionSegmentEnum: "REVIEW_DOCUMENTS" | "READY_TO_FILE" | "FILED" | "IN_ANALYSIS" | "OBSERVED" | "BUYER_INACTIVE" | "TASKS_DUE";
         /** @description Transición que el actor puede ejecutar ahora; la guarda se evalúa al ejecutarla. */
         AvailableAction: {
             readonly code: string;
@@ -4669,6 +4724,19 @@ export interface components {
             id: string;
             name: string;
         };
+        /**
+         * @description * `COMPLETE_DRAFT` - Completar el borrador
+         *     * `FOLLOW_UP_BUYER_DATA` - Hacer seguimiento a los datos del comprador
+         *     * `FOLLOW_UP_DOCUMENTS` - Hacer seguimiento a los documentos
+         *     * `REVIEW_DOCUMENTS` - Revisar documentos
+         *     * `FILE_WITH_BANK` - Radicar en el banco
+         *     * `WAIT_BANK_RESPONSE` - Esperar respuesta del banco
+         *     * `RESOLVE_OBSERVATIONS` - Resolver las observaciones del banco
+         *     * `START_LEGALIZATION` - Iniciar la legalización
+         *     * `FOLLOW_UP_LEGALIZATION` - Hacer seguimiento a la legalización
+         * @enum {string}
+         */
+        NextActionEnum: "COMPLETE_DRAFT" | "FOLLOW_UP_BUYER_DATA" | "FOLLOW_UP_DOCUMENTS" | "REVIEW_DOCUMENTS" | "FILE_WITH_BANK" | "WAIT_BANK_RESPONSE" | "RESOLVE_OBSERVATIONS" | "START_LEGALIZATION" | "FOLLOW_UP_LEGALIZATION";
         NullEnum: null;
         Opportunity: {
             /** Format: uuid */
@@ -5220,6 +5288,19 @@ export interface components {
         };
         PaginatedUserList: {
             items: components["schemas"]["User"][];
+            /** @example 1 */
+            page: number;
+            /** @example 25 */
+            page_size: number;
+            /** @example 128 */
+            total: number;
+            /** @example /api/v1/x?page=2 */
+            next: string | null;
+            /** @example null */
+            previous: string | null;
+        };
+        PaginatedWorkdayApplicationList: {
+            items: components["schemas"]["WorkdayApplication"][];
             /** @example 1 */
             page: number;
             /** @example 25 */
@@ -6106,6 +6187,42 @@ export interface components {
             expected_version: number;
             /** @description Código de un valor activo del catálogo `application_withdrawal_reason`. Consulta los valores en `/api/v1/metadata/catalogs/application_withdrawal_reason`. */
             reason_code: string;
+        };
+        /** @description Fila de "Mi día". Lee las anotaciones de ``services.workday_applications``. */
+        WorkdayApplication: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly code: string;
+            client_display_name: string;
+            bank?: components["schemas"]["WorkdayBank"] | null;
+            bank_product: components["schemas"]["NamedRef"] | null;
+            status: components["schemas"]["ApplicationStatusEnum"];
+            status_label: string;
+            readonly next_action: components["schemas"]["NextActionEnum"];
+            readonly next_action_label: string;
+            /** @description Días enteros desde el inicio de la etapa, según la fecha de Bogotá. */
+            days_in_stage: number;
+            /** @description Segmentos de atención que cumple la solicitud (no son excluyentes). */
+            readonly attention: components["schemas"]["AttentionRef"][];
+            pending_tasks_count: number;
+            /** Format: date-time */
+            readonly updated_at: string;
+        };
+        WorkdayBank: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            short_name: string;
+        };
+        WorkdaySegment: {
+            code: components["schemas"]["AttentionSegmentEnum"];
+            label: string;
+            count: number;
+        };
+        WorkdaySummary: {
+            /** @description Solicitudes con los filtros, sin `attention`. */
+            total: number;
+            segments: components["schemas"]["WorkdaySegment"][];
         };
         WorkflowTransition: {
             /** Format: uuid */
@@ -16253,6 +16370,106 @@ export interface operations {
             };
             /** @description PARTNER_NOT_ACTIVE */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    workday_applications_list: {
+        parameters: {
+            query?: {
+                /** @description Solo el administrador. Para el asesor se ignora: siempre ve las suyas. */
+                advisor_id?: string;
+                /** @description Segmento de atención. Un código desconocido responde `400`. */
+                attention?: "BUYER_INACTIVE" | "FILED" | "IN_ANALYSIS" | "OBSERVED" | "READY_TO_FILE" | "REVIEW_DOCUMENTS" | "TASKS_DUE";
+                bank_id?: string;
+                /** @description Qué campo usar para ordenar los resultados. */
+                ordering?: string;
+                /** @description Un número de página dentro del conjunto de resultados paginado. */
+                page?: number;
+                /** @description Número de resultados a devolver por página. */
+                page_size?: number;
+                /** @description Código `loan_purpose`. Uno que no existe responde `400`. */
+                purpose?: string;
+                /** @description Un término de búsqueda. */
+                search?: string;
+                /** @description Estado no terminal de la solicitud. Otro valor responde `400`. */
+                stage?: "APPROVED" | "BANK_OBSERVATION" | "CREDIT_ANALYSIS" | "DOCUMENTS_REVIEW" | "DRAFT" | "FILED" | "FILING_VALIDATION" | "LEGALIZATION" | "READY_TO_FILE" | "WAITING_BUYER_DATA" | "WAITING_DOCUMENTS";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedWorkdayApplicationList"];
+                };
+            };
+            /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description PERMISSION_DENIED o CSRF_FAILED */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    workday_summary: {
+        parameters: {
+            query?: {
+                /** @description Solo el administrador. Para el asesor se ignora: siempre ve las suyas. */
+                advisor_id?: string;
+                bank_id?: string;
+                /** @description Código `loan_purpose`. Uno que no existe responde `400`. */
+                purpose?: string;
+                /** @description Estado no terminal de la solicitud. Otro valor responde `400`. */
+                stage?: "APPROVED" | "BANK_OBSERVATION" | "CREDIT_ANALYSIS" | "DOCUMENTS_REVIEW" | "DRAFT" | "FILED" | "FILING_VALIDATION" | "LEGALIZATION" | "READY_TO_FILE" | "WAITING_BUYER_DATA" | "WAITING_DOCUMENTS";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkdaySummary"];
+                };
+            };
+            /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description PERMISSION_DENIED o CSRF_FAILED */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };

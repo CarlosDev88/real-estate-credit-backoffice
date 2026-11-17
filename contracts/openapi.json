@@ -15378,6 +15378,249 @@
                 }
             }
         },
+        "/api/v1/workday/applications": {
+            "get": {
+                "operationId": "workday_applications_list",
+                "description": "El asesor ve sus solicitudes asignadas; el administrador, todas (o las de `advisor_id`). Solo las no terminales. Por omisión van primero las que tienen tareas vencidas o de hoy y después las de más días en la etapa. `search` busca por código, nombre o documento del titular, como el listado.",
+                "summary": "Solicitudes en curso del asesor, con su siguiente acción",
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "advisor_id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "description": "Solo el administrador. Para el asesor se ignora: siempre ve las suyas."
+                    },
+                    {
+                        "in": "query",
+                        "name": "attention",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "BUYER_INACTIVE",
+                                "FILED",
+                                "IN_ANALYSIS",
+                                "OBSERVED",
+                                "READY_TO_FILE",
+                                "REVIEW_DOCUMENTS",
+                                "TASKS_DUE"
+                            ]
+                        },
+                        "description": "Segmento de atención. Un código desconocido responde `400`."
+                    },
+                    {
+                        "in": "query",
+                        "name": "bank_id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    },
+                    {
+                        "name": "ordering",
+                        "required": false,
+                        "in": "query",
+                        "description": "Qué campo usar para ordenar los resultados.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "page",
+                        "required": false,
+                        "in": "query",
+                        "description": "Un número de página dentro del conjunto de resultados paginado.",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "page_size",
+                        "required": false,
+                        "in": "query",
+                        "description": "Número de resultados a devolver por página.",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "purpose",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Código `loan_purpose`. Uno que no existe responde `400`."
+                    },
+                    {
+                        "name": "search",
+                        "required": false,
+                        "in": "query",
+                        "description": "Un término de búsqueda.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "stage",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "APPROVED",
+                                "BANK_OBSERVATION",
+                                "CREDIT_ANALYSIS",
+                                "DOCUMENTS_REVIEW",
+                                "DRAFT",
+                                "FILED",
+                                "FILING_VALIDATION",
+                                "LEGALIZATION",
+                                "READY_TO_FILE",
+                                "WAITING_BUYER_DATA",
+                                "WAITING_DOCUMENTS"
+                            ]
+                        },
+                        "description": "Estado no terminal de la solicitud. Otro valor responde `400`."
+                    }
+                ],
+                "tags": [
+                    "Workday"
+                ],
+                "security": [
+                    {
+                        "internalSession": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PaginatedWorkdayApplicationList"
+                                }
+                            }
+                        },
+                        "description": ""
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "NOT_AUTHENTICATED o SESSION_EXPIRED"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    }
+                }
+            }
+        },
+        "/api/v1/workday/summary": {
+            "get": {
+                "operationId": "workday_summary",
+                "description": "`total` y un conteo por segmento, en el orden fijo de los segmentos. Aplica los mismos filtros que `/workday/applications`, salvo `attention`. Los segmentos no son excluyentes.",
+                "summary": "Conteos de Mi día por segmento de atención",
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "advisor_id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "description": "Solo el administrador. Para el asesor se ignora: siempre ve las suyas."
+                    },
+                    {
+                        "in": "query",
+                        "name": "bank_id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "purpose",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Código `loan_purpose`. Uno que no existe responde `400`."
+                    },
+                    {
+                        "in": "query",
+                        "name": "stage",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "APPROVED",
+                                "BANK_OBSERVATION",
+                                "CREDIT_ANALYSIS",
+                                "DOCUMENTS_REVIEW",
+                                "DRAFT",
+                                "FILED",
+                                "FILING_VALIDATION",
+                                "LEGALIZATION",
+                                "READY_TO_FILE",
+                                "WAITING_BUYER_DATA",
+                                "WAITING_DOCUMENTS"
+                            ]
+                        },
+                        "description": "Estado no terminal de la solicitud. Otro valor responde `400`."
+                    }
+                ],
+                "tags": [
+                    "Workday"
+                ],
+                "security": [
+                    {
+                        "internalSession": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/WorkdaySummary"
+                                }
+                            }
+                        },
+                        "description": ""
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "NOT_AUTHENTICATED o SESSION_EXPIRED"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    }
+                }
+            }
+        },
         "/api/v1/workflow-transitions": {
             "get": {
                 "operationId": "workflow_transitions_list",
@@ -16818,6 +17061,34 @@
                 "required": [
                     "advisor_id"
                 ]
+            },
+            "AttentionRef": {
+                "type": "object",
+                "properties": {
+                    "code": {
+                        "$ref": "#/components/schemas/AttentionSegmentEnum"
+                    },
+                    "label": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "code",
+                    "label"
+                ]
+            },
+            "AttentionSegmentEnum": {
+                "enum": [
+                    "REVIEW_DOCUMENTS",
+                    "READY_TO_FILE",
+                    "FILED",
+                    "IN_ANALYSIS",
+                    "OBSERVED",
+                    "BUYER_INACTIVE",
+                    "TASKS_DUE"
+                ],
+                "type": "string",
+                "description": "* `REVIEW_DOCUMENTS` - Documentos por revisar\n* `READY_TO_FILE` - Listas para radicar\n* `FILED` - Radicadas\n* `IN_ANALYSIS` - En análisis\n* `OBSERVED` - Observadas por el banco\n* `BUYER_INACTIVE` - Comprador sin actividad\n* `TASKS_DUE` - Con tareas vencidas o de hoy"
             },
             "AvailableAction": {
                 "type": "object",
@@ -23103,6 +23374,21 @@
                     "name"
                 ]
             },
+            "NextActionEnum": {
+                "enum": [
+                    "COMPLETE_DRAFT",
+                    "FOLLOW_UP_BUYER_DATA",
+                    "FOLLOW_UP_DOCUMENTS",
+                    "REVIEW_DOCUMENTS",
+                    "FILE_WITH_BANK",
+                    "WAIT_BANK_RESPONSE",
+                    "RESOLVE_OBSERVATIONS",
+                    "START_LEGALIZATION",
+                    "FOLLOW_UP_LEGALIZATION"
+                ],
+                "type": "string",
+                "description": "* `COMPLETE_DRAFT` - Completar el borrador\n* `FOLLOW_UP_BUYER_DATA` - Hacer seguimiento a los datos del comprador\n* `FOLLOW_UP_DOCUMENTS` - Hacer seguimiento a los documentos\n* `REVIEW_DOCUMENTS` - Revisar documentos\n* `FILE_WITH_BANK` - Radicar en el banco\n* `WAIT_BANK_RESPONSE` - Esperar respuesta del banco\n* `RESOLVE_OBSERVATIONS` - Resolver las observaciones del banco\n* `START_LEGALIZATION` - Iniciar la legalización\n* `FOLLOW_UP_LEGALIZATION` - Hacer seguimiento a la legalización"
+            },
             "NullEnum": {
                 "type": "null"
             },
@@ -24919,6 +25205,47 @@
                         "type": "array",
                         "items": {
                             "$ref": "#/components/schemas/User"
+                        }
+                    },
+                    "page": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "page_size": {
+                        "type": "integer",
+                        "example": 25
+                    },
+                    "total": {
+                        "type": "integer",
+                        "example": 128
+                    },
+                    "next": {
+                        "type": "string",
+                        "nullable": true,
+                        "example": "/api/v1/x?page=2"
+                    },
+                    "previous": {
+                        "type": "string",
+                        "nullable": true,
+                        "example": null
+                    }
+                }
+            },
+            "PaginatedWorkdayApplicationList": {
+                "type": "object",
+                "required": [
+                    "items",
+                    "page",
+                    "page_size",
+                    "total",
+                    "next",
+                    "previous"
+                ],
+                "properties": {
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/WorkdayApplication"
                         }
                     },
                     "page": {
@@ -27714,6 +28041,154 @@
                 "required": [
                     "expected_version",
                     "reason_code"
+                ]
+            },
+            "WorkdayApplication": {
+                "type": "object",
+                "description": "Fila de \"Mi día\". Lee las anotaciones de ``services.workday_applications``.",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "readOnly": true
+                    },
+                    "code": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "client_display_name": {
+                        "type": "string"
+                    },
+                    "bank": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/WorkdayBank"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "bank_product": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/NamedRef"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "status": {
+                        "$ref": "#/components/schemas/ApplicationStatusEnum"
+                    },
+                    "status_label": {
+                        "type": "string"
+                    },
+                    "next_action": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/NextActionEnum"
+                            }
+                        ],
+                        "readOnly": true
+                    },
+                    "next_action_label": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "days_in_stage": {
+                        "type": "integer",
+                        "description": "Días enteros desde el inicio de la etapa, según la fecha de Bogotá."
+                    },
+                    "attention": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/AttentionRef"
+                        },
+                        "readOnly": true,
+                        "description": "Segmentos de atención que cumple la solicitud (no son excluyentes)."
+                    },
+                    "pending_tasks_count": {
+                        "type": "integer"
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "readOnly": true
+                    }
+                },
+                "required": [
+                    "attention",
+                    "bank_product",
+                    "client_display_name",
+                    "code",
+                    "days_in_stage",
+                    "id",
+                    "next_action",
+                    "next_action_label",
+                    "pending_tasks_count",
+                    "status",
+                    "status_label",
+                    "updated_at"
+                ]
+            },
+            "WorkdayBank": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "short_name": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "id",
+                    "name",
+                    "short_name"
+                ]
+            },
+            "WorkdaySegment": {
+                "type": "object",
+                "properties": {
+                    "code": {
+                        "$ref": "#/components/schemas/AttentionSegmentEnum"
+                    },
+                    "label": {
+                        "type": "string"
+                    },
+                    "count": {
+                        "type": "integer"
+                    }
+                },
+                "required": [
+                    "code",
+                    "count",
+                    "label"
+                ]
+            },
+            "WorkdaySummary": {
+                "type": "object",
+                "properties": {
+                    "total": {
+                        "type": "integer",
+                        "description": "Solicitudes con los filtros, sin `attention`."
+                    },
+                    "segments": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/WorkdaySegment"
+                        }
+                    }
+                },
+                "required": [
+                    "segments",
+                    "total"
                 ]
             },
             "WorkflowTransition": {

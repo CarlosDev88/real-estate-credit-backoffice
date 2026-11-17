@@ -998,10 +998,19 @@ class StatusHistorySerializer(serializers.ModelSerializer):
 # --- Completitud ------------------------------------------------------------------------
 
 
+# Ítems de datos de la completitud. El contrato los publica como `CodeEnum`
+# (`ENUM_NAME_OVERRIDES`): el nombre no cambia aunque otro enum `code` coincida.
+COMPLETENESS_ITEM_CODES = [
+    "property",
+    "financing",
+    "bank_product",
+    "bank_evaluation",
+    "financial_profile",
+]
+
+
 class CompletenessItemSerializer(serializers.Serializer):
-    code = serializers.ChoiceField(
-        choices=["property", "financing", "bank_product", "bank_evaluation", "financial_profile"]
-    )
+    code = serializers.ChoiceField(choices=COMPLETENESS_ITEM_CODES)
     complete = serializers.BooleanField()
     message = serializers.CharField()
     participant_id = serializers.UUIDField(

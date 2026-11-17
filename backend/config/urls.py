@@ -34,6 +34,7 @@ api_v1_patterns = [
     path("", include("apps.identity.buyer_access_urls")),
     path("", include("apps.identity.buyer_portal_urls")),
     path("", include("apps.identity.consent_urls")),
+    path("", include("apps.workday.urls")),
 ]
 
 urlpatterns = [
