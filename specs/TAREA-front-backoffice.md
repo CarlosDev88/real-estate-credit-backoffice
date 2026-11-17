@@ -425,3 +425,36 @@ Carlos trajo `master` con la tarea de brechas. `pnpm api:gen` no dejó diferenci
 - Se quitaron de los fixtures los catálogos `application_status` y `document_status`, para probar que ya no se usan.
 - Pruebas nuevas: el stepper (8 etapas, la actual con `aria-current` y los estados en texto), que no se pinta en una solicitud cerrada, la etiqueta del destino en el modal de transición, el `outcome_label` de las reglas y las etiquetas de las versiones.
 - En el E2E, la comprobación del análisis limpio se hace por el tono, sin depender del texto de la API.
+
+### Cierre de la Parte 4
+
+**Rol en el shell** (commit aparte, `feat(ui)`): bajo el nombre del usuario va `role_label` de `/auth/me`, como en el mockup ("Asesor"); el correo queda en el `title`. Si `role_label` es `null`, se ve el correo. `ShellUser` suma `role` (opcional) y `BackofficeGuard` lo pasa.
+
+**Capturas:**
+- Las genera `e2e/backoffice/screenshots.spec.ts`, que solo corre con `E2E_SCREENSHOTS=1`, para no gastar tiempo en la suite normal. El comando es `E2E_SCREENSHOTS=1 pnpm exec playwright test screenshots`.
+- Salen en `frontend/test-results/screenshots/`, que no se versiona: listado, expediente y panel, en 1440, 1280 y 390 px, en claro y oscuro. Al lado van las del mockup en el mismo tamaño y tema (`mockup-*.png`). Son 36 en total.
+- Si el backend se reinicia (otro agente lo modifica), cada navegación espera 10 s y reintenta, hasta 3 veces.
+
+**Defectos que encontraron las capturas, ya corregidos:**
+- **Documentos, en escritorio:** las acciones de la fila salían antes que la etiqueta. El `row-start-1` de móvil también aplicaba en escritorio, y la grilla colocaba esas celdas primero. Ahora lleva `min-[861px]:row-start-auto`.
+- **Listado a 1440:** una finalidad larga ("Remodelación o mejora de vivienda") ensanchaba "Tipo de crédito" y "Actualizada" quedaba fuera de la vista. Ahora el tipo y la finalidad se truncan a 190 px, con el texto completo en `title`.
+- **Encabezado del expediente:** las acciones iban a la derecha del título y la razón de bloqueo quedaba en una columna angosta. Ahora van debajo del subtítulo, como en el mockup, y la razón usa hasta 760 px.
+
+**Diferencias con el mockup que quedan, y por qué:**
+- **Listado:** no están "Nueva solicitud", "Exportar CSV", la selección masiva, "Más filtros", el filtro de asesor ni el "⋯" de cada fila (ver "Brechas"). La pestaña "Borradores" sí está: la da la API. A 1280 px la tabla se desplaza en horizontal, igual que el mockup, con "Código" fijo.
+- **Shell:** el menú solo tiene "Solicitudes" (los demás módulos no existen) y no hay búsqueda global ni campana (F0).
+- **Encabezado del expediente:**
+  - La razón de bloqueo son los mensajes de la API (más largos que la frase del mockup).
+  - "Origen" no trae el nombre del broker.
+  - En móvil, el botón "⋯" baja a su propia línea.
+  - **Botón principal:** la primera transición que da la API es la principal. En la demo, para una solicitud en revisión, esa es "Cancelar solicitud", que queda como botón primario. La spec lo pide así; ver "Brechas" (orden o marca de la acción principal).
+- **Completitud:** el total va en una barra arriba y datos y documentos uno debajo del otro (es el `CompletenessBar` de F0). El mockup pone el total en el encabezado de la tarjeta y los dos grupos lado a lado.
+- **Pestaña Documentos:** muestra el número de pendientes ("3") y no "6 pendientes" en color de advertencia (`ScrollTabs` de F0 muestra conteos).
+- **Evaluación del banco:** solo se ven las reglas que bloquean y los avisos (la API no da las que se cumplen), sin "Cumple" ni el monograma del banco.
+- **Participantes:** "Gastos del hogar" (sin deudas) y sin "Agregar".
+- **Acceso del comprador:** fechas del enlace en lugar del estado ("Usado"), y los consentimientos aceptados sin "de N".
+- **"Últimos cambios de estado"** en lugar de "Actividad reciente".
+- **Panel:** el mockup tiene una vista previa del archivo en el panel; la app tiene "Abrir en el visor" (el visor de F0 a pantalla completa).
+- **Indicador de Next:** la "N" redonda abajo a la izquierda es el indicador de desarrollo de Next (`next dev`); no sale en el build.
+
+**Brecha nueva (no estaba en las anteriores):** `available_actions` no indica cuál es la acción principal ni cuál es destructiva. Con el orden actual de la API, "Cancelar solicitud" puede quedar como principal. Haría falta un orden pensado para la pantalla o un campo (`is_primary` / `is_destructive`).

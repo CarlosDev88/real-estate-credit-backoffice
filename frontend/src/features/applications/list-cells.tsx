@@ -117,14 +117,22 @@ export function BankCell({ application }: { application: Application }) {
 export function ProductTypeCell({ application }: { application: Application }) {
   const type = application.bank_product?.product_type.label;
   return (
-    <div>
+    // Ancho máximo: una finalidad larga no debe empujar "Actualizada" fuera de la vista.
+    <div className="max-w-[190px]">
       {type ? (
-        <span className="block leading-[18px]">{type}</span>
+        <span className="block truncate leading-[18px]" title={type}>
+          {type}
+        </span>
       ) : (
         <span className="text-text-tertiary block leading-[18px]">—</span>
       )}
       {application.purpose?.label && (
-        <span className="text-text-tertiary text-xs">{application.purpose.label}</span>
+        <span
+          className="text-text-tertiary block truncate text-xs"
+          title={application.purpose.label}
+        >
+          {application.purpose.label}
+        </span>
       )}
     </div>
   );

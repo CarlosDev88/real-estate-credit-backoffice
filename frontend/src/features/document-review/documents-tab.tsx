@@ -146,7 +146,7 @@ function SlotRow({ slot, file, can, viewer, onReview, onWaive, onReopen }: RowPr
       <span className="col-start-2 row-start-2 justify-self-start min-[861px]:col-start-auto min-[861px]:row-start-auto">
         <StatusBadge kind="documentSlot" code={slot.status} label={slot.status_label} />
       </span>
-      <div className="col-start-3 row-start-1 flex flex-wrap justify-end gap-1 min-[861px]:col-start-auto">
+      <div className="col-start-3 row-start-1 flex flex-wrap justify-end gap-1 min-[861px]:col-start-auto min-[861px]:row-start-auto">
         {actions.view && current && (
           <Button
             size="small"

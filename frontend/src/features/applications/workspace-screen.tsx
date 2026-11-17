@@ -217,8 +217,9 @@ function Workspace({ detail, version }: { detail: ApplicationDetail; version: nu
         aria-labelledby="workspace-title"
         className="bg-bg-surface border-border-default grid gap-4 rounded-lg border p-4 min-[861px]:p-5"
       >
-        <div className="flex flex-wrap items-start gap-3">
-          <div id="workspace-title" className="min-w-0 flex-1">
+        {/* Como en el mockup: título y subtítulo, y debajo las acciones con su razón. */}
+        <div className="grid gap-3">
+          <div id="workspace-title" className="min-w-0">
             <WorkspaceTitle detail={detail} />
             <WorkspaceSubtitle
               detail={detail}

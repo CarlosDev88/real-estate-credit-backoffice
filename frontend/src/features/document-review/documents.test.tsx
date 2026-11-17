@@ -89,16 +89,17 @@ describe("pestaña Documentos", { timeout: 20_000 }, () => {
     useDocumentsApi();
     await renderDocuments();
 
-    const groups = screen.getAllByRole("heading", { level: 3 }).map((h) => h.textContent);
-    await waitFor(() => expect(groups[0]).toContain("Sofía Herrera"));
-    expect(screen.getAllByRole("heading", { level: 3 }).map((h) => h.textContent)).toEqual([
-      "SHSofía Herrera· Titular · Empleada",
-      "DMDaniel Mejía· Co-solicitante",
-      "Solicitud· Inmueble y trámite",
-    ]);
+    // El perfil laboral ("Empleada") llega en otra consulta: se espera a que esté.
+    await waitFor(() =>
+      expect(screen.getAllByRole("heading", { level: 3 }).map((h) => h.textContent)).toEqual([
+        "SHSofía Herrera· Titular · Empleada",
+        "DMDaniel Mejía· Co-solicitante",
+        "Solicitud· Inmueble y trámite",
+      ]),
+    );
     expect(screen.queryByText("Documento retirado")).toBeNull();
 
-    // Estado con la etiqueta del catálogo y su tono.
+    // Estado con la etiqueta de la API (`status_label`) y su tono.
     expect(within(row("Documento de identidad")).getByText("Aprobado")).toHaveAttribute(
       "data-tone",
       "success",

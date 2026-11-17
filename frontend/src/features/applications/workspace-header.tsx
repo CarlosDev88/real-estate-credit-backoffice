@@ -133,7 +133,7 @@ export function WorkspaceActions({
   };
 
   return (
-    <div className="grid w-full justify-items-stretch gap-1.5 min-[861px]:w-auto min-[861px]:justify-items-end">
+    <div className="grid w-full justify-items-stretch gap-1.5 min-[861px]:justify-items-start">
       <div className="flex flex-wrap items-center gap-2 max-[860px]:[&>*]:flex-[1_1_auto]">
         {permissions.has("buyer_access.create") && !closed && (
           <Button onClick={() => setDialog({ kind: "link" })}>Enviar enlace al comprador</Button>
@@ -165,7 +165,7 @@ export function WorkspaceActions({
         )}
       </div>
       {showReasons && (
-        <div id={reasonId} className="text-text-secondary m-0 max-w-[560px] text-xs">
+        <div id={reasonId} className="text-text-secondary m-0 max-w-[760px] text-xs">
           <span>Para marcarla lista para radicar: </span>
           {problems.slice(0, MAX_REASONS).map((p, i) => (
             <span key={`${p.code}-${i}`}>{p.message} </span>
