@@ -1110,8 +1110,13 @@ def evaluate_application(actor: User, application: CreditApplication) -> BankRul
 
 
 def latest_evaluation(application: CreditApplication) -> BankRuleEvaluation | None:
+    """La evaluación de la versión más alta y, dentro de ella, la más reciente. Primero
+    la versión: un ajuste hacia atrás del reloj del servidor no debe hacer pasar una
+    evaluación vieja por la última."""
     return (
-        BankRuleEvaluation.objects.filter(application=application).order_by("-created_at").first()
+        BankRuleEvaluation.objects.filter(application=application)
+        .order_by("-application_version", "-created_at")
+        .first()
     )
 
 
