@@ -18017,15 +18017,33 @@
                     "guard_code": {
                         "type": "string",
                         "readOnly": true
+                    },
+                    "kind": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/AvailableActionKindEnum"
+                            }
+                        ],
+                        "description": "primary: avanza en el camino principal; secondary: cierra por fuera del banco o retrocede; destructive: cancela o desiste. La lista sale en ese orden.",
+                        "readOnly": true
                     }
                 },
                 "required": [
                     "code",
                     "guard_code",
+                    "kind",
                     "label",
                     "target_status",
                     "target_status_label"
                 ]
+            },
+            "AvailableActionKindEnum": {
+                "enum": [
+                    "primary",
+                    "secondary",
+                    "destructive"
+                ],
+                "type": "string"
             },
             "Bank": {
                 "type": "object",

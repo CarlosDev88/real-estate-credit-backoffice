@@ -496,11 +496,11 @@ def test_status_history_is_newest_first(
 
 
 DRAFT_ACTIONS = [
-    "CANCEL_DRAFT",
-    "MARK_EXTERNAL_CREDIT_DRAFT",
-    "MARK_OWN_FUNDS_DRAFT",
     "REQUEST_BUYER_DATA",
     "REQUEST_DOCUMENTS_FROM_DRAFT",
+    "MARK_EXTERNAL_CREDIT_DRAFT",
+    "MARK_OWN_FUNDS_DRAFT",
+    "CANCEL_DRAFT",
     "WITHDRAW_DRAFT",
 ]
 
@@ -514,12 +514,13 @@ def test_available_actions_endpoint_and_detail(
     assert response["ETag"] == '"1"'
     actions = response.json()
     assert [action["code"] for action in actions] == DRAFT_ACTIONS
-    assert actions[3] == {
+    assert actions[0] == {
         "code": "REQUEST_BUYER_DATA",
         "label": "Solicitar datos al comprador",
         "target_status": "WAITING_BUYER_DATA",
         "target_status_label": "Esperando datos del comprador",
         "guard_code": "",
+        "kind": "primary",
     }
     detail = advisor_client.get(application_url(application)).json()
     assert detail["available_actions"] == actions

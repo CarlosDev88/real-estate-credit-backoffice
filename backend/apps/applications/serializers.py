@@ -8,6 +8,7 @@ from django.utils import timezone
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
+from apps.applications.actions import ActionKind, action_kind
 from apps.applications.bank_evaluation import (
     EvaluationSummary,
     blocking_rows,
@@ -715,11 +716,21 @@ class AvailableActionSerializer(serializers.ModelSerializer):
 
     target_status_label = ChoiceLabelField(ApplicationStatus, source="to_status")
     target_status = serializers.ChoiceField(source="to_status", choices=ApplicationStatus.choices)
+    kind = serializers.SerializerMethodField(
+        help_text=(
+            "primary: avanza en el camino principal; secondary: cierra por fuera del banco "
+            "o retrocede; destructive: cancela o desiste. La lista sale en ese orden."
+        )
+    )
 
     class Meta:
         model = WorkflowTransition
-        fields = ["code", "label", "target_status", "target_status_label", "guard_code"]
+        fields = ["code", "label", "target_status", "target_status_label", "guard_code", "kind"]
         read_only_fields = fields
+
+    @extend_schema_field(serializers.ChoiceField(choices=ActionKind.choices))
+    def get_kind(self, obj: WorkflowTransition) -> str:
+        return action_kind(obj).value
 
 
 # Bloques que admite `?include=` en el detalle. `property` y `assignments` salen siempre.

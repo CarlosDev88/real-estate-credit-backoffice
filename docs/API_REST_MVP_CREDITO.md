@@ -454,7 +454,7 @@ DTO del detalle (`GET /buyer/applications/{application_id}`), además de lo ante
 | `GET` | `/metadata/bootstrap` | Usuario interno o `BUYER` | Catálogos mínimos, permisos, configuración pública y versión. |
 | `GET` | `/metadata/catalogs/{catalog_code}` | Usuario interno (el comprador usa `/buyer/metadata/catalogs/{catalog_code}`, §8) | Ítems activos y vigentes; filtra por `parent_code` o `parent_id`. |
 | `GET` | `/metadata/form-schemas/{form_code}` | Usuario interno o `BUYER` | Campos, tipos, dependencias y validaciones de presentación. |
-| `GET` | `/applications/{application_id}/available-actions` | `applications.read` (no broker) | Transiciones que el actor puede ejecutar desde el estado actual, según rol y permiso: `[{code, label, target_status, target_status_label, guard_code}]`. La guarda se evalúa al ejecutarla. Ver §16.3. |
+| `GET` | `/applications/{application_id}/available-actions` | `applications.read` (no broker) | Transiciones que el actor puede ejecutar desde el estado actual, según rol y permiso: `[{code, label, target_status, target_status_label, guard_code, kind}]`, primero las principales, luego las secundarias y al final las destructivas. La guarda se evalúa al ejecutarla. Ver §16.3. |
 
 ### `GET /metadata/bootstrap`
 
@@ -922,13 +922,25 @@ Las transiciones de `FILED` en adelante llegan con la radicación (§20).
 
 `available_actions` del detalle y `GET /applications/{application_id}/available-actions` devuelven las transiciones que el actor puede ejecutar desde el estado actual según su rol y permiso. La guarda no se evalúa aquí, sino al ejecutar la transición. Incluyen `WITHDRAW_*`, que se ejecuta por `/withdrawals`.
 
+`kind` dice qué tipo de acción es. Lo decide el backend (`apps/applications/actions.py`), y el frontend usa la primera `primary` como botón principal:
+
+| `kind` | Regla | Ejemplos |
+| --- | --- | --- |
+| `primary` | Avanza en el camino principal. | `REQUEST_BUYER_DATA`, `REQUEST_DOCUMENTS*`, `START_DOCUMENTS_REVIEW`, `MARK_READY_TO_FILE`, `MARK_READY_TO_REFILE`, `START_LEGALIZATION` |
+| `secondary` | Cierra por fuera del banco (destino `OWN_FUNDS` o `EXTERNAL_CREDIT_APPROVED`) o retrocede. | `MARK_OWN_FUNDS_*`, `MARK_EXTERNAL_CREDIT_*`, `RETURN_TO_DOCUMENTS`, `REOPEN_REVIEW` |
+| `destructive` | Termina la solicitud (destino `CANCELLED` o `WITHDRAWN`). | `CANCEL_*`, `WITHDRAW_*` |
+
+La lista sale ordenada por grupo (`primary`, `secondary`, `destructive`) y, dentro de cada grupo, por código.
+
 ```json
 [
   {
     "code": "MARK_READY_TO_FILE",
     "label": "Marcar lista para radicar",
     "target_status": "READY_TO_FILE",
-    "guard_code": "APPLICATION_READY_TO_FILE"
+    "target_status_label": "Lista para radicar",
+    "guard_code": "APPLICATION_READY_TO_FILE",
+    "kind": "primary"
   }
 ]
 ```

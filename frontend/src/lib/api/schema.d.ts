@@ -3164,7 +3164,11 @@ export interface components {
             target_status: components["schemas"]["ApplicationStatusEnum"];
             readonly target_status_label: string;
             readonly guard_code: string;
+            /** @description primary: avanza en el camino principal; secondary: cierra por fuera del banco o retrocede; destructive: cancela o desiste. La lista sale en ese orden. */
+            readonly kind: components["schemas"]["AvailableActionKindEnum"];
         };
+        /** @enum {string} */
+        AvailableActionKindEnum: "primary" | "secondary" | "destructive";
         Bank: {
             /** Format: uuid */
             readonly id: string;

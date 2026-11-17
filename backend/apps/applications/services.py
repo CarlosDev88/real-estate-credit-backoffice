@@ -31,6 +31,7 @@ from django.db.models.lookups import LessThan
 from django.utils import timezone
 from rest_framework.exceptions import NotFound, ValidationError
 
+from apps.applications.actions import sort_by_kind
 from apps.applications.bank_evaluation import (
     EvaluationSummary,
     blocking_rows,
@@ -1457,8 +1458,10 @@ def available_actions(user: User, application: CreditApplication) -> list[Workfl
     """Transiciones que ``user`` puede ejecutar desde el estado actual (rol y permiso).
 
     La guarda no se evalúa. Incluye `WITHDRAW_*`, que se ejecutan por `/withdrawals`.
+    Salen primero las principales, luego las secundarias y al final las destructivas
+    (``apps.applications.actions``).
     """
-    return list(
+    return sort_by_kind(
         available_transitions(user, flow_type=FlowType.APPLICATION, from_status=application.status)
     )
 
