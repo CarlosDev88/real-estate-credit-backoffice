@@ -198,8 +198,12 @@ describe("inicio del portal con datos completos", { timeout: 20_000 }, () => {
     expect(within(items[1]!).getByRole("button")).toHaveTextContent("Subir documento");
     expect(screen.queryByText("Certificado laboral")).not.toBeInTheDocument();
 
+    // "Subir documento" abre la hoja de carga en el mismo inicio.
     await user.click(within(items[1]!).getByRole("button", { name: "Subir documento" }));
-    expect(router.push).toHaveBeenCalledWith("/portal/documentos?slot=s-2");
+    expect(
+      await screen.findByRole("dialog", { name: "Extracto bancario 2 de 3" }),
+    ).toHaveTextContent("PDF, JPG o PNG, de hasta 10 MB.");
+    expect(router.push).not.toHaveBeenCalled();
     expect(within(todo).getByRole("link", { name: "Ver todos mis documentos" })).toHaveAttribute(
       "href",
       "/portal/documentos",

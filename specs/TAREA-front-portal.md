@@ -267,9 +267,44 @@ Patrón común:
 - Los rangos se muestran "De X a Y", "Desde X" o "Hasta Y".
 - El monto de cesantías se pide solo si se marca "¿Usarás tus cesantías?"; si no, se envía `0`.
 
+### Parte 4
+- **Distribución:** la spec pide una lista con las acciones en cada documento y una hoja de carga; el mockup de escritorio es lista + detalle con la carga dentro del detalle. Se sigue la spec: una columna de tarjetas (hasta 960 px en escritorio). En móvil, la carga va en la hoja inferior; en escritorio, en un modal.
+- **Orden y grupos:**
+  - se ordena con `needs_action` primero (orden estable: lo demás, como lo manda la API) y luego se agrupa por participante en el orden de aparición, así el grupo con pendientes va arriba;
+  - los documentos sin participante van en "Documentos de la solicitud";
+  - las pestañas salen de esa misma lista ordenada.
+- **Resumen:**
+  - "Te faltan N documentos. Tu asesor revisa los demás." (con N = slots con `needs_action`; en singular, "Te falta 1 documento"; sin pendientes, "No te falta ningún documento…");
+  - la barra "Documentos listos X de Y" sale de `progress` del detalle, la misma métrica del inicio (README).
+- **Tarjeta de documento:**
+  - estado con `StatusBadge` (`public_status_label` y el tono de `toneFor("documentSlot", status)`);
+  - "<archivo> · subido el <fecha>" y, si vence, "sirve hasta el <fecha>";
+  - el rechazo con su motivo y el mensaje;
+  - los botones "Subir" o "Reemplazar" llevan en su nombre accesible el documento y el titular ("Subir Declaración de renta · Juan Pablo Valencia Torres"): dos participantes pueden tener un documento con la misma etiqueta.
+- **Versiones:**
+  - se piden al abrirlas;
+  - cada una con "Versión N", "Vigente" si `is_current`, el archivo y la fecha, "Motivo del rechazo: …" si tiene, y "Ver";
+  - el contrato no trae etiqueta del estado de la versión (ver "Brechas"), así que no se escribe.
+- **Visor:** la URL se pide cada vez a `GET /buyer/document-files/{id}/download` y nunca se guarda. Un error (`409 FILE_NOT_CLEAN`, `503`) va en línea junto al archivo.
+- **Hoja de carga:**
+  - título (`label`) y titular;
+  - "PDF, JPG o PNG, de hasta 10 MB." calculado de `allowed_mime_types` y `max_size_bytes`;
+  - la descripción del tipo documental como ayuda;
+  - "Fecha del documento (opcional)" si hay `validity_days`, con máximo hoy (la API rechaza fechas futuras);
+  - `DocumentUploader` de F0: en móvil, "Tomar foto" y "Elegir archivo"; en escritorio, arrastrar o elegir.
+- **Errores de la carga:** los de la API se muestran con su `message` dentro de la hoja. Un `413` del servidor web llega sin el formato de la API: "El archivo es demasiado grande para subirlo."
+- **Al terminar:** toast "Documento subido" ("<documento>: tu asesor lo revisará pronto."), se recargan los slots, el detalle y las versiones de la solicitud, y la hoja se cierra.
+- La "X" de la hoja se llama "Cerrar" (el "Cancelar" es el de la carga en curso). Ant Design atrapa el foco, cierra con Escape y lo devuelve al botón.
+- **Inicio:** "Subir documento" / "Reemplazar documento" abren la misma hoja en el inicio (ya no llevan a `/portal/documentos`).
+- **E2E (adelanto de la Parte 5):**
+  - el flujo ya sube un PDF pequeño a un documento pendiente y lo ve "En revisión";
+  - el *setup* busca solicitudes en las pestañas `waiting` **y** `review` que tengan algún slot `PENDING` (consultando la API interna como asesor): en "waiting" solo hay 3 solicitudes de demo y solo una con documentos pendientes;
+  - cada corrida deja un "e2e-prueba.pdf" en un documento de la demo.
+
 ### Brechas encontradas
 - **Avisos:** no hay endpoint de notificaciones del comprador (módulo 13). Se quitó de la navegación.
 - **`BuyerConsent` sin `status_label`:** el estado del consentimiento (`PENDING`, `ACCEPTED`, `WITHDRAWN`) llega solo como código.
 - **Direcciones del perfil sin tipo en el contrato:** `BuyerProfile.addresses` es `object[]` sin propiedades; el frontend asume la forma de `BuyerAddressSerializer`. Convendría tiparla con `BuyerAddress` en el contrato.
+- **Estado de una versión sin etiqueta:** `BuyerDocumentVersion.status` (`UPLOADED`, `IN_REVIEW`, `APPROVED`, `REJECTED`) llega solo como código. La lista de versiones muestra "Vigente" y el motivo del rechazo, pero no el estado.
 - **Ingreso mensual en el inicio:** el detalle del comprador no trae ingresos; la suma de "Ingresos y gastos" pide un perfil financiero por cada participante que aporta ingresos.
 - **Mensaje del `429` de `/buyer-access/consume`:** es el texto por defecto de DRF ("Solicitud fue regulada (throttled). Se espera que esté disponible en 3450 segundos."). El portal lo muestra debajo de su propio título.

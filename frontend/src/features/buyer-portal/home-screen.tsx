@@ -1,15 +1,14 @@
 "use client";
 
 import { Button } from "antd";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { UploadSheet } from "@/features/buyer-documents/upload-sheet";
 import { firstName, bankName, inSentence } from "@/features/buyer-portal/home-format";
 import {
   AdvisorCard,
   ApplicationSection,
   BankUpdateCard,
-  PORTAL_ROUTES,
   StatusCard,
   TodoSection,
 } from "@/features/buyer-portal/home-sections";
@@ -44,11 +43,7 @@ export function PortalHome() {
   const detail = detailQuery.data?.detail;
   const monthlyIncome = useMonthlyIncome(applicationId, detail?.participants ?? []);
   const [withdrawing, setWithdrawing] = useState(false);
-  const router = useRouter();
-
-  // La hoja de carga llega con la Parte 4; mientras, abre el documento en su pantalla.
-  const openUpload = (slot: BuyerDocumentSlot) =>
-    router.push(`${PORTAL_ROUTES.documents}?slot=${slot.id}`);
+  const [uploading, setUploading] = useState<BuyerDocumentSlot | null>(null);
 
   if (detailQuery.isPending || slotsQuery.isPending) {
     return (
@@ -98,7 +93,7 @@ export function PortalHome() {
 
       <StatusCard detail={detail} slots={slots} />
       {detail.latest_bank_update && <BankUpdateCard update={detail.latest_bank_update} />}
-      <TodoSection slots={slots} onUpload={openUpload} />
+      <TodoSection slots={slots} onUpload={setUploading} />
       <ApplicationSection
         detail={detail}
         monthlyIncome={monthlyIncome}
@@ -123,6 +118,7 @@ export function PortalHome() {
           />
         </footer>
       )}
+      <UploadSheet slot={uploading} onClose={() => setUploading(null)} />
     </PortalPage>
   );
 }
