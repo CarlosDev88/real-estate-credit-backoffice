@@ -18,6 +18,13 @@ class TaskSource(models.TextChoices):
     AUTOMATIC = "AUTOMATIC", "Automática"
 
 
+class TaskParentType(models.TextChoices):
+    """Padre de la tarea en la respuesta (``parent.type``)."""
+
+    APPLICATION = "APPLICATION", "Solicitud"
+    OPPORTUNITY = "OPPORTUNITY", "Oportunidad"
+
+
 class Task(models.Model):
     """Tarea de seguimiento sobre una oportunidad o una solicitud (RF-20, API §15.2).
 

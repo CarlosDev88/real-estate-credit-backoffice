@@ -473,6 +473,8 @@ Pendientes manuales o automáticos de la operación.
 | `source` | `VARCHAR(20)` | No | `MANUAL` o `AUTOMATIC`. |
 | `due_at` | `TIMESTAMPTZ` | Sí | Vencimiento. |
 | `completed_at` | `TIMESTAMPTZ` | Sí | Finalización. |
+| `cancelled_at` | `TIMESTAMPTZ` | Sí | Cancelación. `CHECK`: existe solo con `status='CANCELLED'`. |
+| `cancel_reason` | `TEXT` | Sí | Motivo de la cancelación; obligatorio al cancelar desde la API. |
 
 `CHECK`: al menos una de oportunidad o solicitud debe existir. Explicación: una tarea se liga al caso que la originó y a la persona que debe resolverla; así “Mi día” puede mostrar pendientes sin convertir la tarea en el estado oficial del crédito.
 

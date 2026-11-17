@@ -34,6 +34,9 @@ STABLE_ENUMS = {
     "PublicSlotStatusEnum": ["TO_UPLOAD", "TO_FIX", "IN_REVIEW", "DONE", "NOT_APPLICABLE"],
     "ProgressStageStateEnum": ["done", "current", "pending"],
     "AvailableActionKindEnum": ["primary", "secondary", "destructive"],
+    "TaskStatusEnum": ["PENDING", "COMPLETED", "CANCELLED"],
+    "TaskSourceEnum": ["MANUAL", "AUTOMATIC"],
+    "TaskParentTypeEnum": ["APPLICATION", "OPPORTUNITY"],
 }
 
 

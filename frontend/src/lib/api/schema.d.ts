@@ -2648,6 +2648,91 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/tasks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Tareas dentro del alcance
+         * @description El administrador ve todas; el asesor, las asignadas a él y las de sus solicitudes u oportunidades. Ordenadas por `due_at` (las que no tienen fecha al final) y después por creación.
+         */
+        get: operations["tasks_list"];
+        put?: never;
+        /**
+         * Crear una tarea manual
+         * @description Exactamente uno de `application_id` u `opportunity_id`, dentro del alcance del actor (si no, `400`). El responsable (por omisión, el actor) debe ser un usuario activo administrador o asesor. Una solicitud terminada responde `409 APPLICATION_CLOSED`.
+         */
+        post: operations["tasks_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tasks/{task_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Detalle de una tarea */
+        get: operations["tasks_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Editar una tarea pendiente
+         * @description Título, descripción, responsable, `due_at` (nulo la deja sin fecha) y prioridad. Solo una tarea `PENDING`; si no, `409 TASK_NOT_PENDING`.
+         */
+        patch: operations["tasks_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/tasks/{task_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cancelar una tarea con motivo
+         * @description `reason` es obligatorio. Solo desde `PENDING`; si no, `409 TASK_NOT_PENDING`.
+         */
+        post: operations["tasks_cancel"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tasks/{task_id}/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Completar una tarea
+         * @description Solo desde `PENDING`; si no, `409 TASK_NOT_PENDING`.
+         */
+        post: operations["tasks_complete"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/users": {
         parameters: {
             query?: never;
@@ -5717,6 +5802,19 @@ export interface components {
             /** @example null */
             previous: string | null;
         };
+        PaginatedTaskList: {
+            items: components["schemas"]["Task"][];
+            /** @example 1 */
+            page: number;
+            /** @example 25 */
+            page_size: number;
+            /** @example 128 */
+            total: number;
+            /** @example /api/v1/x?page=2 */
+            next: string | null;
+            /** @example null */
+            previous: string | null;
+        };
         PaginatedUserList: {
             items: components["schemas"]["User"][];
             /** @example 1 */
@@ -6109,6 +6207,21 @@ export interface components {
             /** Format: date */
             estimated_delivery_date?: string | null;
             name?: string;
+        };
+        /**
+         * @description Serializer que rechaza campos no declarados (``additionalProperties: false``).
+         *
+         *     Evita la asignación masiva: el cliente solo puede enviar los campos permitidos.
+         */
+        PatchedTaskUpdateRequest: {
+            title?: string;
+            description?: string;
+            /** Format: uuid */
+            assigned_to_id?: string;
+            /** Format: date-time */
+            due_at?: string | null;
+            /** @description Código de un valor activo del catálogo `task_priority`. Consulta los valores en `/api/v1/metadata/catalogs/task_priority`. */
+            priority_code?: string;
         };
         /** @description El correo identifica al usuario y no se edita. */
         PatchedUserUpdateRequest: {
@@ -6522,6 +6635,94 @@ export interface components {
             /** @description Obligatorio al pasar a `CANCELLED`, `OWN_FUNDS` y `EXTERNAL_CREDIT_APPROVED`. */
             reason_code?: string | null;
         };
+        Task: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly title: string;
+            readonly description: string;
+            readonly status: components["schemas"]["TaskStatusEnum"];
+            readonly status_label: string;
+            priority: components["schemas"]["CatalogItemRef"];
+            readonly source: components["schemas"]["TaskSourceEnum"];
+            readonly source_label: string;
+            assigned_to: components["schemas"]["UserRef"];
+            created_by: components["schemas"]["UserRef"] | null;
+            readonly parent: components["schemas"]["TaskParent"];
+            /** Format: date-time */
+            readonly due_at: string | null;
+            /** @description Pendiente y con `due_at` antes de hoy (fecha de Bogotá), como `due=overdue`. */
+            readonly is_overdue: boolean;
+            /** Format: date-time */
+            readonly completed_at: string | null;
+            /** Format: date-time */
+            readonly cancelled_at: string | null;
+            readonly cancel_reason: string;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly updated_at: string;
+        };
+        /**
+         * @description Serializer que rechaza campos no declarados (``additionalProperties: false``).
+         *
+         *     Evita la asignación masiva: el cliente solo puede enviar los campos permitidos.
+         */
+        TaskCancelRequest: {
+            reason: string;
+        };
+        /**
+         * @description Serializer que rechaza campos no declarados (``additionalProperties: false``).
+         *
+         *     Evita la asignación masiva: el cliente solo puede enviar los campos permitidos.
+         */
+        TaskCreateRequest: {
+            title: string;
+            description?: string;
+            /** Format: uuid */
+            application_id?: string | null;
+            /** Format: uuid */
+            opportunity_id?: string | null;
+            /**
+             * Format: uuid
+             * @description Por omisión, el actor.
+             */
+            assigned_to_id?: string | null;
+            /** Format: date-time */
+            due_at?: string | null;
+            /** @description Por omisión, `MEDIUM`. */
+            priority_code?: string;
+        };
+        /**
+         * @description Solicitud u oportunidad de la tarea. Las oportunidades no tienen código: ``code``
+         *     es nulo y ``client_display_name`` las identifica.
+         */
+        TaskParent: {
+            type: components["schemas"]["TaskParentTypeEnum"];
+            readonly type_label: string;
+            /** Format: uuid */
+            id: string;
+            code: string | null;
+            client_display_name: string;
+        };
+        /**
+         * @description * `APPLICATION` - Solicitud
+         *     * `OPPORTUNITY` - Oportunidad
+         * @enum {string}
+         */
+        TaskParentTypeEnum: "APPLICATION" | "OPPORTUNITY";
+        /**
+         * @description * `MANUAL` - Manual
+         *     * `AUTOMATIC` - Automática
+         * @enum {string}
+         */
+        TaskSourceEnum: "MANUAL" | "AUTOMATIC";
+        /**
+         * @description * `PENDING` - Pendiente
+         *     * `COMPLETED` - Completada
+         *     * `CANCELLED` - Cancelada
+         * @enum {string}
+         */
+        TaskStatusEnum: "PENDING" | "COMPLETED" | "CANCELLED";
         /** @description Usuario interno. Nunca expone el hash de la contraseña ni tokens. */
         User: {
             /** Format: uuid */
@@ -17043,6 +17244,370 @@ export interface operations {
             };
             /** @description PERMISSION_DENIED o CSRF_FAILED */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    tasks_list: {
+        parameters: {
+            query?: {
+                application_id?: string;
+                /** @description Solo el administrador. Para el asesor se ignora. */
+                assigned_to_id?: string;
+                /** @description Tareas `PENDING` con `due_at` antes de hoy (`overdue`), hoy (`today`) o después de hoy (`upcoming`), con la fecha de Bogotá. Las que no tienen fecha no entran en ninguno. */
+                due?: "overdue" | "today" | "upcoming";
+                opportunity_id?: string;
+                /** @description Un número de página dentro del conjunto de resultados paginado. */
+                page?: number;
+                /** @description Número de resultados a devolver por página. */
+                page_size?: number;
+                /** @description Código `task_priority`. Uno que no existe responde `400`. */
+                priority?: string;
+                status?: "CANCELLED" | "COMPLETED" | "PENDING";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedTaskList"];
+                };
+            };
+            /** @description VALIDATION_ERROR */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description PERMISSION_DENIED o CSRF_FAILED */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    tasks_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TaskCreateRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Task"];
+                };
+            };
+            /** @description VALIDATION_ERROR */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description PERMISSION_DENIED o CSRF_FAILED */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description APPLICATION_CLOSED */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    tasks_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Task"];
+                };
+            };
+            /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description PERMISSION_DENIED o CSRF_FAILED */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description RESOURCE_NOT_FOUND (inexistente o fuera del alcance) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    tasks_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedTaskUpdateRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Task"];
+                };
+            };
+            /** @description VALIDATION_ERROR */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description PERMISSION_DENIED o CSRF_FAILED */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description RESOURCE_NOT_FOUND (inexistente o fuera del alcance) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description TASK_NOT_PENDING (completada o cancelada) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    tasks_cancel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TaskCancelRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Task"];
+                };
+            };
+            /** @description VALIDATION_ERROR */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description PERMISSION_DENIED o CSRF_FAILED */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description RESOURCE_NOT_FOUND (inexistente o fuera del alcance) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description TASK_NOT_PENDING (completada o cancelada) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    tasks_complete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Task"];
+                };
+            };
+            /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description PERMISSION_DENIED o CSRF_FAILED */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description RESOURCE_NOT_FOUND (inexistente o fuera del alcance) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description TASK_NOT_PENDING (completada o cancelada) */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

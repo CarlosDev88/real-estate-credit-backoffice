@@ -213,6 +213,7 @@ Las cookies de sesión usan `HttpOnly`, `Secure`, `SameSite=Lax` y `Path=/`. La 
 | `PROJECT_NOT_ACTIVE` | Proyecto borrador/archivado no asociable. |
 | `COMMISSION_PLAN_NOT_FOUND` | No hay plan de comisión vigente para el producto en la fecha de desembolso. |
 | `COMMISSION_PLAN_OVERLAP` | La vigencia se solapa con otro plan del mismo producto. |
+| `TASK_NOT_PENDING` | Editar, completar o cancelar una tarea que ya está completada o cancelada (`409`). |
 | `COMMISSION_PLAN_IN_USE` | El plan ya fue usado por una liquidación. |
 | `APPLICATION_NOT_DISBURSED` | La solicitud no está desembolsada. |
 | `COMMISSION_SETTLEMENT_HAS_PAYMENTS` | La liquidación tiene partes pagadas y no se puede anular. |
@@ -687,12 +688,55 @@ Respuesta reducida:
 
 | Método | Ruta | Permiso | Descripción |
 | --- | --- | --- | --- |
-| `GET` | `/tasks` | `tasks.read` | Lista tareas dentro del alcance. |
+| `GET` | `/tasks` | `tasks.read` | Lista tareas dentro del alcance. Filtros `status`, `application_id`, `opportunity_id`, `assigned_to_id` (solo administrador), `due` y `priority`. |
 | `POST` | `/tasks` | `tasks.create` | Crea tarea manual. |
 | `GET` | `/tasks/{task_id}` | `tasks.read` | Detalle. |
-| `PATCH` | `/tasks/{task_id}` | `tasks.update` | Edita título, responsable, fecha o prioridad. |
+| `PATCH` | `/tasks/{task_id}` | `tasks.update` | Edita título, descripción, responsable, fecha o prioridad. |
 | `POST` | `/tasks/{task_id}/complete` | `tasks.complete` | Completa tarea. |
-| `POST` | `/tasks/{task_id}/cancel` | `tasks.cancel` | Cancela con motivo. |
+| `POST` | `/tasks/{task_id}/cancel` | `tasks.cancel` | Cancela con motivo (`reason`, obligatorio). |
+
+Los cinco permisos son de `ADMIN` y `ADVISOR`; el broker y la constructora reciben `403`.
+
+- **Alcance:** el administrador ve todas las tareas. El asesor ve las asignadas a él y las de sus solicitudes (asesor asignado) u oportunidades (asignadas o capturadas por él). Una tarea fuera del alcance responde `404`.
+- **Crear:** exactamente uno de `application_id` u `opportunity_id`, visible para el actor (si no, `400 VALIDATION_ERROR` en ese campo). Una solicitud terminada responde `409 APPLICATION_CLOSED`. `assigned_to_id` es el actor por omisión y debe ser un usuario activo con rol `ADMIN` o `ADVISOR` (si no, `400`). `priority_code` es `MEDIUM` por omisión. Solo se crean tareas `MANUAL`.
+- **Estados:** una tarea `PENDING` se edita, se completa o se cancela; una `COMPLETED` o `CANCELLED` responde `409 TASK_NOT_PENDING`.
+- **`due`** (fecha de Bogotá, solo tareas `PENDING` con fecha): `overdue` (antes de hoy), `today` y `upcoming` (después de hoy).
+- **Orden:** `due_at`, con las que no tienen fecha al final; después, la fecha de creación.
+
+Respuesta:
+
+```json
+{
+  "id": "uuid",
+  "title": "Revisar extractos corregidos",
+  "description": "",
+  "status": "PENDING",
+  "status_label": "Pendiente",
+  "priority": { "code": "HIGH", "label": "Alta" },
+  "source": "MANUAL",
+  "source_label": "Manual",
+  "assigned_to": { "id": "uuid", "name": "Paula Rincón" },
+  "created_by": { "id": "uuid", "name": "Paula Rincón" },
+  "parent": {
+    "type": "APPLICATION",
+    "type_label": "Solicitud",
+    "id": "uuid",
+    "code": "SOL-000123",
+    "client_display_name": "Sofía Herrera"
+  },
+  "due_at": "2026-08-25T12:00:00-05:00",
+  "is_overdue": false,
+  "completed_at": null,
+  "cancelled_at": null,
+  "cancel_reason": "",
+  "created_at": "2026-08-20T15:02:11-05:00",
+  "updated_at": "2026-08-20T15:02:11-05:00"
+}
+```
+
+`parent.code` es nulo en las oportunidades, que no tienen código. `is_overdue` usa la misma regla que `due=overdue`.
+
+Entrada de `POST /tasks`:
 
 ```json
 {

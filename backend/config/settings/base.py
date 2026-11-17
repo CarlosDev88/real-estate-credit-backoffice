@@ -148,6 +148,10 @@ SPECTACULAR_SETTINGS = {
         "NextActionEnum": "apps.workday.rules.NextAction",
         # Tipo de cada acción disponible de la solicitud.
         "AvailableActionKindEnum": "apps.applications.actions.ActionKind",
+        # Tareas: estado, origen y tipo de padre.
+        "TaskStatusEnum": "apps.tasks.models.TaskStatus",
+        "TaskSourceEnum": "apps.tasks.models.TaskSource",
+        "TaskParentTypeEnum": "apps.tasks.models.TaskParentType",
     },
 }
 
