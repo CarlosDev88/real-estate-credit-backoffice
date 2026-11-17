@@ -11075,6 +11075,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o FILTER_OUT_OF_SCOPE (un filtro fuera del alcance del usuario)."
+                    },
+                    "429": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "RATE_LIMITED: más de 20 consultas por minuto al dashboard y los reportes (cupo compartido, por usuario). `Retry-After` dice cuántos segundos esperar."
                     }
                 }
             }
@@ -11256,6 +11266,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o FILTER_OUT_OF_SCOPE (un filtro fuera del alcance del usuario)."
+                    },
+                    "429": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "RATE_LIMITED: más de 20 consultas por minuto al dashboard y los reportes (cupo compartido, por usuario). `Retry-After` dice cuántos segundos esperar."
                     }
                 }
             }
@@ -11444,6 +11464,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o FILTER_OUT_OF_SCOPE (un filtro fuera del alcance del usuario)."
+                    },
+                    "429": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "RATE_LIMITED: más de 20 consultas por minuto al dashboard y los reportes (cupo compartido, por usuario). `Retry-After` dice cuántos segundos esperar."
                     }
                 }
             }
@@ -11616,6 +11646,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o FILTER_OUT_OF_SCOPE (un filtro fuera del alcance del usuario)."
+                    },
+                    "429": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "RATE_LIMITED: más de 20 consultas por minuto al dashboard y los reportes (cupo compartido, por usuario). `Retry-After` dice cuántos segundos esperar."
                     }
                 }
             }
@@ -17187,6 +17227,684 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    }
+                }
+            }
+        },
+        "/api/v1/reports/applications": {
+            "get": {
+                "operationId": "reports_applications_list",
+                "description": "Solicitudes creadas en el periodo (por fecha de creación), dentro del alcance y con los filtros, de la más nueva a la más vieja. Solo datos operativos: el documento del titular sale enmascarado y nunca salen correo, teléfono, dirección, datos financieros del comprador ni archivos.",
+                "summary": "Reporte paginado de solicitudes",
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "advisor_id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "description": "Asesor asignado. El asesor solo puede mandar el suyo y el broker ninguno: otro valor responde `403 FILTER_OUT_OF_SCOPE`."
+                    },
+                    {
+                        "in": "query",
+                        "name": "bank_id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "description": "Banco del producto."
+                    },
+                    {
+                        "in": "query",
+                        "name": "date_from",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        },
+                        "description": "Primer día (`YYYY-MM-DD`, incluido, hora de Bogotá). Sin `date_from` ni `date_to` el rango es el mes en curso (día 1 a hoy); con solo `date_to`, el día 1 de su mes."
+                    },
+                    {
+                        "in": "query",
+                        "name": "date_to",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        },
+                        "description": "Último día (`YYYY-MM-DD`, incluido). Por omisión, hoy; una fecha futura se recorta a hoy. El rango no puede superar 366 días."
+                    },
+                    {
+                        "name": "page",
+                        "required": false,
+                        "in": "query",
+                        "description": "Un número de página dentro del conjunto de resultados paginado.",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "page_size",
+                        "required": false,
+                        "in": "query",
+                        "description": "Número de resultados a devolver por página.",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "partner_id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "description": "Constructora del proyecto de la solicitud (el del inmueble o, si no tiene, el de la oportunidad). El broker no puede usarlo (`403 FILTER_OUT_OF_SCOPE`)."
+                    },
+                    {
+                        "in": "query",
+                        "name": "project_id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "description": "Proyecto de la solicitud (el del inmueble o, si no tiene, el de la oportunidad). El broker no puede usarlo (`403 FILTER_OUT_OF_SCOPE`)."
+                    },
+                    {
+                        "in": "query",
+                        "name": "purpose_code",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Código `loan_purpose`. Uno que no existe responde `400`."
+                    },
+                    {
+                        "in": "query",
+                        "name": "status",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string",
+                                "enum": [
+                                    "APPROVED",
+                                    "BANK_OBSERVATION",
+                                    "CANCELLED",
+                                    "CREDIT_ANALYSIS",
+                                    "DISBURSED",
+                                    "DOCUMENTS_REVIEW",
+                                    "DRAFT",
+                                    "EXTERNAL_CREDIT_APPROVED",
+                                    "FILED",
+                                    "FILING_VALIDATION",
+                                    "LEGALIZATION",
+                                    "OWN_FUNDS",
+                                    "READY_TO_FILE",
+                                    "REJECTED",
+                                    "WAITING_BUYER_DATA",
+                                    "WAITING_DOCUMENTS",
+                                    "WITHDRAWN"
+                                ]
+                            }
+                        },
+                        "description": "Estado actual de la solicitud; se repite para varios (`status=FILED&status=APPROVED`). Un estado desconocido responde `400`.",
+                        "explode": true
+                    }
+                ],
+                "tags": [
+                    "Reports"
+                ],
+                "security": [
+                    {
+                        "internalSession": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PaginatedReportApplicationList"
+                                }
+                            }
+                        },
+                        "description": ""
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                },
+                                "examples": {
+                                    "RangoDemasiadoLargo": {
+                                        "value": {
+                                            "code": "VALIDATION_ERROR",
+                                            "message": "Los datos enviados no son válidos.",
+                                            "details": [
+                                                {
+                                                    "field": "date_to",
+                                                    "code": "INVALID",
+                                                    "message": "El rango no puede superar 366 días."
+                                                }
+                                            ],
+                                            "request_id": "req_01J9Z6S4T6R7"
+                                        },
+                                        "summary": "Rango demasiado largo"
+                                    }
+                                }
+                            }
+                        },
+                        "description": "VALIDATION_ERROR: fecha mal escrita, `date_from > date_to`, rango de más de 366 días, un id que no existe o un `purpose_code` desconocido."
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "NOT_AUTHENTICATED o SESSION_EXPIRED"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                },
+                                "examples": {
+                                    "FiltroFueraDelAlcance": {
+                                        "value": {
+                                            "code": "FILTER_OUT_OF_SCOPE",
+                                            "message": "Uno de los filtros está fuera de tu alcance.",
+                                            "details": [
+                                                {
+                                                    "field": "advisor_id",
+                                                    "code": "FILTER_OUT_OF_SCOPE",
+                                                    "message": "Este filtro está fuera de tu alcance."
+                                                }
+                                            ],
+                                            "request_id": "req_01J9Z6S4T6R7"
+                                        },
+                                        "summary": "Filtro fuera del alcance"
+                                    }
+                                }
+                            }
+                        },
+                        "description": "PERMISSION_DENIED o FILTER_OUT_OF_SCOPE (un filtro fuera del alcance del usuario)."
+                    },
+                    "429": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "RATE_LIMITED: más de 20 consultas por minuto al dashboard y los reportes (cupo compartido, por usuario). `Retry-After` dice cuántos segundos esperar."
+                    }
+                }
+            }
+        },
+        "/api/v1/reports/applications.csv": {
+            "get": {
+                "operationId": "reports_applications_csv",
+                "description": "Las mismas columnas y filtros de `/reports/applications`, en CSV UTF-8 con BOM, separado por comas y con encabezados en español. Las celdas que empiezan con `=`, `+`, `-`, `@`, tabulador o retorno de carro se prefijan con `'`. Si el resultado supera `REPORTS_CSV_MAX_ROWS` (5000) filas responde `422 EXPORT_TOO_LARGE`: hay que usar la exportación asíncrona.",
+                "summary": "Descarga directa del reporte de solicitudes en CSV",
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "advisor_id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "description": "Asesor asignado. El asesor solo puede mandar el suyo y el broker ninguno: otro valor responde `403 FILTER_OUT_OF_SCOPE`."
+                    },
+                    {
+                        "in": "query",
+                        "name": "bank_id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "description": "Banco del producto."
+                    },
+                    {
+                        "in": "query",
+                        "name": "date_from",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        },
+                        "description": "Primer día (`YYYY-MM-DD`, incluido, hora de Bogotá). Sin `date_from` ni `date_to` el rango es el mes en curso (día 1 a hoy); con solo `date_to`, el día 1 de su mes."
+                    },
+                    {
+                        "in": "query",
+                        "name": "date_to",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        },
+                        "description": "Último día (`YYYY-MM-DD`, incluido). Por omisión, hoy; una fecha futura se recorta a hoy. El rango no puede superar 366 días."
+                    },
+                    {
+                        "in": "query",
+                        "name": "partner_id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "description": "Constructora del proyecto de la solicitud (el del inmueble o, si no tiene, el de la oportunidad). El broker no puede usarlo (`403 FILTER_OUT_OF_SCOPE`)."
+                    },
+                    {
+                        "in": "query",
+                        "name": "project_id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "description": "Proyecto de la solicitud (el del inmueble o, si no tiene, el de la oportunidad). El broker no puede usarlo (`403 FILTER_OUT_OF_SCOPE`)."
+                    },
+                    {
+                        "in": "query",
+                        "name": "purpose_code",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Código `loan_purpose`. Uno que no existe responde `400`."
+                    },
+                    {
+                        "in": "query",
+                        "name": "status",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string",
+                                "enum": [
+                                    "APPROVED",
+                                    "BANK_OBSERVATION",
+                                    "CANCELLED",
+                                    "CREDIT_ANALYSIS",
+                                    "DISBURSED",
+                                    "DOCUMENTS_REVIEW",
+                                    "DRAFT",
+                                    "EXTERNAL_CREDIT_APPROVED",
+                                    "FILED",
+                                    "FILING_VALIDATION",
+                                    "LEGALIZATION",
+                                    "OWN_FUNDS",
+                                    "READY_TO_FILE",
+                                    "REJECTED",
+                                    "WAITING_BUYER_DATA",
+                                    "WAITING_DOCUMENTS",
+                                    "WITHDRAWN"
+                                ]
+                            }
+                        },
+                        "description": "Estado actual de la solicitud; se repite para varios (`status=FILED&status=APPROVED`). Un estado desconocido responde `400`.",
+                        "explode": true
+                    }
+                ],
+                "tags": [
+                    "Reports"
+                ],
+                "security": [
+                    {
+                        "internalSession": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "text/csv": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "description": "Archivo `solicitudes_<date_from>_<date_to>.csv` (`Content-Disposition: attachment`)."
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                },
+                                "examples": {
+                                    "RangoDemasiadoLargo": {
+                                        "value": {
+                                            "code": "VALIDATION_ERROR",
+                                            "message": "Los datos enviados no son válidos.",
+                                            "details": [
+                                                {
+                                                    "field": "date_to",
+                                                    "code": "INVALID",
+                                                    "message": "El rango no puede superar 366 días."
+                                                }
+                                            ],
+                                            "request_id": "req_01J9Z6S4T6R7"
+                                        },
+                                        "summary": "Rango demasiado largo"
+                                    }
+                                }
+                            }
+                        },
+                        "description": "VALIDATION_ERROR: fecha mal escrita, `date_from > date_to`, rango de más de 366 días, un id que no existe o un `purpose_code` desconocido."
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "NOT_AUTHENTICATED o SESSION_EXPIRED"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                },
+                                "examples": {
+                                    "FiltroFueraDelAlcance": {
+                                        "value": {
+                                            "code": "FILTER_OUT_OF_SCOPE",
+                                            "message": "Uno de los filtros está fuera de tu alcance.",
+                                            "details": [
+                                                {
+                                                    "field": "advisor_id",
+                                                    "code": "FILTER_OUT_OF_SCOPE",
+                                                    "message": "Este filtro está fuera de tu alcance."
+                                                }
+                                            ],
+                                            "request_id": "req_01J9Z6S4T6R7"
+                                        },
+                                        "summary": "Filtro fuera del alcance"
+                                    }
+                                }
+                            }
+                        },
+                        "description": "PERMISSION_DENIED o FILTER_OUT_OF_SCOPE (un filtro fuera del alcance del usuario)."
+                    },
+                    "429": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "RATE_LIMITED: más de 20 consultas por minuto al dashboard y los reportes (cupo compartido, por usuario). `Retry-After` dice cuántos segundos esperar."
+                    },
+                    "422": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "EXPORT_TOO_LARGE: más filas que el límite de la descarga directa."
+                    }
+                }
+            }
+        },
+        "/api/v1/reports/funnel": {
+            "get": {
+                "operationId": "reports_funnel",
+                "description": "El mismo embudo de `/dashboard/funnel` (cohorte de las solicitudes creadas en el periodo) con el filtro `status` y, con `group_by`, un embudo por asesor, banco o finalidad. El asesor solo ve sus solicitudes, así que su desglose por asesor tiene un grupo.",
+                "summary": "Embudo reportable con desglose opcional",
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "advisor_id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "description": "Asesor asignado. El asesor solo puede mandar el suyo y el broker ninguno: otro valor responde `403 FILTER_OUT_OF_SCOPE`."
+                    },
+                    {
+                        "in": "query",
+                        "name": "bank_id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "description": "Banco del producto."
+                    },
+                    {
+                        "in": "query",
+                        "name": "date_from",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        },
+                        "description": "Primer día (`YYYY-MM-DD`, incluido, hora de Bogotá). Sin `date_from` ni `date_to` el rango es el mes en curso (día 1 a hoy); con solo `date_to`, el día 1 de su mes."
+                    },
+                    {
+                        "in": "query",
+                        "name": "date_to",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        },
+                        "description": "Último día (`YYYY-MM-DD`, incluido). Por omisión, hoy; una fecha futura se recorta a hoy. El rango no puede superar 366 días."
+                    },
+                    {
+                        "in": "query",
+                        "name": "group_by",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "advisor",
+                                "bank",
+                                "purpose"
+                            ]
+                        },
+                        "description": "Desglose opcional: un embudo por asesor, banco o finalidad. Otro valor responde `400`."
+                    },
+                    {
+                        "in": "query",
+                        "name": "partner_id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "description": "Constructora del proyecto de la solicitud (el del inmueble o, si no tiene, el de la oportunidad). El broker no puede usarlo (`403 FILTER_OUT_OF_SCOPE`)."
+                    },
+                    {
+                        "in": "query",
+                        "name": "project_id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "description": "Proyecto de la solicitud (el del inmueble o, si no tiene, el de la oportunidad). El broker no puede usarlo (`403 FILTER_OUT_OF_SCOPE`)."
+                    },
+                    {
+                        "in": "query",
+                        "name": "purpose_code",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Código `loan_purpose`. Uno que no existe responde `400`."
+                    },
+                    {
+                        "in": "query",
+                        "name": "status",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string",
+                                "enum": [
+                                    "APPROVED",
+                                    "BANK_OBSERVATION",
+                                    "CANCELLED",
+                                    "CREDIT_ANALYSIS",
+                                    "DISBURSED",
+                                    "DOCUMENTS_REVIEW",
+                                    "DRAFT",
+                                    "EXTERNAL_CREDIT_APPROVED",
+                                    "FILED",
+                                    "FILING_VALIDATION",
+                                    "LEGALIZATION",
+                                    "OWN_FUNDS",
+                                    "READY_TO_FILE",
+                                    "REJECTED",
+                                    "WAITING_BUYER_DATA",
+                                    "WAITING_DOCUMENTS",
+                                    "WITHDRAWN"
+                                ]
+                            }
+                        },
+                        "description": "Estado actual de la solicitud; se repite para varios (`status=FILED&status=APPROVED`). Un estado desconocido responde `400`.",
+                        "explode": true
+                    }
+                ],
+                "tags": [
+                    "Reports"
+                ],
+                "security": [
+                    {
+                        "internalSession": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ReportFunnel"
+                                },
+                                "examples": {
+                                    "PorBanco": {
+                                        "value": {
+                                            "period": {
+                                                "date_from": "2026-11-01",
+                                                "date_to": "2026-11-17"
+                                            },
+                                            "group_by": "bank",
+                                            "stages": [
+                                                {
+                                                    "code": "CREATED",
+                                                    "label": "Creadas",
+                                                    "count": 3,
+                                                    "conversion": "1.0000",
+                                                    "step_conversion": null
+                                                }
+                                            ],
+                                            "groups": [
+                                                {
+                                                    "key": "0c5b8d6e-2b8f-4a0e-8f43-6a2d9f1e7b20",
+                                                    "label": "Bancolombia",
+                                                    "stages": [
+                                                        {
+                                                            "code": "CREATED",
+                                                            "label": "Creadas",
+                                                            "count": 2,
+                                                            "conversion": "1.0000",
+                                                            "step_conversion": null
+                                                        }
+                                                    ]
+                                                },
+                                                {
+                                                    "key": null,
+                                                    "label": "Sin banco",
+                                                    "stages": [
+                                                        {
+                                                            "code": "CREATED",
+                                                            "label": "Creadas",
+                                                            "count": 1,
+                                                            "conversion": "1.0000",
+                                                            "step_conversion": null
+                                                        }
+                                                    ]
+                                                }
+                                            ]
+                                        },
+                                        "summary": "Por banco"
+                                    }
+                                }
+                            }
+                        },
+                        "description": ""
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                },
+                                "examples": {
+                                    "RangoDemasiadoLargo": {
+                                        "value": {
+                                            "code": "VALIDATION_ERROR",
+                                            "message": "Los datos enviados no son válidos.",
+                                            "details": [
+                                                {
+                                                    "field": "date_to",
+                                                    "code": "INVALID",
+                                                    "message": "El rango no puede superar 366 días."
+                                                }
+                                            ],
+                                            "request_id": "req_01J9Z6S4T6R7"
+                                        },
+                                        "summary": "Rango demasiado largo"
+                                    }
+                                }
+                            }
+                        },
+                        "description": "VALIDATION_ERROR: fecha mal escrita, `date_from > date_to`, rango de más de 366 días, un id que no existe o un `purpose_code` desconocido."
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "NOT_AUTHENTICATED o SESSION_EXPIRED"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                },
+                                "examples": {
+                                    "FiltroFueraDelAlcance": {
+                                        "value": {
+                                            "code": "FILTER_OUT_OF_SCOPE",
+                                            "message": "Uno de los filtros está fuera de tu alcance.",
+                                            "details": [
+                                                {
+                                                    "field": "advisor_id",
+                                                    "code": "FILTER_OUT_OF_SCOPE",
+                                                    "message": "Este filtro está fuera de tu alcance."
+                                                }
+                                            ],
+                                            "request_id": "req_01J9Z6S4T6R7"
+                                        },
+                                        "summary": "Filtro fuera del alcance"
+                                    }
+                                }
+                            }
+                        },
+                        "description": "PERMISSION_DENIED o FILTER_OUT_OF_SCOPE (un filtro fuera del alcance del usuario)."
+                    },
+                    "429": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "RATE_LIMITED: más de 20 consultas por minuto al dashboard y los reportes (cupo compartido, por usuario). `Retry-After` dice cuántos segundos esperar."
                     }
                 }
             }
@@ -26922,6 +27640,15 @@
                 "type": "string",
                 "description": "* `CREATED` - Creadas\n* `DOCUMENTS_COMPLETE` - Documentos completos\n* `READY_TO_FILE` - Listas para radicar\n* `FILED` - Radicadas\n* `APPROVED` - Aprobadas\n* `DISBURSED` - Desembolsadas"
             },
+            "GroupByEnum": {
+                "enum": [
+                    "advisor",
+                    "bank",
+                    "purpose"
+                ],
+                "type": "string",
+                "description": "* `advisor` - Asesor\n* `bank` - Banco\n* `purpose` - Finalidad"
+            },
             "HolderScopeEnum": {
                 "enum": [
                     "PARTICIPANT",
@@ -29731,6 +30458,47 @@
                     }
                 }
             },
+            "PaginatedReportApplicationList": {
+                "type": "object",
+                "required": [
+                    "items",
+                    "page",
+                    "page_size",
+                    "total",
+                    "next",
+                    "previous"
+                ],
+                "properties": {
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/ReportApplication"
+                        }
+                    },
+                    "page": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "page_size": {
+                        "type": "integer",
+                        "example": 25
+                    },
+                    "total": {
+                        "type": "integer",
+                        "example": 128
+                    },
+                    "next": {
+                        "type": "string",
+                        "nullable": true,
+                        "example": "/api/v1/x?page=2"
+                    },
+                    "previous": {
+                        "type": "string",
+                        "nullable": true,
+                        "example": null
+                    }
+                }
+            },
             "PaginatedRoleList": {
                 "type": "object",
                 "required": [
@@ -31784,6 +32552,149 @@
                 },
                 "required": [
                     "session_expires_at"
+                ]
+            },
+            "ReportApplication": {
+                "type": "object",
+                "description": "Fila del reporte de solicitudes. Lee ``exports.application_row``; el CSV tiene las\nmismas columnas (``exports.COLUMNS``).",
+                "properties": {
+                    "code": {
+                        "type": "string"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "status": {
+                        "$ref": "#/components/schemas/ApplicationStatusEnum"
+                    },
+                    "status_label": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "purpose": {
+                        "type": "string",
+                        "description": "Etiqueta de la finalidad (`loan_purpose`)."
+                    },
+                    "advisor_name": {
+                        "type": "string"
+                    },
+                    "client_name": {
+                        "type": "string",
+                        "description": "Titular de la oportunidad."
+                    },
+                    "client_document_masked": {
+                        "type": "string",
+                        "description": "Documento del titular con solo los últimos 4 caracteres: `******5908`."
+                    },
+                    "bank_name": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "project_name": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Proyecto del inmueble o, si no tiene, el de la oportunidad."
+                    },
+                    "requested_amount": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "decimal",
+                        "pattern": "^-?\\d{0,18}(?:\\.\\d{0,2})?$",
+                        "description": "Monto solicitado en COP; `null` sin financiación registrada."
+                    },
+                    "last_status_change_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "filings_count": {
+                        "type": "integer"
+                    }
+                },
+                "required": [
+                    "advisor_name",
+                    "bank_name",
+                    "client_document_masked",
+                    "client_name",
+                    "code",
+                    "created_at",
+                    "filings_count",
+                    "last_status_change_at",
+                    "project_name",
+                    "purpose",
+                    "requested_amount",
+                    "status",
+                    "status_label"
+                ]
+            },
+            "ReportFunnel": {
+                "type": "object",
+                "properties": {
+                    "period": {
+                        "$ref": "#/components/schemas/Period"
+                    },
+                    "group_by": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/GroupByEnum"
+                            },
+                            {
+                                "$ref": "#/components/schemas/NullEnum"
+                            }
+                        ]
+                    },
+                    "stages": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/FunnelStage"
+                        },
+                        "description": "Embudo de todo el resultado."
+                    },
+                    "groups": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/ReportFunnelGroup"
+                        },
+                        "description": "Un embudo por grupo, ordenados por etiqueta. Vacío sin `group_by`."
+                    }
+                },
+                "required": [
+                    "group_by",
+                    "groups",
+                    "period",
+                    "stages"
+                ]
+            },
+            "ReportFunnelGroup": {
+                "type": "object",
+                "properties": {
+                    "key": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Id del asesor o del banco, o código de la finalidad. `null`: sin banco."
+                    },
+                    "label": {
+                        "type": "string"
+                    },
+                    "stages": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/FunnelStage"
+                        }
+                    }
+                },
+                "required": [
+                    "key",
+                    "label",
+                    "stages"
                 ]
             },
             "Role": {

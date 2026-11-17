@@ -22,7 +22,7 @@ el periodo:
   ``DISBURSED`` más reciente de cada solicitud.
 """
 
-from dataclasses import replace
+from dataclasses import dataclass, replace
 from datetime import timedelta
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Any
@@ -109,12 +109,71 @@ def _reached_condition(stage: str) -> Q:
 # --- Embudo -------------------------------------------------------------------------------
 
 
+class FunnelGroupBy(models.TextChoices):
+    """Desglose opcional de ``/reports/funnel`` (``group_by``)."""
+
+    ADVISOR = "advisor", "Asesor"
+    BANK = "bank", "Banco"
+    PURPOSE = "purpose", "Finalidad"
+
+
+@dataclass(frozen=True)
+class Grouping:
+    key: str
+    # Campos que forman la etiqueta visible del grupo, unidos con un espacio.
+    label_fields: tuple[str, ...]
+    # Etiqueta de las solicitudes sin valor (por ejemplo, sin banco elegido).
+    empty_label: str = ""
+
+
+GROUPINGS: dict[str, Grouping] = {
+    FunnelGroupBy.ADVISOR: Grouping(
+        "assigned_advisor_id", ("assigned_advisor__first_name", "assigned_advisor__last_name")
+    ),
+    FunnelGroupBy.BANK: Grouping(
+        "bank_product__bank_id", ("bank_product__bank__name",), empty_label="Sin banco"
+    ),
+    FunnelGroupBy.PURPOSE: Grouping("purpose_item__code", ("purpose_item__label",)),
+}
+
+
+def _stage_aggregates() -> dict[str, Count]:
+    """Un ``Count`` por etapa, con el código de la etapa como alias."""
+    aggregates: dict[str, Count] = {FunnelStage.CREATED.value: Count("pk")}
+    for stage in STAGE_STATUS:
+        aggregates[str(stage)] = Count("pk", filter=_reached_condition(stage))
+    return aggregates
+
+
 def funnel_stages(applications: QuerySet[CreditApplication]) -> list[dict[str, Any]]:
     """Etapas del embudo de la cohorte ``applications``, en una sola consulta."""
-    aggregates: dict[str, Count] = {
-        stage: Count("pk", filter=_reached_condition(stage)) for stage in STAGE_STATUS
-    }
-    counts = applications.aggregate(**{FunnelStage.CREATED.value: Count("pk")}, **aggregates)
+    return _stages_from_counts(applications.aggregate(**_stage_aggregates()))
+
+
+def funnel_groups(applications: QuerySet[CreditApplication], group_by: str) -> list[dict[str, Any]]:
+    """El embudo de cada grupo (asesor, banco o finalidad), en una sola consulta. Los
+    grupos salen ordenados por etiqueta."""
+    grouping = GROUPINGS[group_by]
+    rows = (
+        applications.order_by()
+        .values(grouping.key, *grouping.label_fields)
+        .annotate(**_stage_aggregates())
+    )
+    groups = []
+    for row in rows:
+        label = " ".join(str(row[name]) for name in grouping.label_fields if row[name])
+        key = row[grouping.key]
+        groups.append(
+            {
+                "key": None if key is None else str(key),
+                "label": label or grouping.empty_label,
+                "stages": _stages_from_counts(row),
+            }
+        )
+    return sorted(groups, key=lambda group: (group["key"] is None, group["label"].lower()))
+
+
+def _stages_from_counts(counts: dict[str, Any]) -> list[dict[str, Any]]:
     created = counts[FunnelStage.CREATED.value]
     stages: list[dict[str, Any]] = []
     previous: int | None = None
@@ -135,6 +194,18 @@ def funnel_stages(applications: QuerySet[CreditApplication]) -> list[dict[str, A
 def funnel(user: User, filters: ReportFilters, scope: CrmScope) -> dict[str, Any]:
     applications = scoped_applications(user, filters, scope=scope)
     return {"period": filters.period, "stages": funnel_stages(applications)}
+
+
+def report_funnel(
+    user: User, filters: ReportFilters, scope: CrmScope, group_by: str | None
+) -> dict[str, Any]:
+    """``/reports/funnel``: el embudo del dashboard y, con ``group_by``, el de cada grupo."""
+    result = funnel(user, filters, scope)
+    result["group_by"] = group_by
+    result["groups"] = (
+        funnel_groups(scoped_applications(user, filters, scope=scope), group_by) if group_by else []
+    )
+    return result
 
 
 # --- Resumen ------------------------------------------------------------------------------

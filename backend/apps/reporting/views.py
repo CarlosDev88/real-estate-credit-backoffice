@@ -12,6 +12,7 @@ from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import OpenApiExample, OpenApiParameter, OpenApiResponse, extend_schema
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.generics import GenericAPIView
+from rest_framework.pagination import BasePagination
 from rest_framework.request import Request
 from rest_framework.response import Response
 
@@ -20,13 +21,14 @@ from apps.crm.services import CrmScope
 from apps.identity.models import User
 from apps.identity.permissions import HasPermissionCode
 from apps.reporting import services
-from apps.reporting.filters import ReportFilters, parse_filters
+from apps.reporting.filters import DashboardFilterSerializer, ReportFilters, parse_filters
 from apps.reporting.serializers import (
     DashboardBankResultsSerializer,
     DashboardFunnelSerializer,
     DashboardSummarySerializer,
     DashboardWorkloadSerializer,
 )
+from apps.reporting.throttling import ReportsRateThrottle
 from config.serializers import ErrorSerializer
 
 DASHBOARD_TAG = "Dashboard"
@@ -80,6 +82,10 @@ DASHBOARD_ERRORS = {
     403: _error(
         "PERMISSION_DENIED o FILTER_OUT_OF_SCOPE (un filtro fuera del alcance del usuario).",
         [OUT_OF_SCOPE_EXAMPLE],
+    ),
+    429: _error(
+        "RATE_LIMITED: más de 20 consultas por minuto al dashboard y los reportes "
+        "(cupo compartido, por usuario). `Retry-After` dice cuántos segundos esperar."
     ),
 }
 
@@ -139,7 +145,9 @@ PERIOD_EXAMPLE = {"date_from": "2026-11-01", "date_to": "2026-11-17"}
 class DashboardView(GenericAPIView):
     permission_classes = [HasPermissionCode]
     required_permissions = {"GET": "dashboard.read"}
-    pagination_class = None
+    throttle_classes = [ReportsRateThrottle]
+    pagination_class: type[BasePagination] | None = None
+    filter_serializer_class: type[DashboardFilterSerializer] = DashboardFilterSerializer
     # Solo el administrador y el asesor; el broker recibe 403.
     internal_only = False
 
@@ -156,7 +164,12 @@ class DashboardView(GenericAPIView):
     def get_filters(self) -> ReportFilters:
         if self.internal_only and not (self.scope.sees_everything or self.scope.is_advisor):
             raise PermissionDenied()
-        return parse_filters(self.request.query_params, self.actor, self.scope)
+        return parse_filters(
+            self.request.query_params,
+            self.actor,
+            self.scope,
+            serializer_class=self.filter_serializer_class,
+        )
 
 
 class DashboardSummaryView(DashboardView):

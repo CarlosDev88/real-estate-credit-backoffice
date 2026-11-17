@@ -9,3 +9,12 @@ class FilterOutOfScope(ApiError):
     status_code = status.HTTP_403_FORBIDDEN
     error_code = "FILTER_OUT_OF_SCOPE"
     default_detail = "Uno de los filtros está fuera de tu alcance."
+
+
+class ExportTooLarge(ApiError):
+    status_code = status.HTTP_422_UNPROCESSABLE_ENTITY
+    error_code = "EXPORT_TOO_LARGE"
+    default_detail = (
+        "El resultado supera el límite de la descarga directa. Usa la exportación "
+        "asíncrona o acota los filtros."
+    )

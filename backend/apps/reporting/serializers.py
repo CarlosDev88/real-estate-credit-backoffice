@@ -4,7 +4,7 @@
 from rest_framework import serializers
 
 from apps.catalogs.workflow import ApplicationStatus
-from apps.reporting.services import FunnelStage
+from apps.reporting.services import FunnelGroupBy, FunnelStage
 from config.serializers import ChoiceLabelField
 
 
@@ -117,3 +117,52 @@ class BankResultSerializer(serializers.Serializer):
 class DashboardBankResultsSerializer(serializers.Serializer):
     period = PeriodSerializer()
     banks = BankResultSerializer(many=True)
+
+
+# --- Reportes -------------------------------------------------------------------------
+
+
+class ReportFunnelGroupSerializer(serializers.Serializer):
+    key = serializers.CharField(
+        allow_null=True,
+        help_text="Id del asesor o del banco, o código de la finalidad. `null`: sin banco.",
+    )
+    label = serializers.CharField()  # type: ignore[assignment]
+    stages = FunnelStageSerializer(many=True)
+
+
+class ReportFunnelSerializer(serializers.Serializer):
+    period = PeriodSerializer()
+    group_by = serializers.ChoiceField(choices=FunnelGroupBy.choices, allow_null=True)
+    stages = FunnelStageSerializer(many=True, help_text="Embudo de todo el resultado.")
+    groups = ReportFunnelGroupSerializer(
+        many=True, help_text="Un embudo por grupo, ordenados por etiqueta. Vacío sin `group_by`."
+    )
+
+
+class ReportApplicationSerializer(serializers.Serializer):
+    """Fila del reporte de solicitudes. Lee ``exports.application_row``; el CSV tiene las
+    mismas columnas (``exports.COLUMNS``)."""
+
+    code = serializers.CharField()
+    created_at = serializers.DateTimeField()
+    status = serializers.ChoiceField(choices=ApplicationStatus.choices)
+    status_label = ChoiceLabelField(ApplicationStatus, source="status")
+    purpose = serializers.CharField(help_text="Etiqueta de la finalidad (`loan_purpose`).")
+    advisor_name = serializers.CharField()
+    client_name = serializers.CharField(help_text="Titular de la oportunidad.")
+    client_document_masked = serializers.CharField(
+        help_text="Documento del titular con solo los últimos 4 caracteres: `******5908`."
+    )
+    bank_name = serializers.CharField(allow_null=True)
+    project_name = serializers.CharField(
+        allow_null=True, help_text="Proyecto del inmueble o, si no tiene, el de la oportunidad."
+    )
+    requested_amount = serializers.DecimalField(
+        max_digits=20,
+        decimal_places=2,
+        allow_null=True,
+        help_text="Monto solicitado en COP; `null` sin financiación registrada.",
+    )
+    last_status_change_at = serializers.DateTimeField()
+    filings_count = serializers.IntegerField()

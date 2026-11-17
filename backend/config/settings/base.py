@@ -220,6 +220,8 @@ AUTH_RATE_LIMITS = {
     "buyer_document_upload": "60/1h",
     # Descargas de documentos, por usuario interno o sesión del comprador (decisión 12).
     "document_download": "60/1h",
+    # Dashboard y reportes, por usuario (REQUERIMIENTOS §9.3: endpoints costosos).
+    "reports": env("REPORTS_RATE_LIMIT", default="20/1m"),
 }
 
 # Página del frontend que recibe `?token=` para definir la nueva contraseña.
@@ -247,6 +249,8 @@ BUYER_INACTIVITY_DAYS = 3
 # --- Dashboard y reportes (API §22) ---------------------------------------------------
 # Rango máximo de `date_from`/`date_to`, en días incluidos los dos extremos.
 REPORTS_MAX_RANGE_DAYS = 366
+# Filas máximas de `/reports/applications.csv`; más allá, la exportación asíncrona.
+REPORTS_CSV_MAX_ROWS = 5000
 
 # --- Metadatos para el frontend (sección 9) ------------------------------------------
 # Catálogos grandes que no viajan en /metadata/bootstrap; se piden con
