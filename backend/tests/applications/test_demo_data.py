@@ -10,6 +10,7 @@ from django.core.management.base import CommandError
 from django.test import override_settings
 from rest_framework.test import APIClient
 
+from apps.activity.models import ActivityEventType, ActivityLog
 from apps.applications.demo_data import (
     DEMO_CASES,
     DEMO_DOCUMENT_PREFIX,
@@ -26,6 +27,8 @@ from apps.documents.models import DocumentFile, DocumentReview, ReviewDecision, 
 from apps.filings.demo_data import FILED_DEMO_CASES
 from apps.filings.models import Filing, FilingResponse
 from apps.identity.models import BuyerAccessLink, User
+from apps.tasks.demo_data import DEMO_TASKS
+from apps.tasks.models import Task
 from tests.applications.conftest import APPLICATIONS_URL
 from tests.helpers import login
 
@@ -59,6 +62,8 @@ def counts() -> dict[str, int]:
         "links": BuyerAccessLink.objects.count(),
         "filings": Filing.objects.count(),
         "filing_responses": FilingResponse.objects.count(),
+        "tasks": Task.objects.count(),
+        "activity": ActivityLog.objects.count(),
     }
 
 
@@ -136,6 +141,24 @@ def test_seed_creates_the_demo_data(e2e_advisor: User) -> None:
     # El broker ve las solicitudes que originó.
     broker = demo_client(DEMO_USERS[3].email)
     assert broker.get(APPLICATIONS_URL).json()["items"]
+
+    # Tareas del asesor e2e: vencidas, de hoy, próximas y una sin fecha (paso 12).
+    assert Task.objects.filter(assigned_to=e2e_advisor).count() == len(DEMO_TASKS) == 8
+    due = {
+        window: e2e.get("/api/v1/tasks", {"due": window}).json()["total"]
+        for window in ("overdue", "today", "upcoming")
+    }
+    assert due == {"overdue": 2, "today": 2, "upcoming": 3}
+    summary = {
+        row["code"]: row["count"] for row in e2e.get("/api/v1/workday/summary").json()["segments"]
+    }
+    assert summary["TASKS_DUE"] > 0
+    # Dos notas internas y la línea de tiempo de cada solicitud.
+    notes = ActivityLog.objects.filter(event_type=ActivityEventType.NOTE_ADDED)
+    assert notes.count() == 2
+    assert set(notes.values_list("actor_user", flat=True)) == {e2e_advisor.pk}
+    created = ActivityLog.objects.filter(event_type=ActivityEventType.APPLICATION_CREATED)
+    assert created.count() == TOTAL_APPLICATIONS
 
 
 def test_second_run_creates_nothing(e2e_advisor: User) -> None:

@@ -33,6 +33,9 @@ INSTALLED_APPS = [
     "apps.documents",
     "apps.applications",
     "apps.filings",
+    "apps.tasks",
+    "apps.workday",
+    "apps.activity",
 ]
 
 MIDDLEWARE = [
@@ -139,6 +142,19 @@ SPECTACULAR_SETTINGS = {
         # Portal y backoffice: estado público del documento y estado de cada etapa.
         "PublicSlotStatusEnum": "apps.documents.models.PublicSlotStatus",
         "ProgressStageStateEnum": "apps.applications.stages.StageState",
+        # Ítems de la completitud: el nombre publicado antes de "Mi día", que no cambia.
+        "CodeEnum": "apps.applications.serializers.COMPLETENESS_ITEM_CODES",
+        # Mi día: segmentos de atención y siguiente acción.
+        "AttentionSegmentEnum": "apps.workday.rules.AttentionSegment",
+        "NextActionEnum": "apps.workday.rules.NextAction",
+        # Tipo de cada acción disponible de la solicitud.
+        "AvailableActionKindEnum": "apps.applications.actions.ActionKind",
+        # Tareas: estado, origen y tipo de padre.
+        "TaskStatusEnum": "apps.tasks.models.TaskStatus",
+        "TaskSourceEnum": "apps.tasks.models.TaskSource",
+        "TaskParentTypeEnum": "apps.tasks.models.TaskParentType",
+        # Actividad: tipo de evento.
+        "ActivityEventTypeEnum": "apps.activity.models.ActivityEventType",
     },
 }
 

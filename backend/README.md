@@ -47,11 +47,14 @@ flowchart LR
 | `identity` | Internal users, roles, permissions, internal sessions, invitations, buyer magic links, and consent records. | Authorizes all other modules; buyer access is tied to clients and applications. |
 | `catalogs` | Configurable business catalogs and reusable workflow transitions. | Provides options such as cities, purposes, reasons, and priorities to other modules. |
 | `partners` | Construction partners, memberships, and real-estate projects. | Projects can be linked to CRM opportunities and application properties. |
-| `crm` | Clients, addresses, opportunities, assignments, tasks, and business activity. | An opportunity belongs to a client and can become one or more credit applications. |
+| `crm` | Clients, addresses, opportunities, and assignments. | An opportunity belongs to a client and can become one or more credit applications. |
 | `banking` | Banks, bank products, allowed purposes, and operational bank rules. | Applications select a product; document requirements use the bank-product context. |
 | `applications` | Credit applications, participants, finances, income, property, financing preferences, assignments, and status history. | Central business record connecting CRM, banking, documents, and filings. |
 | `documents` | Document types and requirements, checklist slots, private file versions, reviews, and ZIP package jobs. | Builds the application checklist and provides the evidence used in bank filings. |
 | `filings` | Manual bank filings, immutable document snapshots, bank responses, and correction observations. | Uses application and document data; produces outcomes that notify buyers. |
+| `tasks` | Manual follow-up tasks with assignee, due date, priority, and status. | Belongs to an application or an opportunity; feeds the advisor workday. |
+| `workday` | The advisor workday: open applications with their next action, days in stage, and attention segments. | Reads applications, document slots, buyer activity, and tasks; has no tables of its own. |
+| `activity` | The immutable application timeline (internal and buyer rows) and internal notes. | Subscribes to the signals of applications, documents, identity, tasks, and filings. |
 | `notifications` | In-app notifications, delivery attempts, idempotency records, and outbox events. | Communicates application and filing events reliably. |
 | `reporting` | Dashboards, operational reports, and export jobs. | Reads authorized data from CRM, applications, filings, and documents. |
 | `audit` | Immutable technical audit events and request correlation. | Records sensitive actions performed across all modules. |

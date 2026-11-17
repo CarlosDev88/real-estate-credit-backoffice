@@ -700,6 +700,16 @@ def seed_demo_data(*, extra_advisor: User | None = None) -> DemoResult:
         first_index=len(DEMO_CASES),
     )
 
+    # Tareas y notas (paso 12) para el asesor de las pruebas end-to-end o, si no hay,
+    # para la primera asesora. Import local: `tasks` y `activity` dependen de
+    # `applications`.
+    from apps.activity.demo_data import seed_notes
+    from apps.tasks.demo_data import seed_tasks
+
+    owner = extra_advisor or advisors[0]
+    seed_tasks(owner, result.applications)
+    seed_notes(owner, result.applications)
+
     # Al final, para que ninguna otra emisión lo revoque.
     assert portal is not None
     issued = issue_access_link(
