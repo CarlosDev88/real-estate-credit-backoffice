@@ -12,7 +12,12 @@ import { useCatalog, type MetadataItem } from "@/features/applications/queries";
 import { useParticipants } from "@/features/applications/workspace-queries";
 import { groupSlots } from "@/features/document-review/documents-tab";
 import { useDocumentSlots, type DocumentSlot } from "@/features/document-review/queries";
-import { fromLocalInput, isFutureInput, toLocalInput } from "@/features/filings/local-datetime";
+import {
+  defaultPastInput,
+  fromLocalInput,
+  isFutureInput,
+  toLocalInput,
+} from "@/features/filings/local-datetime";
 import {
   useRecordResponse,
   type Filing,
@@ -308,7 +313,7 @@ interface Props {
 
 const defaults = (type = ""): Values => ({
   response_type: type,
-  received_at: toLocalInput(new Date()),
+  received_at: defaultPastInput(),
   external_reference: "",
   reason_code: "",
   public_message: "",

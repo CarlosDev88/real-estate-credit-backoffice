@@ -217,7 +217,6 @@ export function ResponseTimeline({
   slotLabel,
   onOpenDocument,
   onRecord,
-  recordPrimary = true,
   onCorrect,
   onAttach,
 }: {
@@ -228,8 +227,6 @@ export function ResponseTimeline({
   onOpenDocument: (slotId: string) => void;
   /** Solo en la última radicación, con permiso. */
   onRecord: (() => void) | null;
-  /** La acción principal de la vista (no lo es si se está entregando otro paquete). */
-  recordPrimary?: boolean;
   onCorrect: (response: FilingResponse) => void;
   onAttach: (response: FilingResponse) => void;
 }) {
@@ -245,8 +242,9 @@ export function ResponseTimeline({
       <div className="flex flex-wrap items-center gap-2">
         <h4 className="m-0 text-sm font-semibold">Respuestas del banco</h4>
         <div className="flex-1" />
+        {/* Botón normal: la acción principal de la vista es la del encabezado. */}
         {onRecord && (
-          <Button size="small" type={recordPrimary ? "primary" : "default"} onClick={onRecord}>
+          <Button size="small" onClick={onRecord}>
             Registrar respuesta
           </Button>
         )}

@@ -6,6 +6,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ACTIONS, APP_ID, makeDetail, makeSlot } from "@/features/applications/workspace.fixtures";
 import { WorkspaceScreen } from "@/features/applications/workspace-screen";
+// Con aserción: las acciones de prueba no traen `kind`, que el contrato agrega en el #20.
+import type { AvailableAction } from "@/features/applications/workspace-queries";
 import { openObservations } from "@/features/filings/filing-banner";
 import {
   apiError,
@@ -656,7 +658,7 @@ describe("respuestas: banners", { timeout: 30_000 }, () => {
             target_status_label: "Lista para radicar",
             guard_code: "APPLICATION_READY_TO_REFILE",
           },
-        ],
+        ] as AvailableAction[],
       }),
       responses: { "fi-1": [returned(true)] },
     });
@@ -687,7 +689,7 @@ describe("respuestas: banners", { timeout: 30_000 }, () => {
             guard_code: "",
           },
           ACTIONS.withdraw,
-        ],
+        ] as AvailableAction[],
       }),
     });
     renderScreen();

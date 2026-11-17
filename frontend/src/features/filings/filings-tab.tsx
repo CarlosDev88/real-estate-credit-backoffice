@@ -146,7 +146,6 @@ export function FilingsTab({
                     ? () => setRecording({ filing, correcting: null })
                     : null
                 }
-                recordPrimary={!delivering}
                 onCorrect={(response) => setRecording({ filing, correcting: response })}
                 onAttach={setAttaching}
               />

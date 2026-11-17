@@ -8,7 +8,12 @@ import { ALL_PERMISSIONS, APP_ID, makeDetail } from "@/features/applications/wor
 import { WorkspaceScreen } from "@/features/applications/workspace-screen";
 import { isResponseOverdue } from "@/features/filings/filing-card";
 import { apiError, makeFiling, makeJob, useFilingsApi } from "@/features/filings/filings.fixtures";
-import { fromLocalInput, isFutureInput, toLocalInput } from "@/features/filings/local-datetime";
+import {
+  defaultPastInput,
+  fromLocalInput,
+  isFutureInput,
+  toLocalInput,
+} from "@/features/filings/local-datetime";
 import { QueryProvider } from "@/providers/query-provider";
 import { apiUrl, server } from "@/test/msw-server";
 
@@ -244,7 +249,7 @@ describe("radicación: registrar", { timeout: 20_000 }, () => {
     expect(within(dialog).getByText("SOL-000182_expediente.zip")).toBeInTheDocument();
     // La fecha de entrega viene con la hora actual.
     expect(within(dialog).getByLabelText("Fecha y hora de entrega")).toHaveValue(
-      toLocalInput(new Date()),
+      defaultPastInput(),
     );
 
     await user.click(within(dialog).getByRole("button", { name: "Registrar radicación" }));
@@ -481,5 +486,7 @@ describe("radicación: reglas de pantalla", () => {
     expect(fromLocalInput("no")).toBeNull();
     expect(isFutureInput("2026-11-17T09:05", date.getTime())).toBe(false);
     expect(isFutureInput("2026-11-17T09:10", date.getTime())).toBe(true);
+    // Por defecto, un minuto antes: nunca queda a segundos del presente.
+    expect(defaultPastInput(date.getTime() + 1000)).toBe("2026-11-17T09:04");
   });
 });

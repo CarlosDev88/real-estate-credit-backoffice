@@ -23,3 +23,12 @@ export function isFutureInput(value: string, now: number = Date.now()): boolean 
   const iso = fromLocalInput(value);
   return iso !== null && Date.parse(iso) > now + 60_000;
 }
+
+/**
+ * Valor por defecto de "cuándo pasó": hace un minuto, sin segundos. El minuto actual
+ * truncado puede quedar a 1 s del presente, y un servidor con el reloj unos segundos
+ * atrasado lo rechaza por futuro.
+ */
+export function defaultPastInput(now: number = Date.now()): string {
+  return toLocalInput(new Date(now - 60_000));
+}

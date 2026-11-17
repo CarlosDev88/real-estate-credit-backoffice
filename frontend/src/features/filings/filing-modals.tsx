@@ -9,7 +9,12 @@ import { z } from "zod";
 import { FormField, useFormErrorHandler } from "@/features/applications/form-field";
 import { bankLabel, useCatalog } from "@/features/applications/queries";
 import type { ApplicationDetail } from "@/features/applications/workspace-queries";
-import { fromLocalInput, isFutureInput, toLocalInput } from "@/features/filings/local-datetime";
+import {
+  defaultPastInput,
+  fromLocalInput,
+  isFutureInput,
+  toLocalInput,
+} from "@/features/filings/local-datetime";
 import {
   useCreateFiling,
   useUpdateFiling,
@@ -107,7 +112,7 @@ export function RegisterFilingModal({
     defaultValues: {
       channel_code: "",
       external_reference: "",
-      filed_at: toLocalInput(new Date()),
+      filed_at: defaultPastInput(),
       comment: "",
     },
   });
@@ -117,7 +122,7 @@ export function RegisterFilingModal({
     reset({
       channel_code: "",
       external_reference: "",
-      filed_at: toLocalInput(new Date()),
+      filed_at: defaultPastInput(),
       comment: "",
     });
     onClose();

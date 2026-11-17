@@ -145,7 +145,11 @@ export function useCreateFiling(applicationId: string) {
           }),
         )
       ).data,
-    onSuccess: invalidate,
+    // Sin esperar la recarga: con la solicitud en `FILED` el panel "Entregar al banco" (y su
+    // modal) se desmonta, y los callbacks de `mutate` (toast, limpiar el paquete) no correrían.
+    onSuccess: () => {
+      void invalidate();
+    },
   });
 }
 
