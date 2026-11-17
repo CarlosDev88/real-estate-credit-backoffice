@@ -378,7 +378,7 @@ def test_closed_tasks_are_not_edited_completed_or_cancelled(
     status: str,
 ) -> None:
     closed_at = timezone.now()
-    extra = (
+    extra: dict[str, Any] = (
         {"completed_at": closed_at}
         if status == TaskStatus.COMPLETED
         else {"cancelled_at": closed_at, "cancel_reason": "Ya no aplica"}
