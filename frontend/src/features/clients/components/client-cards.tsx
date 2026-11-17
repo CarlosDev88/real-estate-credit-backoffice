@@ -4,17 +4,19 @@ import Link from "next/link";
 import type { MouseEvent } from "react";
 
 import { DocumentCell } from "@/features/clients/components/client-cells";
-import { clientHref, type Client } from "@/features/clients/queries";
+import type { Client } from "@/features/clients/queries";
 import { formatDate } from "@/lib/format";
 
 /** Listado en móvil (≤ 860 px): una tarjeta por cliente. */
 export function ClientCards({
   rows,
   onOpen,
+  hrefOf,
   busy,
 }: {
   rows: Client[];
   onOpen: (client: Client) => void;
+  hrefOf: (client: Client) => string;
   busy?: boolean;
 }) {
   const onClick = (event: MouseEvent, client: Client) => {
@@ -38,7 +40,7 @@ export function ClientCards({
           >
             <div className="flex items-center gap-2">
               <Link
-                href={clientHref(client.id)}
+                href={hrefOf(client)}
                 className="text-text-link min-w-0 truncate font-medium no-underline"
               >
                 {client.full_name}

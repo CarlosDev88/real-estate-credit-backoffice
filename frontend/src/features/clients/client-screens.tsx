@@ -15,19 +15,16 @@ import {
   toUpdateBody,
   valuesFromClient,
 } from "@/features/clients/client-form";
-import { DocumentCell } from "@/features/clients/components/client-cells";
 import { BackIcon } from "@/features/clients/components/icons";
 import {
   clientHref,
   CLIENTS_HREF,
-  editClientHref,
   useClient,
   useCreateClient,
   useUpdateClient,
   type ClientDetail,
 } from "@/features/clients/queries";
 import { isApiError } from "@/lib/api/errors";
-import { formatDate, formatDateOnly } from "@/lib/format";
 import { useToast } from "@/providers/toast";
 
 export function BackLink({ href, children }: { href: string; children: ReactNode }) {
@@ -52,7 +49,7 @@ function Loading({ label }: { label: string }) {
   );
 }
 
-function usePermission(code: string): boolean | undefined {
+export function usePermission(code: string): boolean | undefined {
   const me = useMe();
   return me.data?.permissions.includes(code);
 }
@@ -87,7 +84,7 @@ function NoPermission({ title, back }: { title: string; back: string }) {
 }
 
 /** Esqueleto, 404 o error con "Reintentar" del detalle de un cliente; si no, `children`. */
-function WithClient({
+export function WithClient({
   id,
   children,
 }: {
@@ -197,71 +194,4 @@ export function EditClientScreen({ id }: { id: string }) {
     return <NoPermission title="No tienes permiso para editar clientes" back={clientHref(id)} />;
   }
   return <WithClient id={id}>{(client) => <EditClient client={client} />}</WithClient>;
-}
-
-function Datum({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <div className="grid gap-0.5">
-      <dt className="text-text-tertiary text-xs font-medium">{label}</dt>
-      <dd className="m-0">{children}</dd>
-    </div>
-  );
-}
-
-const muted = (text: string | null | undefined) =>
-  text ? text : <span className="text-text-tertiary">—</span>;
-
-function ClientDetailView({ client }: { client: ClientDetail }) {
-  useShellTrail(client.full_name);
-  const router = useRouter();
-  const canEdit = usePermission("clients.update") ?? false;
-
-  return (
-    <div className="grid content-start gap-4">
-      <BackLink href={CLIENTS_HREF}>Volver a clientes</BackLink>
-      <header className="flex flex-wrap items-start gap-3">
-        <div className="grid min-w-0 flex-1 gap-1">
-          <h1 className="m-0 text-3xl font-semibold tracking-tight">{client.full_name}</h1>
-          <div className="text-text-secondary flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
-            <DocumentCell client={client} />
-            {client.email && <span>{client.email}</span>}
-            {client.phone && <span className="tabular-nums">{client.phone}</span>}
-            {client.origin && <span>Origen: {client.origin.label}</span>}
-          </div>
-        </div>
-        {canEdit && <Button onClick={() => router.push(editClientHref(client.id))}>Editar</Button>}
-      </header>
-
-      <section
-        aria-labelledby="client-data"
-        className="bg-bg-surface border-border-default rounded-lg border p-4"
-      >
-        <h2 id="client-data" className="m-0 mb-3 text-base font-semibold">
-          Datos del cliente
-        </h2>
-        <dl className="m-0 grid gap-4 min-[600px]:grid-cols-2 min-[1100px]:grid-cols-3">
-          <Datum label="Nombres">{client.first_names}</Datum>
-          <Datum label="Apellidos">{client.last_names}</Datum>
-          <Datum label="Documento">
-            {client.document_type.label} {client.document_number}
-          </Datum>
-          <Datum label="Fecha de nacimiento">{muted(formatDateOnly(client.birth_date))}</Datum>
-          <Datum label="Correo">{muted(client.email)}</Datum>
-          <Datum label="Teléfono">{muted(client.phone)}</Datum>
-          <Datum label="Origen">{muted(client.origin?.label)}</Datum>
-          <Datum label="Creado">
-            {formatDate(client.created_at)}
-            {client.created_by && (
-              <span className="text-text-tertiary"> · {client.created_by.name}</span>
-            )}
-          </Datum>
-        </dl>
-      </section>
-    </div>
-  );
-}
-
-/** `/clientes/[id]` (REQ §6 vista 6). En la Parte 2 suma pestañas y oportunidades. */
-export function ClientDetailScreen({ id }: { id: string }) {
-  return <WithClient id={id}>{(client) => <ClientDetailView client={client} />}</WithClient>;
 }

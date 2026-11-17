@@ -25,7 +25,7 @@ export const DUPLICATE_CLIENT_DOCUMENT = "DUPLICATE_CLIENT_DOCUMENT";
 export const clientKeys = {
   all: ["clients"] as const,
   lists: ["clients", "list"] as const,
-  list: (params: ClientListParams) => ["clients", "list", params] as const,
+  list: (params: Omit<ClientListParams, "nueva_solicitud">) => ["clients", "list", params] as const,
   detail: (id: string) => ["clients", "detail", id] as const,
 };
 
@@ -36,10 +36,18 @@ export const CLIENTS_HREF = "/clientes";
 
 /** `GET /clients` con el estado de la URL. Mientras llega otra página, se ve la anterior. */
 export function useClientsList(params: ClientListParams) {
+  // `nueva_solicitud` es solo de la vista: no va a la API ni a la clave de la caché.
+  const query = {
+    search: params.search,
+    origin: params.origin,
+    ordering: params.ordering,
+    page: params.page,
+    page_size: params.page_size,
+  };
   return useQuery({
-    queryKey: clientKeys.list(params),
+    queryKey: clientKeys.list(query),
     queryFn: async () =>
-      (await call(api.GET("/api/v1/clients", { params: { query: compact(params) } }))).data,
+      (await call(api.GET("/api/v1/clients", { params: { query: compact(query) } }))).data,
     placeholderData: keepPreviousData,
   });
 }

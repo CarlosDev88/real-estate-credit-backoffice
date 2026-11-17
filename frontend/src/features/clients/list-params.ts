@@ -17,6 +17,8 @@ export interface ClientListParams {
   search: string;
   /** Código de `lead_origin`. */
   origin: string;
+  /** "1" si viene de "Nueva solicitud": se ve la ayuda y el cliente abre en Oportunidades. */
+  nueva_solicitud: string;
   ordering: string;
   page: number;
   page_size: number;
@@ -53,12 +55,20 @@ function positiveInt(value: string | null): number | null {
 export const CLIENT_LIST_DEFAULTS: ClientListParams = {
   search: "",
   origin: "",
+  nueva_solicitud: "",
   ordering: DEFAULT_CLIENT_ORDERING,
   page: 1,
   page_size: DEFAULT_PAGE_SIZE,
 };
 
-const ORDER: (keyof ClientListParams)[] = ["search", "origin", "ordering", "page", "page_size"];
+const ORDER: (keyof ClientListParams)[] = [
+  "nueva_solicitud",
+  "search",
+  "origin",
+  "ordering",
+  "page",
+  "page_size",
+];
 
 /** Lee los parámetros de la URL, con los valores por defecto y sin valores inválidos. */
 export function parseClientListParams(search: URLSearchParams): ClientListParams {
@@ -66,6 +76,7 @@ export function parseClientListParams(search: URLSearchParams): ClientListParams
   return {
     search: (search.get("search") ?? "").trim(),
     origin: search.get("origin") ?? "",
+    nueva_solicitud: search.get("nueva_solicitud") === "1" ? "1" : "",
     ordering: formatClientOrdering(parseClientOrdering(search.get("ordering"))),
     page: positiveInt(search.get("page")) ?? 1,
     page_size: size && (PAGE_SIZES as readonly number[]).includes(size) ? size : DEFAULT_PAGE_SIZE,

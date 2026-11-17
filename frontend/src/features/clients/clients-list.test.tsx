@@ -120,6 +120,7 @@ describe("parámetros del listado de clientes", () => {
     expect(parseClientListParams(new URLSearchParams(""))).toEqual({
       search: "",
       origin: "",
+      nueva_solicitud: "",
       ordering: "-created_at",
       page: 1,
       page_size: 20,
@@ -130,7 +131,14 @@ describe("parámetros del listado de clientes", () => {
           "search=%20ana%20&origin=BROKER&ordering=last_names&page=3&page_size=50",
         ),
       ),
-    ).toEqual({ search: "ana", origin: "BROKER", ordering: "last_names", page: 3, page_size: 50 });
+    ).toEqual({
+      search: "ana",
+      origin: "BROKER",
+      nueva_solicitud: "",
+      ordering: "last_names",
+      page: 3,
+      page_size: 50,
+    });
     expect(
       parseClientListParams(new URLSearchParams("ordering=-phone&page=0&page_size=7")),
     ).toMatchObject({ ordering: "-created_at", page: 1, page_size: 20 });
@@ -281,6 +289,26 @@ describe("listado de clientes", { timeout: 20_000 }, () => {
       "href",
       "/clientes/nuevo",
     );
+  });
+
+  it("desde 'Nueva solicitud' ayuda a elegir y abre el cliente en Oportunidades", async () => {
+    go("?nueva_solicitud=1");
+    const requests = useApi();
+    const user = await renderList();
+
+    expect(screen.getByText("Elige el cliente y su oportunidad")).toBeInTheDocument();
+    expect(rowOf("Persona Número 1").querySelector("a")).toHaveAttribute(
+      "href",
+      "/clientes/cl-1?tab=oportunidades",
+    );
+    // No va a la API.
+    expect(last(requests)?.has("nueva_solicitud")).toBe(false);
+
+    // Se conserva al filtrar y se quita al cerrar la ayuda.
+    await user.type(screen.getByRole("searchbox", { name: /Buscar clientes/ }), "ana");
+    await waitFor(() => expect(window.location.search).toBe("?nueva_solicitud=1&search=ana"));
+    await user.click(screen.getByRole("button", { name: "Cerrar ayuda" }));
+    await waitFor(() => expect(window.location.search).toBe("?search=ana"));
   });
 
   it("vacío con filtros ofrece 'Limpiar filtros'", async () => {

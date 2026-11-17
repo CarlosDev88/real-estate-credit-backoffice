@@ -13,11 +13,8 @@ import {
   todayIso,
   valuesFromClient,
 } from "@/features/clients/client-form";
-import {
-  ClientDetailScreen,
-  EditClientScreen,
-  NewClientScreen,
-} from "@/features/clients/client-screens";
+import { ClientDetailScreen } from "@/features/clients/client-detail-screen";
+import { EditClientScreen, NewClientScreen } from "@/features/clients/client-screens";
 import {
   apiError,
   CLIENTS_BOOTSTRAP,

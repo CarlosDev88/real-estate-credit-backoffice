@@ -27,6 +27,7 @@ import {
   useClientsList,
   type Client,
 } from "@/features/clients/queries";
+import { clientTabQuery } from "@/features/clients/detail-tabs";
 import { isApiError } from "@/lib/api/errors";
 import { useMediaQuery } from "@/lib/hooks/use-media-query";
 
@@ -71,7 +72,16 @@ export function ClientsListScreen() {
     if (pageGone) update({ page: 1 });
   }, [pageGone, update]);
 
-  const open = useCallback((client: Client) => router.push(clientHref(client.id)), [router]);
+  // Desde "Nueva solicitud" (`/solicitudes`), el cliente abre en su pestaña Oportunidades.
+  const forApplication = params.nueva_solicitud === "1";
+  const hrefOf = useCallback(
+    (client: Client) =>
+      forApplication
+        ? `${clientHref(client.id)}?${clientTabQuery("oportunidades")}`
+        : clientHref(client.id),
+    [forApplication],
+  );
+  const open = useCallback((client: Client) => router.push(hrefOf(client)), [router, hrefOf]);
   const clear = () => update(CLEARED);
   const filtered = params.search !== "" || params.origin !== "";
 
@@ -127,7 +137,7 @@ export function ClientsListScreen() {
       />
     );
   } else if (mobile) {
-    body = <ClientCards rows={rows} onOpen={open} busy={busy} />;
+    body = <ClientCards rows={rows} onOpen={open} hrefOf={hrefOf} busy={busy} />;
   } else {
     body = (
       <ClientsTable
@@ -135,6 +145,7 @@ export function ClientsListScreen() {
         sorting={parseClientOrdering(params.ordering)}
         onSort={(sorting) => update({ ordering: formatClientOrdering(sorting) })}
         onOpen={open}
+        hrefOf={hrefOf}
         busy={busy}
       />
     );
@@ -155,6 +166,17 @@ export function ClientsListScreen() {
           </Button>
         )}
       </div>
+
+      {forApplication && (
+        <Alert
+          type="info"
+          showIcon
+          title="Elige el cliente y su oportunidad"
+          description="La solicitud de crédito se crea desde una oportunidad del cliente, en su pestaña Oportunidades."
+          closable={{ "aria-label": "Cerrar ayuda" }}
+          onClose={() => update({ nueva_solicitud: "" })}
+        />
+      )}
 
       <section
         aria-label="Listado de clientes"

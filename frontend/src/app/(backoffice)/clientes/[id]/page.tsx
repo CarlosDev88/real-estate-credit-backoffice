@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { ClientDetailScreen } from "@/features/clients/client-screens";
+import { ClientDetailScreen } from "@/features/clients/client-detail-screen";
 
 export const metadata: Metadata = { title: "Cliente" };
 

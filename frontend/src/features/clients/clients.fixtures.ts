@@ -1,3 +1,8 @@
+import type {
+  Address,
+  ClientApplication,
+  OpportunityDetail,
+} from "@/features/clients/detail-queries";
 import type { Client, ClientDetail } from "@/features/clients/queries";
 
 // Datos de prueba de clientes, compartidos por las pruebas de la feature.
@@ -42,8 +47,89 @@ export const CLIENTS_BOOTSTRAP = {
       item("BROKER", "Broker", 2),
       item("RETIRED", "Origen retirado", 3, false),
     ],
+    opportunity_status: [
+      item("NEW", "Nueva", 1),
+      item("ASSIGNED", "Asignada", 2),
+      item("CONVERTED", "Convertida", 3),
+      item("LOST", "Perdida", 4, false),
+    ],
+    loan_purpose: [item("NEW_HOME", "Vivienda nueva", 1), item("USED_HOME", "Vivienda usada", 2)],
+    address_type: [item("RESIDENCE", "Residencia", 1), item("WORK", "Trabajo", 2)],
   },
 };
+
+export const MUNICIPALITIES = {
+  catalog: "municipality",
+  name: "Municipio",
+  version: 1,
+  items: [item("11001", "Bogotá D.C.", 1), item("05001", "Medellín", 2)],
+};
+
+export function makeAddress(n: number, overrides: Partial<Address> = {}): Address {
+  return {
+    id: `ad-${n}`,
+    client_id: "cl-1",
+    address_type: { code: "RESIDENCE", label: "Residencia" },
+    city: { code: "11001", label: "Bogotá D.C." },
+    line1: `Calle ${n} # 10-20`,
+    line2: "",
+    postal_code: "",
+    is_primary: n === 1,
+    created_at: "2026-11-10T15:00:00Z",
+    updated_at: "2026-11-10T15:00:00Z",
+    ...overrides,
+  };
+}
+
+export function makeOpportunity(n: number, overrides: Partial<OpportunityDetail> = {}) {
+  const base: OpportunityDetail = {
+    id: `op-${n}`,
+    client: { id: "cl-1", full_name: "Laura Gómez Vélez" },
+    project: { id: "pr-1", name: "Torres del Parque", partner_name: "Constructora Andes" },
+    status: "ASSIGNED",
+    origin: { code: "DIRECT", label: "Directo" },
+    origin_user: { id: "u-1", name: "Asesora" },
+    assigned_advisor: { id: "u-1", name: "Asesora" },
+    lost_reason: null,
+    converted_at: null,
+    created_at: "2026-11-12T15:00:00Z",
+    updated_at: "2026-11-12T15:00:00Z",
+    available_actions: [],
+    assignments: [
+      {
+        id: "as-1",
+        advisor: { id: "u-1", name: "Asesora" },
+        assigned_by: { id: "u-9", name: "Admin" },
+        reason: "Zona norte",
+        created_at: "2026-11-12T16:00:00Z",
+        ended_at: null,
+      },
+    ],
+  };
+  return { ...base, ...overrides };
+}
+
+export function page<T>(items: T[]) {
+  return { items, page: 1, page_size: 100, total: items.length, next: null, previous: null };
+}
+
+export function makeClientApplication(n: number, overrides: Record<string, unknown> = {}) {
+  return {
+    id: `app-${n}`,
+    code: `SOL-00000${n}`,
+    status: "DRAFT",
+    status_label: "Borrador",
+    purpose: { code: "NEW_HOME", label: "Vivienda nueva" },
+    bank_product: null,
+    requested_amount_cop: null,
+    completeness_pct: null,
+    ready_to_file_blocked: null,
+    last_buyer_activity_at: null,
+    buyer_inactive: null,
+    updated_at: "2026-11-15T15:00:00Z",
+    ...overrides,
+  } as unknown as ClientApplication;
+}
 
 export function makeClient(n: number, overrides: Partial<Client> = {}): Client {
   return {
