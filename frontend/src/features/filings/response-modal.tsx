@@ -7,7 +7,7 @@ import { Controller, useForm, useWatch, type FieldErrors } from "react-hook-form
 import { z } from "zod";
 
 import { MoneyInput } from "@/components/ui/money";
-import { FormField, useFormErrorHandler } from "@/features/applications/form-field";
+import { FormField, useFormErrorHandler } from "@/components/ui/form-field";
 import { useCatalog, type MetadataItem } from "@/features/applications/queries";
 import { useParticipants } from "@/features/applications/workspace-queries";
 import { groupSlots } from "@/features/document-review/documents-tab";

@@ -7,7 +7,7 @@ import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 
 import { DocumentViewer, type ViewerFile } from "@/components/ui/document-viewer";
-import { FormField, useFormErrorHandler } from "@/features/applications/form-field";
+import { FormField, useFormErrorHandler } from "@/components/ui/form-field";
 import { useCatalog } from "@/features/applications/queries";
 import {
   useDownloadUrl,
