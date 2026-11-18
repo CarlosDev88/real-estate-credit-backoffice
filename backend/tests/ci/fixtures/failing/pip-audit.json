@@ -1,0 +1,30 @@
+{
+  "dependencies": [
+    {
+      "name": "djangorestframework",
+      "version": "3.17.2",
+      "vulns": [
+        {
+          "id": "CVE-2026-0001",
+          "fix_versions": [
+            "3.18.2"
+          ],
+          "aliases": [],
+          "description": "DoS"
+        },
+        {
+          "id": "CVE-2026-0002",
+          "fix_versions": [],
+          "aliases": [],
+          "description": "Sin arreglo"
+        }
+      ]
+    },
+    {
+      "name": "pyjwt",
+      "version": "2.15.1",
+      "vulns": []
+    }
+  ],
+  "fixes": []
+}

@@ -1,0 +1,10 @@
+{
+  "dependencies": [
+    {
+      "name": "django",
+      "version": "5.2.19",
+      "vulns": []
+    }
+  ],
+  "fixes": []
+}
