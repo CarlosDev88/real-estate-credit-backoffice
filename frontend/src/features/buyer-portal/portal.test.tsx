@@ -152,7 +152,11 @@ describe("PortalGuard", { timeout: 20_000 }, () => {
       "aria-current",
       "page",
     );
-    expect(screen.queryByText("Avisos")).not.toBeInTheDocument();
+    // F5: los avisos del comprador ya tienen su entrada (sin número si no hay sin leer).
+    expect(within(bottom).getByRole("link", { name: "Avisos" })).toHaveAttribute(
+      "href",
+      "/portal/avisos",
+    );
   });
 
   it("muestra en Documentos cuántos le tocan al comprador", async () => {

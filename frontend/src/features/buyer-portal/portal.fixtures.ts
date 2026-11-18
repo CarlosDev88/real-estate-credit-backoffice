@@ -72,6 +72,8 @@ export function portalHandlers(session: BuyerSession = sessionFixture()) {
         previous: null,
       }),
     ),
+    // F5: el número de avisos sin leer de la navegación.
+    http.get(apiUrl("/buyer/notifications/unread-count"), () => HttpResponse.json({ count: 0 })),
   ];
 }
 

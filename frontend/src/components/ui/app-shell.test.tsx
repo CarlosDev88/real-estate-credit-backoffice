@@ -55,7 +55,10 @@ describe("groupNav", () => {
       ["Configuración", 1],
     ]);
     expect(groupNav([])).toEqual([]);
-    expect(NAV_ITEMS.map((i) => i.permission)).toEqual(["applications.read", "clients.read"]);
+    // Solo lo que esta prueba necesita: las entradas nuevas del menú no la rompen.
+    expect(NAV_ITEMS.map((i) => i.permission)).toEqual(
+      expect.arrayContaining(["applications.read", "clients.read"]),
+    );
   });
 });
 

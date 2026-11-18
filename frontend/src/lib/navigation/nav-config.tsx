@@ -1,6 +1,9 @@
 import type { ReactNode } from "react";
 
 import { HouseIcon, UsersIcon } from "@/components/ui/icons";
+import { DashboardIcon } from "@/features/dashboard/dashboard-icon";
+import { ReportsIcon } from "@/features/reports/reports-icon";
+import { MyDayIcon } from "@/features/workday/my-day-icon";
 
 // Navegación del backoffice. Es la estructura de la app, no una lista de negocio:
 // cada entrada pide un permiso de `/auth/me` y solo aparece si la ruta existe.
@@ -18,6 +21,31 @@ export interface NavGroup {
 }
 
 export const NAV_ITEMS: NavItem[] = [
+  // F5: el inicio después del login para quien tenga `dashboard.read` (es la primera
+  // entrada permitida, ver `defaultDestination`).
+  {
+    href: "/dashboard",
+    label: "Dashboard",
+    icon: <DashboardIcon />,
+    group: "Operación",
+    permission: "dashboard.read",
+  },
+  // F5: bandeja de atención y tareas; el permiso es el de `GET /workday/applications`.
+  {
+    href: "/mi-dia",
+    label: "Mi día",
+    icon: <MyDayIcon />,
+    group: "Operación",
+    permission: "workday.read",
+  },
+  // F5: embudo y listado de solicitudes, con exportación (`reports.export`).
+  {
+    href: "/reportes",
+    label: "Reportes",
+    icon: <ReportsIcon />,
+    group: "Operación",
+    permission: "reports.read",
+  },
   {
     href: "/solicitudes",
     label: "Solicitudes",
@@ -25,7 +53,6 @@ export const NAV_ITEMS: NavItem[] = [
     group: "Comercial",
     permission: "applications.read",
   },
-  // F4: el ícono vive en `features/clients` hasta que el front 1 lo pase a `components/ui`.
   {
     href: "/clientes",
     label: "Clientes",

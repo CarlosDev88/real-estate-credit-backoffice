@@ -50,6 +50,25 @@ export function formatPercentDecimal(value: number | null | undefined): string |
   return `${oneDecimalFormat.format(value)}${NBSP}%`;
 }
 
+/**
+ * Decimal de la API en texto ("0.8", "12.35") → "0,8", "12,4" (hasta un decimal). Vacío,
+ * `null` o un texto que no es número → `null`.
+ */
+export function formatDecimal(value: string | number | null | undefined): string | null {
+  if (value === null || value === undefined || value === "") return null;
+  const n = Number(value);
+  return Number.isFinite(n) ? decimalFormat.format(n) : null;
+}
+
+/**
+ * Proporción de la API ("0.4857", de 0 a 1) como porcentaje entero: "49 %". `null` o un
+ * texto que no es número → `null`.
+ */
+export function formatRatio(value: string | number | null | undefined): string | null {
+  if (value === null || value === undefined || value === "") return null;
+  return formatPercent(Number(value) * 100);
+}
+
 /** "850 KB", "1,2 MB" (base 1024). */
 export function formatBytes(bytes: number | null | undefined): string | null {
   if (bytes === null || bytes === undefined || !Number.isFinite(bytes) || bytes < 0) return null;
