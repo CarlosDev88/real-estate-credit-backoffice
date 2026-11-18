@@ -241,7 +241,7 @@ function RulesSection({
               >
                 {rule.code} v{rule.version}
               </button>
-              <span className="ml-auto flex gap-1">
+              <span className="ml-auto flex shrink-0 gap-1">
                 <RuleStatusBadge status={rule.status} />
               </span>
             </div>

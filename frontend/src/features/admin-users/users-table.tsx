@@ -145,7 +145,7 @@ export function UserCards({ rows, roles, onOpen, hrefOf, busy }: UsersListProps)
             >
               {user.name || user.email}
             </Link>
-            <span className="ml-auto">
+            <span className="ml-auto shrink-0">
               <UserStatusBadge status={user.status} />
             </span>
           </div>

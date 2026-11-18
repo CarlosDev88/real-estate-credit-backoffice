@@ -171,7 +171,7 @@ export function BanksScreen() {
               >
                 {bank.name}
               </Link>
-              <span className="ml-auto">
+              <span className="ml-auto shrink-0">
                 <ActiveStatusBadge status={bank.status} />
               </span>
             </div>

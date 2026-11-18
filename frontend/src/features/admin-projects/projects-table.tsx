@@ -166,7 +166,7 @@ export function ProjectCards({
             >
               {project.name}
             </Link>
-            <span className="ml-auto">
+            <span className="ml-auto shrink-0">
               <ProjectStatusBadge status={project.status} statuses={statuses} />
             </span>
           </div>

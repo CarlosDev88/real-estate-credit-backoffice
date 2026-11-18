@@ -129,7 +129,7 @@ export function PartnerCards({ rows, onOpen, hrefOf, busy }: PartnersListProps) 
             >
               {partnerName(partner)}
             </Link>
-            <span className="ml-auto">
+            <span className="ml-auto shrink-0">
               <PartnerStatusBadge status={partner.status} />
             </span>
           </div>

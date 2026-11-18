@@ -282,7 +282,7 @@ export function InvitationsTab({
           <>
             <div className="flex items-center gap-2">
               <span className="min-w-0 truncate font-medium">{invitation.email}</span>
-              <span className="ml-auto">
+              <span className="ml-auto shrink-0">
                 <InvitationStatusBadge status={invitation.status} />
               </span>
             </div>

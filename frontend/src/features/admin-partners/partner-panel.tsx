@@ -117,7 +117,7 @@ function Members({
               <span className="min-w-0 truncate font-medium">
                 {member.user.name || member.user.email}
               </span>
-              <span className="ml-auto">
+              <span className="ml-auto shrink-0">
                 <PartnerStatusBadge status={member.ended_at ? "INACTIVE" : member.status} />
               </span>
             </div>

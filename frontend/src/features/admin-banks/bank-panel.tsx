@@ -120,7 +120,7 @@ export function BankPanel({
                     </Link>
                     <span className="text-text-tertiary font-mono text-xs">{product.code}</span>
                   </div>
-                  <span className="ml-auto">
+                  <span className="ml-auto shrink-0">
                     <ActiveStatusBadge status={product.status} />
                   </span>
                 </li>

@@ -14,6 +14,9 @@ describe("grupo 'Administración' del menú (F6)", () => {
       ["/admin/constructoras", "partners.create"],
       ["/proyectos", "projects.read"],
       ["/admin/bancos", "banks.create"],
+      ["/admin/documentos", "document_requirements.create"],
+      ["/admin/catalogos", "catalogs.read"],
+      ["/admin/flujos", "workflow.read"],
     ]);
   });
 
@@ -24,6 +27,7 @@ describe("grupo 'Administración' del menú (F6)", () => {
       "partners.read",
       "projects.read",
       "banks.read",
+      "document_requirements.read",
     ];
     expect(visibleNav(advisor).map((item) => item.href)).toEqual([
       "/solicitudes",
@@ -34,5 +38,6 @@ describe("grupo 'Administración' del menú (F6)", () => {
     expect(isForbiddenPath("/admin/usuarios", advisor)).toBe(true);
     expect(isForbiddenPath("/proyectos", advisor)).toBe(false);
     expect(isForbiddenPath("/admin/bancos/productos/x", advisor)).toBe(true);
+    expect(isForbiddenPath("/admin/documentos", advisor)).toBe(true);
   });
 });

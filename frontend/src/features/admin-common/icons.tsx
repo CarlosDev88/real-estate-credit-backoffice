@@ -41,3 +41,48 @@ export function BankIcon(props: IconProps) {
     </svg>
   );
 }
+
+/** Libro con marcador: entrada "Catálogos". */
+export function CatalogIcon(props: IconProps) {
+  return (
+    <svg {...base} fill="currentColor" width={16} height={16} {...props}>
+      <path d="M4 2h11a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2Zm0 2v12h10V4h-2v5l-2-1.5L8 9V4H4Z" />
+    </svg>
+  );
+}
+
+/** Hoja con renglones: entrada "Documentos". */
+export function DocumentsIcon(props: IconProps) {
+  return (
+    <svg {...base} fill="currentColor" width={16} height={16} {...props}>
+      <path d="M5 2h7l4 4v11a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1Zm1 2v12h8V7h-3V4H6Zm1 6h6v1.5H7V10Zm0 3h6v1.5H7V13Z" />
+    </svg>
+  );
+}
+
+/** Nodos conectados: entrada "Flujos". */
+export function FlowIcon(props: IconProps) {
+  return (
+    <svg {...base} fill="currentColor" width={16} height={16} {...props}>
+      <path d="M3 3h5v5H3V3Zm9 9h5v5h-5v-5ZM5 9h1.5v3.25c0 .41.34.75.75.75H11v1.5H7.25A2.25 2.25 0 0 1 5 12.25V9Zm5-4.75h3.75A2.25 2.25 0 0 1 16 6.5V11h-1.5V6.5a.75.75 0 0 0-.75-.75H10v-1.5Z" />
+    </svg>
+  );
+}
+
+/** Flecha arriba (subir un puesto). */
+export function ArrowUpIcon(props: IconProps) {
+  return (
+    <svg {...base} fill="currentColor" width={16} height={16} {...props}>
+      <path d="M10 4 4.5 9.5l1.4 1.4L9 7.8V16h2V7.8l3.1 3.1 1.4-1.4L10 4Z" />
+    </svg>
+  );
+}
+
+/** Flecha abajo (bajar un puesto). */
+export function ArrowDownIcon(props: IconProps) {
+  return (
+    <svg {...base} fill="currentColor" width={16} height={16} {...props}>
+      <path d="m10 16 5.5-5.5-1.4-1.4L11 12.2V4H9v8.2L5.9 9.1 4.5 10.5 10 16Z" />
+    </svg>
+  );
+}
