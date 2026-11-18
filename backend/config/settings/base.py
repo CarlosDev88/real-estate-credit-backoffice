@@ -163,8 +163,8 @@ SPECTACULAR_SETTINGS = {
         # Mi día: segmentos de atención y siguiente acción.
         "AttentionSegmentEnum": "apps.workday.rules.AttentionSegment",
         "NextActionEnum": "apps.workday.rules.NextAction",
-        # Tipo de cada acción disponible de la solicitud.
-        "AvailableActionKindEnum": "apps.applications.actions.ActionKind",
+        # Tipo de cada acción disponible (solicitudes y oportunidades).
+        "AvailableActionKindEnum": "apps.catalogs.workflow.ActionKind",
         # Tareas: estado, origen y tipo de padre.
         "TaskStatusEnum": "apps.tasks.models.TaskStatus",
         "TaskSourceEnum": "apps.tasks.models.TaskSource",

@@ -31,7 +31,7 @@ from django.db.models.lookups import LessThan
 from django.utils import timezone
 from rest_framework.exceptions import NotFound, ValidationError
 
-from apps.applications.actions import sort_by_kind
+from apps.applications.actions import REASON_REQUIRED_STATUSES, sort_by_kind
 from apps.applications.bank_evaluation import (
     EvaluationSummary,
     blocking_rows,
@@ -86,6 +86,7 @@ from apps.catalogs.workflow import ApplicationStatus, FlowType, OpportunityStatu
 from apps.crm.models import Client, Opportunity
 from apps.crm.services import (
     CrmScope,
+    application_scope_condition,
     convert_opportunity,
     create_client,
     ensure_advisor,
@@ -128,15 +129,10 @@ def get_application_scope(user: User) -> CrmScope:
 
 
 def _scope_filter(user: User, scope: CrmScope) -> Q | None:
-    """Filtro de solicitudes visibles, o ``None`` si el usuario ve todas."""
-    if scope.sees_everything:
-        return None
-    condition = Q(pk__in=[])
-    if scope.is_advisor:
-        condition |= Q(assigned_advisor=user)
-    if scope.is_broker:
-        condition |= Q(opportunity__origin_user=user)
-    return condition
+    """Filtro de solicitudes visibles, o ``None`` si el usuario ve todas. La regla vive en
+    ``crm`` (``application_scope_condition``) para que el conteo de solicitudes del
+    cliente use la misma."""
+    return application_scope_condition(user, scope)
 
 
 def application_scope_filter(user: User, scope: CrmScope | None = None) -> Q | None:
@@ -1152,12 +1148,6 @@ READY_TO_FILE_GUARD = "APPLICATION_READY_TO_FILE"
 # banco sin resolver.
 READY_TO_REFILE_GUARD = "APPLICATION_READY_TO_REFILE"
 READY_GUARDS = (READY_TO_FILE_GUARD, READY_TO_REFILE_GUARD)
-# Cierres que exigen `reason_code`.
-REASON_REQUIRED_STATUSES: tuple[str, ...] = (
-    ApplicationStatus.CANCELLED,
-    ApplicationStatus.OWN_FUNDS,
-    ApplicationStatus.EXTERNAL_CREDIT_APPROVED,
-)
 # Cierre → modalidad de financiación que debe estar registrada.
 CLOSING_FINANCING_MODES: dict[str, str] = {
     ApplicationStatus.OWN_FUNDS: OWN_FUNDS,

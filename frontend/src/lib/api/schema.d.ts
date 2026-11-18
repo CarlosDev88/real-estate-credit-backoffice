@@ -1802,11 +1802,14 @@ export interface paths {
         };
         /**
          * Clientes dentro del alcance
-         * @description El broker recibe solo datos de contacto y el documento enmascarado.
+         * @description Página de `Client` con `applications_count`. El broker (`INDEPENDENT_BROKER` sin `ADMIN` ni `ADVISOR`) recibe `BrokerClient`: contacto y documento enmascarado, sin direcciones ni `applications_count`.
          */
         get: operations["clients_list"];
         put?: never;
-        /** Crear un cliente */
+        /**
+         * Crear un cliente
+         * @description Responde `Client`. El broker (`INDEPENDENT_BROKER` sin `ADMIN` ni `ADVISOR`) recibe `BrokerClient`: contacto y documento enmascarado, sin direcciones ni `applications_count`.
+         */
         post: operations["clients_create"];
         delete?: never;
         options?: never;
@@ -1821,7 +1824,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Detalle del cliente según el rol */
+        /**
+         * Detalle del cliente según el rol
+         * @description `ClientDetail` con direcciones y `applications_count`. El broker (`INDEPENDENT_BROKER` sin `ADMIN` ni `ADVISOR`) recibe `BrokerClient`: contacto y documento enmascarado, sin direcciones ni `applications_count`.
+         */
         get: operations["clients_retrieve"];
         put?: never;
         post?: never;
@@ -1830,7 +1836,7 @@ export interface paths {
         head?: never;
         /**
          * Actualizar un cliente
-         * @description El broker solo puede cambiar datos de contacto, no el documento.
+         * @description El broker solo puede cambiar datos de contacto, no el documento. Responde `ClientDetail`. El broker (`INDEPENDENT_BROKER` sin `ADMIN` ni `ADVISOR`) recibe `BrokerClient`: contacto y documento enmascarado, sin direcciones ni `applications_count`.
          */
         patch: operations["clients_partial_update"];
         trace?: never;
@@ -2626,8 +2632,8 @@ export interface paths {
         get: operations["opportunities_list"];
         put?: never;
         /**
-         * Crear una oportunidad NEW
-         * @description Si llega `project_id`, el proyecto debe estar `ACTIVE`.
+         * Crear una oportunidad
+         * @description Si llega `project_id`, el proyecto debe estar `ACTIVE`. Si quien la crea tiene rol `ADVISOR`, queda asignada a él y en `ASSIGNED` (con su fila en `assignments`); si la crea un broker o el administrador, queda `NEW` y sin asesor. `notes` queda como la primera nota interna de la oportunidad.
          */
         post: operations["opportunities_create"];
         delete?: never;
@@ -3811,6 +3817,8 @@ export interface components {
             readonly guard_code: string;
             /** @description primary: avanza en el camino principal; secondary: cierra por fuera del banco o retrocede; destructive: cancela o desiste. La lista sale en ese orden. */
             readonly kind: components["schemas"]["AvailableActionKindEnum"];
+            /** @description La acción exige `reason_code`: `CANCELLED`, `OWN_FUNDS`, `EXTERNAL_CREDIT_APPROVED` y `WITHDRAWN` (por `/withdrawals`). */
+            readonly reason_required: boolean;
         };
         /** @enum {string} */
         AvailableActionKindEnum: "primary" | "secondary" | "destructive";
@@ -4034,6 +4042,23 @@ export interface components {
             features: {
                 [key: string]: boolean;
             };
+        };
+        /** @description Vista del broker: contacto y resumen. El documento va enmascarado (RF-14). */
+        BrokerClient: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly document_type: string;
+            readonly document_number: string;
+            readonly first_names: string;
+            readonly last_names: string;
+            readonly full_name: string;
+            /** Format: email */
+            readonly email: string;
+            readonly phone: string;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly updated_at: string;
         };
         /** @description Resumen para el broker: estado de su prospecto y quién lo atiende. */
         BrokerOpportunity: {
@@ -4752,11 +4777,14 @@ export interface components {
             readonly phone: string;
             readonly origin: components["schemas"]["CatalogItemRef"] | null;
             readonly created_by: components["schemas"]["UserRef"] | null;
+            /** @description Solicitudes visibles para el usuario en las que el cliente participa con un papel vigente (las de `GET /clients/{id}/applications`). Viene en el listado, el detalle, la creación y la edición de `/clients`; no en el cliente de un participante. */
+            applications_count?: number;
             /** Format: date-time */
             readonly created_at: string;
             /** Format: date-time */
             readonly updated_at: string;
         };
+        ClientByRole: components["schemas"]["Client"] | components["schemas"]["BrokerClient"];
         /**
          * @description Serializer que rechaza campos no declarados (``additionalProperties: false``).
          *
@@ -4790,12 +4818,15 @@ export interface components {
             readonly phone: string;
             readonly origin: components["schemas"]["CatalogItemRef"] | null;
             readonly created_by: components["schemas"]["UserRef"] | null;
+            /** @description Solicitudes visibles para el usuario en las que el cliente participa con un papel vigente (las de `GET /clients/{id}/applications`). Viene en el listado, el detalle, la creación y la edición de `/clients`; no en el cliente de un participante. */
+            applications_count?: number;
             /** Format: date-time */
             readonly created_at: string;
             /** Format: date-time */
             readonly updated_at: string;
             readonly addresses: components["schemas"]["Address"][];
         };
+        ClientDetailByRole: components["schemas"]["ClientDetail"] | components["schemas"]["BrokerClient"];
         ClientRef: {
             /** Format: uuid */
             id: string;
@@ -5961,6 +5992,7 @@ export interface components {
             readonly client: components["schemas"]["ClientRef"];
             readonly project: components["schemas"]["ProjectRef"] | null;
             readonly status: components["schemas"]["OpportunityStatusEnum"];
+            readonly status_label: string;
             readonly origin: components["schemas"]["CatalogItemRef"];
             readonly origin_user: components["schemas"]["UserRef"] | null;
             readonly assigned_advisor: components["schemas"]["UserRef"] | null;
@@ -5971,6 +6003,32 @@ export interface components {
             readonly created_at: string;
             /** Format: date-time */
             readonly updated_at: string;
+        };
+        /** @description Una fila del historial de asesores; `ended_at` es nulo en la vigente. */
+        OpportunityAssignment: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly advisor: components["schemas"]["UserRef"];
+            readonly assigned_by: components["schemas"]["UserRef"] | null;
+            readonly reason: string;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly ended_at: string | null;
+        };
+        /**
+         * @description Transición que el actor puede ejecutar ahora. Misma forma que `AvailableAction` de
+         *     la solicitud, sin `guard_code` (el flujo de la oportunidad no tiene guardas).
+         */
+        OpportunityAvailableAction: {
+            readonly code: string;
+            readonly label: string;
+            /** @description primary: la conversión (se ejecuta al crear la solicitud); destructive: perder o cancelar; secondary: el resto. La lista sale en ese orden. */
+            readonly kind: components["schemas"]["AvailableActionKindEnum"];
+            target_status: components["schemas"]["OpportunityStatusEnum"];
+            readonly target_status_label: string;
+            /** @description La acción exige `reason_code` (catálogo `opportunity_lost_reason`): solo `LOST`. */
+            readonly reason_required: boolean;
         };
         /**
          * @description Serializer que rechaza campos no declarados (``additionalProperties: false``).
@@ -5984,13 +6042,20 @@ export interface components {
             origin_type: string;
             /** Format: uuid */
             project_id?: string | null;
+            /**
+             * @description Queda como la primera nota interna de la oportunidad (actividad).
+             * @default
+             */
+            notes: string;
         };
+        /** @description Detalle de la oportunidad con sus acciones disponibles y el historial de asesores. */
         OpportunityDetail: {
             /** Format: uuid */
             readonly id: string;
             readonly client: components["schemas"]["ClientRef"];
             readonly project: components["schemas"]["ProjectRef"] | null;
             readonly status: components["schemas"]["OpportunityStatusEnum"];
+            readonly status_label: string;
             readonly origin: components["schemas"]["CatalogItemRef"];
             readonly origin_user: components["schemas"]["UserRef"] | null;
             readonly assigned_advisor: components["schemas"]["UserRef"] | null;
@@ -6001,10 +6066,10 @@ export interface components {
             readonly created_at: string;
             /** Format: date-time */
             readonly updated_at: string;
-            readonly available_actions: string[];
-            readonly assignments: {
-                [key: string]: unknown;
-            }[];
+            /** @description Transiciones que el actor puede ejecutar ahora (rol y permiso). `ASSIGN` va por `/assignments` y `CONVERT_*` al crear la solicitud. */
+            readonly available_actions: components["schemas"]["OpportunityAvailableAction"][];
+            /** @description Historial de asesores, del más reciente al más antiguo. */
+            readonly assignments: components["schemas"]["OpportunityAssignment"][];
         };
         /**
          * @description * `NEW` - Nueva
@@ -6217,6 +6282,14 @@ export interface components {
             /** @example null */
             previous: string | null;
         };
+        PaginatedBrokerClientList: {
+            items: components["schemas"]["BrokerClient"][];
+            page: number;
+            page_size: number;
+            total: number;
+            next: string | null;
+            previous: string | null;
+        };
         PaginatedBrokerOpportunityList: {
             items: components["schemas"]["BrokerOpportunity"][];
             /** @example 1 */
@@ -6362,17 +6435,13 @@ export interface components {
         };
         PaginatedClientList: {
             items: components["schemas"]["Client"][];
-            /** @example 1 */
             page: number;
-            /** @example 25 */
             page_size: number;
-            /** @example 128 */
             total: number;
-            /** @example /api/v1/x?page=2 */
             next: string | null;
-            /** @example null */
             previous: string | null;
         };
+        PaginatedClientListByRole: components["schemas"]["PaginatedClientList"] | components["schemas"]["PaginatedBrokerClientList"];
         PaginatedConsentRecordList: {
             items: components["schemas"]["ConsentRecord"][];
             /** @example 1 */
@@ -14646,7 +14715,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["PaginatedClientList"];
+                    "application/json": components["schemas"]["PaginatedClientListByRole"];
                 };
             };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
@@ -14687,7 +14756,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Client"];
+                    "application/json": components["schemas"]["ClientByRole"];
                 };
             };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
@@ -14708,7 +14777,7 @@ export interface operations {
                     "application/json": components["schemas"]["Error"];
                 };
             };
-            /** @description DUPLICATE_CLIENT_DOCUMENT. Si el cliente es visible para el usuario, `details[0].resource_id` trae su id. */
+            /** @description DUPLICATE_CLIENT_DOCUMENT: ya hay un cliente con ese tipo y número de documento. Si el usuario puede ver ese cliente, `details[0]` trae `{field: "document_number", code: "EXISTING_CLIENT", resource_id: <id del cliente>}`; si no, `details` va vacío. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -14735,7 +14804,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ClientDetail"];
+                    "application/json": components["schemas"]["ClientDetailByRole"];
                 };
             };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
@@ -14787,7 +14856,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ClientDetail"];
+                    "application/json": components["schemas"]["ClientDetailByRole"];
                 };
             };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
@@ -14817,7 +14886,7 @@ export interface operations {
                     "application/json": components["schemas"]["Error"];
                 };
             };
-            /** @description DUPLICATE_CLIENT_DOCUMENT */
+            /** @description DUPLICATE_CLIENT_DOCUMENT: ya hay un cliente con ese tipo y número de documento. Si el usuario puede ver ese cliente, `details[0]` trae `{field: "document_number", code: "EXISTING_CLIENT", resource_id: <id del cliente>}`; si no, `details` va vacío. */
             409: {
                 headers: {
                     [name: string]: unknown;

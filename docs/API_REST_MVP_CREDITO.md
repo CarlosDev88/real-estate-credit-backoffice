@@ -627,14 +627,17 @@ Reglas:
 }
 ```
 
-Responde `409 DUPLICATE_CLIENT_DOCUMENT` si existe la combinación documento/tipo. Un broker solo obtiene campos de contacto y resumen; nunca perfiles financieros ni documentos.
+Responde `409 DUPLICATE_CLIENT_DOCUMENT` si existe la combinación documento/tipo (también en `PATCH`). Si el usuario puede ver el cliente existente, `details[0]` es `{field: "document_number", code: "EXISTING_CLIENT", resource_id: "<id del cliente>"}`; si no, `details` va vacío. Un broker solo obtiene campos de contacto y resumen; nunca perfiles financieros ni documentos.
+
+- **Forma por rol:** el broker (`INDEPENDENT_BROKER` sin `ADMIN` ni `ADVISOR`) recibe `BrokerClient` (contacto y documento enmascarado) en `GET /clients`, `POST`, `GET /clients/{client_id}` y `PATCH`; el resto recibe `Client` (listado y creación) o `ClientDetail` (detalle y edición, con direcciones). El contrato lo describe con `oneOf` (`PaginatedClientListByRole`, `ClientByRole`, `ClientDetailByRole`).
+- **`applications_count`:** en `Client` y `ClientDetail` de `/clients`, las solicitudes visibles para el usuario en las que el cliente participa con un papel vigente (las mismas de `GET /clients/{client_id}/applications`). Es opcional en el contrato: no viene en el cliente de un participante ni para el broker.
 
 ## 14. Oportunidades comerciales
 
 | Método | Ruta | Permiso | Entrada / filtros | Respuesta |
 | --- | --- | --- | --- | --- |
 | `GET` | `/opportunities` | `opportunities.read` | `status`, `broker_id`, `advisor_id`, `project_id`, `search` | Oportunidades según alcance. |
-| `POST` | `/opportunities` | `opportunities.create` | Cliente, origen y proyecto opcional | Oportunidad `NEW`. |
+| `POST` | `/opportunities` | `opportunities.create` | Cliente, origen, proyecto y nota opcionales | Oportunidad `NEW`, o `ASSIGNED` si la crea un asesor. |
 | `GET` | `/opportunities/{opportunity_id}` | `opportunities.read` | — | Detalle permitido. |
 | `PATCH` | `/opportunities/{opportunity_id}` | `opportunities.update` | Campos comerciales | Oportunidad actualizada. |
 | `POST` | `/opportunities/{opportunity_id}/assignments` | `opportunities.assign` | Asesor responsable | Asignación auditada. |
@@ -655,6 +658,12 @@ Responde `409 DUPLICATE_CLIENT_DOCUMENT` si existe la combinación documento/tip
 ```
 
 Si existe `project_id`, debe estar `ACTIVE`. El partner no usa estos endpoints en el MVP.
+
+- **`notes`:** opcional, hasta 2000 caracteres. Queda como la primera nota interna de la oportunidad (una fila `NOTE_ADDED` de la actividad).
+- **Asignación automática:** si quien crea la oportunidad tiene rol `ADVISOR`, queda asignada a él y en `ASSIGNED` en la misma transacción, con su fila en `assignments` (`reason`: "Asignación automática: la creó el asesor.") y la transición `ASSIGN`. Si esa transición no está activa, responde `409 INVALID_STATE_TRANSITION` y no se crea nada. Si la crea un broker o el administrador, queda `NEW` y sin asesor.
+- **`status_label`:** en `Opportunity` y `OpportunityDetail`, la etiqueta del estado (catálogo `opportunity_status`).
+- **`assignments`:** historial de asesores, del más reciente al más antiguo: `[{id, advisor: {id, name}, assigned_by: {id, name} | null, reason, created_at, ended_at}]`.
+- **`available_actions`:** las transiciones que el actor puede ejecutar desde el estado actual (rol y permiso), con la forma de las acciones de la solicitud sin `guard_code`: `[{code, label, kind, target_status, target_status_label, reason_required}]`. `kind`: la conversión (`CONVERT_*`, al crear la solicitud) es `primary`; perder (`MARK_LOST_*`) y cancelar (`CANCEL_*`) son `destructive`; el resto (`ASSIGN`, por `/assignments`, `MARK_CONTACTED`, `START_PROGRESS`) es `secondary`. Sale en ese orden y, dentro de cada grupo, por código. `reason_required` es `true` solo para `LOST` (`reason_code` del catálogo `opportunity_lost_reason`).
 
 ## 15. Mi día y tareas
 
@@ -995,6 +1004,8 @@ Las transiciones de `FILED` en adelante llegan con la radicación (§20).
 
 La lista sale ordenada por grupo (`primary`, `secondary`, `destructive`) y, dentro de cada grupo, por código.
 
+`reason_required` es `true` si la acción exige `reason_code`: los cierres `CANCELLED`, `OWN_FUNDS` y `EXTERNAL_CREDIT_APPROVED`, y el desistimiento (`WITHDRAWN`, por `/withdrawals`).
+
 ```json
 [
   {
@@ -1003,7 +1014,8 @@ La lista sale ordenada por grupo (`primary`, `secondary`, `destructive`) y, dent
     "target_status": "READY_TO_FILE",
     "target_status_label": "Lista para radicar",
     "guard_code": "APPLICATION_READY_TO_FILE",
-    "kind": "primary"
+    "kind": "primary",
+    "reason_required": false
   }
 ]
 ```

@@ -80,7 +80,7 @@ def test_assigning_a_new_opportunity_moves_it_to_assigned(
         (item["advisor"]["id"], item["reason"], item["ended_at"]) for item in body["assignments"]
     ] == [(str(advisor_user.id), "Zona norte", None)]
     assert body["assignments"][0]["assigned_by"]["id"] == str(admin_user.id)
-    assert "MARK_CONTACTED" in body["available_actions"]
+    assert "MARK_CONTACTED" in [action["code"] for action in body["available_actions"]]
 
     assert [(e["previous_advisor_id"], e["advisor_id"], e["actor"]) for e in assigned_events] == [
         (None, advisor_user.id, admin_user)
@@ -241,7 +241,7 @@ def test_advisor_moves_opportunity_through_the_flow(
     contacted = transition(advisor_client, assigned, "CONTACTED", comment="Llamada inicial")
     assert contacted.status_code == 200, contacted.content
     assert contacted.json()["status"] == "CONTACTED"
-    assert "START_PROGRESS" in contacted.json()["available_actions"]
+    assert "START_PROGRESS" in [a["code"] for a in contacted.json()["available_actions"]]
 
     in_progress = transition(advisor_client, assigned, "IN_PROGRESS")
     assert in_progress.json()["status"] == "IN_PROGRESS"

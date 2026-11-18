@@ -1,15 +1,18 @@
 from datetime import date
 from typing import Any, cast
 
+from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
 from apps.catalogs.fields import CatalogItemCodeField
+from apps.catalogs.models import WorkflowTransition
 from apps.catalogs.serializers import CatalogItemRefSerializer
-from apps.catalogs.workflow import OpportunityStatus
+from apps.catalogs.workflow import ActionKind, OpportunityStatus
+from apps.crm.actions import action_kind, reason_required
 from apps.crm.models import Client, ClientAddress, Opportunity, OpportunityAssignment
 from apps.crm.validators import mask_document_number, normalize_document_number
 from apps.identity.models import User
-from config.serializers import StrictSerializer
+from config.serializers import ChoiceLabelField, StrictSerializer
 from config.validators import validate_e164_phone
 
 
@@ -26,6 +29,15 @@ class ClientSerializer(serializers.ModelSerializer):
     full_name = serializers.CharField(read_only=True)
     origin = CatalogItemRefSerializer(source="origin_item", read_only=True, allow_null=True)
     created_by = UserRefSerializer(read_only=True, allow_null=True)
+    # No se declara de solo lectura para que OpenAPI no lo marque obligatorio: falta en el
+    # cliente que va dentro de un participante (`ApplicationParticipant.client`).
+    applications_count = serializers.IntegerField(
+        required=False,
+        help_text="Solicitudes visibles para el usuario en las que el cliente participa con "
+        "un papel vigente (las de `GET /clients/{id}/applications`). Viene en el listado, "
+        "el detalle, la creación y la edición de `/clients`; no en el cliente de un "
+        "participante.",
+    )
 
     class Meta:
         model = Client
@@ -41,10 +53,11 @@ class ClientSerializer(serializers.ModelSerializer):
             "phone",
             "origin",
             "created_by",
+            "applications_count",
             "created_at",
             "updated_at",
         ]
-        read_only_fields = fields
+        read_only_fields = [field for field in fields if field != "applications_count"]
 
 
 class BrokerClientSerializer(serializers.ModelSerializer):
@@ -101,7 +114,7 @@ class ClientDetailSerializer(ClientSerializer):
 
     class Meta(ClientSerializer.Meta):
         fields = [*ClientSerializer.Meta.fields, "addresses"]
-        read_only_fields = fields
+        read_only_fields = [*ClientSerializer.Meta.read_only_fields, "addresses"]
 
 
 def _validate_birth_date(value: date | None) -> date | None:
@@ -221,6 +234,7 @@ class ProjectRefSerializer(serializers.Serializer):
 class OpportunitySerializer(serializers.ModelSerializer):
     client = ClientRefSerializer(read_only=True)
     project = ProjectRefSerializer(read_only=True, allow_null=True)
+    status_label = ChoiceLabelField(OpportunityStatus, source="status")
     origin = CatalogItemRefSerializer(source="origin_item", read_only=True)
     origin_user = UserRefSerializer(read_only=True, allow_null=True)
     assigned_advisor = UserRefSerializer(read_only=True, allow_null=True)
@@ -235,6 +249,7 @@ class OpportunitySerializer(serializers.ModelSerializer):
             "client",
             "project",
             "status",
+            "status_label",
             "origin",
             "origin_user",
             "assigned_advisor",
@@ -246,7 +261,9 @@ class OpportunitySerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
 
-class AssignmentSerializer(serializers.ModelSerializer):
+class OpportunityAssignmentSerializer(serializers.ModelSerializer):
+    """Una fila del historial de asesores; `ended_at` es nulo en la vigente."""
+
     advisor = UserRefSerializer(read_only=True)
     assigned_by = UserRefSerializer(read_only=True, allow_null=True)
 
@@ -256,20 +273,68 @@ class AssignmentSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
 
+class OpportunityAvailableActionSerializer(serializers.ModelSerializer):
+    """Transición que el actor puede ejecutar ahora. Misma forma que `AvailableAction` de
+    la solicitud, sin `guard_code` (el flujo de la oportunidad no tiene guardas)."""
+
+    target_status = serializers.ChoiceField(source="to_status", choices=OpportunityStatus.choices)
+    target_status_label = ChoiceLabelField(OpportunityStatus, source="to_status")
+    kind = serializers.SerializerMethodField(
+        help_text="primary: la conversión (se ejecuta al crear la solicitud); destructive: "
+        "perder o cancelar; secondary: el resto. La lista sale en ese orden."
+    )
+    reason_required = serializers.SerializerMethodField(
+        help_text="La acción exige `reason_code` (catálogo `opportunity_lost_reason`): solo `LOST`."
+    )
+
+    class Meta:
+        model = WorkflowTransition
+        fields = [
+            "code",
+            "label",
+            "kind",
+            "target_status",
+            "target_status_label",
+            "reason_required",
+        ]
+        read_only_fields = fields
+
+    @extend_schema_field(serializers.ChoiceField(choices=ActionKind.choices))
+    def get_kind(self, obj: WorkflowTransition) -> str:
+        return action_kind(obj).value
+
+    def get_reason_required(self, obj: WorkflowTransition) -> bool:
+        return reason_required(obj)
+
+
 class OpportunityDetailSerializer(OpportunitySerializer):
-    available_actions = serializers.SerializerMethodField()
-    assignments = serializers.SerializerMethodField()
+    """Detalle de la oportunidad con sus acciones disponibles y el historial de asesores."""
+
+    available_actions = serializers.SerializerMethodField(
+        help_text="Transiciones que el actor puede ejecutar ahora (rol y permiso). "
+        "`ASSIGN` va por `/assignments` y `CONVERT_*` al crear la solicitud."
+    )
+    assignments = serializers.SerializerMethodField(
+        help_text="Historial de asesores, del más reciente al más antiguo."
+    )
 
     class Meta(OpportunitySerializer.Meta):
         fields = [*OpportunitySerializer.Meta.fields, "available_actions", "assignments"]
         read_only_fields = fields
 
-    def get_available_actions(self, obj: Opportunity) -> list[str]:
-        return self.context["available_actions"]
+    @extend_schema_field(OpportunityAvailableActionSerializer(many=True))
+    def get_available_actions(self, obj: Opportunity) -> list[dict[str, Any]]:
+        actions: list[WorkflowTransition] = self.context["available_actions"]
+        return cast(
+            list[dict[str, Any]], OpportunityAvailableActionSerializer(actions, many=True).data
+        )
 
+    @extend_schema_field(OpportunityAssignmentSerializer(many=True))
     def get_assignments(self, obj: Opportunity) -> list[dict[str, Any]]:
         assignments = obj.assignments.select_related("advisor", "assigned_by")
-        return cast(list[dict[str, Any]], AssignmentSerializer(assignments, many=True).data)
+        return cast(
+            list[dict[str, Any]], OpportunityAssignmentSerializer(assignments, many=True).data
+        )
 
 
 class BrokerOpportunitySerializer(serializers.ModelSerializer):
@@ -301,6 +366,13 @@ class OpportunityCreateSerializer(StrictSerializer):
     client_id = serializers.UUIDField()
     origin_type = CatalogItemCodeField(catalog_code="lead_origin")
     project_id = serializers.UUIDField(required=False, allow_null=True, default=None)
+    notes = serializers.CharField(
+        max_length=2000,
+        required=False,
+        allow_blank=True,
+        default="",
+        help_text="Queda como la primera nota interna de la oportunidad (actividad).",
+    )
 
 
 class OpportunityUpdateSerializer(StrictSerializer):

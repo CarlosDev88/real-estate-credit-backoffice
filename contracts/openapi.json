@@ -10470,7 +10470,7 @@
         "/api/v1/clients": {
             "get": {
                 "operationId": "clients_list",
-                "description": "El broker recibe solo datos de contacto y el documento enmascarado.",
+                "description": "Página de `Client` con `applications_count`. El broker (`INDEPENDENT_BROKER` sin `ADMIN` ni `ADVISOR`) recibe `BrokerClient`: contacto y documento enmascarado, sin direcciones ni `applications_count`.",
                 "summary": "Clientes dentro del alcance",
                 "parameters": [
                     {
@@ -10499,22 +10499,20 @@
                         "description": "Código de `lead_origin`."
                     },
                     {
-                        "name": "page",
-                        "required": false,
                         "in": "query",
-                        "description": "Un número de página dentro del conjunto de resultados paginado.",
+                        "name": "page",
                         "schema": {
                             "type": "integer"
-                        }
+                        },
+                        "description": "Un número de página dentro del conjunto de resultados paginado."
                     },
                     {
-                        "name": "page_size",
-                        "required": false,
                         "in": "query",
-                        "description": "Número de resultados a devolver por página.",
+                        "name": "page_size",
                         "schema": {
                             "type": "integer"
-                        }
+                        },
+                        "description": "Número de resultados a devolver por página."
                     },
                     {
                         "name": "search",
@@ -10539,7 +10537,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/PaginatedClientList"
+                                    "$ref": "#/components/schemas/PaginatedClientListByRole"
                                 }
                             }
                         },
@@ -10569,6 +10567,7 @@
             },
             "post": {
                 "operationId": "clients_create",
+                "description": "Responde `Client`. El broker (`INDEPENDENT_BROKER` sin `ADMIN` ni `ADVISOR`) recibe `BrokerClient`: contacto y documento enmascarado, sin direcciones ni `applications_count`.",
                 "summary": "Crear un cliente",
                 "tags": [
                     "Clients"
@@ -10593,7 +10592,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/Client"
+                                    "$ref": "#/components/schemas/ClientByRole"
                                 }
                             }
                         },
@@ -10607,7 +10606,7 @@
                                 }
                             }
                         },
-                        "description": "DUPLICATE_CLIENT_DOCUMENT. Si el cliente es visible para el usuario, `details[0].resource_id` trae su id."
+                        "description": "DUPLICATE_CLIENT_DOCUMENT: ya hay un cliente con ese tipo y número de documento. Si el usuario puede ver ese cliente, `details[0]` trae `{field: \"document_number\", code: \"EXISTING_CLIENT\", resource_id: <id del cliente>}`; si no, `details` va vacío."
                     },
                     "401": {
                         "content": {
@@ -10635,6 +10634,7 @@
         "/api/v1/clients/{client_id}": {
             "get": {
                 "operationId": "clients_retrieve",
+                "description": "`ClientDetail` con direcciones y `applications_count`. El broker (`INDEPENDENT_BROKER` sin `ADMIN` ni `ADVISOR`) recibe `BrokerClient`: contacto y documento enmascarado, sin direcciones ni `applications_count`.",
                 "summary": "Detalle del cliente según el rol",
                 "parameters": [
                     {
@@ -10660,7 +10660,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/ClientDetail"
+                                    "$ref": "#/components/schemas/ClientDetailByRole"
                                 }
                             }
                         },
@@ -10700,7 +10700,7 @@
             },
             "patch": {
                 "operationId": "clients_partial_update",
-                "description": "El broker solo puede cambiar datos de contacto, no el documento.",
+                "description": "El broker solo puede cambiar datos de contacto, no el documento. Responde `ClientDetail`. El broker (`INDEPENDENT_BROKER` sin `ADMIN` ni `ADVISOR`) recibe `BrokerClient`: contacto y documento enmascarado, sin direcciones ni `applications_count`.",
                 "summary": "Actualizar un cliente",
                 "parameters": [
                     {
@@ -10735,7 +10735,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/ClientDetail"
+                                    "$ref": "#/components/schemas/ClientDetailByRole"
                                 }
                             }
                         },
@@ -10749,7 +10749,7 @@
                                 }
                             }
                         },
-                        "description": "DUPLICATE_CLIENT_DOCUMENT"
+                        "description": "DUPLICATE_CLIENT_DOCUMENT: ya hay un cliente con ese tipo y número de documento. Si el usuario puede ver ese cliente, `details[0]` trae `{field: \"document_number\", code: \"EXISTING_CLIENT\", resource_id: <id del cliente>}`; si no, `details` va vacío."
                     },
                     "404": {
                         "content": {
@@ -15468,8 +15468,8 @@
             },
             "post": {
                 "operationId": "opportunities_create",
-                "description": "Si llega `project_id`, el proyecto debe estar `ACTIVE`.",
-                "summary": "Crear una oportunidad NEW",
+                "description": "Si llega `project_id`, el proyecto debe estar `ACTIVE`. Si quien la crea tiene rol `ADVISOR`, queda asignada a él y en `ASSIGNED` (con su fila en `assignments`); si la crea un broker o el administrador, queda `NEW` y sin asesor. `notes` queda como la primera nota interna de la oportunidad.",
+                "summary": "Crear una oportunidad",
                 "tags": [
                     "Opportunities"
                 ],
@@ -21939,6 +21939,11 @@
                         ],
                         "description": "primary: avanza en el camino principal; secondary: cierra por fuera del banco o retrocede; destructive: cancela o desiste. La lista sale en ese orden.",
                         "readOnly": true
+                    },
+                    "reason_required": {
+                        "type": "boolean",
+                        "readOnly": true,
+                        "description": "La acción exige `reason_code`: `CANCELLED`, `OWN_FUNDS`, `EXTERNAL_CREDIT_APPROVED` y `WITHDRAWN` (por `/withdrawals`)."
                     }
                 },
                 "required": [
@@ -21946,6 +21951,7 @@
                     "guard_code",
                     "kind",
                     "label",
+                    "reason_required",
                     "target_status",
                     "target_status_label"
                 ]
@@ -22753,6 +22759,68 @@
                     "metadata_version",
                     "on_demand_catalogs",
                     "permissions"
+                ]
+            },
+            "BrokerClient": {
+                "type": "object",
+                "description": "Vista del broker: contacto y resumen. El documento va enmascarado (RF-14).",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "readOnly": true
+                    },
+                    "document_type": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "document_number": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "first_names": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "last_names": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "full_name": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "email": {
+                        "type": "string",
+                        "format": "email",
+                        "readOnly": true
+                    },
+                    "phone": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "readOnly": true
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "readOnly": true
+                    }
+                },
+                "required": [
+                    "created_at",
+                    "document_number",
+                    "document_type",
+                    "email",
+                    "first_names",
+                    "full_name",
+                    "id",
+                    "last_names",
+                    "phone",
+                    "updated_at"
                 ]
             },
             "BrokerOpportunity": {
@@ -25355,6 +25423,10 @@
                         ],
                         "readOnly": true
                     },
+                    "applications_count": {
+                        "type": "integer",
+                        "description": "Solicitudes visibles para el usuario en las que el cliente participa con un papel vigente (las de `GET /clients/{id}/applications`). Viene en el listado, el detalle, la creación y la edición de `/clients`; no en el cliente de un participante."
+                    },
                     "created_at": {
                         "type": "string",
                         "format": "date-time",
@@ -25380,6 +25452,16 @@
                     "origin",
                     "phone",
                     "updated_at"
+                ]
+            },
+            "ClientByRole": {
+                "oneOf": [
+                    {
+                        "$ref": "#/components/schemas/Client"
+                    },
+                    {
+                        "$ref": "#/components/schemas/BrokerClient"
+                    }
                 ]
             },
             "ClientCreateRequest": {
@@ -25515,6 +25597,10 @@
                         ],
                         "readOnly": true
                     },
+                    "applications_count": {
+                        "type": "integer",
+                        "description": "Solicitudes visibles para el usuario en las que el cliente participa con un papel vigente (las de `GET /clients/{id}/applications`). Viene en el listado, el detalle, la creación y la edición de `/clients`; no en el cliente de un participante."
+                    },
                     "created_at": {
                         "type": "string",
                         "format": "date-time",
@@ -25548,6 +25634,16 @@
                     "origin",
                     "phone",
                     "updated_at"
+                ]
+            },
+            "ClientDetailByRole": {
+                "oneOf": [
+                    {
+                        "$ref": "#/components/schemas/ClientDetail"
+                    },
+                    {
+                        "$ref": "#/components/schemas/BrokerClient"
+                    }
                 ]
             },
             "ClientRef": {
@@ -29470,6 +29566,10 @@
                         ],
                         "readOnly": true
                     },
+                    "status_label": {
+                        "type": "string",
+                        "readOnly": true
+                    },
                     "origin": {
                         "allOf": [
                             {
@@ -29541,7 +29641,106 @@
                     "origin_user",
                     "project",
                     "status",
+                    "status_label",
                     "updated_at"
+                ]
+            },
+            "OpportunityAssignment": {
+                "type": "object",
+                "description": "Una fila del historial de asesores; `ended_at` es nulo en la vigente.",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "readOnly": true
+                    },
+                    "advisor": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/UserRef"
+                            }
+                        ],
+                        "readOnly": true
+                    },
+                    "assigned_by": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/UserRef"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "readOnly": true
+                    },
+                    "reason": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "readOnly": true
+                    },
+                    "ended_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time",
+                        "readOnly": true
+                    }
+                },
+                "required": [
+                    "advisor",
+                    "assigned_by",
+                    "created_at",
+                    "ended_at",
+                    "id",
+                    "reason"
+                ]
+            },
+            "OpportunityAvailableAction": {
+                "type": "object",
+                "description": "Transición que el actor puede ejecutar ahora. Misma forma que `AvailableAction` de\nla solicitud, sin `guard_code` (el flujo de la oportunidad no tiene guardas).",
+                "properties": {
+                    "code": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "label": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "kind": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/AvailableActionKindEnum"
+                            }
+                        ],
+                        "description": "primary: la conversión (se ejecuta al crear la solicitud); destructive: perder o cancelar; secondary: el resto. La lista sale en ese orden.",
+                        "readOnly": true
+                    },
+                    "target_status": {
+                        "$ref": "#/components/schemas/OpportunityStatusEnum"
+                    },
+                    "target_status_label": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "reason_required": {
+                        "type": "boolean",
+                        "readOnly": true,
+                        "description": "La acción exige `reason_code` (catálogo `opportunity_lost_reason`): solo `LOST`."
+                    }
+                },
+                "required": [
+                    "code",
+                    "kind",
+                    "label",
+                    "reason_required",
+                    "target_status",
+                    "target_status_label"
                 ]
             },
             "OpportunityCreateRequest": {
@@ -29562,6 +29761,12 @@
                             "null"
                         ],
                         "format": "uuid"
+                    },
+                    "notes": {
+                        "type": "string",
+                        "default": "",
+                        "description": "Queda como la primera nota interna de la oportunidad (actividad).",
+                        "maxLength": 2000
                     }
                 },
                 "required": [
@@ -29571,6 +29776,7 @@
             },
             "OpportunityDetail": {
                 "type": "object",
+                "description": "Detalle de la oportunidad con sus acciones disponibles y el historial de asesores.",
                 "properties": {
                     "id": {
                         "type": "string",
@@ -29602,6 +29808,10 @@
                                 "$ref": "#/components/schemas/OpportunityStatusEnum"
                             }
                         ],
+                        "readOnly": true
+                    },
+                    "status_label": {
+                        "type": "string",
                         "readOnly": true
                     },
                     "origin": {
@@ -29666,17 +29876,18 @@
                     "available_actions": {
                         "type": "array",
                         "items": {
-                            "type": "string"
+                            "$ref": "#/components/schemas/OpportunityAvailableAction"
                         },
-                        "readOnly": true
+                        "readOnly": true,
+                        "description": "Transiciones que el actor puede ejecutar ahora (rol y permiso). `ASSIGN` va por `/assignments` y `CONVERT_*` al crear la solicitud."
                     },
                     "assignments": {
                         "type": "array",
                         "items": {
-                            "type": "object",
-                            "additionalProperties": {}
+                            "$ref": "#/components/schemas/OpportunityAssignment"
                         },
-                        "readOnly": true
+                        "readOnly": true,
+                        "description": "Historial de asesores, del más reciente al más antiguo."
                     }
                 },
                 "required": [
@@ -29692,6 +29903,7 @@
                     "origin_user",
                     "project",
                     "status",
+                    "status_label",
                     "updated_at"
                 ]
             },
@@ -30331,6 +30543,46 @@
                     }
                 }
             },
+            "PaginatedBrokerClientList": {
+                "type": "object",
+                "properties": {
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/BrokerClient"
+                        }
+                    },
+                    "page": {
+                        "type": "integer"
+                    },
+                    "page_size": {
+                        "type": "integer"
+                    },
+                    "total": {
+                        "type": "integer"
+                    },
+                    "next": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "previous": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    }
+                },
+                "required": [
+                    "items",
+                    "next",
+                    "page",
+                    "page_size",
+                    "previous",
+                    "total"
+                ]
+            },
             "PaginatedBrokerOpportunityList": {
                 "type": "object",
                 "required": [
@@ -30784,14 +31036,6 @@
             },
             "PaginatedClientList": {
                 "type": "object",
-                "required": [
-                    "items",
-                    "page",
-                    "page_size",
-                    "total",
-                    "next",
-                    "previous"
-                ],
                 "properties": {
                     "items": {
                         "type": "array",
@@ -30800,28 +31044,45 @@
                         }
                     },
                     "page": {
-                        "type": "integer",
-                        "example": 1
+                        "type": "integer"
                     },
                     "page_size": {
-                        "type": "integer",
-                        "example": 25
+                        "type": "integer"
                     },
                     "total": {
-                        "type": "integer",
-                        "example": 128
+                        "type": "integer"
                     },
                     "next": {
-                        "type": "string",
-                        "nullable": true,
-                        "example": "/api/v1/x?page=2"
+                        "type": [
+                            "string",
+                            "null"
+                        ]
                     },
                     "previous": {
-                        "type": "string",
-                        "nullable": true,
-                        "example": null
+                        "type": [
+                            "string",
+                            "null"
+                        ]
                     }
-                }
+                },
+                "required": [
+                    "items",
+                    "next",
+                    "page",
+                    "page_size",
+                    "previous",
+                    "total"
+                ]
+            },
+            "PaginatedClientListByRole": {
+                "oneOf": [
+                    {
+                        "$ref": "#/components/schemas/PaginatedClientList"
+                    },
+                    {
+                        "$ref": "#/components/schemas/PaginatedBrokerClientList"
+                    }
+                ]
             },
             "PaginatedConsentRecordList": {
                 "type": "object",

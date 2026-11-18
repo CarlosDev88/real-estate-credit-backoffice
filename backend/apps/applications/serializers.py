@@ -8,7 +8,7 @@ from django.utils import timezone
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
-from apps.applications.actions import ActionKind, action_kind
+from apps.applications.actions import ActionKind, action_kind, reason_required
 from apps.applications.bank_evaluation import (
     EvaluationSummary,
     blocking_rows,
@@ -723,14 +723,30 @@ class AvailableActionSerializer(serializers.ModelSerializer):
         )
     )
 
+    reason_required = serializers.SerializerMethodField(
+        help_text="La acción exige `reason_code`: `CANCELLED`, `OWN_FUNDS`, "
+        "`EXTERNAL_CREDIT_APPROVED` y `WITHDRAWN` (por `/withdrawals`)."
+    )
+
     class Meta:
         model = WorkflowTransition
-        fields = ["code", "label", "target_status", "target_status_label", "guard_code", "kind"]
+        fields = [
+            "code",
+            "label",
+            "target_status",
+            "target_status_label",
+            "guard_code",
+            "kind",
+            "reason_required",
+        ]
         read_only_fields = fields
 
     @extend_schema_field(serializers.ChoiceField(choices=ActionKind.choices))
     def get_kind(self, obj: WorkflowTransition) -> str:
         return action_kind(obj).value
+
+    def get_reason_required(self, obj: WorkflowTransition) -> bool:
+        return reason_required(obj)
 
 
 # Bloques que admite `?include=` en el detalle. `property` y `assignments` salen siempre.
