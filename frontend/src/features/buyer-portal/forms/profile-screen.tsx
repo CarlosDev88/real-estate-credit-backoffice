@@ -6,6 +6,7 @@ import { useEffect, useId } from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { z } from "zod";
 
+import { Card } from "@/components/ui/card";
 import { FormField } from "@/components/ui/form-field";
 import {
   CatalogSelect,
@@ -13,7 +14,6 @@ import {
   DateInput,
   FieldGrid,
   FormActions,
-  FormCard,
   FormLoadError,
   FormLoading,
   FormScreen,
@@ -127,7 +127,7 @@ function ProfileForm({ profile }: { profile: BuyerProfile }) {
 
   return (
     <form noValidate onSubmit={(event) => void submit(event)} className="grid gap-5">
-      <FormCard title="Identificación">
+      <Card variant="portal" title="Identificación">
         <FieldGrid>
           <ReadOnlyField label="Nombres" value={profile.first_names} />
           <ReadOnlyField label="Apellidos" value={profile.last_names} />
@@ -139,9 +139,9 @@ function ProfileForm({ profile }: { profile: BuyerProfile }) {
         <p className="text-text-tertiary m-0 text-sm">
           Si algo de esto no es correcto, pídele a tu asesor que lo corrija.
         </p>
-      </FormCard>
+      </Card>
 
-      <FormCard title="Contacto">
+      <Card variant="portal" title="Contacto">
         <FieldGrid>
           <FormField id={`${id}-email`} label="Correo" error={errors.email?.message}>
             {(control) => (
@@ -191,11 +191,12 @@ function ProfileForm({ profile }: { profile: BuyerProfile }) {
             )}
           </FormField>
         </FieldGrid>
-      </FormCard>
+      </Card>
 
-      <FormCard
+      <Card
+        variant="portal"
         title="Direcciones"
-        aside={
+        action={
           !readOnly &&
           addresses.fields.length < MAX_ADDRESSES && (
             <Button
@@ -353,7 +354,7 @@ function ProfileForm({ profile }: { profile: BuyerProfile }) {
             </fieldset>
           );
         })}
-      </FormCard>
+      </Card>
 
       <FormActions saving={save.isPending} />
     </form>

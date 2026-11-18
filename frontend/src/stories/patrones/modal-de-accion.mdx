@@ -1,0 +1,25 @@
+import { Canvas, Meta } from "@storybook/addon-docs/blocks";
+
+import * as Modal from "../../components/ui/action-modal.stories";
+
+<Meta title="Patrones/Modal de confirmación" />
+
+# Modal de confirmación de una acción
+
+`ActionModal`: título, qué va a pasar, los campos (si los hay) y dos botones, cancelar y el verbo de la acción.
+
+<Canvas of={Modal.ConCampos} />
+
+## Destructiva
+
+Rechazar, revocar, cerrar la solicitud: el botón de la acción va en `danger` y el texto dice qué se pierde. Antes de abrir el modal, el enlace que lo dispara no se destaca ("Ya no quiero continuar" en `text.secondary`).
+
+<Canvas of={Modal.Destructiva} />
+
+## Reglas
+
+- **El botón dice la acción** ("Exonerar", "Cerrar mi solicitud"), nunca "Aceptar" ni "Sí".
+- **`description`:** una o dos frases con la consecuencia ("La solicitud pasa a radicada y los documentos entregados quedan bloqueados").
+- **Deshabilitado solo con la razón visible** en la descripción ("Prepara el paquete antes de radicar").
+- **Enter confirma;** Escape y "Cancelar" cierran sin cambios. El formulario se vacía al cerrar.
+- **Errores:** los de los campos, debajo de cada uno; los demás, al toast. Sirve directo el `handleSubmit` de React Hook Form en `onSubmit`.

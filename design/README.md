@@ -20,7 +20,7 @@ Los mockups son referencia visual y de comportamiento. Los datos y las listas qu
 
 1. **Confianza antes que decoración.** Es un producto de crédito: azul sobrio, mucho espacio en blanco y jerarquía por bordes y fondos, no por sombras ni colores fuertes.
 2. **Densidad legible.** El backoffice se usa muchas horas y gira alrededor de tablas. Base de 14 px, controles de 32 px y cifras tabulares en montos y porcentajes.
-3. **El estado se ve de un vistazo.** Seis tonos cubren todos los estados de solicitud, documento, archivo y regla.
+3. **El estado se ve de un vistazo.** Seis tonos cubren todos los estados de solicitud, documento, archivo, regla, radicación y oportunidad.
 4. **Accesible por defecto.** Todo par de texto y fondo se verifica contra WCAG 2.1 al generar los tokens. Si uno no cumple, el build falla.
 5. **El portal del comprador es móvil primero.** Mismos tokens, controles grandes (40 px) y una sola columna.
 
@@ -86,12 +86,12 @@ import { lightTheme, darkTheme } from "../../design/generated/antd-theme";
 
 | Tono | Uso |
 | --- | --- |
-| `neutral` | Borrador, pendiente, cerrado sin resultado (desistida, cancelada, recursos propios, crédito externo). |
-| `info` | En proceso del lado de operación o del banco (revisión documental, radicada, análisis de crédito, documento cargado). |
+| `neutral` | Borrador, pendiente, cerrado sin resultado (desistida, cancelada, recursos propios, crédito externo), oportunidad nueva o cancelada. |
+| `info` | En proceso del lado de operación o del banco (revisión documental, radicada, análisis de crédito, documento cargado) y oportunidad asignada, contactada o en gestión. |
 | `accent` | Avanza bien y requiere una acción del asesor: lista para radicar, documento exonerado. |
-| `success` | Resultado positivo: aprobada, en legalización, desembolsada, documento aprobado, archivo limpio. |
+| `success` | Resultado positivo: aprobada, en legalización, desembolsada, documento aprobado, archivo limpio, oportunidad convertida. |
 | `warning` | Falta algo del comprador o del sistema: esperando datos o documentos, archivo en análisis, datos faltantes en una regla. |
-| `danger` | Resultado negativo o riesgo: rechazada, documento rechazado, archivo infectado, regla incumplida. |
+| `danger` | Resultado negativo o riesgo: rechazada, documento rechazado, archivo infectado, regla incumplida, oportunidad perdida. |
 
 **Esto es presentación, no lógica de negocio.** REQUERIMIENTOS §8.5 prohíbe que el frontend defina estados, listas o transiciones. El mapa solo decide el color de una etiqueta que llega del backend: el texto siempre viene de la API (`label`), y un código desconocido cae en `neutral`, así que un estado nuevo nunca rompe la interfaz. **Pendiente:** si se quiere eliminar este mapa, el backend puede exponer el tono en `/metadata`.
 

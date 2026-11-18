@@ -100,3 +100,47 @@ Convertir lo que ya existe (los tokens de Umbral y los componentes de F0, F1, F2
 - **Manager:** se ve "Umbral · Design system", sin la lista "Get started" ni los avisos de versiones nuevas, y sin telemetría.
 - **Viewports:** Móvil 390×844, Portátil 1280×800 y Escritorio 1440×900. El alto lo elegí yo.
 - **Redacción:** además del README, se usa el tuteo de los mockups ("Sube…", "Puedes reemplazarlo…").
+
+**Parte 2 (librería de componentes):**
+- **Alcance de los reemplazos (decisión del orquestador):** los componentes nuevos se crean en `components/ui` y reemplazan las piezas repetidas en `features/filings`, `document-review`, `buyer-documents` y `buyer-portal`. `features/applications` y `features/clients` no se tocan: su migración va en la parte 3, cuando el #26 (clientes) esté en master.
+- **Componentes nuevos:**
+  - `Card`, `DataList` y `Datum`: tarjeta y lista de datos, en grilla o en línea; un dato vacío muestra "—".
+  - `PageHeader` y `BackLink`.
+  - `LoadingState` y `ErrorState` (`inline`, `banner` y `page`).
+  - `ActionModal`, `SidePanel` y `BottomSheet`.
+  - `DataTable` y `CardList` (sobre TanStack Table 9), y `ListPagination`, con `itemsLabel` y `rangeText`.
+  - `Stepper`, horizontal o vertical.
+  - Los íconos `UsersIcon`, `PlusIcon`, `SearchIcon`, `FilterIcon` y `BackIcon` del front 2.
+- **Lo que no pasó a la librería:**
+  - Las filas de documento del backoffice y las tarjetas de documento del portal: tienen datos y acciones distintos.
+  - La `dl` de 5 columnas de `FilingCard`: está en una sola feature.
+  - `HomeSkeleton` del portal: tiene una forma propia.
+  - Las pantallas de error de sesión (`backoffice-guard` y `PortalNotice`): ocupan la pantalla entera, con su propio layout.
+  - La barra de búsqueda y filtros genérica: es un patrón (MDX), no un componente. Cada listado tiene filtros propios, y la parte común ya está en `FilterChips`, `BottomSheet` y `ListPagination`.
+- **`opportunity` en `status-tones`:**
+
+  | Tono | Códigos |
+  | --- | --- |
+  | `neutral` | `NEW` y `CANCELLED` |
+  | `info` | `ASSIGNED`, `CONTACTED` e `IN_PROGRESS` |
+  | `success` | `CONVERTED` |
+  | `danger` | `LOST` |
+
+  Se agregó en `design/tokens/tokens.json` y se regeneró con `build-tokens.mjs` (los 50 pares de contraste cumplen). El README describe el uso de cada tono.
+- **Mejoras de F1, sin romper a quien ya los usa:**
+  - `CompletenessBar` suma `layout="split"` (datos y documentos lado a lado, una columna en móvil), `showTotal={false}` y `CompletenessTotal`, para poner el total en el encabezado de la tarjeta. Por defecto se ve igual que antes.
+  - `ScrollTabs` suma `countLabel` ("6 pendientes") y `countTone="warning"`.
+  - El uso en el expediente (`summary-cards.tsx` y `workspace-screen.tsx`) se cambia en la parte 3.
+- **Cambios de aspecto, que acercan al sistema:**
+  - Los esqueletos de carga del backoffice pasan de `bg.surface` con borde a `bg.muted`, como los del portal y el `AppShellSkeleton`.
+  - La hoja de carga del portal suma 8 px arriba (los de `BottomSheet`).
+  - La descripción de los modales de acción va en 13 px, salvo en "¿Ya no quieres continuar?" del portal, que conserva sus 14 px.
+- **`DataTable` ocupado (`busy`):** una barra arriba, en lugar de atenuar las filas. La opacidad del 60 % dejaba el texto por debajo de 4,5:1 y axe lo marcaba como violación seria. **Pendiente (parte 3):** la tabla de solicitudes todavía atenúa.
+- **Contraste en controles deshabilitados:** WCAG 1.4.3 no pide contraste en un control inactivo, pero axe no lo detecta en el Dragger de Ant Design ni en el prefijo de `InputNumber`. En esos dos stories ("Deshabilitado" del uploader y "Campo deshabilitado" de `MoneyInput`) se apaga solo la regla `color-contrast`, con el motivo anotado.
+- **Stories:**
+  - Uno por componente, junto a cada archivo, con los estados que aplican (vacío, cargando, error, deshabilitado, largo, móvil y oscuro) y `argTypes` descritos.
+  - `SidePanel` y `BottomSheet` comparten "Componentes/Paneles"; los toasts van en "Componentes/Toasts".
+  - Los ejemplos de los patrones van en `src/stories/patrones/` (oculto con `!dev`) y tienen pruebas en jsdom.
+  - Archivos de muestra para el visor (`.storybook/public`: un PDF de 2 páginas y un SVG, sin datos reales). `*.pdf` queda como binario en `.gitattributes`.
+- **`next/navigation` en Storybook:** `parameters.nextjs.appDirectory = true` global. El `AppShell` usa `navigation.pathname`.
+- **`test:storybook` estable:** `optimizeDeps.include` con antd, Query, Table, React Hook Form y Zod. Sin eso, Vite las optimizaba a mitad de la corrida, recargaba la página y fallaban stories al azar (pasó una vez después de `build-storybook`).

@@ -44,6 +44,7 @@ const KIND_LABEL: Record<keyof ToneMap, string> = {
   fileScan: "Análisis antivirus del archivo",
   ruleOutcome: "Regla del banco",
   filing: "Radicación",
+  opportunity: "Oportunidad",
 };
 
 const cssVar = (name: string) => `var(--${name})`;

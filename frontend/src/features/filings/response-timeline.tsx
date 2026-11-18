@@ -4,6 +4,7 @@ import { Button } from "antd";
 import type { ReactNode } from "react";
 
 import { Money } from "@/components/ui/money";
+import { ErrorState, LoadingState } from "@/components/ui/state-views";
 import { StatusBadge } from "@/components/ui/status-badge";
 import type { useEvidenceViewer } from "@/features/filings/evidence";
 import {
@@ -250,16 +251,14 @@ export function ResponseTimeline({
         )}
       </div>
       {responses.isPending ? (
-        <p role="status" className="text-text-tertiary m-0 text-sm">
-          Cargando las respuestas…
-        </p>
+        <LoadingState label="Cargando las respuestas…" blocks={[]} />
       ) : responses.isError ? (
-        <div role="alert" className="flex items-center gap-2 text-sm">
-          <span className="text-text-tertiary">No pudimos cargar las respuestas.</span>
-          <Button size="small" onClick={() => void responses.refetch()}>
-            Reintentar
-          </Button>
-        </div>
+        <ErrorState
+          variant="inline"
+          title="No pudimos cargar las respuestas."
+          onRetry={() => void responses.refetch()}
+          retrying={responses.isFetching}
+        />
       ) : items.length === 0 ? (
         <p className="text-text-tertiary m-0 text-sm">El banco todavía no ha respondido.</p>
       ) : (

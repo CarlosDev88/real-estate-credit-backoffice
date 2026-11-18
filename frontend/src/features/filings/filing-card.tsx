@@ -4,6 +4,7 @@ import { Button } from "antd";
 import { useId, useState } from "react";
 import type { ReactNode } from "react";
 
+import { ErrorState, LoadingState } from "@/components/ui/state-views";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { useDocumentSlots } from "@/features/document-review/queries";
 import { productLabel } from "@/features/filings/filing-modals";
@@ -46,21 +47,15 @@ function Snapshots({ applicationId, filingId }: { applicationId: string; filingI
   const slots = useDocumentSlots(applicationId);
   const labels = new Map((slots.data ?? []).map((s) => [s.id, s.label]));
 
-  if (snapshots.isPending) {
-    return (
-      <p role="status" className="text-text-tertiary m-0 text-sm">
-        Cargando los documentos…
-      </p>
-    );
-  }
+  if (snapshots.isPending) return <LoadingState label="Cargando los documentos…" blocks={[]} />;
   if (snapshots.isError) {
     return (
-      <div role="alert" className="flex items-center gap-2 text-sm">
-        <span className="text-text-tertiary">No pudimos cargar los documentos entregados.</span>
-        <Button size="small" onClick={() => void snapshots.refetch()}>
-          Reintentar
-        </Button>
-      </div>
+      <ErrorState
+        variant="inline"
+        title="No pudimos cargar los documentos entregados."
+        onRetry={() => void snapshots.refetch()}
+        retrying={snapshots.isFetching}
+      />
     );
   }
   const items = snapshots.data.items;

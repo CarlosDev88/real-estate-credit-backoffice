@@ -11,6 +11,8 @@ const config: StorybookConfig = {
   // Documentos en src/stories/ y stories junto a cada componente.
   stories: ["../src/**/*.mdx", "../src/**/*.stories.@(ts|tsx)"],
   addons: ["@storybook/addon-docs", "@storybook/addon-a11y", "@storybook/addon-vitest"],
+  // Archivos de muestra (sin datos reales) para el visor y la carga de documentos.
+  staticDirs: ["./public"],
   framework: {
     name: "@storybook/nextjs-vite",
     options: { nextConfigPath: path.join(frontendDir, "next.config.ts") },

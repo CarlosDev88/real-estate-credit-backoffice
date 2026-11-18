@@ -35,6 +35,8 @@ const preview: Preview = {
   decorators: [withUmbral],
   parameters: {
     layout: "padded",
+    // La app usa el App Router: `next/navigation` (usePathname, useRouter) va simulado.
+    nextjs: { appDirectory: true },
     // El fondo lo pone el tema (`bg.canvas`), no el addon de fondos.
     backgrounds: { disable: true },
     viewport: {
@@ -84,6 +86,16 @@ const preview: Preview = {
           ],
           "Componentes",
           "Patrones",
+          [
+            "Formulario con validación",
+            "Lista con filtros en la URL",
+            "Tabla con orden y paginación",
+            "Panel lateral de revisión",
+            "Modal de confirmación",
+            "Carga de archivo",
+            "Estados vacío, cargando y error",
+            "Encabezado de página",
+          ],
         ],
       },
     },

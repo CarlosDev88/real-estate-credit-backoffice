@@ -1,0 +1,84 @@
+import { Meta, Story } from "@storybook/addon-docs/blocks";
+
+import * as Ejemplos from "./patrones.stories";
+
+<Meta title="Patrones/Estados vacío, cargando y error" />
+
+# Estados vacío, cargando y error
+
+Toda vista que depende de la API tiene los tres. Cambia el estado del ejemplo:
+
+<Story of={Ejemplos.Estados} />
+
+## Cuál usar
+
+{/* Tabla en JSX: el MDX de Storybook no trae tablas de Markdown (GFM). */}
+
+<table>
+  <thead>
+    <tr>
+      <th>Estado</th>
+      <th>Componente</th>
+      <th>Cuándo</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Cargando</td>
+      <td>
+        <code>LoadingState</code> con <code>blocks</code>
+      </td>
+      <td>
+        Una lista, una pestaña o una tarjeta: un bloque por tarjeta que viene, con su altura
+        aproximada.
+      </td>
+    </tr>
+    <tr>
+      <td>Cargando</td>
+      <td>
+        <code>LoadingState</code> con <code>blocks=&#123;[]&#125;</code>
+      </td>
+      <td>Una sección pequeña dentro de una tarjeta ("Cargando las respuestas…").</td>
+    </tr>
+    <tr>
+      <td>Error</td>
+      <td>
+        <code>ErrorState variant="banner"</code>
+      </td>
+      <td>Una pestaña o una lista.</td>
+    </tr>
+    <tr>
+      <td>Error</td>
+      <td>
+        <code>ErrorState variant="inline"</code>
+      </td>
+      <td>Una sección dentro de una tarjeta.</td>
+    </tr>
+    <tr>
+      <td>Error</td>
+      <td>
+        <code>ErrorState variant="page"</code>
+      </td>
+      <td>
+        La vista entera (en el portal, con <code>titleAs="h1"</code>).
+      </td>
+    </tr>
+    <tr>
+      <td>Vacío</td>
+      <td>
+        <code>EmptyState</code>
+      </td>
+      <td>No hay datos: qué pasa y la acción que lo destraba.</td>
+    </tr>
+  </tbody>
+</table>
+
+## Reglas
+
+- **Siempre "Reintentar"** en el error, y `retrying` mientras vuelve a pedir.
+- **El vacío con filtros** ofrece "Limpiar filtros"; sin datos todavía, la acción para crear el primero (si el usuario puede).
+- **El esqueleto tiene la forma de lo que viene,** no un spinner en el centro.
+- **Al cambiar de página o de filtro,** los datos anteriores siguen a la vista (`busy`): no vuelve el esqueleto.
+- **El detalle del error es el mensaje de la API;** el título dice qué no se pudo cargar.
+
+<Story of={Ejemplos.EstadosOscuro} />

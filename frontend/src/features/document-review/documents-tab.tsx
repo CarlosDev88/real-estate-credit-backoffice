@@ -1,8 +1,9 @@
 "use client";
 
-import { Alert, Button } from "antd";
+import { Button } from "antd";
 import { useMemo, useState } from "react";
 
+import { ErrorState, LoadingState } from "@/components/ui/state-views";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { HouseIcon } from "@/components/ui/icons";
 import type { FinancialProfile, Participant } from "@/features/applications/workspace-queries";
@@ -243,27 +244,14 @@ export function DocumentsTab({
     return rest.find(isAwaitingReview) ?? null;
   }, [open, ordered]);
 
-  if (slots.isPending) {
-    return (
-      <div
-        role="status"
-        aria-label="Cargando documentos"
-        className="bg-bg-surface border-border-default h-40 animate-pulse rounded-lg border"
-      />
-    );
-  }
+  if (slots.isPending) return <LoadingState label="Cargando documentos" blocks={[160]} />;
   if (slots.isError) {
     return (
-      <Alert
-        type="error"
-        showIcon
+      <ErrorState
         title="No pudimos cargar los documentos"
-        description={slots.error.message}
-        action={
-          <Button size="small" onClick={() => void slots.refetch()}>
-            Reintentar
-          </Button>
-        }
+        message={slots.error.message}
+        onRetry={() => void slots.refetch()}
+        retrying={slots.isFetching}
       />
     );
   }

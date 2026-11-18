@@ -1,0 +1,29 @@
+import { Meta, Story } from "@storybook/addon-docs/blocks";
+
+import * as Ejemplos from "./patrones.stories";
+
+<Meta title="Patrones/Lista con filtros en la URL" />
+
+# Lista con filtros en la URL
+
+Búsqueda, filtros, orden, página y tamaño de página viven en los query params (`/clientes?search=ana&origin=FAIR&page=2`). Un enlace copiado abre la misma vista, y atrás y adelante del navegador funcionan.
+
+<Story of={Ejemplos.ListaConFiltros} />
+
+## Cómo se arma
+
+- Un módulo `list-params.ts` por listado: `parse…(searchParams)` con los valores por defecto, y `serialize…(params)`, que **no escribe los valores por defecto** en la URL.
+- Un hook `use…Params()` con `useSearchParams` y `router.replace`. Cambiar un filtro vuelve a la página 1.
+- La búsqueda espera 300 ms (`SEARCH_DEBOUNCE_MS`) antes de escribir en la URL, y el campo sigue a la URL si cambia desde afuera ("Limpiar", atrás).
+- La clave de la caché de TanStack Query sale de los params: la misma URL reusa la misma respuesta.
+- Un valor de la URL que la API no conoce cae en el valor por defecto, sin romper la vista.
+
+## Reglas (design/README.md, "Tabla")
+
+- **Los filtros visibles no se repiten como chips.** Los chips (`FilterChips`) son solo para filtros que no se ven en la barra.
+- **En móvil,** los filtros van en una hoja inferior (`BottomSheet`) detrás de un botón "Filtros (n)", y los activos se ven como chips.
+- **"Limpiar"** aparece solo si hay algo que limpiar.
+- **El control dice qué filtra** ("Origen: Feria de vivienda") y tiene su `aria-label` ("Filtrar por origen").
+- Las opciones de los filtros vienen de la API (catálogos).
+
+<Story of={Ejemplos.ListaConFiltrosMovil} />

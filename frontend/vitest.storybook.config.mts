@@ -9,6 +9,19 @@ import { defineConfig } from "vitest/config";
 // (falla con violaciones serias o críticas). Va aparte de `pnpm test` (jsdom, con cobertura).
 export default defineConfig({
   plugins: [storybookTest({ configDir: path.join(import.meta.dirname, ".storybook") })],
+  // Optimizadas desde el inicio: si Vite las descubre a mitad de la corrida, recarga la
+  // página y los stories de ese momento fallan al azar.
+  optimizeDeps: {
+    include: [
+      "antd",
+      "@ant-design/nextjs-registry",
+      "@tanstack/react-query",
+      "@tanstack/react-table",
+      "react-hook-form",
+      "@hookform/resolvers/zod",
+      "zod",
+    ],
+  },
   test: {
     name: "storybook",
     browser: {

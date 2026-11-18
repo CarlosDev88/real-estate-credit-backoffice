@@ -4,6 +4,8 @@ import { App, Button } from "antd";
 import { useRouter } from "next/navigation";
 import { useId, useState } from "react";
 
+import { PageHeader } from "@/components/ui/page-header";
+import { ErrorState, LoadingState } from "@/components/ui/state-views";
 import { usePortal } from "@/features/buyer-portal/portal-context";
 import { PORTAL_HOME, PortalPage } from "@/features/buyer-portal/portal-shell";
 import { useConsentAction, useConsents, type BuyerConsent } from "@/features/buyer-portal/queries";
@@ -130,28 +132,22 @@ export function ConsentsScreen() {
 
   return (
     <PortalPage>
-      <div>
-        <h1 className="m-0 text-3xl font-semibold tracking-tight">Antes de empezar</h1>
-        <p className="text-text-secondary text-md mt-1 mb-0">
-          Lee y acepta los consentimientos para seguir con tu solicitud.
-        </p>
-      </div>
+      <PageHeader
+        variant="portal"
+        title="Antes de empezar"
+        description="Lee y acepta los consentimientos para seguir con tu solicitud."
+      />
 
-      {consents.isPending && (
-        <div aria-busy="true" className="grid gap-3">
-          <span className="sr-only" role="status">
-            Cargando…
-          </span>
-          <div className="bg-bg-muted h-32 animate-pulse rounded-xl motion-reduce:animate-none" />
-          <div className="bg-bg-muted h-32 animate-pulse rounded-xl motion-reduce:animate-none" />
-        </div>
-      )}
+      {consents.isPending && <LoadingState variant="portal" blocks={[128, 128]} />}
 
       {consents.isError && (
-        <div role="alert" className="grid justify-items-start gap-2">
-          <p className="m-0">{consents.error.message}</p>
-          <Button onClick={() => void consents.refetch()}>Reintentar</Button>
-        </div>
+        <ErrorState
+          variant="page"
+          title="No pudimos cargar los consentimientos"
+          message={consents.error.message}
+          onRetry={() => void consents.refetch()}
+          retrying={consents.isFetching}
+        />
       )}
 
       {consents.data && (
