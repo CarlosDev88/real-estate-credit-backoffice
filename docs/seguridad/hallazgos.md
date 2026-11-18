@@ -19,6 +19,13 @@ uno expone un valor, se describe y se corta.
 | [SEC-11](#sec-11--un-json-de-más-de-25-mb-responde-500-sin-debug-o-la-página-de-depuración-con-debug-no-413) | Un JSON de más de 2,5 MB responde 500 (sin `DEBUG`) o la página de depuración (con `DEBUG`), no 413 | Baja | API8 | abierto | 2 |
 | [SEC-12](#sec-12--las-rutas-inexistentes-y-los-ids-que-no-son-uuid-responden-html-de-django-no-el-formato-de-error-de-la-api) | Las rutas inexistentes y los ids que no son UUID responden HTML de Django, no el formato de error de la API | Baja | API8 | abierto | 2 |
 | [SEC-13](#sec-13--el-contrato-no-coincide-con-la-api-en-2-respuestas-y-no-documenta-varios-estados) | El contrato no coincide con la API en 2 respuestas y no documenta varios estados | Informativa | API9 | abierto | 2 |
+| [SEC-14](#sec-14--la-recuperación-de-contraseña-revela-si-el-correo-existe-cuando-falla-el-envío) | La recuperación de contraseña revela si el correo existe cuando falla el envío | Media | API2 | abierto | 4 |
+| [SEC-15](#sec-15--el-log-de-peticiones-guarda-la-búsqueda-completa-documento-o-nombre) | El log de peticiones guarda la búsqueda completa (documento o nombre) | Baja | API8 | abierto | 4 |
+| [SEC-16](#sec-16--un-409-al-crear-un-cliente-confirma-que-esa-cédula-ya-está-registrada) | Un `409` al crear un cliente confirma que esa cédula ya está registrada | Baja | API3 | abierto | 4 |
+| [SEC-17](#sec-17--textos-de-la-configuración-de-bancos-sin-longitud-máxima) | Textos de la configuración de bancos sin longitud máxima | Informativa | API4 | abierto | 4 |
+| [SEC-18](#sec-18--admin-de-django-está-publicado-con-la-api-y-su-login-no-tiene-límite-de-intentos) | `/admin/` de Django está publicado con la API y su login no tiene límite de intentos | Baja | API8 | abierto | 4 |
+| [SEC-19](#sec-19--el-esquema-openapi-y-la-documentación-interactiva-son-públicos) | El esquema OpenAPI y la documentación interactiva son públicos | Informativa | API9 | abierto | 4 |
+| [SEC-20](#sec-20--la-documentación-de-la-api-promete-9-rutas-que-no-existen-y-omite-5-que-sí) | La documentación de la API promete 9 rutas que no existen y omite 5 que sí | Informativa | API9 | abierto | 4 |
 
 ---
 
@@ -90,7 +97,7 @@ uno expone un valor, se describe y se corta.
 - **Severidad:** Informativa (aplica al desplegar).
 - **Categoría:** OWASP API8:2023 — Security Misconfiguration
 - **Dónde:** `backend/Dockerfile`.
-- **Cómo reproducirlo:** `hadolint` 2.15.1 → `DL3013` (línea 11, `pip install --upgrade pip` sin versión). En la Parte 2, ZAP (10036) y la revisión de cabeceras: `runserver` responde `Server: WSGIServer/0.2 CPython/3.11.18`, que revela la versión exacta de Python. Revisión manual: `FROM python:3.11-slim` sin `@sha256:`; `CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]`; `COPY . ./` deja `tests/`, `scripts/` y `docker-compose.yml` dentro de la imagen.
+- **Cómo reproducirlo:** `hadolint` 2.15.1 → `DL3013` (línea 11, `pip install --upgrade pip` sin versión). En la Parte 2, ZAP (10036) y la revisión de cabeceras: `runserver` responde `Server: WSGIServer/0.2 CPython/3.11.18`, que revela la versión exacta de Python. En la Parte 4: `GET /static/../data/documents/` con `runserver` responde 500 (Django bloquea la ruta con `SuspiciousFileOperation`, no se lee nada); es el servidor de estáticos de desarrollo, solo con `DEBUG`. Revisión manual: `FROM python:3.11-slim` sin `@sha256:`; `CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]`; `COPY . ./` deja `tests/`, `scripts/` y `docker-compose.yml` dentro de la imagen.
 - **Qué pasa:** dos construcciones de la misma versión del código pueden dar imágenes distintas (la base y `pip` cambian solas), y la imagen arranca con el servidor de desarrollo de Django.
 - **Qué debería pasar:** imagen reproducible y servidor de aplicación (`gunicorn`, ya en `requirements.txt`) en la imagen de producción.
 - **Lo que ya está bien (verificado):** usuario no root (`id` en el contenedor → `uid=100(app) gid=101(app)`, también en `mvp-sec-api`); sin `.env` en la imagen (`.dockerignore` lo excluye; `test -e /app/.env` → no existe); sin secretos en `ENV` ni en las capas (`docker image inspect` y `docker history`: el único `GPG_KEY` es el id público de la clave de firma de Python); `/data/documents` con dueño `app` y modo `755`.
@@ -179,4 +186,81 @@ uno expone un valor, se describe y se corta.
 - **Qué debería pasar:** el contrato es la fuente de verdad del frontend y de las pruebas (`schema.d.ts`).
 - **Impacto:** herramientas que validan contra el contrato (incluido el propio frontend tipado) no detectan cambios reales; dificulta auditar qué expone cada rol.
 - **Corrección sugerida:** corregir los dos serializers o su `extend_schema`, y documentar `400`/`404`/`428` donde aplican; regenerar `schema.d.ts`.
+- **Esfuerzo estimado:** pequeño.
+
+### SEC-14 — La recuperación de contraseña revela si el correo existe cuando falla el envío
+- **Severidad:** Media (enumeración de usuarios; CVSS 3.1 ~5.3: AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N).
+- **Categoría:** OWASP API2:2023 — Broken Authentication
+- **Dónde:** `backend/apps/identity/services.py`, `request_password_reset` (`transaction.on_commit(lambda: send_password_reset_email(...))`, solo si el usuario existe) y `backend/apps/identity/emails.py`, `send_password_reset_email` (`send_mail` síncrono, sin manejo de errores; el propio docstring dice "por ahora el envío es síncrono").
+- **Cómo reproducirlo:** prueba `tests/security/test_auth.py::test_reset_request_answers_the_same_when_the_mail_fails` (xfail SEC-14): con un backend de correo que falla, `POST /api/v1/auth/password-reset-requests` responde `202` para un correo que no existe y **500** para uno que existe. Medido en el 8010 (correo a la consola): mediana de 42 ms con correo existente frente a 28 ms con inexistente (+14 ms, bajo el umbral de la spec); con SMTP real la diferencia es el tiempo de envío del correo.
+- **Qué pasa:** el correo sale dentro de la misma petición. Si el SMTP está caído o lento, la respuesta (500 o segundos de más) solo cambia cuando el usuario existe.
+- **Qué debería pasar:** REQ §9.3: "respuesta uniforme". La misma respuesta y el mismo tiempo exista o no el correo, y un fallo del correo no debe llegar a la respuesta (API §21: "sus fallos no revierten la operación principal").
+- **Impacto:** un atacante sin cuenta confirma qué correos son de usuarios internos (insumo para *phishing* y para SEC-09), sobre todo en una caída del SMTP.
+- **Corrección sugerida:** mandar el correo por la cola de notificaciones (Celery, como `apps/notifications`), o al menos envolver el envío en `try/except` con log y hacerlo fuera de la petición. Quitar la marca `xfail` de la prueba.
+- **Esfuerzo estimado:** pequeño.
+
+### SEC-15 — El log de peticiones guarda la búsqueda completa (documento o nombre)
+- **Severidad:** Baja (datos personales en logs operativos).
+- **Categoría:** OWASP API8:2023 — Security Misconfiguration (REQ RNF-16)
+- **Dónde:** el log de acceso (`django.server` con `runserver`; con gunicorn, su *access log*) escribe la URL con la consulta; `backend/config/log_redaction.py` solo oculta el token de las URL firmadas.
+- **Cómo reproducirlo:** `GET /api/v1/clients?search=9900000013` y `GET /api/v1/applications?search=laura` en el 8010 → `docker logs mvp-sec-api` muestra la línea con el número de documento completo y el nombre. Prueba `tests/security/test_exposure.py::test_search_terms_are_not_written_to_the_access_log` (xfail SEC-15).
+- **Qué pasa:** cada búsqueda del backoffice deja en el log el documento, el nombre o el correo que se buscó.
+- **Qué debería pasar:** RNF-16: "los logs estructurados incluyen ese ID sin contener secretos ni PII sensible completa".
+- **Impacto:** quien lee los logs (operación, un proveedor de logs) ve datos personales; los logs suelen guardarse más tiempo y con menos control que la base.
+- **Corrección sugerida:** extender el filtro de `config/log_redaction.py` para reemplazar el valor de `search` (y de `email`, `document_number`) por `***` en cualquier mensaje; en producción, un formato de *access log* de gunicorn sin la consulta.
+- **Esfuerzo estimado:** pequeño.
+
+### SEC-16 — Un `409` al crear un cliente confirma que esa cédula ya está registrada
+- **Severidad:** Baja (existencia de una persona en el CRM; documentado en API §13). Sube a Media mientras no exista SEC-10 (sin límite general, se puede probar a escala).
+- **Categoría:** OWASP API3:2023 — Broken Object Property Level Authorization
+- **Dónde:** `backend/apps/crm/services.py`, `create_client` y `_duplicate_client_error` (también la creación de participantes con el bloque de identidad).
+- **Cómo reproducirlo:** como `broker.b`, `POST /api/v1/clients` con el tipo y número de documento de un cliente del lado A → `409 DUPLICATE_CLIENT_DOCUMENT`. La respuesta no trae el `resource_id` ni datos del otro cliente (bien: `tests/security/test_exposure.py::test_duplicate_document_never_reveals_the_other_client`), pero el código de estado confirma que esa persona ya es cliente. Prueba `test_a_broker_cannot_tell_whether_a_document_is_already_registered` (xfail SEC-16).
+- **Qué pasa:** cualquiera con `clients.create` (también un broker independiente, que es externo) puede saber si una cédula está en la base, aunque el cliente sea de otro broker o asesor.
+- **Qué debería pasar:** REQ §3: el broker solo ve lo que originó. Saber que un tercero ya es cliente es información de otro alcance.
+- **Impacto:** fuga de que una persona tramita (o tramitó) un crédito con la empresa; competencia entre brokers por el mismo cliente.
+- **Corrección sugerida:** decisión de producto. Opciones: para un actor que no ve al cliente, crear una solicitud de "cliente ya existente" que revise un asesor en lugar del 409 directo; o aceptar el riesgo y dejarlo en `docs/SEGURIDAD.md` con el límite de SEC-10 como mitigación.
+- **Esfuerzo estimado:** mediano (si se cambia el flujo); pequeño (si se acepta).
+
+### SEC-17 — Textos de la configuración de bancos sin longitud máxima
+- **Severidad:** Informativa (solo el administrador los escribe).
+- **Categoría:** OWASP API4:2023 — Unrestricted Resource Consumption
+- **Dónde:** `backend/apps/banking/serializers.py`, `operational_notes` (líneas 87 y 99), sin `max_length`.
+- **Cómo reproducirlo:** como admin, `POST /api/v1/banks` con `operational_notes` de 1 MB → `201`. Prueba `tests/security/test_resources.py::test_bank_operational_notes_have_a_maximum_length` (xfail SEC-17). En cambio, todos los textos libres que escriben asesores, brokers y compradores tienen tope (`test_free_text_fields_have_a_maximum_length`, 9 casos).
+- **Qué pasa:** un texto de hasta el tamaño máximo del cuerpo (2,5 MB) queda guardado y viaja en cada lectura de `/banks`.
+- **Qué debería pasar:** como el resto de la API, una longitud máxima razonable.
+- **Impacto:** bajo: respuestas pesadas para los asesores que listan bancos, por un error o una sesión de admin robada.
+- **Corrección sugerida:** `max_length=4000` en los dos campos (una línea cada uno).
+- **Esfuerzo estimado:** pequeño.
+
+### SEC-18 — `/admin/` de Django está publicado con la API y su login no tiene límite de intentos
+- **Severidad:** Baja (hoy no hay usuarios `is_staff`, así que nadie puede entrar).
+- **Categoría:** OWASP API8:2023 — Security Misconfiguration
+- **Dónde:** `backend/config/urls.py` (`path("admin/", admin.site.urls)`), con 42 modelos registrados (`apps/*/admin.py`).
+- **Cómo reproducirlo:** 12 intentos fallidos seguidos en `POST /admin/login/` del 8010 → 12 × 200, ninguno frenado. Prueba `tests/security/test_config_inventory.py::test_django_admin_login_is_rate_limited` (xfail SEC-18). `User.objects.filter(is_staff=True).count()` → 0.
+- **Qué pasa:** el admin usa su propio login (sesión de Django, sin los límites de `AUTH_RATE_LIMITS`) y edita los modelos directamente, sin los servicios del dominio ni la auditoría funcional.
+- **Qué debería pasar:** en producción, sin admin en el host público, o detrás de una red privada o de un límite de intentos.
+- **Impacto:** si alguien crea un usuario `is_staff` (por ejemplo con `createsuperuser`), su contraseña queda expuesta a fuerza bruta sin límite y quien entre salta todas las reglas de negocio.
+- **Corrección sugerida:** montar `admin/` solo con `DEBUG` o con una variable (`ADMIN_ENABLED`), en una ruta no obvia, y con un límite de intentos si se publica.
+- **Esfuerzo estimado:** pequeño.
+
+### SEC-19 — El esquema OpenAPI y la documentación interactiva son públicos
+- **Severidad:** Informativa.
+- **Categoría:** OWASP API9:2023 — Improper Inventory Management
+- **Dónde:** `backend/config/urls.py` (`/openapi.json` y `/docs`), sin autenticación también con `DEBUG=False` (servidor 8011 de la Parte 2).
+- **Cómo reproducirlo:** `GET /openapi.json` y `GET /docs` sin sesión → 200. Prueba `tests/security/test_config_inventory.py::test_api_schema_and_docs_need_a_session` (xfail SEC-19).
+- **Qué pasa:** cualquiera obtiene el mapa completo de la API: rutas, parámetros, códigos de error y nombres de permisos.
+- **Qué debería pasar:** en producción, el esquema solo para usuarios internos (o no publicado); el frontend usa `contracts/openapi.json` del repo.
+- **Impacto:** acelera el reconocimiento de un atacante; no expone datos por sí solo.
+- **Corrección sugerida:** publicar `/openapi.json` y `/docs` solo con `DEBUG` (o con `IsAdminUser`), en `config/urls.py`.
+- **Esfuerzo estimado:** pequeño.
+
+### SEC-20 — La documentación de la API promete 9 rutas que no existen y omite 5 que sí
+- **Severidad:** Informativa.
+- **Categoría:** OWASP API9:2023 — Improper Inventory Management
+- **Dónde:** `docs/API_REST_MVP_CREDITO.md` frente al contrato y a `config/urls.py` (que sí coinciden entre sí: `test_every_api_route_is_in_the_contract_and_back`).
+- **Cómo reproducirlo:** prueba `tests/security/test_config_inventory.py::test_every_documented_route_exists` (xfail SEC-20). Documentadas y no implementadas: `GET /clients/{id}/activity`, `POST /clients/{id}/notes`, `GET /opportunities/{id}/activity`, `POST /opportunities/{id}/notes`, `GET /projects/{id}/summary`, `GET /metadata/form-schemas/{form_code}`, `GET /reports/advisors`, `GET /reports/banks`, `GET /reports/document-quality`. Implementadas y sin documentar en ninguna parte: las 5 de direcciones del cliente (`GET`/`POST /clients/{id}/addresses`, `PATCH`/`DELETE /client-addresses/{id}`); las del portal del comprador para perfil, ingresos, inmueble y financiación solo aparecen en el texto, no en las tablas.
+- **Qué pasa:** quien audite o integre con la documentación espera permisos y rutas que no existen, y no ve rutas que sí reciben datos personales.
+- **Qué debería pasar:** documentación, contrato y código con el mismo inventario.
+- **Impacto:** las rutas sin documentar no pasan por las revisiones de acceso basadas en la documentación (aquí sí: la matriz se arma desde el contrato).
+- **Corrección sugerida:** marcar las 9 como "fuera del MVP" o quitarlas de la tabla; agregar las 5 de direcciones con su permiso y alcance.
 - **Esfuerzo estimado:** pequeño.
