@@ -18,6 +18,7 @@ from rest_framework.generics import GenericAPIView
 from rest_framework.request import Request
 from rest_framework.response import Response
 
+from apps.audit.actions import AuditAction
 from apps.banking import services
 from apps.banking.models import (
     Bank,
@@ -92,6 +93,9 @@ def _get_bank(bank_id: Any) -> Bank:
 
 
 class BankListView(PermissionCodeView):
+    # Auditoría (módulo 14, apps/audit/hooks.py).
+    audit_actions = {"POST": AuditAction.BANK_CHANGED}
+    audit_resource_type = "banks"
     required_permissions = {"GET": "banks.read", "POST": "banks.create"}
     filter_backends = [SearchFilter, StrictOrderingFilter]
     search_fields = ["code", "name", "tax_id"]
@@ -131,6 +135,9 @@ class BankListView(PermissionCodeView):
 
 
 class BankDetailView(PermissionCodeView):
+    # Auditoría (módulo 14, apps/audit/hooks.py).
+    audit_actions = {"PATCH": AuditAction.BANK_CHANGED}
+    audit_resource_type = "banks"
     required_permissions = {"GET": "banks.read", "PATCH": "banks.update"}
 
     def _detail(self, bank_id: Any) -> dict[str, Any]:
@@ -217,6 +224,9 @@ def _get_product(product_id: Any) -> BankProduct:
 
 
 class BankProductListView(PermissionCodeView):
+    # Auditoría (módulo 14, apps/audit/hooks.py).
+    audit_actions = {"POST": AuditAction.BANK_PRODUCT_CHANGED}
+    audit_resource_type = "bank_products"
     required_permissions = {"GET": "banks.read", "POST": "banks.create"}
     filter_backends = [SearchFilter, StrictOrderingFilter]
     search_fields = ["code", "name", "bank__name", "bank__code"]
@@ -285,6 +295,9 @@ class BankProductListView(PermissionCodeView):
 
 
 class BankProductDetailView(PermissionCodeView):
+    # Auditoría (módulo 14, apps/audit/hooks.py).
+    audit_actions = {"PATCH": AuditAction.BANK_PRODUCT_CHANGED}
+    audit_resource_type = "bank_products"
     required_permissions = {"GET": "banks.read", "PATCH": "banks.update"}
 
     @extend_schema(
@@ -358,6 +371,9 @@ class BankProductDeactivateView(_ProductStatusView):
 
 
 class BankProductPurposesView(PermissionCodeView):
+    # Auditoría (módulo 14, apps/audit/hooks.py).
+    audit_actions = {"PUT": AuditAction.BANK_PRODUCT_CHANGED}
+    audit_resource_type = "bank_products"
     required_permissions = {"PUT": "banks.update"}
 
     @extend_schema(
@@ -390,6 +406,9 @@ def _rule_data(rule_id: Any) -> dict[str, Any]:
 
 
 class BankPolicyRuleListView(PermissionCodeView):
+    # Auditoría (módulo 14, apps/audit/hooks.py).
+    audit_actions = {"POST": AuditAction.BANK_RULE_CHANGED}
+    audit_resource_type = "bank_policy_rules"
     required_permissions = {"GET": "bank_rules.read", "POST": "bank_rules.create"}
     filter_backends = [SearchFilter, StrictOrderingFilter]
     search_fields = ["code", "message"]
@@ -455,6 +474,9 @@ class BankPolicyRuleListView(PermissionCodeView):
 
 
 class BankPolicyRuleDetailView(PermissionCodeView):
+    # Auditoría (módulo 14, apps/audit/hooks.py).
+    audit_actions = {"PATCH": AuditAction.BANK_RULE_CHANGED}
+    audit_resource_type = "bank_policy_rules"
     required_permissions = {"GET": "bank_rules.read", "PATCH": "bank_rules.update"}
 
     @extend_schema(

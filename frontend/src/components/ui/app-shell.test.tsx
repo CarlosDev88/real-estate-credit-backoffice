@@ -55,7 +55,7 @@ describe("groupNav", () => {
       ["Configuración", 1],
     ]);
     expect(groupNav([])).toEqual([]);
-    expect(NAV_ITEMS.map((i) => i.permission)).toEqual(["applications.read"]);
+    expect(NAV_ITEMS.map((i) => i.permission)).toEqual(["applications.read", "clients.read"]);
   });
 });
 

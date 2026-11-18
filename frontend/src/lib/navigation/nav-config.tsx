@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 
 import { DashboardIcon } from "@/features/dashboard/dashboard-icon";
 import { HouseIcon } from "@/components/ui/icons";
+import { UsersIcon } from "@/features/clients/components/icons";
 
 // Navegación del backoffice. Es la estructura de la app, no una lista de negocio:
 // cada entrada pide un permiso de `/auth/me` y solo aparece si la ruta existe.
@@ -34,6 +35,14 @@ export const NAV_ITEMS: NavItem[] = [
     icon: <HouseIcon />,
     group: "Comercial",
     permission: "applications.read",
+  },
+  // F4: el ícono vive en `features/clients` hasta que el front 1 lo pase a `components/ui`.
+  {
+    href: "/clientes",
+    label: "Clientes",
+    icon: <UsersIcon />,
+    group: "Comercial",
+    permission: "clients.read",
   },
 ];
 

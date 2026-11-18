@@ -23,6 +23,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
 
+from apps.audit.actions import AuditAction
 from apps.catalogs import services
 from apps.catalogs.models import Catalog, CatalogItem, WorkflowTransition
 from apps.catalogs.serializers import (
@@ -75,6 +76,9 @@ def _catalogs_queryset() -> QuerySet[Catalog]:
 
 
 class CatalogListView(PermissionCodeView):
+    # Auditoría (módulo 14, apps/audit/hooks.py).
+    audit_actions = {"POST": AuditAction.CATALOG_CHANGED}
+    audit_resource_type = "catalogs"
     required_permissions = {"GET": "catalogs.read", "POST": "catalogs.create"}
     serializer_class = CatalogSerializer
     filter_backends = [SearchFilter, StrictOrderingFilter]
@@ -119,6 +123,9 @@ class CatalogListView(PermissionCodeView):
 
 
 class CatalogDetailView(PermissionCodeView):
+    # Auditoría (módulo 14, apps/audit/hooks.py).
+    audit_actions = {"PATCH": AuditAction.CATALOG_CHANGED}
+    audit_resource_type = "catalogs"
     required_permissions = {"GET": "catalogs.read", "PATCH": "catalogs.update"}
 
     def _get_catalog(self, catalog_id: Any) -> Catalog:
@@ -159,6 +166,9 @@ class CatalogDetailView(PermissionCodeView):
 
 
 class CatalogItemListView(PermissionCodeView):
+    # Auditoría (módulo 14, apps/audit/hooks.py).
+    audit_actions = {"POST": AuditAction.CATALOG_CHANGED}
+    audit_resource_type = "catalog_items"
     required_permissions = {"GET": "catalogs.read", "POST": "catalogs.create"}
     serializer_class = CatalogItemSerializer
     filter_backends = [SearchFilter, StrictOrderingFilter]
@@ -217,6 +227,9 @@ class CatalogItemListView(PermissionCodeView):
 
 
 class CatalogItemOrderView(PermissionCodeView):
+    # Auditoría (módulo 14, apps/audit/hooks.py).
+    audit_actions = {"PUT": AuditAction.CATALOG_CHANGED}
+    audit_resource_type = "catalogs"
     required_permissions = {"PUT": "catalogs.update"}
 
     @extend_schema(
@@ -245,6 +258,9 @@ def _get_item(item_id: Any) -> CatalogItem:
 
 
 class CatalogItemDetailView(PermissionCodeView):
+    # Auditoría (módulo 14, apps/audit/hooks.py).
+    audit_actions = {"PATCH": AuditAction.CATALOG_CHANGED}
+    audit_resource_type = "catalog_items"
     required_permissions = {"GET": "catalogs.read", "PATCH": "catalogs.update"}
 
     @extend_schema(
@@ -281,6 +297,9 @@ class CatalogItemDetailView(PermissionCodeView):
 
 
 class _CatalogItemActivationView(PermissionCodeView):
+    # Auditoría (módulo 14, apps/audit/hooks.py).
+    audit_actions = {"POST": AuditAction.CATALOG_CHANGED}
+    audit_resource_type = "catalog_items"
     required_permissions = {"POST": "catalogs.update"}
     activate: bool
 
@@ -335,6 +354,9 @@ def _transitions_queryset() -> QuerySet[WorkflowTransition]:
 
 
 class WorkflowTransitionListView(PermissionCodeView):
+    # Auditoría (módulo 14, apps/audit/hooks.py).
+    audit_actions = {"POST": AuditAction.WORKFLOW_TRANSITION_CHANGED}
+    audit_resource_type = "workflow_transitions"
     required_permissions = {"GET": "workflow.read", "POST": "workflow.create"}
     serializer_class = WorkflowTransitionSerializer
     filter_backends = [SearchFilter, StrictOrderingFilter]
@@ -401,6 +423,9 @@ def _get_transition(transition_id: Any) -> WorkflowTransition:
 
 
 class WorkflowTransitionDetailView(PermissionCodeView):
+    # Auditoría (módulo 14, apps/audit/hooks.py).
+    audit_actions = {"PATCH": AuditAction.WORKFLOW_TRANSITION_CHANGED}
+    audit_resource_type = "workflow_transitions"
     required_permissions = {"GET": "workflow.read", "PATCH": "workflow.update"}
 
     @extend_schema(
@@ -437,6 +462,9 @@ class WorkflowTransitionDetailView(PermissionCodeView):
 
 
 class _TransitionActivationView(PermissionCodeView):
+    # Auditoría (módulo 14, apps/audit/hooks.py).
+    audit_actions = {"POST": AuditAction.WORKFLOW_TRANSITION_CHANGED}
+    audit_resource_type = "workflow_transitions"
     required_permissions = {"POST": "workflow.publish"}
     activate: bool
 
