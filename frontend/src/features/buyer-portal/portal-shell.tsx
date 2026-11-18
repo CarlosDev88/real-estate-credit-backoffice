@@ -12,6 +12,7 @@ import type { BuyerApplicationRef } from "@/features/buyer-portal/queries";
 
 export const PORTAL_HOME = "/portal";
 export const PORTAL_DOCUMENTS = "/portal/documentos";
+export const PORTAL_NOTICES = "/portal/avisos";
 
 const iconProps = {
   viewBox: "0 0 20 20",
@@ -36,6 +37,14 @@ function DocumentIcon({ size }: { size: number }) {
   );
 }
 
+function BellIcon({ size }: { size: number }) {
+  return (
+    <svg {...iconProps} width={size} height={size}>
+      <path d="M10 2a5 5 0 0 0-5 5v3.6L3.3 14H16.7L15 10.6V7a5 5 0 0 0-5-5Zm-2 13.5a2 2 0 0 0 4 0H8Z" />
+    </svg>
+  );
+}
+
 function LockIcon() {
   return (
     <svg {...iconProps} width={16} height={16} className="mt-0.5 flex-none">
@@ -54,8 +63,10 @@ interface NavEntry {
   href: string;
   label: string;
   icon: (size: number) => ReactNode;
-  /** Conteo de alerta (documentos que le tocan al comprador). */
+  /** Conteo de alerta (documentos que le tocan al comprador, avisos sin leer). */
   count?: number;
+  /** Qué cuenta, para el lector de pantalla ("pendientes", "sin leer"). */
+  countLabel?: string;
 }
 
 function isActive(href: string, path: string): boolean {
@@ -63,13 +74,21 @@ function isActive(href: string, path: string): boolean {
   return path === href || path.startsWith(`${href}/`);
 }
 
-function CountBadge({ count, className }: { count: number; className: string }) {
+function CountBadge({
+  count,
+  label = "pendientes",
+  className,
+}: {
+  count: number;
+  label?: string;
+  className: string;
+}) {
   return (
     <span
       className={`bg-tone-danger-solid text-tone-danger-on-solid rounded-full text-xs font-semibold tabular-nums ${className}`}
     >
       {count}
-      <span className="sr-only"> pendientes</span>
+      <span className="sr-only"> {label}</span>
     </span>
   );
 }
@@ -100,6 +119,8 @@ interface PortalShellProps {
   application: BuyerApplicationRef;
   /** Documentos con `needs_action`; `undefined` mientras carga. */
   pendingDocuments?: number;
+  /** Avisos sin leer (`unread-count`); `undefined` mientras carga. */
+  unreadNotices?: number;
   /** Sin navegación (por ejemplo, con consentimientos pendientes). */
   hideNav?: boolean;
   onLogout: () => void;
@@ -114,6 +135,7 @@ export function PortalShell({
   buyerName,
   application,
   pendingDocuments,
+  unreadNotices,
   hideNav = false,
   onLogout,
   children,
@@ -128,6 +150,13 @@ export function PortalShell({
       label: "Documentos",
       icon: (s) => <DocumentIcon size={s} />,
       count: pendingDocuments,
+    },
+    {
+      href: PORTAL_NOTICES,
+      label: "Avisos",
+      icon: (s) => <BellIcon size={s} />,
+      count: unreadNotices,
+      countLabel: "sin leer",
     },
   ];
 
@@ -166,7 +195,11 @@ export function PortalShell({
                   >
                     {item.label}
                     {!!item.count && (
-                      <CountBadge count={item.count} className="px-1.5 leading-[18px]" />
+                      <CountBadge
+                        count={item.count}
+                        label={item.countLabel}
+                        className="px-1.5 leading-[18px]"
+                      />
                     )}
                   </Link>
                 );
@@ -234,7 +267,7 @@ export function PortalShell({
       {!hideNav && (
         <nav
           aria-label="Navegación del portal"
-          className="bg-bg-surface border-border-default fixed bottom-0 left-1/2 z-20 grid w-full max-w-[480px] -translate-x-1/2 grid-cols-2 border-t pb-[env(safe-area-inset-bottom)] min-[900px]:hidden"
+          className="bg-bg-surface border-border-default fixed bottom-0 left-1/2 z-20 grid w-full max-w-[480px] -translate-x-1/2 grid-cols-3 border-t pb-[env(safe-area-inset-bottom)] min-[900px]:hidden"
         >
           {nav.map((item) => {
             const active = isActive(item.href, pathname);
@@ -252,6 +285,7 @@ export function PortalShell({
                 {!!item.count && (
                   <CountBadge
                     count={item.count}
+                    label={item.countLabel}
                     className="absolute top-1.5 left-[calc(50%+6px)] grid h-[18px] min-w-[18px] place-items-center px-[5px]"
                   />
                 )}
