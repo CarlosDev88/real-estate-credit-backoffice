@@ -392,6 +392,20 @@ describe("listado de solicitudes", { timeout: 20_000 }, () => {
     expect(await screen.findByText("SOL-000001")).toBeInTheDocument();
   });
 
+  it("status de la URL (enlaces del tablero) va a la API, se ve como chip y se puede quitar", async () => {
+    go("?status=DOCUMENTS_REVIEW");
+    const requests = useApi();
+    await renderList();
+    expect(last(requests.list)?.get("status")).toBe("DOCUMENTS_REVIEW");
+    // Las pestañas no reciben `status` (`quick-filters` no lo acepta).
+    expect(last(requests.tabs)?.has("status")).toBe(false);
+    const remove = screen.getByRole("button", {
+      name: "Quitar filtro Estado: Documentos en revisión",
+    });
+    await userEvent.click(remove);
+    await waitFor(() => expect(window.location.search).toBe(""));
+  });
+
   it("sin resultados muestra el estado vacío, con 'Limpiar filtros' si hay filtros", async () => {
     go("?search=nadie");
     useApi([]);

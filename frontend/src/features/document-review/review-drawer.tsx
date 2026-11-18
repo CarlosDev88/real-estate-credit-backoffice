@@ -1,12 +1,13 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Alert, Button, Collapse, Drawer, Input, Radio, Select } from "antd";
+import { Alert, Button, Collapse, Input, Radio, Select } from "antd";
 import { useCallback, useId, useMemo, useState } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 
 import { RelativeTime } from "@/components/ui/relative-time";
+import { SidePanel } from "@/components/ui/side-panel";
 import { TONE_CLASS } from "@/components/ui/status-badge";
 import { toneFor } from "@design/status-tones";
 import { FormField, useFormErrorHandler } from "@/components/ui/form-field";
@@ -22,7 +23,6 @@ import {
 import type { useFileViewer } from "@/features/document-review/slot-dialogs";
 import { scanMessage, validityText } from "@/features/document-review/slot-rules";
 import { formatBytes, formatDateOnly, formatDateTime } from "@/lib/format";
-import { useMediaQuery } from "@/lib/hooks/use-media-query";
 import { useToast } from "@/providers/toast";
 import { SCAN_CLEAN } from "@/features/document-review/queries";
 
@@ -351,7 +351,7 @@ interface ReviewDrawerProps {
 
 /**
  * Panel de revisión (mockup `solicitud.html`): drawer a la derecha, pantalla completa en
- * móvil. Atrapa el foco y Escape lo cierra (Ant Design `Drawer`).
+ * móvil. Atrapa el foco y Escape lo cierra (`SidePanel`, sobre el drawer de Ant Design).
  */
 export function ReviewDrawer({
   applicationId,
@@ -363,7 +363,6 @@ export function ReviewDrawer({
   viewer,
   can,
 }: ReviewDrawerProps) {
-  const mobile = useMediaQuery("(max-width: 860px)");
   const formId = useId();
   const fileId = slot?.current_file?.id;
   const file = useDocumentFile(fileId);
@@ -394,23 +393,12 @@ export function ReviewDrawer({
   );
 
   return (
-    <Drawer
+    <SidePanel
       open={slot !== null}
       onClose={onClose}
-      placement="right"
-      size={mobile ? "100%" : 520}
-      closable={{ "aria-label": "Cerrar" }}
-      destroyOnHidden
-      title={
-        slot && (
-          <div>
-            <div className="text-text-tertiary text-sm font-normal">{holder}</div>
-            <h2 ref={titleRef} tabIndex={-1} className="m-0 text-lg font-semibold outline-none">
-              {slot.label}
-            </h2>
-          </div>
-        )
-      }
+      eyebrow={holder}
+      title={slot?.label}
+      titleRef={titleRef}
       footer={
         slot && (
           <div className="flex flex-wrap justify-end gap-2">
@@ -524,6 +512,6 @@ export function ReviewDrawer({
           />
         </div>
       )}
-    </Drawer>
+    </SidePanel>
   );
 }

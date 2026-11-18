@@ -6,6 +6,7 @@ import { useEffect, useId } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 
+import { Card } from "@/components/ui/card";
 import { FormField } from "@/components/ui/form-field";
 import { MoneyInput } from "@/components/ui/money";
 import {
@@ -13,7 +14,6 @@ import {
   CitySelect,
   FieldGrid,
   FormActions,
-  FormCard,
   FormLoadError,
   FormLoading,
   FormScreen,
@@ -119,7 +119,7 @@ function PropertyForm({ property }: { property: BuyerProperty | null }) {
 
   return (
     <form noValidate onSubmit={(event) => void submit(event)} className="grid gap-5">
-      <FormCard>
+      <Card variant="portal">
         {property?.project && <ReadOnlyField label="Proyecto" value={property.project.name} />}
         <FieldGrid>
           {catalogField("property_type_code", "Tipo de inmueble", "property_type")}
@@ -212,7 +212,7 @@ function PropertyForm({ property }: { property: BuyerProperty | null }) {
             </fieldset>
           )}
         />
-      </FormCard>
+      </Card>
       <FormActions saving={save.isPending} />
     </form>
   );

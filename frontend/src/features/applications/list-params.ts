@@ -32,6 +32,11 @@ export interface ListFilters {
 
 export interface ListParams extends ListFilters {
   quick_filter: string;
+  /**
+   * Código de estado (`status` de la API), para los enlaces del tablero
+   * (`/solicitudes?status=APPROVED`). No va a las pestañas: `quick-filters` no lo recibe.
+   */
+  status: string;
   ordering: string;
   page: number;
   page_size: number;
@@ -73,6 +78,7 @@ export function parseListParams(search: URLSearchParams): ListParams {
   const size = positiveInt(search.get("page_size"));
   return {
     quick_filter: search.get("quick_filter") || DEFAULT_QUICK_FILTER,
+    status: (search.get("status") ?? "").trim(),
     search: (search.get("search") ?? "").trim(),
     bank_id: search.get("bank_id") ?? "",
     product_type: search.get("product_type") ?? "",
@@ -85,6 +91,7 @@ export function parseListParams(search: URLSearchParams): ListParams {
 
 const DEFAULTS: Record<keyof ListParams, string | number> = {
   quick_filter: DEFAULT_QUICK_FILTER,
+  status: "",
   search: "",
   bank_id: "",
   product_type: "",
@@ -96,6 +103,7 @@ const DEFAULTS: Record<keyof ListParams, string | number> = {
 
 const ORDER: (keyof ListParams)[] = [
   "quick_filter",
+  "status",
   "search",
   "bank_id",
   "product_type",

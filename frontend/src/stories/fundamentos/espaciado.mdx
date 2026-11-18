@@ -1,0 +1,23 @@
+import { Meta, Story } from "@storybook/addon-docs/blocks";
+
+import * as Bloques from "./fundamentos.stories";
+
+<Meta title="Fundamentos/Espaciado" />
+
+# Espaciado
+
+Escala de 4 px. Cada paso `space.N` coincide con el paso `N` de Tailwind (`gap-4`, `p-4`, `mt-4`), así que en el código se usan las clases de Tailwind y la escala queda igual a la de los tokens.
+
+<Story of={Bloques.Espaciado} />
+
+## Alturas de control
+
+Los controles miden 32 px en el backoffice (`control.height`), 28 px en lo compacto y 40 px en el portal del comprador, que es móvil primero. Ant Design ya las toma de `controlHeight`, `controlHeightSM` y `controlHeightLG`.
+
+<Story of={Bloques.AlturasDeControl} />
+
+## Reglas
+
+- El espacio separa grupos; los bordes y los fondos marcan jerarquía. No se agregan sombras para separar.
+- Las filas de tabla miden 52 px cuando la celda tiene dos líneas y 44 px si tiene una.
+- En móvil, los objetivos táctiles miden al menos 40 px.

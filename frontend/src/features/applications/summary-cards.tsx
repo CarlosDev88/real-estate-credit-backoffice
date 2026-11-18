@@ -3,11 +3,12 @@
 import { Button } from "antd";
 import type { ReactNode } from "react";
 
-import { CompletenessBar } from "@/components/ui/completeness-bar";
+import { Card, DataList, Datum } from "@/components/ui/card";
+import { CompletenessBar, CompletenessTotal } from "@/components/ui/completeness-bar";
 import { Money } from "@/components/ui/money";
 import { RelativeTime } from "@/components/ui/relative-time";
-import { TONE_CLASS } from "@/components/ui/status-badge";
-import { toneFor, type Tone } from "@design/status-tones";
+import { TONE_CLASS, ToneBadge } from "@/components/ui/status-badge";
+import { toneFor } from "@design/status-tones";
 import { bankLabel } from "@/features/applications/queries";
 import { HistoryEntry } from "@/features/applications/status-history";
 import type {
@@ -26,42 +27,20 @@ import { formatDateTime } from "@/lib/format";
 
 // ---------- piezas comunes ----------
 
-export function Card({
-  title,
-  aside,
-  children,
-}: {
-  title: string;
-  aside?: ReactNode;
-  children: ReactNode;
-}) {
-  return (
-    <article className="bg-bg-surface border-border-default rounded-lg border">
-      <div className="flex items-center gap-2 px-5 pt-4">
-        <h2 className="m-0 text-lg leading-snug font-semibold">{title}</h2>
-        <div className="flex-1" />
-        {aside}
-      </div>
-      <div className="px-5 pt-4 pb-5">{children}</div>
-    </article>
-  );
-}
-
 export function Muted({ children }: { children: ReactNode }) {
   return <p className="text-text-tertiary m-0 text-sm">{children}</p>;
 }
 
-/** Lista de definición del mockup (`.dl`): etiqueta a la izquierda, valor a la derecha. */
-export function DefinitionList({ rows }: { rows: [string, ReactNode][] }) {
+/** Filas `[etiqueta, valor]` en la lista de datos en línea de la librería (mockup `.dl`). */
+function DefinitionList({ rows }: { rows: [string, ReactNode][] }) {
   return (
-    <dl className="m-0 grid grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] gap-x-4 gap-y-2 text-sm min-[861px]:grid-cols-[minmax(140px,220px)_1fr]">
+    <DataList layout="inline">
       {rows.map(([label, value]) => (
-        <div key={label} className="contents">
-          <dt className="text-text-tertiary">{label}</dt>
-          <dd className="m-0 font-medium">{value}</dd>
-        </div>
+        <Datum key={label} label={label}>
+          {value}
+        </Datum>
       ))}
-    </dl>
+    </DataList>
   );
 }
 
@@ -98,18 +77,6 @@ function Check({ ok, children }: { ok: boolean; children: ReactNode }) {
   );
 }
 
-function ToneBadge({ tone, children }: { tone: Tone; children: ReactNode }) {
-  return (
-    <span
-      data-tone={tone}
-      className={`inline-flex h-[22px] items-center gap-1.5 rounded-full border px-2 text-xs font-medium whitespace-nowrap ${TONE_CLASS[tone]}`}
-    >
-      <span aria-hidden="true" className="size-1.5 flex-none rounded-full bg-current" />
-      {children}
-    </span>
-  );
-}
-
 function initials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
   const letters = parts.length > 1 ? [parts[0], parts[parts.length - 1]] : parts.slice(0, 1);
@@ -133,13 +100,19 @@ function Avatar({ name }: { name: string }) {
 export function CompletenessCard({ completeness }: { completeness: Completeness }) {
   const { documents } = completeness;
   return (
-    <Card title="Completitud del expediente">
+    // Como el mockup: el total en el encabezado y datos y documentos lado a lado.
+    <Card
+      title="Completitud del expediente"
+      action={<CompletenessTotal percentage={completeness.percentage} />}
+    >
       <CompletenessBar
         percentage={completeness.percentage}
         dataPercentage={completeness.data_percentage}
         documentsPercentage={completeness.documents_percentage}
         documentsCompleted={documents.completed_total}
         documentsRequired={documents.required_total}
+        layout="split"
+        showTotal={false}
       />
       <ul className="m-0 mt-4 grid list-none gap-1.5 p-0 text-sm">
         {completeness.items.map((item, i) => (
@@ -169,7 +142,7 @@ export function ToReviewCard({
   return (
     <Card
       title="Por revisar"
-      aside={
+      action={
         <Button type="link" size="small" onClick={onSeeAll}>
           Ver todos los documentos
         </Button>
@@ -248,7 +221,7 @@ export function EvaluationCard({
   return (
     <Card
       title="Evaluación del banco"
-      aside={
+      action={
         <ToneBadge tone={evaluation.eligible ? "success" : "danger"}>
           {evaluation.eligible ? "Elegible" : "No elegible"}
         </ToneBadge>
@@ -486,7 +459,7 @@ export function RecentChangesCard({
   return (
     <Card
       title="Últimos cambios de estado"
-      aside={
+      action={
         <Button type="link" size="small" onClick={onSeeAll}>
           Ver historial
         </Button>

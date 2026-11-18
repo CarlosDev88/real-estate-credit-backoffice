@@ -1,9 +1,9 @@
 "use client";
 
-import { Alert, Button } from "antd";
 import Link from "next/link";
 
 import { EmptyState } from "@/components/ui/empty-state";
+import { ErrorState, LoadingState } from "@/components/ui/state-views";
 import { Money } from "@/components/ui/money";
 import { RelativeTime } from "@/components/ui/relative-time";
 import { applicationHref } from "@/features/applications/applications-table";
@@ -45,26 +45,15 @@ export function ApplicationsTab({ clientId }: { clientId: string }) {
 
   let body;
   if (query.isPending) {
-    body = (
-      <div
-        role="status"
-        aria-label="Cargando solicitudes"
-        className="bg-bg-muted m-4 h-10 animate-pulse rounded"
-      />
-    );
+    body = <LoadingState label="Cargando solicitudes" blocks={[40]} className="m-4" />;
   } else if (query.isError) {
     body = (
       <div className="p-3">
-        <Alert
-          type="error"
-          showIcon
+        <ErrorState
           title="No pudimos cargar las solicitudes"
-          description={query.error.message}
-          action={
-            <Button size="small" onClick={() => void query.refetch()}>
-              Reintentar
-            </Button>
-          }
+          message={query.error.message}
+          onRetry={() => void query.refetch()}
+          retrying={query.isFetching}
         />
       </div>
     );

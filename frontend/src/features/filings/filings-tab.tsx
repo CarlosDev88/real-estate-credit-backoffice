@@ -1,9 +1,9 @@
 "use client";
 
-import { Alert, Button } from "antd";
 import { useState } from "react";
 
 import { EmptyState } from "@/components/ui/empty-state";
+import { ErrorState, LoadingState } from "@/components/ui/state-views";
 import { useMe } from "@/features/auth/queries";
 import type { Permissions } from "@/features/applications/workspace-header";
 import type { ApplicationDetail } from "@/features/applications/workspace-queries";
@@ -97,22 +97,13 @@ export function FilingsTab({
       )}
 
       {filings.isPending ? (
-        <div
-          role="status"
-          aria-label="Cargando radicaciones"
-          className="bg-bg-surface border-border-default h-32 animate-pulse rounded-lg border"
-        />
+        <LoadingState label="Cargando radicaciones" blocks={[128]} />
       ) : filings.isError ? (
-        <Alert
-          type="error"
-          showIcon
+        <ErrorState
           title="No pudimos cargar las radicaciones"
-          description={filings.error.message}
-          action={
-            <Button size="small" onClick={() => void filings.refetch()}>
-              Reintentar
-            </Button>
-          }
+          message={filings.error.message}
+          onRetry={() => void filings.refetch()}
+          retrying={filings.isFetching}
         />
       ) : filings.data.items.length === 0 ? (
         <div className="bg-bg-surface border-border-default rounded-lg border">

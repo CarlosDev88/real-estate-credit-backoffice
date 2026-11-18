@@ -6,6 +6,7 @@ import { useEffect, useId } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 
+import { Card } from "@/components/ui/card";
 import { FormField } from "@/components/ui/form-field";
 import { MoneyInput } from "@/components/ui/money";
 import { TONE_CLASS } from "@/components/ui/status-badge";
@@ -13,7 +14,6 @@ import {
   CatalogSelect,
   FieldGrid,
   FormActions,
-  FormCard,
   FormLoadError,
   FormLoading,
   FormScreen,
@@ -242,7 +242,7 @@ function FinancingForm({
 
   return (
     <form noValidate onSubmit={(event) => void submit(event)} className="grid gap-5">
-      <FormCard>
+      <Card variant="portal">
         <FormField id={`${id}-mode`} label="Modalidad" error={errors.financing_mode_code?.message}>
           {(control) => (
             <Controller
@@ -260,9 +260,9 @@ function FinancingForm({
             />
           )}
         </FormField>
-      </FormCard>
+      </Card>
 
-      <FormCard title="Productos disponibles" id={`${id}-products`}>
+      <Card variant="portal" title="Productos disponibles" id={`${id}-products`}>
         {products.length === 0 ? (
           <p className="text-text-secondary m-0">
             No hay productos para la finalidad de tu crédito.
@@ -286,9 +286,9 @@ function FinancingForm({
             {errors.bank_product_id.message}
           </p>
         )}
-      </FormCard>
+      </Card>
 
-      <FormCard title="Montos y plazo">
+      <Card variant="portal" title="Montos y plazo">
         <FieldGrid>
           {moneyField("requested_amount_cop", "Monto solicitado", { nullable: true })}
           <FormField id={`${id}-term`} label="Plazo en meses" error={errors.term_months?.message}>
@@ -335,7 +335,7 @@ function FinancingForm({
             {moneyField("severance_funds_cop", "Monto de cesantías")}
           </div>
         )}
-      </FormCard>
+      </Card>
 
       <FormActions saving={save.isPending} />
     </form>

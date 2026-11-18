@@ -1,11 +1,12 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Input, Modal, Select } from "antd";
+import { Input, Select } from "antd";
 import { useCallback, useId, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 
+import { ActionModal } from "@/components/ui/action-modal";
 import { DocumentViewer, type ViewerFile } from "@/components/ui/document-viewer";
 import { FormField, useFormErrorHandler } from "@/components/ui/form-field";
 import { useCatalog } from "@/features/applications/queries";
@@ -134,56 +135,48 @@ export function WaiveModal({ applicationId, slot, onClose }: SlotDialogProps) {
   });
 
   return (
-    <Modal
+    <ActionModal
       open={slot !== null}
       title={slot ? `Exonerar · ${slot.label}` : undefined}
-      onCancel={close}
       okText="Exonerar"
-      cancelText="Cancelar"
-      onOk={() => void submit()}
-      confirmLoading={review.isPending}
-      destroyOnHidden
+      loading={review.isPending}
+      onSubmit={submit}
+      onCancel={close}
     >
-      <form noValidate onSubmit={(e) => void submit(e)} className="grid gap-4 pt-2">
-        <FormField
-          id={`${ids}-reason`}
-          label="Motivo"
-          error={formState.errors.reason_code?.message}
-        >
-          {(ctl) => (
-            <Controller
-              control={control}
-              name="reason_code"
-              render={({ field }) => (
-                <Select
-                  {...ctl}
-                  value={field.value || undefined}
-                  onChange={field.onChange}
-                  placeholder="Elige un motivo"
-                  options={reasons.items.map((i) => ({ value: i.code, label: i.label }))}
-                  loading={reasons.isPending}
-                  virtual={false}
-                />
-              )}
-            />
-          )}
-        </FormField>
-        <FormField
-          id={`${ids}-note`}
-          label="Nota interna"
-          optional="opcional, el comprador no la ve"
-          error={formState.errors.internal_comment?.message}
-        >
-          {(ctl) => (
-            <Controller
-              control={control}
-              name="internal_comment"
-              render={({ field }) => <Input.TextArea {...field} {...ctl} rows={3} />}
-            />
-          )}
-        </FormField>
-      </form>
-    </Modal>
+      <FormField id={`${ids}-reason`} label="Motivo" error={formState.errors.reason_code?.message}>
+        {(ctl) => (
+          <Controller
+            control={control}
+            name="reason_code"
+            render={({ field }) => (
+              <Select
+                {...ctl}
+                value={field.value || undefined}
+                onChange={field.onChange}
+                placeholder="Elige un motivo"
+                options={reasons.items.map((i) => ({ value: i.code, label: i.label }))}
+                loading={reasons.isPending}
+                virtual={false}
+              />
+            )}
+          />
+        )}
+      </FormField>
+      <FormField
+        id={`${ids}-note`}
+        label="Nota interna"
+        optional="opcional, el comprador no la ve"
+        error={formState.errors.internal_comment?.message}
+      >
+        {(ctl) => (
+          <Controller
+            control={control}
+            name="internal_comment"
+            render={({ field }) => <Input.TextArea {...field} {...ctl} rows={3} />}
+          />
+        )}
+      </FormField>
+    </ActionModal>
   );
 }
 
@@ -227,35 +220,29 @@ export function ReopenModal({ applicationId, slot, onClose }: SlotDialogProps) {
   });
 
   return (
-    <Modal
+    <ActionModal
       open={slot !== null}
       title={slot ? `Reabrir · ${slot.label}` : undefined}
-      onCancel={close}
+      description="Se deshace la exoneración: el documento vuelve a quedar pendiente o por revisar."
       okText="Reabrir"
-      cancelText="Cancelar"
-      onOk={() => void submit()}
-      confirmLoading={review.isPending}
-      destroyOnHidden
+      loading={review.isPending}
+      onSubmit={submit}
+      onCancel={close}
     >
-      <form noValidate onSubmit={(e) => void submit(e)} className="grid gap-4 pt-2">
-        <p className="text-text-secondary m-0 text-sm">
-          Se deshace la exoneración: el documento vuelve a quedar pendiente o por revisar.
-        </p>
-        <FormField
-          id={`${ids}-note`}
-          label="Nota interna"
-          help="El comprador no la ve."
-          error={formState.errors.internal_comment?.message}
-        >
-          {(ctl) => (
-            <Controller
-              control={control}
-              name="internal_comment"
-              render={({ field }) => <Input.TextArea {...field} {...ctl} rows={3} />}
-            />
-          )}
-        </FormField>
-      </form>
-    </Modal>
+      <FormField
+        id={`${ids}-note`}
+        label="Nota interna"
+        help="El comprador no la ve."
+        error={formState.errors.internal_comment?.message}
+      >
+        {(ctl) => (
+          <Controller
+            control={control}
+            name="internal_comment"
+            render={({ field }) => <Input.TextArea {...field} {...ctl} rows={3} />}
+          />
+        )}
+      </FormField>
+    </ActionModal>
   );
 }

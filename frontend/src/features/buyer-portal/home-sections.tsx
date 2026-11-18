@@ -7,6 +7,7 @@ import type { ReactNode } from "react";
 
 import { Money } from "@/components/ui/money";
 import { TONE_CLASS } from "@/components/ui/status-badge";
+import { Stepper } from "@/components/ui/stepper";
 import { ExpiryNotice } from "@/features/buyer-portal/expiry";
 import {
   bankName,
@@ -134,48 +135,9 @@ export function StatusCard({
       )}
 
       {detail.stages.length > 0 && (
-        <ol aria-label="Etapas" className="m-0 mt-5 grid list-none p-0">
-          {detail.stages.map((stage, index) => {
-            const last = index === detail.stages.length - 1;
-            const isDone = stage.state === "done";
-            const isNow = stage.state === "current";
-            return (
-              <li
-                key={stage.code}
-                aria-current={isNow ? "step" : undefined}
-                className={`text-md relative grid grid-cols-[22px_1fr] gap-3 ${last ? "" : "pb-3"} ${
-                  isNow ? "text-text-on-sidebar-strong font-medium" : ""
-                }`}
-              >
-                {!last && (
-                  <span
-                    aria-hidden="true"
-                    className="bg-sidebar-item-active absolute top-6 bottom-0.5 left-2.5 w-0.5"
-                  />
-                )}
-                <span
-                  aria-hidden="true"
-                  className={`grid size-[22px] place-items-center rounded-full border-2 ${
-                    isDone
-                      ? "bg-text-on-sidebar-strong border-text-on-sidebar-strong text-bg-sidebar"
-                      : isNow
-                        ? "border-text-on-sidebar-strong"
-                        : "border-text-on-sidebar"
-                  }`}
-                >
-                  {isDone && <Icon name="check" size={12} />}
-                  {isNow && <span className="bg-text-on-sidebar-strong size-2 rounded-full" />}
-                </span>
-                <div>
-                  {stage.label}
-                  <small className="text-text-on-sidebar block text-xs font-normal">
-                    {stage.state_label}
-                  </small>
-                </div>
-              </li>
-            );
-          })}
-        </ol>
+        <div className="mt-5">
+          <Stepper stages={detail.stages} ariaLabel="Etapas" orientation="vertical" />
+        </div>
       )}
 
       <ExpiryNotice className="border-sidebar-divider mt-4 border-t pt-3" />

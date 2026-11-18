@@ -1,0 +1,36 @@
+import { Markdown, Meta, Story } from "@storybook/addon-docs/blocks";
+
+import contrastReport from "../../../../design/generated/contrast-report.md?raw";
+
+import * as Bloques from "./fundamentos.stories";
+
+<Meta title="Fundamentos/Colores" />
+
+# Colores
+
+Los componentes usan **tokens semánticos** (`bg.surface`, `text.secondary`, `border.default`), nunca las paletas ni colores escritos a mano. Cada token tiene un valor en claro y otro en oscuro: el tema se activa con `data-theme` en `<html>` y con el tema de Ant Design, siempre juntos.
+
+En código, el token se usa con la clase de Tailwind (`bg-bg-surface`, `text-text-secondary`, `border-border-default`) o, si no hay clase, con la variable CSS (`var(--um-bg-surface)`). Para Ant Design, los valores ya van en `lightTheme` y `darkTheme`.
+
+## Tokens semánticos
+
+<Story of={Bloques.ColoresSemanticos} />
+
+## Reglas
+
+- **Teal es estado, no avance.** Las barras de completitud van siempre en `brand.primary`. El teal (`accent`) queda para "Lista para radicar" y para lo exonerado.
+- **Conteos de alerta sobre color sólido** (documentos pendientes en la navegación del portal): `tone.danger.solid` con `tone.danger.onSolid`.
+- **Menú lateral:** `sidebar.itemHover`, `sidebar.itemActive`, `sidebar.divider` y `text.onSidebarStrong`; nada escrito a mano.
+- **Foco visible** con `focus.ring` en todo control interactivo.
+
+## Paletas
+
+Las paletas solo alimentan los tokens semánticos. **No se usan en componentes**: si falta un color, se agrega un token en `design/tokens/tokens.json` y se regenera con `node design/scripts/build-tokens.mjs`.
+
+<Story of={Bloques.Paletas} />
+
+## Contraste
+
+Cada par de texto y fondo se verifica contra WCAG 2.1 al generar los tokens (texto normal 4,5:1; elementos de interfaz y texto grande 3:1). Si uno no cumple, el build de los tokens falla. Este es el reporte generado:
+
+<Markdown>{contrastReport.replace(/^# .*\n/, "")}</Markdown>

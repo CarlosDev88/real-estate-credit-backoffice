@@ -6,14 +6,16 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo } from "react";
 
 import { EmptyState } from "@/components/ui/empty-state";
+import { PageHeader } from "@/components/ui/page-header";
+import { ErrorState } from "@/components/ui/state-views";
 import { MOBILE_QUERY } from "@/features/applications/applications-list-screen";
 import { useCatalog } from "@/features/applications/queries";
 import { useMe } from "@/features/auth/queries";
 import { ClientCards } from "@/features/clients/components/client-cards";
 import { ClientsFilters } from "@/features/clients/components/clients-filters";
 import { ClientsTable } from "@/features/clients/components/clients-table";
-import { PlusIcon } from "@/features/clients/components/icons";
-import { ListPagination } from "@/features/clients/components/list-pagination";
+import { PlusIcon } from "@/components/ui/icons";
+import { ListPagination } from "@/components/ui/list-pagination";
 import {
   formatClientOrdering,
   parseClientOrdering,
@@ -95,16 +97,11 @@ export function ClientsListScreen() {
   } else if (list.isError) {
     body = (
       <div className="p-3">
-        <Alert
-          type="error"
-          showIcon
+        <ErrorState
           title="No pudimos cargar los clientes"
-          description={list.error.message}
-          action={
-            <Button size="small" onClick={() => void list.refetch()}>
-              Reintentar
-            </Button>
-          }
+          message={list.error.message}
+          onRetry={() => void list.refetch()}
+          retrying={list.isFetching}
         />
       </div>
     );
@@ -153,19 +150,17 @@ export function ClientsListScreen() {
 
   return (
     <div className="grid content-start gap-4">
-      <div className="flex flex-wrap items-start gap-3">
-        <div className="min-w-0 flex-1">
-          <h1 className="m-0 text-3xl font-semibold tracking-tight">Clientes</h1>
-          <p className="text-text-secondary mt-0.5 mb-0">
-            Compradores con sus oportunidades y solicitudes de crédito.
-          </p>
-        </div>
-        {canCreate && (
-          <Button type="primary" icon={<PlusIcon />} onClick={() => router.push(NEW_CLIENT_HREF)}>
-            Nuevo cliente
-          </Button>
-        )}
-      </div>
+      <PageHeader
+        title="Clientes"
+        description="Compradores con sus oportunidades y solicitudes de crédito."
+        actions={
+          canCreate && (
+            <Button type="primary" icon={<PlusIcon />} onClick={() => router.push(NEW_CLIENT_HREF)}>
+              Nuevo cliente
+            </Button>
+          )
+        }
+      />
 
       {forApplication && (
         <Alert

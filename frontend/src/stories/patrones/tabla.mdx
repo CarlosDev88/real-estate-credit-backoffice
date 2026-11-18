@@ -1,0 +1,60 @@
+import { Canvas, Meta } from "@storybook/addon-docs/blocks";
+
+import * as Tabla from "../../components/ui/data-table.stories";
+
+<Meta title="Patrones/Tabla con orden y paginación" />
+
+# Tabla con orden y paginación
+
+`DataTable` (sobre TanStack Table), `ListPagination` al pie y, en 860 px o menos, `CardList`. El servidor ordena y pagina: la tabla solo lleva el estado del orden, que va en la URL (`ordering=-updated_at`).
+
+<Canvas of={Tabla.OrdenYPaginacion} />
+
+## En móvil: tarjetas
+
+<Canvas of={Tabla.Movil} />
+
+## Cómo se arma
+
+```tsx
+const col = dataColumns<Client>();
+const columns = col.columns([
+  col.accessor((r) => r.full_name, { id: "full_name", header: "Nombre", cell: NameCell }),
+  col.display({ id: "status", header: "Estado", cell: StatusCell }),
+]);
+
+mobile ? (
+  <CardList
+    ariaLabel="Clientes"
+    rows={rows}
+    getRowId={(r) => r.id}
+    onOpen={open}
+    renderCard={ClientCard}
+  />
+) : (
+  <DataTable
+    ariaLabel="Clientes"
+    columns={columns}
+    rows={rows}
+    getRowId={(r) => r.id}
+    sorting={sorting}
+    sortableFields={SORTABLE_FIELDS}
+    onSort={setSorting}
+    onOpen={open}
+    busy={isFetching && !isPending}
+    stickyColumn="full_name"
+  />
+);
+```
+
+Al pie, `ListPagination` con `itemsLabel="Clientes"` y `compact` en móvil.
+
+## Reglas
+
+- **El `id` de cada columna ordenable es el campo de `ordering` de la API** (`sortableFields`), y la columna lleva `accessor`. Las demás no se ordenan.
+- **Orden con un botón dentro del encabezado,** para el teclado, y `aria-sort` en el `th`. La flecha solo se ve en la columna ordenada.
+- **Encabezados en minúscula inicial,** 12 px y `text.secondary`. Filas de 52 px y hover en `brand.subtle`.
+- **Montos a la derecha** (`alignRight`) y con `Money` (cifras tabulares). Códigos en mono.
+- **Clic o Enter en la fila abre el detalle;** el enlace del código sigue siendo un enlace (con el clic central se abre en otra pestaña).
+- **Otra página en camino:** `busy` muestra una barra arriba. Las filas no se atenúan, porque la opacidad baja el contraste del texto.
+- **Sin resultados:** `EmptyState`, con "Limpiar filtros" si hay filtros.

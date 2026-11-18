@@ -1,11 +1,13 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { App, Button, Checkbox, Input, Modal } from "antd";
+import { App, Button, Checkbox, Input } from "antd";
 import { useEffect, useId, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 
+import { ActionModal } from "@/components/ui/action-modal";
+import { Card } from "@/components/ui/card";
 import { FormField } from "@/components/ui/form-field";
 import { Money, MoneyInput } from "@/components/ui/money";
 import {
@@ -13,7 +15,6 @@ import {
   DateInput,
   FieldGrid,
   FormActions,
-  FormCard,
   FormLoadError,
   FormLoading,
   FormScreen,
@@ -296,112 +297,97 @@ function IncomeSourceModal({
   });
 
   return (
-    <Modal
+    <ActionModal
       open={open}
       title={source ? "Editar ingreso" : "Agregar ingreso"}
       okText="Guardar"
-      cancelText="Cancelar"
-      okButtonProps={{ loading: saving }}
-      onOk={() => void submit()}
+      loading={saving}
+      onSubmit={submit}
       onCancel={onClose}
-      destroyOnHidden
     >
-      <form
-        noValidate
-        className="grid gap-4"
-        onSubmit={(event) => {
-          event.preventDefault();
-          void submit();
-        }}
+      <FormField id={`${id}-type`} label="Tipo de ingreso" error={errors.source_type_code?.message}>
+        {(control) => (
+          <Controller
+            control={form.control}
+            name="source_type_code"
+            render={({ field }) => (
+              <CatalogSelect
+                {...control}
+                catalog="income_source_type"
+                value={field.value}
+                onChange={(v) => field.onChange(v ?? "")}
+                onBlur={field.onBlur}
+              />
+            )}
+          />
+        )}
+      </FormField>
+      <FormField
+        id={`${id}-payer`}
+        label="Pagador"
+        optional="opcional"
+        error={errors.payer_name?.message}
       >
-        <FormField
-          id={`${id}-type`}
-          label="Tipo de ingreso"
-          error={errors.source_type_code?.message}
-        >
-          {(control) => (
-            <Controller
-              control={form.control}
-              name="source_type_code"
-              render={({ field }) => (
-                <CatalogSelect
-                  {...control}
-                  catalog="income_source_type"
-                  value={field.value}
-                  onChange={(v) => field.onChange(v ?? "")}
-                  onBlur={field.onBlur}
-                />
-              )}
-            />
-          )}
-        </FormField>
-        <FormField
-          id={`${id}-payer`}
-          label="Pagador"
-          optional="opcional"
-          error={errors.payer_name?.message}
-        >
-          {(control) => (
-            <Controller
-              control={form.control}
-              name="payer_name"
-              render={({ field }) => <Input {...control} {...field} size="large" />}
-            />
-          )}
-        </FormField>
-        <FormField
-          id={`${id}-amount`}
-          label="Monto mensual"
-          error={errors.monthly_amount_cop?.message}
-        >
-          {(control) => (
-            <Controller
-              control={form.control}
-              name="monthly_amount_cop"
-              render={({ field }) => (
-                <MoneyInput
-                  {...control}
-                  size="large"
-                  value={field.value}
-                  onChange={field.onChange}
-                  onBlur={field.onBlur}
-                />
-              )}
-            />
-          )}
-        </FormField>
-        <FormField
-          id={`${id}-start`}
-          label="Fecha de inicio"
-          optional="opcional"
-          error={errors.start_date?.message}
-        >
-          {(control) => (
-            <Controller
-              control={form.control}
-              name="start_date"
-              render={({ field }) => (
-                <DateInput
-                  {...control}
-                  value={field.value}
-                  onChange={field.onChange}
-                  onBlur={field.onBlur}
-                />
-              )}
-            />
-          )}
-        </FormField>
-        <Controller
-          control={form.control}
-          name="is_primary"
-          render={({ field }) => (
-            <Checkbox checked={field.value} onChange={(e) => field.onChange(e.target.checked)}>
-              Es mi ingreso principal
-            </Checkbox>
-          )}
-        />
-      </form>
-    </Modal>
+        {(control) => (
+          <Controller
+            control={form.control}
+            name="payer_name"
+            render={({ field }) => <Input {...control} {...field} size="large" />}
+          />
+        )}
+      </FormField>
+      <FormField
+        id={`${id}-amount`}
+        label="Monto mensual"
+        error={errors.monthly_amount_cop?.message}
+      >
+        {(control) => (
+          <Controller
+            control={form.control}
+            name="monthly_amount_cop"
+            render={({ field }) => (
+              <MoneyInput
+                {...control}
+                size="large"
+                value={field.value}
+                onChange={field.onChange}
+                onBlur={field.onBlur}
+              />
+            )}
+          />
+        )}
+      </FormField>
+      <FormField
+        id={`${id}-start`}
+        label="Fecha de inicio"
+        optional="opcional"
+        error={errors.start_date?.message}
+      >
+        {(control) => (
+          <Controller
+            control={form.control}
+            name="start_date"
+            render={({ field }) => (
+              <DateInput
+                {...control}
+                value={field.value}
+                onChange={field.onChange}
+                onBlur={field.onBlur}
+              />
+            )}
+          />
+        )}
+      </FormField>
+      <Controller
+        control={form.control}
+        name="is_primary"
+        render={({ field }) => (
+          <Checkbox checked={field.value} onChange={(e) => field.onChange(e.target.checked)}>
+            Es mi ingreso principal
+          </Checkbox>
+        )}
+      />
+    </ActionModal>
   );
 }
 
@@ -433,7 +419,7 @@ function IncomeSources({ profileId }: { profileId: string }) {
       <div className="flex flex-wrap items-center gap-2">
         <h3 className="m-0 text-lg font-semibold">Fuentes de ingreso</h3>
         {!readOnly && (
-          <Button className="ml-auto" onClick={() => setEditing(null)}>
+          <Button size="large" className="ml-auto" onClick={() => setEditing(null)}>
             Agregar ingreso
           </Button>
         )}
@@ -471,6 +457,7 @@ function IncomeSources({ profileId }: { profileId: string }) {
               {!readOnly && (
                 <span className="ml-auto flex gap-1">
                   <Button
+                    size="large"
                     type="text"
                     onClick={() => setEditing(source)}
                     aria-label={`Editar ${source.source_type.label}`}
@@ -478,6 +465,7 @@ function IncomeSources({ profileId }: { profileId: string }) {
                     Editar
                   </Button>
                   <Button
+                    size="large"
                     type="text"
                     danger
                     onClick={() => confirmRemove(source)}
@@ -556,7 +544,8 @@ function ParticipantIncome({ participant }: { participant: BuyerParticipantSumma
   const { applicationId } = usePortal();
   const profile = useFinancialProfile(applicationId, participant.id);
   return (
-    <FormCard
+    <Card
+      variant="portal"
       id={`participante-${participant.id}`}
       title={
         <>
@@ -587,7 +576,7 @@ function ParticipantIncome({ participant }: { participant: BuyerParticipantSumma
           )}
         </>
       )}
-    </FormCard>
+    </Card>
   );
 }
 

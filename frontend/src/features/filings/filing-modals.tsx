@@ -1,11 +1,12 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Input, Modal, Select } from "antd";
+import { Input, Select } from "antd";
 import { useId } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 
+import { ActionModal } from "@/components/ui/action-modal";
 import { FormField, useFormErrorHandler } from "@/components/ui/form-field";
 import { bankLabel, useCatalog } from "@/features/applications/queries";
 import type { ApplicationDetail } from "@/features/applications/workspace-queries";
@@ -155,106 +156,95 @@ export function RegisterFilingModal({
   });
 
   return (
-    <Modal
+    <ActionModal
       open={open}
       title="Registrar radicación"
-      onCancel={close}
+      description="Registra la entrega después de enviar el paquete al banco. La solicitud pasa a radicada y los documentos entregados quedan bloqueados."
       okText="Registrar radicación"
-      cancelText="Cancelar"
-      onOk={() => void submit()}
-      okButtonProps={{ disabled: !product || !job }}
-      confirmLoading={create.isPending}
-      destroyOnHidden
+      okDisabled={!product || !job}
+      loading={create.isPending}
+      onSubmit={submit}
+      onCancel={close}
     >
-      <form noValidate onSubmit={(e) => void submit(e)} className="grid gap-4 pt-2">
-        <p className="text-text-secondary m-0 text-sm">
-          Registra la entrega después de enviar el paquete al banco. La solicitud pasa a radicada y
-          los documentos entregados quedan bloqueados.
-        </p>
-        <ReadOnlyField label="Producto">
-          {product ? productLabel(product) : "La solicitud no tiene producto financiero."}
-        </ReadOnlyField>
-        <ReadOnlyField label="Paquete entregado">
-          {job ? (
-            <>
-              <span className="font-mono text-xs break-all">{job.output?.filename}</span>
-              <span className="text-text-tertiary block text-xs">{packageSummary(job)}</span>
-            </>
-          ) : (
-            "Prepara el paquete antes de radicar."
-          )}
-        </ReadOnlyField>
-        <FormField
-          id={`${ids}-channel`}
-          label="Canal"
-          error={formState.errors.channel_code?.message}
-        >
-          {(ctl) => (
-            <Controller
-              control={control}
-              name="channel_code"
-              render={({ field }) => (
-                <Select
-                  {...ctl}
-                  value={field.value || undefined}
-                  onChange={field.onChange}
-                  placeholder="Elige el canal de entrega"
-                  options={channels.items.map((c) => ({ value: c.code, label: c.label }))}
-                  loading={channels.isPending}
-                  virtual={false}
-                />
-              )}
-            />
-          )}
-        </FormField>
-        <FormField
-          id={`${ids}-reference`}
-          label="Referencia del banco"
-          optional="opcional"
-          help="El número o código que dio el banco al recibirla."
-          error={formState.errors.external_reference?.message}
-        >
-          {(ctl) => (
-            <Controller
-              control={control}
-              name="external_reference"
-              render={({ field }) => <Input {...field} {...ctl} maxLength={REFERENCE_MAX} />}
-            />
-          )}
-        </FormField>
-        <FormField
-          id={`${ids}-filed-at`}
-          label="Fecha y hora de entrega"
-          error={formState.errors.filed_at?.message}
-        >
-          {(ctl) => (
-            <Controller
-              control={control}
-              name="filed_at"
-              render={({ field }) => (
-                <Input {...field} {...ctl} type="datetime-local" max={toLocalInput(new Date())} />
-              )}
-            />
-          )}
-        </FormField>
-        <FormField
-          id={`${ids}-comment`}
-          label="Comentario"
-          optional="opcional, interno"
-          error={formState.errors.comment?.message}
-        >
-          {(ctl) => (
-            <Controller
-              control={control}
-              name="comment"
-              render={({ field }) => (
-                <Input.TextArea {...field} {...ctl} rows={3} maxLength={COMMENT_MAX} />
-              )}
-            />
-          )}
-        </FormField>
-      </form>
-    </Modal>
+      <ReadOnlyField label="Producto">
+        {product ? productLabel(product) : "La solicitud no tiene producto financiero."}
+      </ReadOnlyField>
+      <ReadOnlyField label="Paquete entregado">
+        {job ? (
+          <>
+            <span className="font-mono text-xs break-all">{job.output?.filename}</span>
+            <span className="text-text-tertiary block text-xs">{packageSummary(job)}</span>
+          </>
+        ) : (
+          "Prepara el paquete antes de radicar."
+        )}
+      </ReadOnlyField>
+      <FormField id={`${ids}-channel`} label="Canal" error={formState.errors.channel_code?.message}>
+        {(ctl) => (
+          <Controller
+            control={control}
+            name="channel_code"
+            render={({ field }) => (
+              <Select
+                {...ctl}
+                value={field.value || undefined}
+                onChange={field.onChange}
+                placeholder="Elige el canal de entrega"
+                options={channels.items.map((c) => ({ value: c.code, label: c.label }))}
+                loading={channels.isPending}
+                virtual={false}
+              />
+            )}
+          />
+        )}
+      </FormField>
+      <FormField
+        id={`${ids}-reference`}
+        label="Referencia del banco"
+        optional="opcional"
+        help="El número o código que dio el banco al recibirla."
+        error={formState.errors.external_reference?.message}
+      >
+        {(ctl) => (
+          <Controller
+            control={control}
+            name="external_reference"
+            render={({ field }) => <Input {...field} {...ctl} maxLength={REFERENCE_MAX} />}
+          />
+        )}
+      </FormField>
+      <FormField
+        id={`${ids}-filed-at`}
+        label="Fecha y hora de entrega"
+        error={formState.errors.filed_at?.message}
+      >
+        {(ctl) => (
+          <Controller
+            control={control}
+            name="filed_at"
+            render={({ field }) => (
+              <Input {...field} {...ctl} type="datetime-local" max={toLocalInput(new Date())} />
+            )}
+          />
+        )}
+      </FormField>
+      <FormField
+        id={`${ids}-comment`}
+        label="Comentario"
+        optional="opcional, interno"
+        error={formState.errors.comment?.message}
+      >
+        {(ctl) => (
+          <Controller
+            control={control}
+            name="comment"
+            render={({ field }) => (
+              <Input.TextArea {...field} {...ctl} rows={3} maxLength={COMMENT_MAX} />
+            )}
+          />
+        )}
+      </FormField>
+    </ActionModal>
   );
 }
 
@@ -313,52 +303,45 @@ export function EditFilingModal({
   });
 
   return (
-    <Modal
+    <ActionModal
       open={!!filing}
       title={filing ? `Corregir la radicación #${filing.sequence_number}` : undefined}
-      onCancel={onClose}
+      description="Solo cambian la referencia y el comentario. Los documentos entregados y las respuestas del banco no cambian."
       okText="Guardar"
-      cancelText="Cancelar"
-      onOk={() => void submit()}
-      confirmLoading={update.isPending}
-      destroyOnHidden
+      loading={update.isPending}
+      onSubmit={submit}
+      onCancel={onClose}
     >
-      <form noValidate onSubmit={(e) => void submit(e)} className="grid gap-4 pt-2">
-        <p className="text-text-secondary m-0 text-sm">
-          Solo cambian la referencia y el comentario. Los documentos entregados y las respuestas del
-          banco no cambian.
-        </p>
-        <FormField
-          id={`${ids}-reference`}
-          label="Referencia del banco"
-          optional="vacía la borra"
-          error={formState.errors.external_reference?.message}
-        >
-          {(ctl) => (
-            <Controller
-              control={control}
-              name="external_reference"
-              render={({ field }) => <Input {...field} {...ctl} maxLength={REFERENCE_MAX} />}
-            />
-          )}
-        </FormField>
-        <FormField
-          id={`${ids}-comment`}
-          label="Comentario"
-          optional="vacío lo borra"
-          error={formState.errors.comment?.message}
-        >
-          {(ctl) => (
-            <Controller
-              control={control}
-              name="comment"
-              render={({ field }) => (
-                <Input.TextArea {...field} {...ctl} rows={3} maxLength={COMMENT_MAX} />
-              )}
-            />
-          )}
-        </FormField>
-      </form>
-    </Modal>
+      <FormField
+        id={`${ids}-reference`}
+        label="Referencia del banco"
+        optional="vacía la borra"
+        error={formState.errors.external_reference?.message}
+      >
+        {(ctl) => (
+          <Controller
+            control={control}
+            name="external_reference"
+            render={({ field }) => <Input {...field} {...ctl} maxLength={REFERENCE_MAX} />}
+          />
+        )}
+      </FormField>
+      <FormField
+        id={`${ids}-comment`}
+        label="Comentario"
+        optional="vacío lo borra"
+        error={formState.errors.comment?.message}
+      >
+        {(ctl) => (
+          <Controller
+            control={control}
+            name="comment"
+            render={({ field }) => (
+              <Input.TextArea {...field} {...ctl} rows={3} maxLength={COMMENT_MAX} />
+            )}
+          />
+        )}
+      </FormField>
+    </ActionModal>
   );
 }

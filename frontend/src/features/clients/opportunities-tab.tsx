@@ -1,17 +1,19 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Alert, Button, Modal, Select } from "antd";
+import { Button, Select } from "antd";
 import { useId, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 
+import { ActionModal } from "@/components/ui/action-modal";
 import { EmptyState } from "@/components/ui/empty-state";
+import { ErrorState, LoadingState } from "@/components/ui/state-views";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { FormField } from "@/components/ui/form-field";
 import { useCatalog } from "@/features/applications/queries";
 import { optionsOf, useCatalogLabel } from "@/features/clients/catalog-options";
-import { PlusIcon } from "@/features/clients/components/icons";
+import { PlusIcon } from "@/components/ui/icons";
 import {
   OPPORTUNITY_STATUS_CATALOG,
   useActiveProjects,
@@ -29,14 +31,10 @@ import { useToast } from "@/providers/toast";
 /** `409` de `POST /opportunities`: ya hay una oportunidad abierta para ese proyecto. */
 export const DUPLICATE_OPPORTUNITY = "DUPLICATE_OPPORTUNITY";
 
-/**
- * Estado de la oportunidad con la etiqueta del catálogo `opportunity_status`. El design
- * system aún no tiene tonos para oportunidades (`toneFor` no tiene ese tipo): va en
- * neutro hasta que el front 1 lo agregue.
- */
+/** Estado de la oportunidad: etiqueta del catálogo `opportunity_status` y tono de `toneFor`. */
 export function OpportunityStatus({ status }: { status: string }) {
   const label = useCatalogLabel(OPPORTUNITY_STATUS_CATALOG);
-  return <StatusBadge kind="application" code={null} label={label(status)} />;
+  return <StatusBadge kind="opportunity" code={status} label={label(status)} />;
 }
 
 export function projectText(opportunity: Pick<Opportunity, "project">): string | null {
@@ -150,68 +148,64 @@ function NewOpportunityModal({
   });
 
   return (
-    <Modal
+    <ActionModal
       open={open}
       title="Nueva oportunidad"
       width={560}
-      onCancel={close}
       okText="Crear oportunidad"
-      cancelText="Cancelar"
-      onOk={() => void submit()}
-      confirmLoading={create.isPending}
-      destroyOnHidden
+      loading={create.isPending}
+      onSubmit={submit}
+      onCancel={close}
     >
-      <form noValidate onSubmit={(e) => void submit(e)} className="grid gap-4 pt-2">
-        <FormField id={`${ids}-origin`} label="Origen" error={errors.origin_type?.message}>
-          {(ctl) => (
-            <Controller
-              control={control}
-              name="origin_type"
-              render={({ field }) => (
-                <Select
-                  {...ctl}
-                  value={field.value || undefined}
-                  onChange={field.onChange}
-                  placeholder="Elige el origen"
-                  options={optionsOf(origins.items)}
-                  loading={origins.isPending}
-                  virtual={false}
-                />
-              )}
-            />
-          )}
-        </FormField>
-        <FormField
-          id={`${ids}-project`}
-          label="Proyecto"
-          optional="opcional"
-          help="Solo proyectos activos."
-          error={errors.project_id?.message}
-        >
-          {(ctl) => (
-            <Controller
-              control={control}
-              name="project_id"
-              render={({ field }) => (
-                <Select
-                  {...ctl}
-                  value={field.value || undefined}
-                  onChange={(value: string | undefined) => field.onChange(value ?? "")}
-                  allowClear
-                  placeholder={NO_PROJECT}
-                  showSearch={{ optionFilterProp: "label" }}
-                  options={(projects.data ?? []).map((project) => ({
-                    value: project.id,
-                    label: `${project.name} · ${project.partner.name}`,
-                  }))}
-                  loading={projects.isPending}
-                />
-              )}
-            />
-          )}
-        </FormField>
-      </form>
-    </Modal>
+      <FormField id={`${ids}-origin`} label="Origen" error={errors.origin_type?.message}>
+        {(ctl) => (
+          <Controller
+            control={control}
+            name="origin_type"
+            render={({ field }) => (
+              <Select
+                {...ctl}
+                value={field.value || undefined}
+                onChange={field.onChange}
+                placeholder="Elige el origen"
+                options={optionsOf(origins.items)}
+                loading={origins.isPending}
+                virtual={false}
+              />
+            )}
+          />
+        )}
+      </FormField>
+      <FormField
+        id={`${ids}-project`}
+        label="Proyecto"
+        optional="opcional"
+        help="Solo proyectos activos."
+        error={errors.project_id?.message}
+      >
+        {(ctl) => (
+          <Controller
+            control={control}
+            name="project_id"
+            render={({ field }) => (
+              <Select
+                {...ctl}
+                value={field.value || undefined}
+                onChange={(value: string | undefined) => field.onChange(value ?? "")}
+                allowClear
+                placeholder={NO_PROJECT}
+                showSearch={{ optionFilterProp: "label" }}
+                options={(projects.data ?? []).map((project) => ({
+                  value: project.id,
+                  label: `${project.name} · ${project.partner.name}`,
+                }))}
+                loading={projects.isPending}
+              />
+            )}
+          />
+        )}
+      </FormField>
+    </ActionModal>
   );
 }
 
@@ -231,26 +225,15 @@ export function OpportunitiesTab({
 
   let body;
   if (query.isPending) {
-    body = (
-      <div
-        role="status"
-        aria-label="Cargando oportunidades"
-        className="bg-bg-muted m-4 h-10 animate-pulse rounded"
-      />
-    );
+    body = <LoadingState label="Cargando oportunidades" blocks={[40]} className="m-4" />;
   } else if (query.isError) {
     body = (
       <div className="p-3">
-        <Alert
-          type="error"
-          showIcon
+        <ErrorState
           title="No pudimos cargar las oportunidades"
-          description={query.error.message}
-          action={
-            <Button size="small" onClick={() => void query.refetch()}>
-              Reintentar
-            </Button>
-          }
+          message={query.error.message}
+          onRetry={() => void query.refetch()}
+          retrying={query.isFetching}
         />
       </div>
     );

@@ -1,10 +1,11 @@
 "use client";
 
-import { Alert, Button, Pagination } from "antd";
+import { Pagination } from "antd";
 import { useState } from "react";
 
 import { toneFor, type Tone } from "@design/status-tones";
 import { EmptyState } from "@/components/ui/empty-state";
+import { ErrorState, LoadingState } from "@/components/ui/state-views";
 import {
   HISTORY_PAGE_SIZE,
   useStatusHistory,
@@ -72,25 +73,14 @@ export function HistoryPanel({ applicationId }: { applicationId: string }) {
   const [page, setPage] = useState(1);
   const history = useStatusHistory(applicationId, page);
 
-  if (history.isPending) {
-    return (
-      <p role="status" className="text-text-tertiary m-0 text-sm">
-        Cargando historial…
-      </p>
-    );
-  }
+  if (history.isPending) return <LoadingState label="Cargando historial…" blocks={[]} />;
   if (history.isError) {
     return (
-      <Alert
-        type="error"
-        showIcon
+      <ErrorState
         title="No pudimos cargar el historial"
-        description={history.error.message}
-        action={
-          <Button size="small" onClick={() => void history.refetch()}>
-            Reintentar
-          </Button>
-        }
+        message={history.error.message}
+        onRetry={() => void history.refetch()}
+        retrying={history.isFetching}
       />
     );
   }

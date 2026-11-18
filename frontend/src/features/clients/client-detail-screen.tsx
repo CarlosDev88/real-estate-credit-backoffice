@@ -5,10 +5,11 @@ import { useRouter } from "next/navigation";
 import { useMemo } from "react";
 
 import { useShellTrail } from "@/components/ui/app-shell";
+import { PageHeader } from "@/components/ui/page-header";
 import { ScrollTabs } from "@/components/ui/scroll-tabs";
 import { useMe } from "@/features/auth/queries";
 import { ApplicationsTab } from "@/features/clients/applications-tab";
-import { BackLink, WithClient } from "@/features/clients/client-screens";
+import { WithClient } from "@/features/clients/client-screens";
 import { DocumentCell } from "@/features/clients/components/client-cells";
 import { useClientTab, type ClientTab } from "@/features/clients/detail-tabs";
 import { OpportunitiesTab } from "@/features/clients/opportunities-tab";
@@ -28,18 +29,21 @@ function usePermissions() {
 function ClientHeader({ client, canEdit }: { client: ClientDetail; canEdit: boolean }) {
   const router = useRouter();
   return (
-    <header className="flex flex-wrap items-start gap-3">
-      <div className="grid min-w-0 flex-1 gap-1">
-        <h1 className="m-0 text-3xl font-semibold tracking-tight">{client.full_name}</h1>
-        <div className="text-text-secondary flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+    <PageHeader
+      back={{ href: CLIENTS_HREF, label: "Volver a clientes" }}
+      title={client.full_name}
+      description={
+        <span className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
           <DocumentCell client={client} />
           {client.email && <span>{client.email}</span>}
           {client.phone && <span className="tabular-nums">{client.phone}</span>}
           {client.origin && <span>Origen: {client.origin.label}</span>}
-        </div>
-      </div>
-      {canEdit && <Button onClick={() => router.push(editClientHref(client.id))}>Editar</Button>}
-    </header>
+        </span>
+      }
+      actions={
+        canEdit && <Button onClick={() => router.push(editClientHref(client.id))}>Editar</Button>
+      }
+    />
   );
 }
 
@@ -75,7 +79,6 @@ function ClientDetailView({ client }: { client: ClientDetail }) {
 
   return (
     <div className="grid content-start gap-4">
-      <BackLink href={CLIENTS_HREF}>Volver a clientes</BackLink>
       <ClientHeader client={client} canEdit={canEdit} />
 
       <ScrollTabs

@@ -4,7 +4,9 @@ import { toneFor } from "@design/status-tones";
 import { Button } from "antd";
 import { useId, useState } from "react";
 
+import { PageHeader } from "@/components/ui/page-header";
 import { ScrollTabs } from "@/components/ui/scroll-tabs";
+import { ErrorState, LoadingState } from "@/components/ui/state-views";
 import { StatusBadge, TONE_CLASS } from "@/components/ui/status-badge";
 import { useSlotVersions } from "@/features/buyer-documents/documents-queries";
 import {
@@ -30,6 +32,7 @@ type Viewer = ReturnType<typeof useBuyerViewer>;
 function ViewButton({ viewer, target }: { viewer: Viewer; target: ViewTarget }) {
   return (
     <Button
+      size="large"
       onClick={() => viewer.show(target)}
       loading={viewer.loadingFor(target.fileId)}
       aria-label={`Ver ${target.name}`}
@@ -175,6 +178,7 @@ function SlotCard({
       <div className="flex flex-wrap gap-2">
         {slot.can_upload && (
           <Button
+            size="large"
             type={slot.needs_action ? "primary" : "default"}
             onClick={() => onUpload(slot)}
             aria-label={`${file ? "Reemplazar" : "Subir"} ${slotName(slot)}`}
@@ -195,6 +199,7 @@ function SlotCard({
         )}
         {file && (
           <Button
+            size="large"
             type="text"
             aria-expanded={showVersions}
             aria-controls={versionsId}
@@ -256,37 +261,32 @@ export function BuyerDocumentsScreen() {
 
   return (
     <div className="mx-auto grid max-w-[480px] gap-5 px-4 py-5 min-[900px]:max-w-[960px] min-[900px]:px-5 min-[900px]:pt-8 min-[900px]:pb-12">
-      <div className="flex flex-wrap items-end gap-4">
-        <div className="min-w-0 flex-1">
-          <h1 className="m-0 text-3xl font-semibold tracking-tight">Tus documentos</h1>
-          {slots && <p className="text-text-secondary text-md mt-1 mb-0">{summaryText(pending)}</p>}
-        </div>
-        {progress && (
-          <div className="w-full min-[900px]:w-auto">
-            <ReadyBar
-              done={progress.documents_completed_total}
-              total={progress.documents_required_total}
-            />
-          </div>
-        )}
-      </div>
+      <PageHeader
+        variant="portal"
+        title="Tus documentos"
+        description={slots ? summaryText(pending) : undefined}
+        actions={
+          progress && (
+            <div className="w-full min-[900px]:w-auto">
+              <ReadyBar
+                done={progress.documents_completed_total}
+                total={progress.documents_required_total}
+              />
+            </div>
+          )
+        }
+      />
 
-      {slotsQuery.isPending && (
-        <div aria-busy="true" className="grid gap-3">
-          <span className="sr-only" role="status">
-            Cargando…
-          </span>
-          <div className="bg-bg-muted h-28 animate-pulse rounded-xl motion-reduce:animate-none" />
-          <div className="bg-bg-muted h-28 animate-pulse rounded-xl motion-reduce:animate-none" />
-        </div>
-      )}
+      {slotsQuery.isPending && <LoadingState variant="portal" blocks={[112, 112]} />}
 
       {slotsQuery.isError && (
-        <div role="alert" className="grid justify-items-start gap-2">
-          <p className="m-0 font-semibold">No pudimos cargar tus documentos</p>
-          <p className="text-text-secondary m-0">{slotsQuery.error.message}</p>
-          <Button onClick={() => void slotsQuery.refetch()}>Reintentar</Button>
-        </div>
+        <ErrorState
+          variant="page"
+          title="No pudimos cargar tus documentos"
+          message={slotsQuery.error.message}
+          onRetry={() => void slotsQuery.refetch()}
+          retrying={slotsQuery.isFetching}
+        />
       )}
 
       {slots && slots.length === 0 && (

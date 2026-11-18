@@ -1,0 +1,67 @@
+import { Meta } from "@storybook/addon-docs/blocks";
+
+<Meta title="Introducción" />
+
+# Umbral · Design system
+
+Librería de componentes del backoffice y del portal del comprador. Aquí viven los fundamentos (tokens), los componentes de `components/ui` y los patrones con los que se arman las vistas.
+
+La fuente de los tokens es `design/tokens/tokens.json`. Estas páginas leen los archivos generados de `design/generated/` (`tokens.css`, `tailwind-theme.css`, `status-tones.ts` y `contrast-report.md`): no copian valores, así que si un token cambia, la documentación cambia con él. Las reglas completas están en `design/README.md`.
+
+## Cómo usar Storybook
+
+- **Tema:** el selector "Tema" de la barra aplica `data-theme` en `<html>` y el tema de Ant Design (`lightTheme` o `darkTheme`) a la vez, igual que el botón de la app. Los documentos también lo siguen.
+- **Tamaños de pantalla:** el botón de viewport tiene móvil (390 px), portátil (1280 px) y escritorio (1440 px). El portal del comprador se revisa primero en móvil.
+- **Accesibilidad:** el panel "Accessibility" corre axe en cada story. `pnpm test:storybook` corre todos los stories y falla con violaciones serias o críticas.
+- **Providers reales:** cada story se pinta con los mismos providers que la app (`AntdRegistry` con `layer`, tema, toasts y TanStack Query) y con las fuentes Inter y JetBrains Mono.
+
+## Principios
+
+- **Confianza antes que decoración.** Azul sobrio, mucho espacio en blanco y jerarquía por bordes y fondos, no por sombras.
+- **Densidad legible.** Base de 14 px, controles de 32 px y cifras tabulares en montos y porcentajes.
+- **El estado se ve de un vistazo,** con seis tonos, y nunca solo por color.
+- **Accesible por defecto.** Los contrastes se verifican al generar los tokens.
+- **El portal del comprador es móvil primero.** Mismos tokens, controles de 40 px y una sola columna.
+
+## Comandos
+
+{/* Tabla en JSX: el MDX de Storybook no trae tablas de Markdown (GFM). */}
+
+<table>
+  <thead>
+    <tr>
+      <th>Comando</th>
+      <th>Qué hace</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>
+        <code>pnpm storybook</code>
+      </td>
+      <td>
+        Storybook en local, en <code>http://localhost:6006</code>.
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code>pnpm build-storybook</code>
+      </td>
+      <td>
+        Versión estática en <code>storybook-static/</code> (la que compila el CI).
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code>pnpm test:storybook</code>
+      </td>
+      <td>Corre cada story en Chromium con la revisión de accesibilidad.</td>
+    </tr>
+  </tbody>
+</table>
+
+## Dónde va cada cosa
+
+- Componentes compartidos: `frontend/src/components/ui/`, con su story al lado (`*.stories.tsx`) y sus pruebas.
+- Documentos (fundamentos, patrones, guía): `frontend/src/stories/`.
+- Una pieza que nace en una feature se queda en su feature hasta que el dueño de `components/ui` decide pasarla a la librería.
