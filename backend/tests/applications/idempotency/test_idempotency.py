@@ -314,6 +314,9 @@ def test_the_contract_declares_the_header_in_the_idempotent_operations() -> None
         "applications_document_package_jobs_create",
         "buyer_access_links_create",
         "reports_applications_export_jobs_create",
+        "applications_commission_settlement_create",
+        "commission_settlements_void",
+        "commission_shares_pay",
     }
     declared = set()
     for item in schema["paths"].values():
