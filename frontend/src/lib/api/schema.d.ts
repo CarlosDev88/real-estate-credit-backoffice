@@ -1998,6 +1998,86 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/dashboard/bank-results": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Resultados de las radicaciones por banco
+         * @description Solo administrador y asesor (el broker recibe `403 PERMISSION_DENIED`). Radicaciones con `filed_at` en el periodo, agrupadas por el banco del producto radicado (`bank_id` filtra por ese banco). Una radicación cuenta en `returned`, `approved`, `rejected` o `disbursed` si alguna vez recibió esa respuesta. Solo salen los bancos con radicaciones.
+         */
+        get: operations["dashboard_bank_results"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/dashboard/funnel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Embudo de conversión del periodo
+         * @description Cohorte de las solicitudes creadas en el periodo: cuántas llegaron alguna vez a cada etapa, en orden (`CREATED`, `DOCUMENTS_COMPLETE`, `READY_TO_FILE`, `FILED`, `APPROVED`, `DISBURSED`). Una solicitud que llegó a una etapa posterior cuenta en las anteriores. `DOCUMENTS_COMPLETE` es haber llegado a `DOCUMENTS_REVIEW`. `conversion` es contra `CREATED` y `step_conversion` contra la etapa anterior, como decimal en texto con 4 decimales.
+         */
+        get: operations["dashboard_funnel"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/dashboard/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Indicadores principales del periodo
+         * @description Clientes y solicitudes creados en el periodo, la foto de hoy por estado (sin el filtro de fechas), las tareas vencidas y de hoy y, solo para el administrador y el asesor, los montos en COP. El broker recibe solo conteos de las solicitudes de las oportunidades que originó: sin `amounts` y con `tasks` en 0.
+         */
+        get: operations["dashboard_summary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/dashboard/workload": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Carga de hoy por asesor
+         * @description Solo administrador y asesor (el broker recibe `403 PERMISSION_DENIED`). El asesor ve solo su fila; el administrador, la de cada asesor activo y la de quien tenga solicitudes abiertas asignadas (o solo la de `advisor_id`). Es una foto de hoy: el rango de fechas no aplica. Las tareas son las `PENDING` asignadas al asesor.
+         */
+        get: operations["dashboard_workload"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/document-files/{file_id}": {
         parameters: {
             query?: never;
@@ -2939,6 +3019,130 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/report-export-jobs/{job_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Estado de una exportación
+         * @description Del propietario, o de cualquiera con `reports.manage`. `FAILED` trae `error_code`; un `FAILED` no se reintenta: se pide otra.
+         */
+        get: operations["report_export_jobs_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/report-export-jobs/{job_id}/download": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Descargar una exportación
+         * @description URL prefirmada de corta duración (`DOCUMENT_DOWNLOAD_URL_SECONDS`, 5 minutos por omisión) del CSV, con `Content-Disposition: attachment`, como la descarga de documentos (comparte su límite de 60 descargas por hora). La URL no se guarda ni va a los logs.
+         */
+        get: operations["report_export_jobs_download"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/applications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Reporte paginado de solicitudes
+         * @description Solicitudes creadas en el periodo (por fecha de creación), dentro del alcance y con los filtros, de la más nueva a la más vieja. Solo datos operativos: el documento del titular sale enmascarado y nunca salen correo, teléfono, dirección, datos financieros del comprador ni archivos.
+         */
+        get: operations["reports_applications_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/applications.csv": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Descarga directa del reporte de solicitudes en CSV
+         * @description Las mismas columnas y filtros de `/reports/applications`, en CSV UTF-8 con BOM, separado por comas y con encabezados en español. Las celdas que empiezan con `=`, `+`, `-`, `@`, tabulador o retorno de carro se prefijan con `'`. Si el resultado supera `REPORTS_CSV_MAX_ROWS` (5000) filas responde `422 EXPORT_TOO_LARGE`: hay que usar la exportación asíncrona.
+         */
+        get: operations["reports_applications_csv"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/applications/export-jobs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Exportaciones pedidas
+         * @description Las exportaciones propias, de la más nueva a la más vieja. Con `reports.manage` (administrador), `all=true` lista las de todos; sin ese permiso, `all=true` responde `403 FILTER_OUT_OF_SCOPE`.
+         */
+        get: operations["reports_applications_export_jobs_list"];
+        put?: never;
+        /**
+         * Pedir la exportación asíncrona del reporte de solicitudes
+         * @description Exporta en segundo plano, solo en CSV, el reporte de `/reports/applications` con los filtros del cuerpo (los mismos de la consulta, todos opcionales; un campo desconocido responde `400`). Guarda los filtros ya validados, con el rango efectivo. El trabajo se recalcula con el alcance del solicitante al momento de ejecutarse y no tiene el límite de 5000 filas (sí un tope de 100000). Cada usuario tiene como máximo 3 exportaciones pendientes o en proceso: una más responde `429 TOO_MANY_EXPORTS`. Se consulta en `GET /report-export-jobs/{job_id}`.
+         */
+        post: operations["reports_applications_export_jobs_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/funnel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Embudo reportable con desglose opcional
+         * @description El mismo embudo de `/dashboard/funnel` (cohorte de las solicitudes creadas en el periodo) con el filtro `status` y, con `group_by`, un embudo por asesor, banco o finalidad. El asesor solo ve sus solicitudes, así que su desglose por asesor tiene un grupo.
+         */
+        get: operations["reports_funnel"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/roles": {
         parameters: {
             query?: never;
@@ -3341,6 +3545,19 @@ export interface components {
             /** @default false */
             is_primary: boolean;
         };
+        AdvisorWorkload: {
+            /** Format: uuid */
+            advisor_id: string;
+            advisor_name: string;
+            /** @description Solicitudes no terminales. */
+            open_applications: number;
+            overdue_tasks: number;
+            due_today_tasks: number;
+            /** @description Solicitudes esperando datos o documentos del comprador. */
+            waiting_buyer: number;
+            /** @description Solicitudes listas para radicar. */
+            ready_to_file: number;
+        };
         /**
          * @description * `application/pdf` - application/pdf
          *     * `image/jpeg` - image/jpeg
@@ -3348,6 +3565,23 @@ export interface components {
          * @enum {string}
          */
         AllowedMimeTypesEnum: "application/pdf" | "image/jpeg" | "image/png";
+        Amounts: {
+            /**
+             * Format: decimal
+             * @description Suma del monto solicitado en la financiación, en COP.
+             */
+            requested_total: string;
+            /**
+             * Format: decimal
+             * @description Suma del monto de la última aprobación del banco de cada solicitud, en COP.
+             */
+            approved_total: string;
+            /**
+             * Format: decimal
+             * @description Suma del monto del último desembolso registrado de cada solicitud, en COP.
+             */
+            disbursed_total: string;
+        };
         /** @description Titular de la solicitud: el cliente de la oportunidad. */
         ApplicantRef: {
             /** Format: uuid */
@@ -3642,6 +3876,8 @@ export interface components {
          *     * `USER_CHANGED` - Cambio de usuario
          *     * `USER_ROLES_CHANGED` - Cambio de roles
          *     * `USER_STATUS_CHANGED` - Cambio de estado de usuario
+         *     * `REPORT_EXPORTED` - Reporte exportado
+         *     * `REPORT_EXPORT_DOWNLOADED` - Exportación descargada
          *     * `COMMISSION_PLAN_CHANGED` - Cambio de plan de comisión
          *     * `COMMISSION_SETTLED` - Comisión liquidada
          *     * `COMMISSION_SETTLEMENT_VOIDED` - Liquidación de comisión anulada
@@ -3649,7 +3885,7 @@ export interface components {
          *     * `ACCESS_DENIED` - Acceso denegado
          * @enum {string}
          */
-        AuditActionEnum: "AUTH_LOGIN" | "AUTH_LOGIN_FAILED" | "AUTH_LOGOUT" | "AUTH_REFRESH_REJECTED" | "AUTH_PASSWORD_RESET_REQUESTED" | "AUTH_PASSWORD_RESET_COMPLETED" | "AUTH_RATE_LIMITED" | "BUYER_LINK_CREATED" | "BUYER_LINK_CONSUMED" | "BUYER_LINK_FAILED" | "BUYER_SESSION_CLOSED" | "CONSENT_ACCEPTED" | "CONSENT_WITHDRAWN" | "DOCUMENT_UPLOADED" | "DOCUMENT_DOWNLOADED" | "PACKAGE_DOWNLOADED" | "EVIDENCE_DOWNLOADED" | "APPLICATION_STATUS_CHANGED" | "APPLICATION_WITHDRAWN" | "APPLICATION_ASSIGNED" | "DOCUMENT_REVIEWED" | "DOCUMENT_WAIVED" | "DOCUMENT_WAIVER_REOPENED" | "FILING_CREATED" | "FILING_UPDATED" | "BANK_RESPONSE_RECORDED" | "CATALOG_CHANGED" | "BANK_CHANGED" | "BANK_PRODUCT_CHANGED" | "BANK_RULE_CHANGED" | "DOCUMENT_TYPE_CHANGED" | "DOCUMENT_REQUIREMENT_CHANGED" | "WORKFLOW_TRANSITION_CHANGED" | "USER_CHANGED" | "USER_ROLES_CHANGED" | "USER_STATUS_CHANGED" | "COMMISSION_PLAN_CHANGED" | "COMMISSION_SETTLED" | "COMMISSION_SETTLEMENT_VOIDED" | "COMMISSION_SHARE_PAID" | "ACCESS_DENIED";
+        AuditActionEnum: "AUTH_LOGIN" | "AUTH_LOGIN_FAILED" | "AUTH_LOGOUT" | "AUTH_REFRESH_REJECTED" | "AUTH_PASSWORD_RESET_REQUESTED" | "AUTH_PASSWORD_RESET_COMPLETED" | "AUTH_RATE_LIMITED" | "BUYER_LINK_CREATED" | "BUYER_LINK_CONSUMED" | "BUYER_LINK_FAILED" | "BUYER_SESSION_CLOSED" | "CONSENT_ACCEPTED" | "CONSENT_WITHDRAWN" | "DOCUMENT_UPLOADED" | "DOCUMENT_DOWNLOADED" | "PACKAGE_DOWNLOADED" | "EVIDENCE_DOWNLOADED" | "APPLICATION_STATUS_CHANGED" | "APPLICATION_WITHDRAWN" | "APPLICATION_ASSIGNED" | "DOCUMENT_REVIEWED" | "DOCUMENT_WAIVED" | "DOCUMENT_WAIVER_REOPENED" | "FILING_CREATED" | "FILING_UPDATED" | "BANK_RESPONSE_RECORDED" | "CATALOG_CHANGED" | "BANK_CHANGED" | "BANK_PRODUCT_CHANGED" | "BANK_RULE_CHANGED" | "DOCUMENT_TYPE_CHANGED" | "DOCUMENT_REQUIREMENT_CHANGED" | "WORKFLOW_TRANSITION_CHANGED" | "USER_CHANGED" | "USER_ROLES_CHANGED" | "USER_STATUS_CHANGED" | "REPORT_EXPORTED" | "REPORT_EXPORT_DOWNLOADED" | "COMMISSION_PLAN_CHANGED" | "COMMISSION_SETTLED" | "COMMISSION_SETTLEMENT_VOIDED" | "COMMISSION_SHARE_PAID" | "ACCESS_DENIED";
         AuditActor: {
             /** Format: uuid */
             id: string;
@@ -3862,6 +4098,23 @@ export interface components {
             name: string;
             /** @description Nombre corto para listados; vacío si no tiene (se muestra `name`). */
             short_name: string;
+        };
+        BankResult: {
+            /** Format: uuid */
+            bank_id: string;
+            bank_name: string;
+            /** @description Radicaciones con `filed_at` en el periodo. */
+            filings: number;
+            /** @description Radicaciones que el banco devolvió. */
+            returned: number;
+            approved: number;
+            rejected: number;
+            disbursed: number;
+            /**
+             * Format: decimal
+             * @description Promedio de días entre `filed_at` y la primera respuesta, con 1 decimal; `null` si ninguna radicación tiene respuesta.
+             */
+            avg_days_to_response: string | null;
         };
         /** @description Evaluación guardada. ``context["application"]`` decide ``is_current``. */
         BankRuleEvaluation: {
@@ -4904,6 +5157,29 @@ export interface components {
             /** Format: date-time */
             readonly created_at: string;
         };
+        DashboardBankResults: {
+            period: components["schemas"]["Period"];
+            banks: components["schemas"]["BankResult"][];
+        };
+        DashboardFunnel: {
+            period: components["schemas"]["Period"];
+            stages: components["schemas"]["FunnelStage"][];
+        };
+        DashboardSummary: {
+            period: components["schemas"]["Period"];
+            /** @description Clientes creados en el periodo dentro del alcance de CRM del usuario. */
+            clients_created: number;
+            /** @description Solicitudes creadas en el periodo, con el alcance y los filtros. */
+            applications_created: number;
+            /** @description Solicitudes que hoy están en cada estado (sin el filtro de fechas). Trae todos los estados, incluso en 0. */
+            snapshot: components["schemas"]["StatusCount"][];
+            tasks: components["schemas"]["TaskCounts"];
+            /** @description Solo administrador y asesor, sobre las solicitudes creadas en el periodo. El broker no recibe este campo. */
+            amounts?: components["schemas"]["Amounts"];
+        };
+        DashboardWorkload: {
+            advisors: components["schemas"]["AdvisorWorkload"][];
+        };
         /**
          * @description * `APPROVED` - Aprobado
          *     * `REJECTED` - Rechazado
@@ -5287,6 +5563,43 @@ export interface components {
             /** Format: binary */
             file: string;
         };
+        /** @description Filtros validados que guarda la exportación, con el rango efectivo. */
+        ExportFilters: {
+            /** Format: date */
+            date_from: string;
+            /** Format: date */
+            date_to: string;
+            /** Format: uuid */
+            advisor_id: string | null;
+            /** Format: uuid */
+            partner_id: string | null;
+            /** Format: uuid */
+            project_id: string | null;
+            /** Format: uuid */
+            bank_id: string | null;
+            purpose_code: string | null;
+            status: components["schemas"]["ApplicationStatusEnum"][];
+        };
+        /**
+         * @description Cuerpo de ``POST /reports/applications/export-jobs``: los filtros del reporte, todos
+         *     opcionales. Un campo desconocido responde ``400``.
+         */
+        ExportJobRequestRequest: {
+            /** Format: date */
+            date_from?: string;
+            /** Format: date */
+            date_to?: string;
+            /** Format: uuid */
+            advisor_id?: string;
+            /** Format: uuid */
+            partner_id?: string;
+            /** Format: uuid */
+            project_id?: string;
+            /** Format: uuid */
+            bank_id?: string;
+            purpose_code?: string;
+            status?: components["schemas"]["ApplicationStatusEnum"][];
+        };
         FileMetadata: {
             /** Format: uuid */
             readonly id: string;
@@ -5575,6 +5888,38 @@ export interface components {
          * @enum {string}
          */
         FlowTypeEnum: "OPPORTUNITY" | "APPLICATION" | "PROJECT";
+        FunnelStage: {
+            code: components["schemas"]["FunnelStageEnum"];
+            readonly label: string;
+            count: number;
+            /**
+             * Format: decimal
+             * @description `count / CREATED` con 4 decimales; `null` si `CREATED` es 0.
+             */
+            conversion: string | null;
+            /**
+             * Format: decimal
+             * @description `count` contra la etapa anterior; `null` en `CREATED` o si la anterior es 0.
+             */
+            step_conversion: string | null;
+        };
+        /**
+         * @description * `CREATED` - Creadas
+         *     * `DOCUMENTS_COMPLETE` - Documentos completos
+         *     * `READY_TO_FILE` - Listas para radicar
+         *     * `FILED` - Radicadas
+         *     * `APPROVED` - Aprobadas
+         *     * `DISBURSED` - Desembolsadas
+         * @enum {string}
+         */
+        FunnelStageEnum: "CREATED" | "DOCUMENTS_COMPLETE" | "READY_TO_FILE" | "FILED" | "APPROVED" | "DISBURSED";
+        /**
+         * @description * `advisor` - Asesor
+         *     * `bank` - Banco
+         *     * `purpose` - Finalidad
+         * @enum {string}
+         */
+        GroupByEnum: "advisor" | "bank" | "purpose";
         /**
          * @description * `PARTICIPANT` - Participante
          *     * `APPLICATION` - Solicitud
@@ -6493,6 +6838,32 @@ export interface components {
             /** @example null */
             previous: string | null;
         };
+        PaginatedReportApplicationList: {
+            items: components["schemas"]["ReportApplication"][];
+            /** @example 1 */
+            page: number;
+            /** @example 25 */
+            page_size: number;
+            /** @example 128 */
+            total: number;
+            /** @example /api/v1/x?page=2 */
+            next: string | null;
+            /** @example null */
+            previous: string | null;
+        };
+        PaginatedReportExportJobList: {
+            items: components["schemas"]["ReportExportJob"][];
+            /** @example 1 */
+            page: number;
+            /** @example 25 */
+            page_size: number;
+            /** @example 128 */
+            total: number;
+            /** @example /api/v1/x?page=2 */
+            next: string | null;
+            /** @example null */
+            previous: string | null;
+        };
         PaginatedRoleList: {
             items: components["schemas"]["Role"][];
             /** @example 1 */
@@ -6977,6 +7348,18 @@ export interface components {
             guard_code?: string | null;
             roles?: string[];
         };
+        Period: {
+            /**
+             * Format: date
+             * @description Primer día del rango efectivo (incluido).
+             */
+            date_from: string;
+            /**
+             * Format: date
+             * @description Último día del rango efectivo (incluido).
+             */
+            date_to: string;
+        };
         PreviewDocument: {
             /** Format: uuid */
             requirement_id: string;
@@ -7170,6 +7553,100 @@ export interface components {
             /** Format: date-time */
             session_expires_at: string;
         };
+        /**
+         * @description Fila del reporte de solicitudes. Lee ``exports.application_row``; el CSV tiene las
+         *     mismas columnas (``exports.COLUMNS``).
+         */
+        ReportApplication: {
+            code: string;
+            /** Format: date-time */
+            created_at: string;
+            status: components["schemas"]["ApplicationStatusEnum"];
+            readonly status_label: string;
+            /** @description Etiqueta de la finalidad (`loan_purpose`). */
+            purpose: string;
+            advisor_name: string;
+            /** @description Titular de la oportunidad. */
+            client_name: string;
+            /** @description Documento del titular con solo los últimos 4 caracteres: `******5908`. */
+            client_document_masked: string;
+            bank_name: string | null;
+            /** @description Proyecto del inmueble o, si no tiene, el de la oportunidad. */
+            project_name: string | null;
+            /**
+             * Format: decimal
+             * @description Monto solicitado en COP; `null` sin financiación registrada.
+             */
+            requested_amount: string | null;
+            /** Format: date-time */
+            last_status_change_at: string;
+            filings_count: number;
+        };
+        ReportExportJob: {
+            /** Format: uuid */
+            id: string;
+            report_type: components["schemas"]["ReportTypeEnum"];
+            readonly report_type_label: string;
+            /** @description Siempre `csv` en el MVP. */
+            readonly format: string;
+            /**
+             * @description `PENDING` → `RUNNING` → `COMPLETED` o `FAILED`; un `COMPLETED` pasa a `EXPIRED` a las 24 horas.
+             *
+             *     * `PENDING` - Pendiente
+             *     * `RUNNING` - En proceso
+             *     * `COMPLETED` - Terminada
+             *     * `FAILED` - Fallida
+             *     * `EXPIRED` - Vencida
+             */
+            status: components["schemas"]["ReportExportJobStatusEnum"];
+            readonly status_label: string;
+            filters: components["schemas"]["ExportFilters"];
+            row_count: number | null;
+            /** @description Solo en `FAILED`: `PERMISSION_REVOKED`, `EXPORT_TOO_LARGE`, `STORAGE_UNAVAILABLE` o `INVALID_FILTERS`. */
+            error_code: string | null;
+            readonly requested_by: components["schemas"]["RequestedByRef"];
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            started_at: string | null;
+            /** Format: date-time */
+            completed_at: string | null;
+            /** Format: date-time */
+            expires_at: string | null;
+        };
+        /**
+         * @description * `PENDING` - Pendiente
+         *     * `RUNNING` - En proceso
+         *     * `COMPLETED` - Terminada
+         *     * `FAILED` - Fallida
+         *     * `EXPIRED` - Vencida
+         * @enum {string}
+         */
+        ReportExportJobStatusEnum: "PENDING" | "RUNNING" | "COMPLETED" | "FAILED" | "EXPIRED";
+        ReportFunnel: {
+            period: components["schemas"]["Period"];
+            group_by: components["schemas"]["GroupByEnum"] | components["schemas"]["NullEnum"];
+            /** @description Embudo de todo el resultado. */
+            stages: components["schemas"]["FunnelStage"][];
+            /** @description Un embudo por grupo, ordenados por etiqueta. Vacío sin `group_by`. */
+            groups: components["schemas"]["ReportFunnelGroup"][];
+        };
+        ReportFunnelGroup: {
+            /** @description Id del asesor o del banco, o código de la finalidad. `null`: sin banco. */
+            key: string | null;
+            label: string;
+            stages: components["schemas"]["FunnelStage"][];
+        };
+        /**
+         * @description * `applications` - Solicitudes
+         * @enum {string}
+         */
+        ReportTypeEnum: "applications";
+        RequestedByRef: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+        };
         Role: {
             /** Format: uuid */
             id: string;
@@ -7343,6 +7820,11 @@ export interface components {
             /** Format: date-time */
             transitioned_at: string;
         };
+        StatusCount: {
+            status: components["schemas"]["ApplicationStatusEnum"];
+            readonly status_label: string;
+            count: number;
+        };
         StatusHistory: {
             /** Format: uuid */
             readonly id: string;
@@ -7412,6 +7894,12 @@ export interface components {
          */
         TaskCancelRequest: {
             reason: string;
+        };
+        TaskCounts: {
+            /** @description Tareas `PENDING` con fecha anterior a hoy. */
+            overdue: number;
+            /** @description Tareas `PENDING` con fecha de hoy. */
+            due_today: number;
         };
         /**
          * @description Serializer que rechaza campos no declarados (``additionalProperties: false``).
@@ -10122,7 +10610,7 @@ export interface operations {
         parameters: {
             query?: {
                 /** @description Una o varias (`?action=A&action=B`). Un código desconocido responde `400`. */
-                action?: ("ACCESS_DENIED" | "APPLICATION_ASSIGNED" | "APPLICATION_STATUS_CHANGED" | "APPLICATION_WITHDRAWN" | "AUTH_LOGIN" | "AUTH_LOGIN_FAILED" | "AUTH_LOGOUT" | "AUTH_PASSWORD_RESET_COMPLETED" | "AUTH_PASSWORD_RESET_REQUESTED" | "AUTH_RATE_LIMITED" | "AUTH_REFRESH_REJECTED" | "BANK_CHANGED" | "BANK_PRODUCT_CHANGED" | "BANK_RESPONSE_RECORDED" | "BANK_RULE_CHANGED" | "BUYER_LINK_CONSUMED" | "BUYER_LINK_CREATED" | "BUYER_LINK_FAILED" | "BUYER_SESSION_CLOSED" | "CATALOG_CHANGED" | "COMMISSION_PLAN_CHANGED" | "COMMISSION_SETTLED" | "COMMISSION_SETTLEMENT_VOIDED" | "COMMISSION_SHARE_PAID" | "CONSENT_ACCEPTED" | "CONSENT_WITHDRAWN" | "DOCUMENT_DOWNLOADED" | "DOCUMENT_REQUIREMENT_CHANGED" | "DOCUMENT_REVIEWED" | "DOCUMENT_TYPE_CHANGED" | "DOCUMENT_UPLOADED" | "DOCUMENT_WAIVED" | "DOCUMENT_WAIVER_REOPENED" | "EVIDENCE_DOWNLOADED" | "FILING_CREATED" | "FILING_UPDATED" | "PACKAGE_DOWNLOADED" | "USER_CHANGED" | "USER_ROLES_CHANGED" | "USER_STATUS_CHANGED" | "WORKFLOW_TRANSITION_CHANGED")[];
+                action?: ("ACCESS_DENIED" | "APPLICATION_ASSIGNED" | "APPLICATION_STATUS_CHANGED" | "APPLICATION_WITHDRAWN" | "AUTH_LOGIN" | "AUTH_LOGIN_FAILED" | "AUTH_LOGOUT" | "AUTH_PASSWORD_RESET_COMPLETED" | "AUTH_PASSWORD_RESET_REQUESTED" | "AUTH_RATE_LIMITED" | "AUTH_REFRESH_REJECTED" | "BANK_CHANGED" | "BANK_PRODUCT_CHANGED" | "BANK_RESPONSE_RECORDED" | "BANK_RULE_CHANGED" | "BUYER_LINK_CONSUMED" | "BUYER_LINK_CREATED" | "BUYER_LINK_FAILED" | "BUYER_SESSION_CLOSED" | "CATALOG_CHANGED" | "COMMISSION_PLAN_CHANGED" | "COMMISSION_SETTLED" | "COMMISSION_SETTLEMENT_VOIDED" | "COMMISSION_SHARE_PAID" | "CONSENT_ACCEPTED" | "CONSENT_WITHDRAWN" | "DOCUMENT_DOWNLOADED" | "DOCUMENT_REQUIREMENT_CHANGED" | "DOCUMENT_REVIEWED" | "DOCUMENT_TYPE_CHANGED" | "DOCUMENT_UPLOADED" | "DOCUMENT_WAIVED" | "DOCUMENT_WAIVER_REOPENED" | "EVIDENCE_DOWNLOADED" | "FILING_CREATED" | "FILING_UPDATED" | "PACKAGE_DOWNLOADED" | "REPORT_EXPORTED" | "REPORT_EXPORT_DOWNLOADED" | "USER_CHANGED" | "USER_ROLES_CHANGED" | "USER_STATUS_CHANGED" | "WORKFLOW_TRANSITION_CHANGED")[];
                 actor_buyer_session_id?: string;
                 actor_user_id?: string;
                 /** @description Fecha (`AAAA-MM-DD`, desde el inicio del día en Bogotá) o fecha y hora ISO. */
@@ -15313,6 +15801,286 @@ export interface operations {
             };
         };
     };
+    dashboard_bank_results: {
+        parameters: {
+            query?: {
+                /** @description Asesor asignado. El asesor solo puede mandar el suyo y el broker ninguno: otro valor responde `403 FILTER_OUT_OF_SCOPE`. */
+                advisor_id?: string;
+                /** @description Banco del producto. */
+                bank_id?: string;
+                /** @description Primer día (`YYYY-MM-DD`, incluido, hora de Bogotá). Sin `date_from` ni `date_to` el rango es el mes en curso (día 1 a hoy); con solo `date_to`, el día 1 de su mes. */
+                date_from?: string;
+                /** @description Último día (`YYYY-MM-DD`, incluido). Por omisión, hoy; una fecha futura se recorta a hoy. El rango no puede superar 366 días. */
+                date_to?: string;
+                /** @description Constructora del proyecto de la solicitud (el del inmueble o, si no tiene, el de la oportunidad). El broker no puede usarlo (`403 FILTER_OUT_OF_SCOPE`). */
+                partner_id?: string;
+                /** @description Proyecto de la solicitud (el del inmueble o, si no tiene, el de la oportunidad). El broker no puede usarlo (`403 FILTER_OUT_OF_SCOPE`). */
+                project_id?: string;
+                /** @description Código `loan_purpose`. Uno que no existe responde `400`. */
+                purpose_code?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DashboardBankResults"];
+                };
+            };
+            /** @description VALIDATION_ERROR: fecha mal escrita, `date_from > date_to`, rango de más de 366 días, un id que no existe o un `purpose_code` desconocido. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description PERMISSION_DENIED o FILTER_OUT_OF_SCOPE (un filtro fuera del alcance del usuario). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description RATE_LIMITED: más de 20 consultas por minuto al dashboard y los reportes (cupo compartido, por usuario). `Retry-After` dice cuántos segundos esperar. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    dashboard_funnel: {
+        parameters: {
+            query?: {
+                /** @description Asesor asignado. El asesor solo puede mandar el suyo y el broker ninguno: otro valor responde `403 FILTER_OUT_OF_SCOPE`. */
+                advisor_id?: string;
+                /** @description Banco del producto. */
+                bank_id?: string;
+                /** @description Primer día (`YYYY-MM-DD`, incluido, hora de Bogotá). Sin `date_from` ni `date_to` el rango es el mes en curso (día 1 a hoy); con solo `date_to`, el día 1 de su mes. */
+                date_from?: string;
+                /** @description Último día (`YYYY-MM-DD`, incluido). Por omisión, hoy; una fecha futura se recorta a hoy. El rango no puede superar 366 días. */
+                date_to?: string;
+                /** @description Constructora del proyecto de la solicitud (el del inmueble o, si no tiene, el de la oportunidad). El broker no puede usarlo (`403 FILTER_OUT_OF_SCOPE`). */
+                partner_id?: string;
+                /** @description Proyecto de la solicitud (el del inmueble o, si no tiene, el de la oportunidad). El broker no puede usarlo (`403 FILTER_OUT_OF_SCOPE`). */
+                project_id?: string;
+                /** @description Código `loan_purpose`. Uno que no existe responde `400`. */
+                purpose_code?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DashboardFunnel"];
+                };
+            };
+            /** @description VALIDATION_ERROR: fecha mal escrita, `date_from > date_to`, rango de más de 366 días, un id que no existe o un `purpose_code` desconocido. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description PERMISSION_DENIED o FILTER_OUT_OF_SCOPE (un filtro fuera del alcance del usuario). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description RATE_LIMITED: más de 20 consultas por minuto al dashboard y los reportes (cupo compartido, por usuario). `Retry-After` dice cuántos segundos esperar. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    dashboard_summary: {
+        parameters: {
+            query?: {
+                /** @description Asesor asignado. El asesor solo puede mandar el suyo y el broker ninguno: otro valor responde `403 FILTER_OUT_OF_SCOPE`. */
+                advisor_id?: string;
+                /** @description Banco del producto. */
+                bank_id?: string;
+                /** @description Primer día (`YYYY-MM-DD`, incluido, hora de Bogotá). Sin `date_from` ni `date_to` el rango es el mes en curso (día 1 a hoy); con solo `date_to`, el día 1 de su mes. */
+                date_from?: string;
+                /** @description Último día (`YYYY-MM-DD`, incluido). Por omisión, hoy; una fecha futura se recorta a hoy. El rango no puede superar 366 días. */
+                date_to?: string;
+                /** @description Constructora del proyecto de la solicitud (el del inmueble o, si no tiene, el de la oportunidad). El broker no puede usarlo (`403 FILTER_OUT_OF_SCOPE`). */
+                partner_id?: string;
+                /** @description Proyecto de la solicitud (el del inmueble o, si no tiene, el de la oportunidad). El broker no puede usarlo (`403 FILTER_OUT_OF_SCOPE`). */
+                project_id?: string;
+                /** @description Código `loan_purpose`. Uno que no existe responde `400`. */
+                purpose_code?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DashboardSummary"];
+                };
+            };
+            /** @description VALIDATION_ERROR: fecha mal escrita, `date_from > date_to`, rango de más de 366 días, un id que no existe o un `purpose_code` desconocido. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description PERMISSION_DENIED o FILTER_OUT_OF_SCOPE (un filtro fuera del alcance del usuario). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description RATE_LIMITED: más de 20 consultas por minuto al dashboard y los reportes (cupo compartido, por usuario). `Retry-After` dice cuántos segundos esperar. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    dashboard_workload: {
+        parameters: {
+            query?: {
+                /** @description Asesor asignado. El asesor solo puede mandar el suyo y el broker ninguno: otro valor responde `403 FILTER_OUT_OF_SCOPE`. */
+                advisor_id?: string;
+                /** @description Banco del producto. */
+                bank_id?: string;
+                /** @description Primer día (`YYYY-MM-DD`, incluido, hora de Bogotá). Sin `date_from` ni `date_to` el rango es el mes en curso (día 1 a hoy); con solo `date_to`, el día 1 de su mes. */
+                date_from?: string;
+                /** @description Último día (`YYYY-MM-DD`, incluido). Por omisión, hoy; una fecha futura se recorta a hoy. El rango no puede superar 366 días. */
+                date_to?: string;
+                /** @description Constructora del proyecto de la solicitud (el del inmueble o, si no tiene, el de la oportunidad). El broker no puede usarlo (`403 FILTER_OUT_OF_SCOPE`). */
+                partner_id?: string;
+                /** @description Proyecto de la solicitud (el del inmueble o, si no tiene, el de la oportunidad). El broker no puede usarlo (`403 FILTER_OUT_OF_SCOPE`). */
+                project_id?: string;
+                /** @description Código `loan_purpose`. Uno que no existe responde `400`. */
+                purpose_code?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DashboardWorkload"];
+                };
+            };
+            /** @description VALIDATION_ERROR: fecha mal escrita, `date_from > date_to`, rango de más de 366 días, un id que no existe o un `purpose_code` desconocido. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description PERMISSION_DENIED o FILTER_OUT_OF_SCOPE (un filtro fuera del alcance del usuario). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description RATE_LIMITED: más de 20 consultas por minuto al dashboard y los reportes (cupo compartido, por usuario). `Retry-After` dice cuántos segundos esperar. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
     document_files_retrieve: {
         parameters: {
             query?: never;
@@ -19054,6 +19822,503 @@ export interface operations {
             };
             /** @description PARTNER_NOT_ACTIVE */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    report_export_jobs_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportExportJob"];
+                };
+            };
+            /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description PERMISSION_DENIED */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description RESOURCE_NOT_FOUND (inexistente o de otro usuario) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    report_export_jobs_download: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentDownload"];
+                };
+            };
+            /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description PERMISSION_DENIED */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description RESOURCE_NOT_FOUND (inexistente o de otro usuario) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description EXPORT_NOT_READY (pendiente, en proceso o fallida) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description EXPORT_EXPIRED */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description RATE_LIMITED */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description SERVICE_UNAVAILABLE (almacenamiento no disponible) */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    reports_applications_list: {
+        parameters: {
+            query?: {
+                /** @description Asesor asignado. El asesor solo puede mandar el suyo y el broker ninguno: otro valor responde `403 FILTER_OUT_OF_SCOPE`. */
+                advisor_id?: string;
+                /** @description Banco del producto. */
+                bank_id?: string;
+                /** @description Primer día (`YYYY-MM-DD`, incluido, hora de Bogotá). Sin `date_from` ni `date_to` el rango es el mes en curso (día 1 a hoy); con solo `date_to`, el día 1 de su mes. */
+                date_from?: string;
+                /** @description Último día (`YYYY-MM-DD`, incluido). Por omisión, hoy; una fecha futura se recorta a hoy. El rango no puede superar 366 días. */
+                date_to?: string;
+                /** @description Un número de página dentro del conjunto de resultados paginado. */
+                page?: number;
+                /** @description Número de resultados a devolver por página. */
+                page_size?: number;
+                /** @description Constructora del proyecto de la solicitud (el del inmueble o, si no tiene, el de la oportunidad). El broker no puede usarlo (`403 FILTER_OUT_OF_SCOPE`). */
+                partner_id?: string;
+                /** @description Proyecto de la solicitud (el del inmueble o, si no tiene, el de la oportunidad). El broker no puede usarlo (`403 FILTER_OUT_OF_SCOPE`). */
+                project_id?: string;
+                /** @description Código `loan_purpose`. Uno que no existe responde `400`. */
+                purpose_code?: string;
+                /** @description Estado actual de la solicitud; se repite para varios (`status=FILED&status=APPROVED`). Un estado desconocido responde `400`. */
+                status?: ("APPROVED" | "BANK_OBSERVATION" | "CANCELLED" | "CREDIT_ANALYSIS" | "DISBURSED" | "DOCUMENTS_REVIEW" | "DRAFT" | "EXTERNAL_CREDIT_APPROVED" | "FILED" | "FILING_VALIDATION" | "LEGALIZATION" | "OWN_FUNDS" | "READY_TO_FILE" | "REJECTED" | "WAITING_BUYER_DATA" | "WAITING_DOCUMENTS" | "WITHDRAWN")[];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedReportApplicationList"];
+                };
+            };
+            /** @description VALIDATION_ERROR: fecha mal escrita, `date_from > date_to`, rango de más de 366 días, un id que no existe o un `purpose_code` desconocido. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description PERMISSION_DENIED o FILTER_OUT_OF_SCOPE (un filtro fuera del alcance del usuario). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description RATE_LIMITED: más de 20 consultas por minuto al dashboard y los reportes (cupo compartido, por usuario). `Retry-After` dice cuántos segundos esperar. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    reports_applications_csv: {
+        parameters: {
+            query?: {
+                /** @description Asesor asignado. El asesor solo puede mandar el suyo y el broker ninguno: otro valor responde `403 FILTER_OUT_OF_SCOPE`. */
+                advisor_id?: string;
+                /** @description Banco del producto. */
+                bank_id?: string;
+                /** @description Primer día (`YYYY-MM-DD`, incluido, hora de Bogotá). Sin `date_from` ni `date_to` el rango es el mes en curso (día 1 a hoy); con solo `date_to`, el día 1 de su mes. */
+                date_from?: string;
+                /** @description Último día (`YYYY-MM-DD`, incluido). Por omisión, hoy; una fecha futura se recorta a hoy. El rango no puede superar 366 días. */
+                date_to?: string;
+                /** @description Constructora del proyecto de la solicitud (el del inmueble o, si no tiene, el de la oportunidad). El broker no puede usarlo (`403 FILTER_OUT_OF_SCOPE`). */
+                partner_id?: string;
+                /** @description Proyecto de la solicitud (el del inmueble o, si no tiene, el de la oportunidad). El broker no puede usarlo (`403 FILTER_OUT_OF_SCOPE`). */
+                project_id?: string;
+                /** @description Código `loan_purpose`. Uno que no existe responde `400`. */
+                purpose_code?: string;
+                /** @description Estado actual de la solicitud; se repite para varios (`status=FILED&status=APPROVED`). Un estado desconocido responde `400`. */
+                status?: ("APPROVED" | "BANK_OBSERVATION" | "CANCELLED" | "CREDIT_ANALYSIS" | "DISBURSED" | "DOCUMENTS_REVIEW" | "DRAFT" | "EXTERNAL_CREDIT_APPROVED" | "FILED" | "FILING_VALIDATION" | "LEGALIZATION" | "OWN_FUNDS" | "READY_TO_FILE" | "REJECTED" | "WAITING_BUYER_DATA" | "WAITING_DOCUMENTS" | "WITHDRAWN")[];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Archivo `solicitudes_<date_from>_<date_to>.csv` (`Content-Disposition: attachment`). */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/csv": string;
+                };
+            };
+            /** @description VALIDATION_ERROR: fecha mal escrita, `date_from > date_to`, rango de más de 366 días, un id que no existe o un `purpose_code` desconocido. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description PERMISSION_DENIED o FILTER_OUT_OF_SCOPE (un filtro fuera del alcance del usuario). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description EXPORT_TOO_LARGE: más filas que el límite de la descarga directa. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description RATE_LIMITED: más de 20 consultas por minuto al dashboard y los reportes (cupo compartido, por usuario). `Retry-After` dice cuántos segundos esperar. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    reports_applications_export_jobs_list: {
+        parameters: {
+            query?: {
+                /** @description Solo con `reports.manage`: las exportaciones de todos. */
+                all?: boolean;
+                /** @description Un número de página dentro del conjunto de resultados paginado. */
+                page?: number;
+                /** @description Número de resultados a devolver por página. */
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedReportExportJobList"];
+                };
+            };
+            /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description PERMISSION_DENIED o FILTER_OUT_OF_SCOPE (`all` sin `reports.manage`) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description RATE_LIMITED: más de 20 consultas por minuto al dashboard y los reportes (cupo compartido, por usuario). `Retry-After` dice cuántos segundos esperar. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    reports_applications_export_jobs_create: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Opcional. Clave única de la operación (1 a 100 caracteres visibles; por ejemplo, un UUID), válida 24 horas para el actor, el método y la ruta. Repetirla con el mismo cuerpo devuelve la respuesta original; con otro cuerpo, `422 IDEMPOTENCY_CONFLICT`; mientras la primera sigue en curso, `409 IDEMPOTENCY_IN_PROGRESS`. Solo se guardan las respuestas `2xx`. */
+                "Idempotency-Key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ExportJobRequestRequest"];
+            };
+        };
+        responses: {
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportExportJob"];
+                };
+            };
+            /** @description VALIDATION_ERROR: fecha mal escrita, `date_from > date_to`, rango de más de 366 días, un id que no existe o un `purpose_code` desconocido.; VALIDATION_ERROR (`Idempotency-Key` mal formada) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description PERMISSION_DENIED o FILTER_OUT_OF_SCOPE (un filtro fuera del alcance del usuario). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description IDEMPOTENCY_IN_PROGRESS */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description IDEMPOTENCY_CONFLICT */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description TOO_MANY_EXPORTS (3 exportaciones en curso) o RATE_LIMITED (más de 20 consultas por minuto al dashboard y los reportes) */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    reports_funnel: {
+        parameters: {
+            query?: {
+                /** @description Asesor asignado. El asesor solo puede mandar el suyo y el broker ninguno: otro valor responde `403 FILTER_OUT_OF_SCOPE`. */
+                advisor_id?: string;
+                /** @description Banco del producto. */
+                bank_id?: string;
+                /** @description Primer día (`YYYY-MM-DD`, incluido, hora de Bogotá). Sin `date_from` ni `date_to` el rango es el mes en curso (día 1 a hoy); con solo `date_to`, el día 1 de su mes. */
+                date_from?: string;
+                /** @description Último día (`YYYY-MM-DD`, incluido). Por omisión, hoy; una fecha futura se recorta a hoy. El rango no puede superar 366 días. */
+                date_to?: string;
+                /** @description Desglose opcional: un embudo por asesor, banco o finalidad. Otro valor responde `400`. */
+                group_by?: "advisor" | "bank" | "purpose";
+                /** @description Constructora del proyecto de la solicitud (el del inmueble o, si no tiene, el de la oportunidad). El broker no puede usarlo (`403 FILTER_OUT_OF_SCOPE`). */
+                partner_id?: string;
+                /** @description Proyecto de la solicitud (el del inmueble o, si no tiene, el de la oportunidad). El broker no puede usarlo (`403 FILTER_OUT_OF_SCOPE`). */
+                project_id?: string;
+                /** @description Código `loan_purpose`. Uno que no existe responde `400`. */
+                purpose_code?: string;
+                /** @description Estado actual de la solicitud; se repite para varios (`status=FILED&status=APPROVED`). Un estado desconocido responde `400`. */
+                status?: ("APPROVED" | "BANK_OBSERVATION" | "CANCELLED" | "CREDIT_ANALYSIS" | "DISBURSED" | "DOCUMENTS_REVIEW" | "DRAFT" | "EXTERNAL_CREDIT_APPROVED" | "FILED" | "FILING_VALIDATION" | "LEGALIZATION" | "OWN_FUNDS" | "READY_TO_FILE" | "REJECTED" | "WAITING_BUYER_DATA" | "WAITING_DOCUMENTS" | "WITHDRAWN")[];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportFunnel"];
+                };
+            };
+            /** @description VALIDATION_ERROR: fecha mal escrita, `date_from > date_to`, rango de más de 366 días, un id que no existe o un `purpose_code` desconocido. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description PERMISSION_DENIED o FILTER_OUT_OF_SCOPE (un filtro fuera del alcance del usuario). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description RATE_LIMITED: más de 20 consultas por minuto al dashboard y los reportes (cupo compartido, por usuario). `Retry-After` dice cuántos segundos esperar. */
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };

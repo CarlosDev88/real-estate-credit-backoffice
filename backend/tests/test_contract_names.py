@@ -67,6 +67,16 @@ STABLE_ENUMS = {
         "COMMISSION_SHARE_PAID",
         "COMMISSION_PLAN_MISSING",
     ],
+    "FunnelStageEnum": [
+        "CREATED",
+        "DOCUMENTS_COMPLETE",
+        "READY_TO_FILE",
+        "FILED",
+        "APPROVED",
+        "DISBURSED",
+    ],
+    "ReportExportJobStatusEnum": ["PENDING", "RUNNING", "COMPLETED", "FAILED", "EXPIRED"],
+    "ReportTypeEnum": ["applications"],
 }
 
 
