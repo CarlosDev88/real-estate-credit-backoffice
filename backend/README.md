@@ -59,6 +59,7 @@ flowchart LR
 | `idempotency` | `Idempotency-Key` records for the critical `POST` operations. | Used by filings, bank responses, status transitions, filing packages, and magic links. |
 | `reporting` | Dashboards, operational reports, and export jobs. | Reads authorized data from CRM, applications, filings, and documents. |
 | `audit` | Immutable technical audit events and request correlation. | Records sensitive actions performed across all modules. |
+| `commissions` | Commission plans per bank product, settlements of disbursed credits, and the advisor and broker shares with their payments. | Settles on the `DISBURSED` bank response (`filing_response_recorded`); records activity and audit through its own signals. |
 
 The complete table ownership, dependencies, and build order are documented in [the complete ERD](../docs/DER_COMPLETO_MVP_CREDITO.md#15-distribución-de-tablas-por-módulo-y-orden-de-construcción).
 
@@ -478,6 +479,16 @@ The `idempotency` module (API §6) protects five critical `POST` operations: the
 - **IP:** taken from `REMOTE_ADDR`. `X-Forwarded-For` is not trusted until a trusted proxy is configured (`AUDIT_TRUST_FORWARDED_FOR = False`); locally, behind the Next rewrite, the proxy IP is stored.
 - **Immutable:** the model rejects updates and deletes, and a PostgreSQL trigger blocks `UPDATE` on `audit_events`.
 - **Retention:** `python manage.py purge_audit_events` deletes events older than `AUDIT_RETENTION_DAYS` (365; `--days` changes it). It is the only way to delete them; run it periodically, for example from cron.
+
+## Commissions
+
+`apps/commissions` calculates the commission of each disbursed credit and splits it between the advisor and the broker (API §23.6).
+
+- **Plans:** one per bank product and validity range (`[valid_from, valid_until)`, no overlaps per product). A plan used by a settlement is not edited: it is closed and a new one is created. `PATCH` needs `If-Match`.
+- **Settlement:** recording a `DISBURSED` bank response settles automatically. The base is the disbursed amount, and the plan is the one valid on the disbursement date (Bogotá). The total is `base × rate`, rounded half up to the peso. With a `BROKER` origin the broker gets its share and the advisor the rest; with any other origin, the advisor gets 100 %. There is one active settlement per application (the application row is locked). Without a valid plan nothing breaks: the activity shows it and the admin settles by hand.
+- **Payments:** each share is paid separately (`paid_at`, `payment_reference`).
+- **Mine:** `GET /me/commissions` shows each advisor or broker only their own share, never the base, rate, total or the other share.
+- **Demo:** `seed_demo_data` creates a 1 %, 70/30 plan for every product, valid from 2026-01-01, and settles any demo application in `DISBURSED`.
 
 ## Internal Authentication
 

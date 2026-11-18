@@ -835,7 +835,7 @@ solo pueden existir cuando ya están creados sus recursos padre.
 | 13 | `notifications` | `notifications`, `notification_deliveries`, `idempotency_keys`, `outbox_events` | `identity`, `crm`, `applications` y acceso comprador. |
 | 14 | `audit` | `audit_events` | `identity` y acceso comprador. |
 | 15 | `reporting` | `report_export_jobs` | `identity` y `documents.file_objects`; consulta, sin ser dueño, los datos de CRM, solicitudes y radicaciones. |
-| 16 | `commissions` | `commission_plans`, `commission_settlements`, `commission_shares` | `banking` para el producto, `applications` y `crm` para asesor y origen, `filings` para el desembolso y `notifications` para el evento `APPLICATION_DISBURSED`. |
+| 16 | `commissions` | `commission_plans`, `commission_settlements`, `commission_shares` | `banking` para el producto, `applications` y `crm` para asesor y origen, `filings` para el desembolso (la señal `filing_response_recorded` dispara la liquidación). |
 
 ### Resumen por módulo
 

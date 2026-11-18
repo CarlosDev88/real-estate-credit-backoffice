@@ -2,6 +2,7 @@
 
 import io
 from collections.abc import Callable
+from decimal import Decimal
 from typing import Any
 
 import pytest
@@ -21,6 +22,8 @@ from apps.applications.demo_data import (
 )
 from apps.applications.management.commands.seed_demo_data import EXISTS_MESSAGE
 from apps.applications.models import ApplicationStatusHistory, CreditApplication
+from apps.banking.models import BankProduct
+from apps.commissions.models import CommissionPlan
 from apps.crm.models import Client
 from apps.documents.file_validation import detect_mime_type
 from apps.documents.models import DocumentFile, DocumentReview, ReviewDecision, SlotStatus
@@ -159,6 +162,12 @@ def test_seed_creates_the_demo_data(e2e_advisor: User) -> None:
     assert set(notes.values_list("actor_user", flat=True)) == {e2e_advisor.pk}
     created = ActivityLog.objects.filter(event_type=ActivityEventType.APPLICATION_CREATED)
     assert created.count() == TOTAL_APPLICATIONS
+    # Comisiones (paso 16): un plan de demo por producto (1 %, 70/30).
+    plans = CommissionPlan.objects.all()
+    assert plans.count() == BankProduct.objects.count()
+    assert set(plans.values_list("rate_pct", "advisor_share_pct", "broker_share_pct")) == {
+        (Decimal("1.0000"), Decimal("70.0000"), Decimal("30.0000"))
+    }
 
 
 def test_second_run_creates_nothing(e2e_advisor: User) -> None:

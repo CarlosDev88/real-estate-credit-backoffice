@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     "apps.activity",
     "apps.audit",
     "apps.reporting",
+    "apps.commissions",
 ]
 
 MIDDLEWARE = [
@@ -182,6 +183,10 @@ SPECTACULAR_SETTINGS = {
         # Exportación asíncrona: mismos códigos que el paquete documental, otras etiquetas.
         "ReportExportJobStatusEnum": "apps.reporting.models.ExportJobStatus",
         "ReportTypeEnum": "apps.reporting.models.ReportType",
+        # Comisiones: estados de la liquidación y de la parte, y rol del beneficiario.
+        "CommissionSettlementStatusEnum": "apps.commissions.models.SettlementStatus",
+        "CommissionShareStatusEnum": "apps.commissions.models.ShareStatus",
+        "BeneficiaryRoleEnum": "apps.commissions.models.BeneficiaryRole",
     },
 }
 
