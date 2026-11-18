@@ -144,3 +144,37 @@ Convertir lo que ya existe (los tokens de Umbral y los componentes de F0, F1, F2
   - Archivos de muestra para el visor (`.storybook/public`: un PDF de 2 páginas y un SVG, sin datos reales). `*.pdf` queda como binario en `.gitattributes`.
 - **`next/navigation` en Storybook:** `parameters.nextjs.appDirectory = true` global. El `AppShell` usa `navigation.pathname`.
 - **`test:storybook` estable:** `optimizeDeps.include` con antd, Query, Table, React Hook Form y Zod. Sin eso, Vite las optimizaba a mitad de la corrida, recargaba la página y fallaban stories al azar (pasó una vez después de `build-storybook`).
+
+**Parte 3 (auditoría y reglas de uso):**
+- **Migración de `features/applications` y `features/clients`** a la librería:
+  - `Card`, `DataList` y `Datum`, `PageHeader`, `BackLink`, `DataTable` y `CardList`, `ListPagination`, `BottomSheet`, `SidePanel`, `ActionModal` (7 modales), `Stepper`, `LoadingState` y `ErrorState`, y los íconos;
+  - salen los archivos locales: `applications/progress-stepper.tsx`, `applications/list-pagination.tsx`, `clients/components/icons.tsx` y `clients/components/list-pagination.tsx`;
+  - las columnas de cada tabla quedan en su feature; `DataTable` pone el orden, la fila que abre y la columna fija.
+  - El modal "Enviar enlace al comprador" sigue con `Modal`: tiene un pie con dos estados ("Generar enlace" y luego "Listo").
+  - La tarjeta de completitud del expediente queda como el mockup: el total en el encabezado (`CompletenessTotal`) y datos y documentos lado a lado (`layout="split"`).
+  - La pestaña Documentos dice "N pendientes" en tono de advertencia (sin pendientes, no lleva conteo).
+  - El estado de la oportunidad usa `toneFor("opportunity")`.
+  - Las tarjetas de clientes pasan del título de 16 px con 16 px de relleno al `.card` del mockup (18 px y 20 px).
+- **`status` en `/solicitudes`** (pedido del front 2, para los enlaces del tablero):
+  - se lee de la URL y va a `GET /applications`;
+  - no va a `quick-filters`, porque esa ruta no lo acepta;
+  - se ve como chip "Estado: <etiqueta>" en todos los tamaños. La etiqueta sale del `status_label` de las filas; sin filas, se ve el código;
+  - "Limpiar" también lo quita.
+- **`EmptyState size="sm"`:** 24 px arriba y abajo, e ícono de 24 px. El tamaño de hoy (`md`, 48 px) no cambia.
+- **`ToneBadge`** (export nuevo de `status-badge.tsx`): la píldora con un tono directo. `StatusBadge` la usa por dentro, y reemplaza las copias de `summary-cards` y del bloque de los fundamentos.
+- **Regla automática:** una prueba (`src/test/no-hardcoded-colors.test.ts`), no una regla de ESLint, porque así cubre también CSS y MDX.
+  - Falla con hex, `rgb()` o `hsl()` en `src/`.
+  - Permitidos, con su motivo en el archivo: los `*.test.ts(x)` (datos de prueba) y `lib/api/schema.d.ts` (generado).
+- **Lo que se corrigió en la auditoría** (el detalle está en el reporte):
+  - colores: `LogoMark` pasa a tokens, la sombra del visor a `shadow.lg` y la máscara de `ScrollTabs` a `black`;
+  - escala: un `text-[10px]` (por debajo del mínimo de 12 px), un `px-[5px]` y tres `leading-[18px]` pasan a `--um-leading-sm`;
+  - tamaños táctiles: el botón para quitar un chip pasa de 18 px a 26 px de área táctil, y 10 botones del portal pasan a `size="large"` (40 px).
+- **Excepción anotada:** el papel del visor de documentos sigue en `bg-white`, porque un PDF se lee sobre blanco en los dos temas. La marca del logo conserva `--um-color-teal-300` (paleta), porque es parte del logo.
+- **`/dev/ui` se quitó** (componentes, shell y vista previa): Storybook la reemplaza. También se quitó la exclusión de cobertura de esa ruta.
+- **CI:** dos pasos nuevos y una fila nueva en el reporte.
+  - "Install Chromium": Playwright cacheado por versión; las librerías del sistema se instalan con `--with-deps` en cada corrida.
+  - "Storybook (a11y)": `pnpm test:storybook` con JUnit.
+  - La fila "Accesibilidad (Storybook)" muestra los stories que fallan con la regla de axe.
+  - El job pasa de 15 a 20 minutos.
+- **Documentos de Storybook:** `.storybook/docs.css` devuelve la numeración de las listas `ol` (el preflight de Tailwind la quitaba). El canvas móvil de "Carga de archivo" se cambió por una referencia al story "Móvil", porque el uploader decide por el ancho de la ventana.
+- **Capturas** en `frontend/test-results/storybook/` (ignorado por git): las 7 páginas de fundamentos y AppShell (escritorio y móvil), DataTable (escritorio y tarjetas), completitud en tarjeta, StatusBadge y el modal destructivo. Todas en claro y en oscuro: 28 PNG.

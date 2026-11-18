@@ -270,7 +270,7 @@ export function DocumentsTab({
               >
                 <span
                   aria-hidden="true"
-                  className="bg-bg-muted text-text-secondary grid size-6 place-items-center rounded-full text-[10px] font-semibold"
+                  className="bg-bg-muted text-text-secondary grid size-6 place-items-center rounded-full text-xs font-semibold"
                 >
                   {group.initials ?? <HouseIcon width={12} height={12} />}
                 </span>

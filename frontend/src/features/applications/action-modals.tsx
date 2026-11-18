@@ -7,6 +7,7 @@ import { useId, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 
+import { ActionModal } from "@/components/ui/action-modal";
 import { FormField, useFormErrorHandler } from "@/components/ui/form-field";
 import { useCatalog } from "@/features/applications/queries";
 import {
@@ -94,65 +95,63 @@ export function TransitionModal({
   });
 
   return (
-    <Modal
+    <ActionModal
       open={open && !!action}
       title={action?.label}
-      onCancel={close}
-      okText={action?.label}
-      cancelText="Cancelar"
-      onOk={() => void submit()}
-      confirmLoading={transition.isPending}
-      destroyOnHidden
-    >
-      <form noValidate onSubmit={(e) => void submit(e)} className="grid gap-4 pt-2">
-        {action && (
-          <p className="text-text-secondary m-0 text-sm">
+      description={
+        action && (
+          <>
             La solicitud pasa a <b className="text-text-primary">{action.target_status_label}</b>.
-          </p>
+          </>
+        )
+      }
+      okText={action?.label ?? ""}
+      loading={transition.isPending}
+      onSubmit={submit}
+      onCancel={close}
+    >
+      <FormField
+        id={`${ids}-reason`}
+        label="Motivo"
+        optional="si el cambio lo exige"
+        error={formState.errors.reason_code?.message}
+      >
+        {(ctl) => (
+          <Controller
+            control={control}
+            name="reason_code"
+            render={({ field }) => (
+              <Select
+                {...ctl}
+                value={field.value}
+                onChange={field.onChange}
+                allowClear
+                placeholder="Elige un motivo"
+                options={optionsOf(reasons.items)}
+                loading={reasons.isPending}
+                virtual={false}
+              />
+            )}
+          />
         )}
-        <FormField
-          id={`${ids}-reason`}
-          label="Motivo"
-          optional="si el cambio lo exige"
-          error={formState.errors.reason_code?.message}
-        >
-          {(ctl) => (
-            <Controller
-              control={control}
-              name="reason_code"
-              render={({ field }) => (
-                <Select
-                  {...ctl}
-                  value={field.value}
-                  onChange={field.onChange}
-                  allowClear
-                  placeholder="Elige un motivo"
-                  options={optionsOf(reasons.items)}
-                  loading={reasons.isPending}
-                  virtual={false}
-                />
-              )}
-            />
-          )}
-        </FormField>
-        <FormField
-          id={`${ids}-comment`}
-          label="Comentario"
-          optional="opcional"
-          error={formState.errors.comment?.message}
-        >
-          {(ctl) => (
-            <Controller
-              control={control}
-              name="comment"
-              render={({ field }) => (
-                <Input.TextArea {...field} {...ctl} rows={3} maxLength={COMMENT_MAX} />
-              )}
-            />
-          )}
-        </FormField>
-      </form>
-    </Modal>
+      </FormField>
+      <FormField
+        id={`${ids}-comment`}
+        label="Comentario"
+        optional="opcional"
+        error={formState.errors.comment?.message}
+      >
+        {(ctl) => (
+          <Controller
+            control={control}
+            name="comment"
+            render={({ field }) => (
+              <Input.TextArea {...field} {...ctl} rows={3} maxLength={COMMENT_MAX} />
+            )}
+          />
+        )}
+      </FormField>
+    </ActionModal>
   );
 }
 
@@ -204,59 +203,51 @@ export function WithdrawModal({
   });
 
   return (
-    <Modal
+    <ActionModal
       open={open}
       title="Registrar desistimiento"
-      onCancel={close}
       okText="Registrar desistimiento"
-      okButtonProps={{ danger: true }}
-      cancelText="Cancelar"
-      onOk={() => void submit()}
-      confirmLoading={withdraw.isPending}
-      destroyOnHidden
+      danger
+      loading={withdraw.isPending}
+      onSubmit={submit}
+      onCancel={close}
     >
-      <form noValidate onSubmit={(e) => void submit(e)} className="grid gap-4 pt-2">
-        <FormField
-          id={`${ids}-reason`}
-          label="Motivo"
-          error={formState.errors.reason_code?.message}
-        >
-          {(ctl) => (
-            <Controller
-              control={control}
-              name="reason_code"
-              render={({ field }) => (
-                <Select
-                  {...ctl}
-                  value={field.value || undefined}
-                  onChange={field.onChange}
-                  placeholder="Elige un motivo"
-                  options={optionsOf(reasons.items)}
-                  loading={reasons.isPending}
-                  virtual={false}
-                />
-              )}
-            />
-          )}
-        </FormField>
-        <FormField
-          id={`${ids}-comment`}
-          label="Comentario"
-          optional="opcional"
-          error={formState.errors.comment?.message}
-        >
-          {(ctl) => (
-            <Controller
-              control={control}
-              name="comment"
-              render={({ field }) => (
-                <Input.TextArea {...field} {...ctl} rows={3} maxLength={COMMENT_MAX} />
-              )}
-            />
-          )}
-        </FormField>
-      </form>
-    </Modal>
+      <FormField id={`${ids}-reason`} label="Motivo" error={formState.errors.reason_code?.message}>
+        {(ctl) => (
+          <Controller
+            control={control}
+            name="reason_code"
+            render={({ field }) => (
+              <Select
+                {...ctl}
+                value={field.value || undefined}
+                onChange={field.onChange}
+                placeholder="Elige un motivo"
+                options={optionsOf(reasons.items)}
+                loading={reasons.isPending}
+                virtual={false}
+              />
+            )}
+          />
+        )}
+      </FormField>
+      <FormField
+        id={`${ids}-comment`}
+        label="Comentario"
+        optional="opcional"
+        error={formState.errors.comment?.message}
+      >
+        {(ctl) => (
+          <Controller
+            control={control}
+            name="comment"
+            render={({ field }) => (
+              <Input.TextArea {...field} {...ctl} rows={3} maxLength={COMMENT_MAX} />
+            )}
+          />
+        )}
+      </FormField>
+    </ActionModal>
   );
 }
 
@@ -311,57 +302,49 @@ export function ReassignModal({
     .map((user) => ({ value: user.id, label: user.name || user.email }));
 
   return (
-    <Modal
+    <ActionModal
       open={open}
       title="Reasignar asesor"
-      onCancel={close}
       okText="Reasignar"
-      cancelText="Cancelar"
-      onOk={() => void submit()}
-      confirmLoading={assign.isPending}
-      destroyOnHidden
+      loading={assign.isPending}
+      onSubmit={submit}
+      onCancel={close}
     >
-      <form noValidate onSubmit={(e) => void submit(e)} className="grid gap-4 pt-2">
-        <FormField
-          id={`${ids}-advisor`}
-          label="Asesor"
-          error={formState.errors.advisor_id?.message}
-        >
-          {(ctl) => (
-            <Controller
-              control={control}
-              name="advisor_id"
-              render={({ field }) => (
-                <Select
-                  {...ctl}
-                  value={field.value || undefined}
-                  onChange={field.onChange}
-                  placeholder="Elige un asesor"
-                  showSearch={{ optionFilterProp: "label" }}
-                  options={options}
-                  loading={advisors.isPending}
-                  virtual={false}
-                />
-              )}
-            />
-          )}
-        </FormField>
-        <FormField
-          id={`${ids}-reason`}
-          label="Motivo"
-          optional="opcional"
-          error={formState.errors.reason?.message}
-        >
-          {(ctl) => (
-            <Controller
-              control={control}
-              name="reason"
-              render={({ field }) => <Input.TextArea {...field} {...ctl} rows={3} />}
-            />
-          )}
-        </FormField>
-      </form>
-    </Modal>
+      <FormField id={`${ids}-advisor`} label="Asesor" error={formState.errors.advisor_id?.message}>
+        {(ctl) => (
+          <Controller
+            control={control}
+            name="advisor_id"
+            render={({ field }) => (
+              <Select
+                {...ctl}
+                value={field.value || undefined}
+                onChange={field.onChange}
+                placeholder="Elige un asesor"
+                showSearch={{ optionFilterProp: "label" }}
+                options={options}
+                loading={advisors.isPending}
+                virtual={false}
+              />
+            )}
+          />
+        )}
+      </FormField>
+      <FormField
+        id={`${ids}-reason`}
+        label="Motivo"
+        optional="opcional"
+        error={formState.errors.reason?.message}
+      >
+        {(ctl) => (
+          <Controller
+            control={control}
+            name="reason"
+            render={({ field }) => <Input.TextArea {...field} {...ctl} rows={3} />}
+          />
+        )}
+      </FormField>
+    </ActionModal>
   );
 }
 

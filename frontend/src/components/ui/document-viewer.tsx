@@ -99,7 +99,7 @@ function PdfPage({
       data-page={pageNumber}
       aria-label={`Página ${pageNumber}`}
       role="img"
-      className="rounded-[2px] bg-white shadow-[0_8px_28px_rgba(0,0,0,0.5)]"
+      className="rounded-sm bg-white shadow-lg"
     />
   );
 }
@@ -368,7 +368,7 @@ export function DocumentViewer({ open, file, onClose, note }: DocumentViewerProp
                 <img
                   src={file.url}
                   alt={`Vista de ${file.name}`}
-                  className="h-auto max-w-none shadow-[0_8px_28px_rgba(0,0,0,0.5)] transition-transform motion-reduce:transition-none"
+                  className="h-auto max-w-none shadow-lg transition-transform motion-reduce:transition-none"
                   style={{
                     width,
                     transform: `rotate(${rotation}deg)`,

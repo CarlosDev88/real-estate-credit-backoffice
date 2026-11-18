@@ -200,6 +200,7 @@ function ProfileForm({ profile }: { profile: BuyerProfile }) {
           !readOnly &&
           addresses.fields.length < MAX_ADDRESSES && (
             <Button
+              size="large"
               onClick={() =>
                 addresses.append({
                   ...EMPTY_ADDRESS,
@@ -342,6 +343,7 @@ function ProfileForm({ profile }: { profile: BuyerProfile }) {
                 />
                 {!readOnly && (
                   <Button
+                    size="large"
                     danger
                     type="text"
                     onClick={() => addresses.remove(index)}

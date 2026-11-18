@@ -63,7 +63,7 @@ async function ready() {
   await screen.findByText("Inmueble registrado.");
 }
 
-const card = (title: string) => screen.getByRole("heading", { name: title }).closest("article")!;
+const card = (title: string) => screen.getByRole("heading", { name: title }).closest("section")!;
 
 beforeEach(() => {
   window.history.replaceState(null, "", "/solicitudes/app-1");
@@ -529,7 +529,7 @@ describe("expediente: resumen", { timeout: 20_000 }, () => {
     ).toBeInTheDocument();
     expect(within(completeness).getAllByText("Pendiente:", { exact: false })).toHaveLength(2);
     // La pestaña Documentos lleva los pendientes.
-    expect(screen.getByRole("tab", { name: "Documentos 6" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Documentos 6 pendientes" })).toBeInTheDocument();
   });
 
   it("por revisar: lista los cargados y lleva al documento o a la pestaña", async () => {
@@ -694,7 +694,7 @@ describe("expediente: resumen", { timeout: 20_000 }, () => {
     const failed = await screen.findByText("No pudimos cargar esta sección.");
     fail = false;
     await user.click(
-      within(failed.closest("article")!).getByRole("button", { name: "Reintentar" }),
+      within(failed.closest("section")!).getByRole("button", { name: "Reintentar" }),
     );
     expect(await screen.findByText("Inmueble registrado.")).toBeInTheDocument();
   });

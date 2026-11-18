@@ -1,16 +1,18 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Alert, Button, Checkbox, Input, Modal, Select } from "antd";
+import { Button, Checkbox, Input, Select } from "antd";
 import { useId, useState } from "react";
-import type { ReactNode } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 
+import { ActionModal } from "@/components/ui/action-modal";
+import { Card, DataList, Datum } from "@/components/ui/card";
 import { FormField, useFormErrorHandler } from "@/components/ui/form-field";
+import { ErrorState, LoadingState } from "@/components/ui/state-views";
 import { useCatalog } from "@/features/applications/queries";
 import { optionsOf } from "@/features/clients/catalog-options";
-import { PlusIcon } from "@/features/clients/components/icons";
+import { PlusIcon } from "@/components/ui/icons";
 import {
   ADDRESS_TYPE_CATALOG,
   useClientAddresses,
@@ -23,65 +25,26 @@ import type { ClientDetail } from "@/features/clients/queries";
 import { formatDate, formatDateOnly } from "@/lib/format";
 import { useToast } from "@/providers/toast";
 
-function Datum({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <div className="grid gap-0.5">
-      <dt className="text-text-tertiary text-xs font-medium">{label}</dt>
-      <dd className="m-0">{children}</dd>
-    </div>
-  );
-}
-
-const muted = (text: string | null | undefined) =>
-  text ? text : <span className="text-text-tertiary">—</span>;
-
-export function Card({
-  id,
-  title,
-  action,
-  children,
-}: {
-  id: string;
-  title: string;
-  action?: ReactNode;
-  children: ReactNode;
-}) {
-  return (
-    <section
-      aria-labelledby={id}
-      className="bg-bg-surface border-border-default rounded-lg border p-4"
-    >
-      <div className="mb-3 flex flex-wrap items-center gap-2">
-        <h2 id={id} className="m-0 flex-1 text-base font-semibold">
-          {title}
-        </h2>
-        {action}
-      </div>
-      {children}
-    </section>
-  );
-}
-
 function ClientDataCard({ client }: { client: ClientDetail }) {
   return (
     <Card id="client-data" title="Datos del cliente">
-      <dl className="m-0 grid gap-4 min-[600px]:grid-cols-2 min-[1100px]:grid-cols-3">
+      <DataList columns={3}>
         <Datum label="Nombres">{client.first_names}</Datum>
         <Datum label="Apellidos">{client.last_names}</Datum>
         <Datum label="Documento">
           {client.document_type.label} {client.document_number}
         </Datum>
-        <Datum label="Fecha de nacimiento">{muted(formatDateOnly(client.birth_date))}</Datum>
-        <Datum label="Correo">{muted(client.email)}</Datum>
-        <Datum label="Teléfono">{muted(client.phone)}</Datum>
-        <Datum label="Origen">{muted(client.origin?.label)}</Datum>
+        <Datum label="Fecha de nacimiento">{formatDateOnly(client.birth_date)}</Datum>
+        <Datum label="Correo">{client.email}</Datum>
+        <Datum label="Teléfono">{client.phone}</Datum>
+        <Datum label="Origen">{client.origin?.label}</Datum>
         <Datum label="Creado">
           {formatDate(client.created_at)}
           {client.created_by && (
             <span className="text-text-tertiary"> · {client.created_by.name}</span>
           )}
         </Datum>
-      </dl>
+      </DataList>
     </Card>
   );
 }
@@ -194,84 +157,80 @@ function AddressModal({
   );
 
   return (
-    <Modal
+    <ActionModal
       open={open}
       title="Agregar dirección"
       width={560}
-      onCancel={close}
       okText="Agregar dirección"
-      cancelText="Cancelar"
-      onOk={() => void submit()}
-      confirmLoading={create.isPending}
-      destroyOnHidden
+      loading={create.isPending}
+      onSubmit={submit}
+      onCancel={close}
     >
-      <form noValidate onSubmit={(e) => void submit(e)} className="grid gap-4 pt-2">
-        <div className="grid items-start gap-4 min-[600px]:grid-cols-2">
-          <FormField
-            id={`${ids}-type`}
-            label="Tipo de dirección"
-            error={errors.address_type_code?.message}
-          >
-            {(ctl) => (
-              <Controller
-                control={control}
-                name="address_type_code"
-                render={({ field }) => (
-                  <Select
-                    {...ctl}
-                    value={field.value || undefined}
-                    onChange={field.onChange}
-                    placeholder="Elige el tipo"
-                    options={optionsOf(types.items)}
-                    loading={types.isPending}
-                    virtual={false}
-                  />
-                )}
-              />
-            )}
-          </FormField>
-          <FormField id={`${ids}-city`} label="Municipio" error={errors.city_code?.message}>
-            {(ctl) => (
-              <Controller
-                control={control}
-                name="city_code"
-                render={({ field }) => (
-                  <Select
-                    {...ctl}
-                    value={field.value || undefined}
-                    onChange={field.onChange}
-                    placeholder="Busca el municipio"
-                    showSearch={{ optionFilterProp: "label" }}
-                    options={optionsOf(cities.items)}
-                    loading={cities.isPending}
-                  />
-                )}
-              />
-            )}
-          </FormField>
-        </div>
-        {text("line1", "Dirección", LINE1_MAX)}
-        <div className="grid items-start gap-4 min-[600px]:grid-cols-2">
-          {text("line2", "Complemento", LINE2_MAX)}
-          {text("postal_code", "Código postal", POSTAL_MAX)}
-        </div>
-        {first ? (
-          <p className="text-text-secondary m-0 text-sm">
-            Es la primera dirección del cliente: queda como principal.
-          </p>
-        ) : (
-          <Controller
-            control={control}
-            name="is_primary"
-            render={({ field }) => (
-              <Checkbox checked={field.value} onChange={(e) => field.onChange(e.target.checked)}>
-                Usar como dirección principal
-              </Checkbox>
-            )}
-          />
-        )}
-      </form>
-    </Modal>
+      <div className="grid items-start gap-4 min-[600px]:grid-cols-2">
+        <FormField
+          id={`${ids}-type`}
+          label="Tipo de dirección"
+          error={errors.address_type_code?.message}
+        >
+          {(ctl) => (
+            <Controller
+              control={control}
+              name="address_type_code"
+              render={({ field }) => (
+                <Select
+                  {...ctl}
+                  value={field.value || undefined}
+                  onChange={field.onChange}
+                  placeholder="Elige el tipo"
+                  options={optionsOf(types.items)}
+                  loading={types.isPending}
+                  virtual={false}
+                />
+              )}
+            />
+          )}
+        </FormField>
+        <FormField id={`${ids}-city`} label="Municipio" error={errors.city_code?.message}>
+          {(ctl) => (
+            <Controller
+              control={control}
+              name="city_code"
+              render={({ field }) => (
+                <Select
+                  {...ctl}
+                  value={field.value || undefined}
+                  onChange={field.onChange}
+                  placeholder="Busca el municipio"
+                  showSearch={{ optionFilterProp: "label" }}
+                  options={optionsOf(cities.items)}
+                  loading={cities.isPending}
+                />
+              )}
+            />
+          )}
+        </FormField>
+      </div>
+      {text("line1", "Dirección", LINE1_MAX)}
+      <div className="grid items-start gap-4 min-[600px]:grid-cols-2">
+        {text("line2", "Complemento", LINE2_MAX)}
+        {text("postal_code", "Código postal", POSTAL_MAX)}
+      </div>
+      {first ? (
+        <p className="text-text-secondary m-0 text-sm">
+          Es la primera dirección del cliente: queda como principal.
+        </p>
+      ) : (
+        <Controller
+          control={control}
+          name="is_primary"
+          render={({ field }) => (
+            <Checkbox checked={field.value} onChange={(e) => field.onChange(e.target.checked)}>
+              Usar como dirección principal
+            </Checkbox>
+          )}
+        />
+      )}
+    </ActionModal>
   );
 }
 
@@ -302,25 +261,14 @@ function AddressesCard({ clientId, canEdit }: { clientId: string; canEdit: boole
 
   let body;
   if (query.isPending) {
-    body = (
-      <div
-        role="status"
-        aria-label="Cargando direcciones"
-        className="bg-bg-muted h-10 animate-pulse rounded"
-      />
-    );
+    body = <LoadingState label="Cargando direcciones" blocks={[40]} />;
   } else if (query.isError) {
     body = (
-      <Alert
-        type="error"
-        showIcon
+      <ErrorState
         title="No pudimos cargar las direcciones"
-        description={query.error.message}
-        action={
-          <Button size="small" onClick={() => void query.refetch()}>
-            Reintentar
-          </Button>
-        }
+        message={query.error.message}
+        onRetry={() => void query.refetch()}
+        retrying={query.isFetching}
       />
     );
   } else if (items.length === 0) {

@@ -106,6 +106,7 @@ export function PortalHome() {
       {!detail.is_closed && (
         <footer className="grid justify-items-center pb-4">
           <Button
+            size="large"
             type="link"
             className="text-text-secondary! text-sm underline"
             onClick={() => setWithdrawing(true)}

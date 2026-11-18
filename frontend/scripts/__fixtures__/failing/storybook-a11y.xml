@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<testsuites name="vitest tests" tests="2" failures="1" errors="0" time="12.4">
+    <testsuite name="src/components/ui/money.stories.tsx" tests="2" failures="1" errors="0" skipped="0" time="2.1">
+        <testcase classname="src/components/ui/money.stories.tsx" name="Básico" time="0.4">
+        </testcase>
+        <testcase classname="src/components/ui/money.stories.tsx" name="Oscuro" time="0.6">
+            <failure message="Elements must meet minimum color contrast ratio thresholds (color-contrast)" type="Error">
+Error: expect(received).toHaveNoViolations(expected)
+            </failure>
+        </testcase>
+    </testsuite>
+</testsuites>

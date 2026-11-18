@@ -30,9 +30,9 @@ const FADE = 48;
 
 function maskFor(left: boolean, right: boolean): string | undefined {
   if (left && right)
-    return `linear-gradient(to right, transparent 0, #000 ${FADE}px, #000 calc(100% - ${FADE}px), transparent 100%)`;
-  if (left) return `linear-gradient(to right, transparent 0, #000 ${FADE}px)`;
-  if (right) return `linear-gradient(to left, transparent 0, #000 ${FADE}px)`;
+    return `linear-gradient(to right, transparent 0, black ${FADE}px, black calc(100% - ${FADE}px), transparent 100%)`;
+  if (left) return `linear-gradient(to right, transparent 0, black ${FADE}px)`;
+  if (right) return `linear-gradient(to left, transparent 0, black ${FADE}px)`;
   return undefined;
 }
 

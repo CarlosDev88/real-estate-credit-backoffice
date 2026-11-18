@@ -1,7 +1,6 @@
 import type { ReactNode } from "react";
 
-import { HouseIcon } from "@/components/ui/icons";
-import { UsersIcon } from "@/features/clients/components/icons";
+import { HouseIcon, UsersIcon } from "@/components/ui/icons";
 
 // Navegación del backoffice. Es la estructura de la app, no una lista de negocio:
 // cada entrada pide un permiso de `/auth/me` y solo aparece si la ruta existe.

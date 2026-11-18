@@ -14,7 +14,8 @@ function renderWithApp(ui: React.ReactElement) {
   );
 }
 
-describe("patrón de formulario", () => {
+// Escriben varios campos: bajo la carga de la suite completa superan los 5 s por defecto.
+describe("patrón de formulario", { timeout: 15_000 }, () => {
   it("valida en el cliente y lleva el error de la API a su campo y el resto al toast", async () => {
     renderWithApp(<FormPattern />);
     await userEvent.click(screen.getByRole("button", { name: "Crear cliente" }));

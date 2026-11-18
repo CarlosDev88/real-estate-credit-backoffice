@@ -57,6 +57,7 @@ function ConsentCard({
 
       <div>
         <Button
+          size="large"
           type="link"
           className="px-0!"
           aria-expanded={open}
