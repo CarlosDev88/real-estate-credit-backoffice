@@ -1,0 +1,61 @@
+import { Meta, Story } from "@storybook/addon-docs/blocks";
+
+import * as Bloques from "./fundamentos.stories";
+
+<Meta title="Fundamentos/Sombras y elevación" />
+
+# Sombras y elevación
+
+La jerarquía se construye con **bordes y fondos**, no con sombras. Hay tres sombras, con valores propios en oscuro (más densas, para que se vean sobre fondos oscuros).
+
+<Story of={Bloques.Sombras} />
+
+## Regla: no hay sombras en el flujo
+
+Las tarjetas que están en el flujo de la página llevan borde y fondo, sin sombra. `shadow.md` y `shadow.lg` son solo para lo que flota: menús, toasts, drawer y hojas inferiores. Ant Design ya las usa así (`boxShadow` y `boxShadowSecondary`).
+
+<Story of={Bloques.SombrasRegla} />
+
+## Niveles
+
+{/* Tabla en JSX: el MDX de Storybook no trae tablas de Markdown (GFM). */}
+
+<table>
+  <thead>
+    <tr>
+      <th>Nivel</th>
+      <th>Qué es</th>
+      <th>Cómo se ve</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Lienzo</td>
+      <td>El fondo de la página.</td>
+      <td>
+        <code>bg.canvas</code>
+      </td>
+    </tr>
+    <tr>
+      <td>Superficie</td>
+      <td>Tarjetas, tablas y paneles en el flujo.</td>
+      <td>
+        <code>bg.surface</code> y <code>border.default</code>, sin sombra
+      </td>
+    </tr>
+    <tr>
+      <td>Flotante</td>
+      <td>Menús, selects abiertos y toasts.</td>
+      <td>
+        <code>bg.surface</code> y <code>shadow.md</code>
+      </td>
+    </tr>
+    <tr>
+      <td>Superpuesto</td>
+      <td>Drawer, modales y hojas inferiores.</td>
+      <td>
+        <code>bg.surface</code>, <code>shadow.lg</code> y el fondo <code>bg.overlay</code> detrás
+      </td>
+    </tr>
+  </tbody>
+</table>

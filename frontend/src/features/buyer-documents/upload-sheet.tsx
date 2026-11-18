@@ -1,9 +1,10 @@
 "use client";
 
-import { Drawer, Input, Modal } from "antd";
+import { Input, Modal } from "antd";
 import { useId, useState } from "react";
 import type { ReactNode } from "react";
 
+import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { DocumentUploader } from "@/components/ui/document-uploader";
 import { useAfterUpload, uploadSlotFile } from "@/features/buyer-documents/documents-queries";
 import { requirementsText } from "@/features/buyer-documents/slot-format";
@@ -115,18 +116,9 @@ export function UploadSheet({
 
   if (isMobile) {
     return (
-      <Drawer
-        open={slot !== null}
-        onClose={onClose}
-        placement="bottom"
-        title={title}
-        size="auto"
-        closable={{ "aria-label": "Cerrar" }}
-        destroyOnHidden
-        styles={{ body: { paddingBottom: "calc(24px + env(safe-area-inset-bottom))" } }}
-      >
+      <BottomSheet open={slot !== null} onClose={onClose} title={title}>
         {body}
-      </Drawer>
+      </BottomSheet>
     );
   }
   return (

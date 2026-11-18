@@ -69,6 +69,7 @@ from apps.catalogs.models import CatalogItem
 from apps.catalogs.workflow import ApplicationStatus
 from apps.crm.services import CrmScope, clients_visible_to, resolve_visible_client
 from apps.idempotency.decorators import IDEMPOTENCY_PARAMETER, idempotency_responses, idempotent
+from apps.identity.consents import consent_summary
 from apps.identity.models import User
 from apps.identity.permissions import HasPermissionCode
 from config.filters import StrictOrderingFilter, parse_bool_param, parse_uuid_param
@@ -252,12 +253,21 @@ def _detail_response(
     application = services.application_detail(view.actor, application_id, include)
     if application is None:
         raise Http404
-    context = {
-        "include": include,
-        "available_actions": services.available_actions(view.actor, application),
-    }
-    data = ApplicationDetailSerializer(application, context=context).data
+    data = ApplicationDetailSerializer(
+        application, context=detail_context(view.actor, application, include)
+    ).data
     return with_etag(Response(data, **kwargs), application.version)
+
+
+def detail_context(
+    actor: User, application: CreditApplication, include: frozenset[str] = frozenset()
+) -> dict[str, Any]:
+    """Contexto de ``ApplicationDetailSerializer``."""
+    return {
+        "include": include,
+        "available_actions": services.available_actions(actor, application),
+        "consents": consent_summary(application),
+    }
 
 
 class ApplicationListView(ApplicationView):
@@ -359,7 +369,7 @@ class ApplicationListView(ApplicationView):
         )
         # Se responde con lo creado aunque quien lo creó no quede como asesor asignado.
         created = services.applications_queryset().get(pk=application.pk)
-        context = {"available_actions": services.available_actions(self.actor, created)}
+        context = detail_context(self.actor, created)
         return with_etag(
             Response(
                 ApplicationDetailSerializer(created, context=context).data,

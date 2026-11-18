@@ -1,0 +1,46 @@
+import { Meta, Story } from "@storybook/addon-docs/blocks";
+
+import * as Ejemplos from "./patrones.stories";
+
+<Meta title="Patrones/Formulario con validación" />
+
+# Formulario con validación y error de la API
+
+React Hook Form con Zod en el cliente, `FormField` para cada campo y `useFormErrorHandler` para los errores de la API.
+
+<Story of={Ejemplos.Formulario} />
+
+Prueba con el documento `1032445908`: la API responde `422` con un detalle para el campo (va debajo del campo) y otro sin campo (va al toast, con el código de la petición).
+
+## Cómo se arma
+
+```tsx
+const { control, handleSubmit, setError, formState } = useForm<Values>({
+  resolver: zodResolver(schema),
+});
+const onError = useFormErrorHandler<Values>(setError, FIELDS);
+const save = useMutation({ mutationFn, meta: { handlesErrors: true } });
+
+const submit = handleSubmit((values) => save.mutate(values, { onSuccess, onError }));
+
+<form noValidate onSubmit={(e) => void submit(e)}>
+  <FormField id={`${ids}-email`} label="Correo" error={formState.errors.email?.message}>
+    {(ctl) => (
+      <Controller
+        control={control}
+        name="email"
+        render={({ field }) => <Input {...field} {...ctl} />}
+      />
+    )}
+  </FormField>
+</form>;
+```
+
+## Reglas
+
+- **Errores debajo del campo,** enlazados con `aria-describedby` (lo hace `FormField`). El texto dice qué corregir, no solo que hay un error.
+- **`noValidate` en el `form`:** valida Zod, no el navegador, así los mensajes salen en español y con el estilo del sistema.
+- **`meta: { handlesErrors: true }` en la mutación:** el formulario maneja su error y no sale también el toast global de escritura.
+- **Los `details[].field` van a su campo;** lo demás (o un error sin detalles, como `409 STALE_VERSION`), al toast global.
+- **Una acción principal,** con el verbo de lo que hace ("Crear cliente", no "Enviar"). Mientras guarda, el botón muestra que trabaja.
+- **Los catálogos (`Select`) vienen de la API.** El frontend no escribe listas de negocio.

@@ -1,12 +1,13 @@
 "use client";
 
-import { Alert, Button } from "antd";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 
 import { useShellTrail } from "@/components/ui/app-shell";
 import { EmptyState } from "@/components/ui/empty-state";
+import { BackLink, PageHeader } from "@/components/ui/page-header";
+import { ErrorState, LoadingState } from "@/components/ui/state-views";
 import { useMe } from "@/features/auth/queries";
 import {
   ClientForm,
@@ -15,7 +16,6 @@ import {
   toUpdateBody,
   valuesFromClient,
 } from "@/features/clients/client-form";
-import { BackIcon } from "@/features/clients/components/icons";
 import {
   clientHref,
   CLIENTS_HREF,
@@ -26,28 +26,6 @@ import {
 } from "@/features/clients/queries";
 import { isApiError } from "@/lib/api/errors";
 import { useToast } from "@/providers/toast";
-
-export function BackLink({ href, children }: { href: string; children: ReactNode }) {
-  return (
-    <Link
-      href={href}
-      className="text-text-secondary hover:text-text-primary inline-flex w-fit items-center gap-1 text-sm no-underline"
-    >
-      <BackIcon />
-      {children}
-    </Link>
-  );
-}
-
-function Loading({ label }: { label: string }) {
-  return (
-    <div
-      role="status"
-      aria-label={label}
-      className="bg-bg-surface border-border-default h-24 animate-pulse rounded-lg border"
-    />
-  );
-}
 
 export function usePermission(code: string): boolean | undefined {
   const me = useMe();
@@ -92,22 +70,17 @@ export function WithClient({
   children: (client: ClientDetail) => ReactNode;
 }) {
   const query = useClient(id);
-  if (query.isPending) return <Loading label="Cargando el cliente" />;
+  if (query.isPending) return <LoadingState label="Cargando el cliente" blocks={[96]} />;
   if (query.isError) {
     if (isApiError(query.error) && query.error.status === 404) return <NotFound />;
     return (
       <div className="grid content-start gap-4">
         <BackLink href={CLIENTS_HREF}>Volver a clientes</BackLink>
-        <Alert
-          type="error"
-          showIcon
+        <ErrorState
           title="No pudimos cargar el cliente"
-          description={query.error.message}
-          action={
-            <Button size="small" onClick={() => void query.refetch()}>
-              Reintentar
-            </Button>
-          }
+          message={query.error.message}
+          onRetry={() => void query.refetch()}
+          retrying={query.isFetching}
         />
       </div>
     );
@@ -116,12 +89,7 @@ export function WithClient({
 }
 
 function PageTitle({ title, subtitle }: { title: string; subtitle?: string }) {
-  return (
-    <div>
-      <h1 className="m-0 text-3xl font-semibold tracking-tight">{title}</h1>
-      {subtitle && <p className="text-text-secondary mt-0.5 mb-0">{subtitle}</p>}
-    </div>
-  );
+  return <PageHeader title={title} description={subtitle} />;
 }
 
 /** `/clientes/nuevo` (REQ §6 vista 5): al crear, va al detalle. */
@@ -132,7 +100,7 @@ export function NewClientScreen() {
   const create = useCreateClient();
   const allowed = usePermission("clients.create");
 
-  if (allowed === undefined) return <Loading label="Cargando" />;
+  if (allowed === undefined) return <LoadingState label="Cargando" blocks={[96]} />;
   if (!allowed) {
     return <NoPermission title="No tienes permiso para crear clientes" back={CLIENTS_HREF} />;
   }
@@ -189,7 +157,7 @@ function EditClient({ client }: { client: ClientDetail }) {
 /** `/clientes/[id]/editar`: `PATCH /clients/{id}` con los campos cambiados. */
 export function EditClientScreen({ id }: { id: string }) {
   const allowed = usePermission("clients.update");
-  if (allowed === undefined) return <Loading label="Cargando" />;
+  if (allowed === undefined) return <LoadingState label="Cargando" blocks={[96]} />;
   if (!allowed) {
     return <NoPermission title="No tienes permiso para editar clientes" back={clientHref(id)} />;
   }

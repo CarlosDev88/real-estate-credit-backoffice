@@ -94,3 +94,12 @@ def statuses_for(flow_type: str) -> set[str]:
 
 def guards_for(flow_type: str) -> set[str]:
     return set(TRANSITION_GUARDS.get(flow_type, {}))
+
+
+class ActionKind(models.TextChoices):
+    """Tipo de una acción disponible (solicitudes y oportunidades): el front usa la
+    primera principal como botón principal y pide confirmación en las destructivas."""
+
+    PRIMARY = "primary", "Principal"
+    SECONDARY = "secondary", "Secundaria"
+    DESTRUCTIVE = "destructive", "Destructiva"

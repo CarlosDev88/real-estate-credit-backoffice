@@ -77,6 +77,7 @@ STABLE_ENUMS = {
     ],
     "ReportExportJobStatusEnum": ["PENDING", "RUNNING", "COMPLETED", "FAILED", "EXPIRED"],
     "ReportTypeEnum": ["applications"],
+    "DocumentUploaderTypeEnum": ["buyer", "user"],
 }
 
 

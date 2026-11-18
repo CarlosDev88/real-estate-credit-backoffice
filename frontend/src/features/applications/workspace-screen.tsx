@@ -1,6 +1,5 @@
 "use client";
 
-import { Alert, Button } from "antd";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useMemo } from "react";
@@ -13,18 +12,19 @@ import { useMe } from "@/features/auth/queries";
 import { DocumentsTab } from "@/features/document-review/documents-tab";
 import { FilingsTab } from "@/features/filings/filings-tab";
 import { useFilings } from "@/features/filings/queries";
-import { ProgressStepper } from "@/features/applications/progress-stepper";
+import { Card } from "@/components/ui/card";
+import { BackLink } from "@/components/ui/page-header";
+import { ErrorState, LoadingState } from "@/components/ui/state-views";
+import { Stepper } from "@/components/ui/stepper";
 import { HistoryPanel } from "@/features/applications/status-history";
 import {
   BuyerAccessCard,
   CompletenessCard,
   EvaluationCard,
-  Muted,
   ParticipantsCard,
   PropertyCard,
   RecentChangesCard,
   ToReviewCard,
-  Card,
 } from "@/features/applications/summary-cards";
 import {
   KeyFacts,
@@ -79,28 +79,12 @@ export function useWorkspaceTab() {
   return { tab, slot, go };
 }
 
-function BackLink() {
-  return (
-    <Link
-      href="/solicitudes"
-      className="text-text-secondary hover:text-text-primary inline-flex w-fit items-center gap-1 text-sm no-underline"
-    >
-      <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-        <path d="m12.6 4 1.4 1.4L9.4 10l4.6 4.6-1.4 1.4-6-6 6-6Z" />
-      </svg>
-      Volver a solicitudes
-    </Link>
-  );
+function BackToList() {
+  return <BackLink href="/solicitudes">Volver a solicitudes</BackLink>;
 }
 
 function Loading({ label }: { label: string }) {
-  return (
-    <div
-      role="status"
-      aria-label={label}
-      className="bg-bg-surface border-border-default h-24 animate-pulse rounded-lg border"
-    />
-  );
+  return <LoadingState label={label} blocks={[96]} />;
 }
 
 /** Tarjeta que depende de una consulta: esqueleto, error en línea con "Reintentar" o contenido. */
@@ -117,12 +101,11 @@ function Section<T>({
   if (query.isError || query.data === undefined) {
     return (
       <Card title={title}>
-        <div className="flex items-center gap-2" role="alert">
-          <Muted>No pudimos cargar esta sección.</Muted>
-          <Button size="small" onClick={() => void query.refetch()}>
-            Reintentar
-          </Button>
-        </div>
+        <ErrorState
+          variant="inline"
+          title="No pudimos cargar esta sección."
+          onRetry={() => void query.refetch()}
+        />
       </Card>
     );
   }
@@ -141,7 +124,7 @@ function usePermissions(): Permissions {
 function NotFound() {
   return (
     <div className="grid content-start gap-4">
-      <BackLink />
+      <BackToList />
       <div className="bg-bg-surface border-border-default rounded-lg border">
         <EmptyState
           title="No encontramos esta solicitud o no tienes acceso"
@@ -166,17 +149,12 @@ export function WorkspaceScreen({ id }: { id: string }) {
     if (isApiError(query.error) && query.error.status === 404) return <NotFound />;
     return (
       <div className="grid content-start gap-4">
-        <BackLink />
-        <Alert
-          type="error"
-          showIcon
+        <BackToList />
+        <ErrorState
           title="No pudimos cargar la solicitud"
-          description={query.error.message}
-          action={
-            <Button size="small" onClick={() => void query.refetch()}>
-              Reintentar
-            </Button>
-          }
+          message={query.error.message}
+          onRetry={() => void query.refetch()}
+          retrying={query.isFetching}
         />
       </div>
     );
@@ -217,7 +195,7 @@ function Workspace({ detail, version }: { detail: ApplicationDetail; version: nu
 
   return (
     <div className="grid max-w-[1148px] content-start gap-5">
-      <BackLink />
+      <BackToList />
 
       <section
         aria-labelledby="workspace-title"
@@ -243,7 +221,7 @@ function Workspace({ detail, version }: { detail: ApplicationDetail; version: nu
           />
         </div>
         <KeyFacts detail={detail} property={property.data} financing={financing.data} />
-        <ProgressStepper stages={detail.progress_stages} />
+        <Stepper stages={detail.progress_stages} ariaLabel="Etapas de la solicitud" />
       </section>
 
       <ScrollTabs
@@ -252,7 +230,15 @@ function Workspace({ detail, version }: { detail: ApplicationDetail; version: nu
         onChange={(key) => go(key as typeof tab)}
         items={[
           { key: "resumen", label: "Resumen" },
-          { key: "documentos", label: "Documentos", count: pending ?? undefined },
+          // Mockup `solicitud.html`: "Documentos 6 pendientes", en tono de advertencia.
+          {
+            key: "documentos",
+            label: "Documentos",
+            ...(pending
+              ? { countLabel: `${pending} ${pending === 1 ? "pendiente" : "pendientes"}` }
+              : {}),
+            countTone: "warning" as const,
+          },
           ...(canReadFilings
             ? [{ key: "radicacion", label: "Radicación", count: filings.data?.total }]
             : []),

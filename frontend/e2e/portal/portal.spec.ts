@@ -80,6 +80,8 @@ async function a11yPass(page: Page, theme: Theme) {
     await visit(page, url, title);
     await expectNoSeriousA11yViolations(page, `${title} (${theme})`);
   }
+  await visit(page, "/portal/avisos", "Tus avisos");
+  await expectNoSeriousA11yViolations(page, `avisos (${theme})`);
   await visit(page, "/portal/documentos", "Tus documentos");
   await expectNoSeriousA11yViolations(page, `documentos (${theme})`);
   if (await openFirstSheet(page)) {
@@ -110,6 +112,8 @@ async function screenshotPass(page: Page) {
       await visit(page, "/portal/documentos", "Tus documentos");
       await shoot(page, `app-documentos-${tag}`);
       if (await openFirstSheet(page)) await shoot(page, `app-hoja-de-carga-${tag}`, false);
+      await visit(page, "/portal/avisos", "Tus avisos");
+      await shoot(page, `app-avisos-${tag}`);
 
       await mockup(page, "portal.html", theme);
       await shoot(page, `mockup-inicio-${tag}`);
@@ -202,6 +206,29 @@ test("enlace, consentimientos, dato de contacto, carga de un PDF y salida, con a
     .first();
   await expect(uploaded).toContainText("En revisión");
   await shoot(page, `${name}-documentos`);
+
+  // F5: avisos. El primer acceso deja el de "Acceso al portal": se abre y queda leído, y el
+  // número de la navegación baja.
+  await page
+    .getByRole("navigation", { name: /^(Portal|Navegación del portal)$/ })
+    .filter({ visible: true })
+    .getByRole("link", { name: /^Avisos/ })
+    .click();
+  await expect(page.getByRole("heading", { name: "Tus avisos", level: 1 })).toBeVisible();
+  const notices = page.getByRole("list", { name: "Avisos" });
+  await expect(notices.getByRole("listitem").first()).toBeVisible();
+  const unreadBefore = await notices.getByText("Nuevo", { exact: true }).count();
+  const firstNotice = notices.getByRole("button").first();
+  await firstNotice.click();
+  await expect(firstNotice).toHaveAttribute("aria-expanded", "true");
+  if (unreadBefore > 0) {
+    await expect(notices.getByText("Nuevo", { exact: true })).toHaveCount(unreadBefore - 1);
+  }
+  if ((await page.getByRole("button", { name: "Marcar todos como leídos" }).count()) > 0) {
+    await page.getByRole("button", { name: "Marcar todos como leídos" }).click();
+    await expect(page.getByText("Estás al día.")).toBeVisible();
+  }
+  await shoot(page, `${name}-avisos`);
 
   // axe en cada pantalla, en claro y en oscuro.
   for (const theme of THEMES) {

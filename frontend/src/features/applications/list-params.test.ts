@@ -13,6 +13,7 @@ describe("estado del listado en la URL", () => {
   it("sin parámetros usa los valores por defecto", () => {
     expect(parseListParams(new URLSearchParams())).toEqual({
       quick_filter: "all",
+      status: "",
       search: "",
       bank_id: "",
       product_type: "",
@@ -54,6 +55,14 @@ describe("estado del listado en la URL", () => {
     expect(parseOrdering("-requested_amount")).toEqual({ field: "requested_amount", desc: true });
     expect(parseOrdering("bank_name")).toEqual({ field: "bank_name", desc: false });
     expect(formatOrdering({ field: "code", desc: true })).toBe("-code");
+  });
+
+  it("status (enlaces del tablero) va en la URL y a la API, pero no a las pestañas", () => {
+    const params = parseListParams(new URLSearchParams("status=APPROVED&page=2"));
+    expect(params.status).toBe("APPROVED");
+    expect(serializeListParams(params)).toBe("status=APPROVED&page=2");
+    expect(compact(params)).toMatchObject({ status: "APPROVED" });
+    expect(filtersOf(params)).not.toHaveProperty("status");
   });
 
   it("los filtros de las pestañas no llevan pestaña, orden ni página, y se compactan", () => {

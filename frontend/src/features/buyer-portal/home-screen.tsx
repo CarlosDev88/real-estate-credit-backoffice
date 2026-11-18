@@ -3,6 +3,8 @@
 import { Button } from "antd";
 import { useState } from "react";
 
+import { PageHeader } from "@/components/ui/page-header";
+import { ErrorState } from "@/components/ui/state-views";
 import { UploadSheet } from "@/features/buyer-documents/upload-sheet";
 import { firstName, bankName, inSentence } from "@/features/buyer-portal/home-format";
 import {
@@ -57,18 +59,17 @@ export function PortalHome() {
   if (error || !detail || !slotsQuery.data) {
     return (
       <PortalPage>
-        <div role="alert" className="grid justify-items-start gap-2">
-          <h1 className="m-0 text-xl font-semibold">No pudimos cargar tu solicitud</h1>
-          {error && <p className="text-text-secondary m-0">{error.message}</p>}
-          <Button
-            onClick={() => {
-              void detailQuery.refetch();
-              void slotsQuery.refetch();
-            }}
-          >
-            Reintentar
-          </Button>
-        </div>
+        <ErrorState
+          variant="page"
+          titleAs="h1"
+          title="No pudimos cargar tu solicitud"
+          message={error?.message}
+          onRetry={() => {
+            void detailQuery.refetch();
+            void slotsQuery.refetch();
+          }}
+          retrying={detailQuery.isFetching || slotsQuery.isFetching}
+        />
       </PortalPage>
     );
   }
@@ -80,16 +81,17 @@ export function PortalHome() {
 
   return (
     <PortalPage>
-      <div>
-        <h1 className="m-0 text-3xl font-semibold tracking-tight">
-          Hola, {firstName(session.buyer.display_name)}
-        </h1>
-        <p className="text-text-secondary text-md mt-1 mb-0">
-          Tu crédito de {inSentence(detail.purpose.label)}
-          {bank && ` con ${bankName(bank)}`} ·{" "}
-          <span className="text-text-tertiary font-mono whitespace-nowrap">{detail.code}</span>
-        </p>
-      </div>
+      <PageHeader
+        variant="portal"
+        title={`Hola, ${firstName(session.buyer.display_name)}`}
+        description={
+          <>
+            Tu crédito de {inSentence(detail.purpose.label)}
+            {bank && ` con ${bankName(bank)}`} ·{" "}
+            <span className="text-text-tertiary font-mono whitespace-nowrap">{detail.code}</span>
+          </>
+        }
+      />
 
       <StatusCard detail={detail} slots={slots} />
       {detail.latest_bank_update && <BankUpdateCard update={detail.latest_bank_update} />}
@@ -104,6 +106,7 @@ export function PortalHome() {
       {!detail.is_closed && (
         <footer className="grid justify-items-center pb-4">
           <Button
+            size="large"
             type="link"
             className="text-text-secondary! text-sm underline"
             onClick={() => setWithdrawing(true)}

@@ -521,6 +521,7 @@ def test_available_actions_endpoint_and_detail(
         "target_status_label": "Esperando datos del comprador",
         "guard_code": "",
         "kind": "primary",
+        "reason_required": False,
     }
     detail = advisor_client.get(application_url(application)).json()
     assert detail["available_actions"] == actions

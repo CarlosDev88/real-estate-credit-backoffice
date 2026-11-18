@@ -34,6 +34,12 @@ export const editClientHref = (id: string) => `/clientes/${id}/editar`;
 export const NEW_CLIENT_HREF = "/clientes/nuevo";
 export const CLIENTS_HREF = "/clientes";
 
+/**
+ * El backoffice es de asesor y administrador: `/clients` les responde la forma interna
+ * (`Client` / `ClientDetail`). El contrato también describe la del broker (`BrokerClient`,
+ * `oneOf`), que esta pantalla no recibe.
+ */
+
 /** `GET /clients` con el estado de la URL. Mientras llega otra página, se ve la anterior. */
 export function useClientsList(params: ClientListParams) {
   // `nueva_solicitud` es solo de la vista: no va a la API ni a la clave de la caché.
@@ -47,7 +53,8 @@ export function useClientsList(params: ClientListParams) {
   return useQuery({
     queryKey: clientKeys.list(query),
     queryFn: async () =>
-      (await call(api.GET("/api/v1/clients", { params: { query: compact(query) } }))).data,
+      (await call(api.GET("/api/v1/clients", { params: { query: compact(query) } })))
+        .data as ClientPage,
     placeholderData: keepPreviousData,
   });
 }
@@ -58,7 +65,7 @@ export function useClient(id: string) {
     queryKey: clientKeys.detail(id),
     queryFn: async () =>
       (await call(api.GET("/api/v1/clients/{client_id}", { params: { path: { client_id: id } } })))
-        .data,
+        .data as ClientDetail,
   });
 }
 

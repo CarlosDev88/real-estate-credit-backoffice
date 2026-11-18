@@ -392,6 +392,20 @@ describe("listado de solicitudes", { timeout: 20_000 }, () => {
     expect(await screen.findByText("SOL-000001")).toBeInTheDocument();
   });
 
+  it("status de la URL (enlaces del tablero) va a la API, se ve como chip y se puede quitar", async () => {
+    go("?status=DOCUMENTS_REVIEW");
+    const requests = useApi();
+    await renderList();
+    expect(last(requests.list)?.get("status")).toBe("DOCUMENTS_REVIEW");
+    // Las pestañas no reciben `status` (`quick-filters` no lo acepta).
+    expect(last(requests.tabs)?.has("status")).toBe(false);
+    const remove = screen.getByRole("button", {
+      name: "Quitar filtro Estado: Documentos en revisión",
+    });
+    await userEvent.click(remove);
+    await waitFor(() => expect(window.location.search).toBe(""));
+  });
+
   it("sin resultados muestra el estado vacío, con 'Limpiar filtros' si hay filtros", async () => {
     go("?search=nadie");
     useApi([]);
@@ -475,7 +489,14 @@ describe("listado de solicitudes", { timeout: 20_000 }, () => {
         bank_product: null,
         requested_amount_cop: null,
         completeness_pct: null,
-        participants_summary: { co_applicants: 1, solidary_debtors: 2 },
+        participants_summary: {
+          co_applicants: 1,
+          solidary_debtors: 2,
+          roles: [
+            { code: "CO_APPLICANT", label: "Co-solicitante", count: 1 },
+            { code: "SOLIDARY_DEBTOR", label: "Deudor solidario", count: 2 },
+          ],
+        },
       }),
     ]);
     await renderList();
@@ -492,7 +513,14 @@ describe("listado de solicitudes", { timeout: 20_000 }, () => {
     useApi([
       makeApp(1, {
         bank_product: { ...makeApp(1).bank_product!, bank: BOGOTA },
-        participants_summary: { co_applicants: 2, solidary_debtors: 1 },
+        participants_summary: {
+          co_applicants: 2,
+          solidary_debtors: 1,
+          roles: [
+            { code: "CO_APPLICANT", label: "Co-solicitante", count: 2 },
+            { code: "SOLIDARY_DEBTOR", label: "Deudor solidario", count: 1 },
+          ],
+        },
       }),
     ]);
     await renderList();

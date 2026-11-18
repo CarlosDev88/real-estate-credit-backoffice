@@ -123,6 +123,8 @@ docker compose exec backend python manage.py shell -c "from apps.identity.models
 
 The frontend end-to-end checks read that user from `frontend/.env.local` (`E2E_USER_EMAIL` and `E2E_USER_PASSWORD`), which is never committed. The login locks for 15 minutes after 5 failed attempts per email and IP.
 
+Every Playwright run logs in, so a full local E2E pass hits that limit. For local runs only, set `AUTH_RATE_LIMIT_MULTIPLIER=20` in `backend/.env`: with `DJANGO_DEBUG=True`, every quota in `AUTH_RATE_LIMITS` (including `REPORTS_RATE_LIMIT`) is multiplied by that number. With `DJANGO_DEBUG=False` the variable is always ignored, so it never loosens production. A blocked request answers `429 RATE_LIMITED` with `Retry-After` and the message "Hiciste demasiados intentos. Vuelve a intentarlo en N minutos." (seconds when it is less than a minute).
+
 ### Demo Data
 
 To see the screens with real data, fill the local database with demo data:

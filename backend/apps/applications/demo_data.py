@@ -693,7 +693,7 @@ def seed_demo_data(*, extra_advisor: User | None = None) -> DemoResult:
         if case.portal_link:
             portal = (advisor, application)
 
-    # Tres más, radicadas y con respuestas del banco (paso 11). Import local: `filings`
+    # Cuatro más, radicadas y con respuestas del banco (paso 11). Import local: `filings`
     # depende de `applications`.
     from apps.filings.demo_data import seed_filed_cases
 

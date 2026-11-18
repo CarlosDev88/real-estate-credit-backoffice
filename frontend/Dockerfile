@@ -4,12 +4,12 @@
 
 ARG NODE_IMAGE=node:24.22.2-alpine
 
-# 1. Dependencias: solo package.json y el lockfile, para aprovechar la caché de capas.
+# 1. Dependencias: solo package.json, el lockfile y los ajustes de pnpm, para aprovechar la caché de capas.
 FROM ${NODE_IMAGE} AS deps
 ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
 RUN corepack enable
 WORKDIR /app/frontend
-COPY frontend/package.json frontend/pnpm-lock.yaml ./
+COPY frontend/package.json frontend/pnpm-lock.yaml frontend/pnpm-workspace.yaml ./
 RUN pnpm install --frozen-lockfile
 
 # 2. Build. Next fija los rewrites de /api/v1 al compilar: API_ORIGIN tiene que estar aquí,

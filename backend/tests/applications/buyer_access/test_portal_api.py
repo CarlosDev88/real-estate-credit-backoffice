@@ -520,6 +520,7 @@ def test_application_detail_is_the_portal_dto(
         "property",
         "financing",
         "latest_bank_update",
+        "income_summary",
     }
     assert body["latest_bank_update"] is None
     assert body["next_action"] == "Tu asesor está preparando la solicitud."

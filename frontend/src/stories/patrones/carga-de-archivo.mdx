@@ -1,0 +1,25 @@
+import { Canvas, Meta } from "@storybook/addon-docs/blocks";
+
+import * as Uploader from "../../components/ui/document-uploader.stories";
+
+<Meta title="Patrones/Carga de archivo" />
+
+# Carga de archivo
+
+`DocumentUploader`: arrastrar o elegir en web; "Tomar foto" y "Elegir archivo" en móvil. Quien lo usa hace el envío (`onUpload`), y el componente pinta el estado.
+
+<Canvas of={Uploader.Basico} />
+
+## El flujo
+
+1. **Antes de enviar,** valida el tipo y el tamaño con lo que dice la API (`allowed_mime_types` y `max_size_bytes`). El error dice qué subir: "Sube un archivo PDF, JPG o PNG".
+2. **Mientras sube:** nombre del archivo, progreso y "Cancelar".
+3. **Análisis antivirus:** el archivo queda pendiente hasta que la API lo marca limpio. La vista lo muestra con `StatusBadge kind="fileScan"` y consulta cada pocos segundos.
+4. **Error de la API:** en línea, con el mensaje y "Reintentar" con el mismo archivo.
+5. **Reemplazo** de un documento rechazado: `replace` cambia los textos, y el motivo del rechazo se ve antes.
+
+<Canvas of={Uploader.ErrorDeLaApi} />
+
+## En móvil
+
+En el portal, la carga va en una hoja inferior (`BottomSheet`), con los requisitos del documento arriba. En 720 px o menos, el componente cambia el área de arrastre por "Tomar foto" y "Elegir archivo": se ve en el story "Componentes / DocumentUploader / Móvil" (viewport de 390 px), porque aquí el ejemplo usa el ancho de la página.

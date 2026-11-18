@@ -5,6 +5,7 @@ Alcance por rol (sección 8.6 de los requerimientos y RF-14):
 - ``ADMIN``: todo.
 - ``ADVISOR``: oportunidades asignadas a él o que él capturó, y sus clientes; también
   los participantes de las solicitudes que tiene asignadas, aunque se hayan retirado.
+  La oportunidad que crea un asesor queda asignada a él (``create_opportunity``).
 - ``INDEPENDENT_BROKER``: oportunidades que él capturó y clientes que creó. Solo ve
   datos de contacto y un resumen; nunca datos financieros ni documentos.
 - ``CONSTRUCTION_PARTNER``: no usa estos endpoints en el MVP (sección 14 de la API).
@@ -19,13 +20,15 @@ from typing import Any
 
 from django.apps import apps
 from django.db import IntegrityError, transaction
-from django.db.models import Exists, OuterRef, Q, QuerySet
+from django.db.models import Count, Exists, IntegerField, OuterRef, Q, QuerySet, Subquery
+from django.db.models.functions import Coalesce
 from django.utils import timezone
 from rest_framework.exceptions import ValidationError
 
-from apps.catalogs.models import CatalogItem
+from apps.catalogs.models import CatalogItem, WorkflowTransition
 from apps.catalogs.services import available_transitions, resolve_transition
 from apps.catalogs.workflow import FlowType, OpportunityStatus
+from apps.crm.actions import sort_by_kind
 from apps.crm.exceptions import (
     AdvisorNotEligible,
     DuplicateClientDocument,
@@ -39,7 +42,11 @@ from apps.crm.models import (
     Opportunity,
     OpportunityAssignment,
 )
-from apps.crm.signals import opportunity_assigned, opportunity_status_changed
+from apps.crm.signals import (
+    opportunity_assigned,
+    opportunity_created,
+    opportunity_status_changed,
+)
 from apps.identity.models import RoleCode, User
 from apps.identity.services import get_access_profile
 from apps.partners.models import Project
@@ -114,6 +121,43 @@ def clients_visible_to(user: User) -> QuerySet[Client]:
     if scope.is_advisor:
         visible |= Q(Exists(_assigned_participations(user)))
     return clients.filter(visible)
+
+
+def application_scope_condition(user: User, scope: CrmScope, prefix: str = "") -> Q | None:
+    """Filtro de las solicitudes visibles para ``user``, o ``None`` si ve todas.
+
+    Es la regla de ``applications.services.applications_visible_to``: vive aquí para que
+    el conteo de solicitudes del cliente la use sin importar ``applications``.
+    ``prefix`` apunta a la solicitud desde otro modelo (``"application__"``).
+    """
+    if scope.sees_everything:
+        return None
+    condition = Q(**{f"{prefix}pk__in": []})
+    if scope.is_advisor:
+        condition |= Q(**{f"{prefix}assigned_advisor": user})
+    if scope.is_broker:
+        condition |= Q(**{f"{prefix}opportunity__origin_user": user})
+    return condition
+
+
+def with_applications_count(clients: QuerySet[Client], user: User) -> QuerySet[Client]:
+    """Anota ``applications_count``: solicitudes visibles para ``user`` en las que el
+    cliente participa con un papel vigente (lo mismo que lista
+    ``GET /clients/{id}/applications``). Una subconsulta: sin consultas por fila."""
+    participant_model = apps.get_model("applications", "ApplicationParticipant")
+    participations = participant_model.objects.filter(client=OuterRef("pk"), is_active=True)
+    condition = application_scope_condition(user, get_scope(user), prefix="application__")
+    if condition is not None:
+        participations = participations.filter(condition)
+    count = (
+        participations.order_by()
+        .values("client")
+        .annotate(total=Count("application", distinct=True))
+        .values("total")
+    )
+    return clients.annotate(
+        applications_count=Coalesce(Subquery(count, output_field=IntegerField()), 0)
+    )
 
 
 def _assigned_participations(user: User) -> QuerySet[Any]:
@@ -253,21 +297,75 @@ def _ensure_no_open_duplicate(
         raise DuplicateOpportunity()
 
 
+# Motivo del registro en `opportunity_assignments` cuando el asesor crea la oportunidad.
+SELF_ASSIGNMENT_REASON = "Asignación automática: la creó el asesor."
+
+
 def create_opportunity(
-    actor: User, *, client: Client, project: Project | None, origin_item: CatalogItem
+    actor: User,
+    *,
+    client: Client,
+    project: Project | None,
+    origin_item: CatalogItem,
+    notes: str = "",
 ) -> Opportunity:
-    """Crea una oportunidad `NEW`. Quien la crea queda como originador."""
+    """Crea una oportunidad. Quien la crea queda como originador.
+
+    Si el actor tiene rol `ADVISOR`, en la misma transacción queda asignada a él y pasa a
+    `ASSIGNED` con la transición `NEW → ASSIGNED` (la misma de ``assign_advisor``), con su
+    registro en `opportunity_assignments`. Si la crea un broker o el administrador, queda
+    `NEW` y sin asesor. ``notes`` va a la actividad como la primera nota interna
+    (``opportunity_created``).
+    """
+    self_assign = RoleCode.ADVISOR in get_access_profile(actor).roles
+    transition: WorkflowTransition | None = None
     with transaction.atomic():
         # Bloquea al cliente para que dos peticiones simultáneas no creen duplicados.
         Client.objects.select_for_update().filter(pk=client.pk).first()
         _ensure_no_open_duplicate(client, project)
-        return Opportunity.objects.create(
+        if self_assign:
+            transition = resolve_transition(
+                actor,
+                flow_type=FlowType.OPPORTUNITY,
+                from_status=OpportunityStatus.NEW,
+                to_status=OpportunityStatus.ASSIGNED,
+            )
+        opportunity = Opportunity.objects.create(
             client=client,
             project=project,
             origin_item=origin_item,
             origin_user=actor,
-            status=OpportunityStatus.NEW,
+            assigned_advisor=actor if transition is not None else None,
+            status=OpportunityStatus.ASSIGNED if transition is not None else OpportunityStatus.NEW,
         )
+        if transition is not None:
+            OpportunityAssignment.objects.create(
+                opportunity=opportunity,
+                advisor=actor,
+                assigned_by=actor,
+                reason=SELF_ASSIGNMENT_REASON,
+            )
+
+    opportunity_created.send(sender=Opportunity, opportunity=opportunity, actor=actor, notes=notes)
+    if transition is not None:
+        opportunity_assigned.send(
+            sender=Opportunity,
+            opportunity=opportunity,
+            previous_advisor_id=None,
+            advisor_id=actor.pk,
+            actor=actor,
+            reason=SELF_ASSIGNMENT_REASON,
+        )
+        opportunity_status_changed.send(
+            sender=Opportunity,
+            opportunity=opportunity,
+            from_status=OpportunityStatus.NEW,
+            to_status=OpportunityStatus.ASSIGNED,
+            transition_code=transition.code,
+            actor=actor,
+            comment=SELF_ASSIGNMENT_REASON,
+        )
+    return opportunity
 
 
 def update_opportunity(opportunity: Opportunity, changes: dict[str, Any]) -> Opportunity:
@@ -441,9 +539,12 @@ def convert_opportunity(actor: User, opportunity: Opportunity) -> Opportunity:
     return opportunity
 
 
-def available_actions(user: User, opportunity: Opportunity) -> list[str]:
-    return list(
-        available_transitions(
-            user, flow_type=FlowType.OPPORTUNITY, from_status=opportunity.status
-        ).values_list("code", flat=True)
+def available_actions(user: User, opportunity: Opportunity) -> list[WorkflowTransition]:
+    """Transiciones que ``user`` puede ejecutar desde el estado actual (rol y permiso).
+
+    Salen primero las principales, luego las secundarias y al final las destructivas
+    (``apps.crm.actions``).
+    """
+    return sort_by_kind(
+        available_transitions(user, flow_type=FlowType.OPPORTUNITY, from_status=opportunity.status)
     )

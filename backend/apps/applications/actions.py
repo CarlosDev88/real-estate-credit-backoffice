@@ -11,20 +11,32 @@ las destructivas. La regla es de negocio, así que vive aquí y no en el front:
 
 La lista disponible sale en ese orden de grupos; dentro de cada grupo se conserva el
 orden de ``available_transitions`` (por código).
+
+``reason_required``: la transición exige ``reason_code``. Son los cierres de
+``REASON_REQUIRED_STATUSES`` y el desistimiento (``WITHDRAWN``, por `/withdrawals`).
 """
 
 from collections.abc import Iterable
 
-from django.db import models
-
 from apps.catalogs.models import WorkflowTransition
-from apps.catalogs.workflow import ApplicationStatus
+from apps.catalogs.workflow import ActionKind, ApplicationStatus
 
+__all__ = [
+    "ACTION_KIND_BY_TARGET_STATUS",
+    "BACKWARD_TRANSITION_CODES",
+    "REASON_REQUIRED_STATUSES",
+    "ActionKind",
+    "action_kind",
+    "reason_required",
+    "sort_by_kind",
+]
 
-class ActionKind(models.TextChoices):
-    PRIMARY = "primary", "Principal"
-    SECONDARY = "secondary", "Secundaria"
-    DESTRUCTIVE = "destructive", "Destructiva"
+# Cierres que exigen `reason_code` en `POST /status-transitions`.
+REASON_REQUIRED_STATUSES: tuple[str, ...] = (
+    ApplicationStatus.CANCELLED,
+    ApplicationStatus.OWN_FUNDS,
+    ApplicationStatus.EXTERNAL_CREDIT_APPROVED,
+)
 
 
 # Tipo según el estado destino. Cubre todos los estados: una prueba lo exige.
@@ -61,6 +73,15 @@ def action_kind(transition: WorkflowTransition) -> ActionKind:
     if transition.code in BACKWARD_TRANSITION_CODES:
         return ActionKind.SECONDARY
     return ACTION_KIND_BY_TARGET_STATUS[transition.to_status]
+
+
+def reason_required(transition: WorkflowTransition) -> bool:
+    """La acción exige motivo: un cierre con motivo o el desistimiento (`WITHDRAWN`),
+    cuyo `reason_code` es obligatorio en `/withdrawals`."""
+    return (
+        transition.to_status in REASON_REQUIRED_STATUSES
+        or transition.to_status == ApplicationStatus.WITHDRAWN
+    )
 
 
 def sort_by_kind(transitions: Iterable[WorkflowTransition]) -> list[WorkflowTransition]:

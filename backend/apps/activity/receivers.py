@@ -42,6 +42,8 @@ from apps.commissions.signals import (
     commission_settlement_voided,
     commission_share_paid,
 )
+from apps.crm.models import Opportunity
+from apps.crm.signals import opportunity_created
 from apps.documents.models import (
     ApplicationDocumentSlot,
     DocumentFile,
@@ -180,6 +182,23 @@ def on_advisor_assigned(
         application=application,
         actor=actor,
         metadata={"advisor_id": str(advisor_id)},
+    )
+
+
+@receiver(opportunity_created, dispatch_uid="activity.opportunity_created")
+@never_raises
+def on_opportunity_created(
+    sender: Any, opportunity: Opportunity, actor: User, notes: str, **_: Any
+) -> None:
+    """El texto de ``POST /opportunities`` queda como la primera nota interna."""
+    if not notes:
+        return
+    record_activity(
+        event_type=E.NOTE_ADDED,
+        title=f"Nota de {actor.get_full_name()}",
+        message=notes,
+        opportunity=opportunity,
+        actor=actor,
     )
 
 

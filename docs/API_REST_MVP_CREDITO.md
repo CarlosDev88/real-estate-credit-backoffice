@@ -160,7 +160,7 @@ Las cookies de sesión usan `HttpOnly`, `Secure`, `SameSite=Lax` y `Path=/`. La 
 | --- | --- |
 | `INVALID_CREDENTIALS` | Credenciales internas inválidas. |
 | `USER_INACTIVE` | Usuario interno desactivado. |
-| `RATE_LIMITED` | Límite de consumo superado. |
+| `RATE_LIMITED` | Límite de consumo superado. `message`: "Hiciste demasiados intentos. Vuelve a intentarlo en N minutos." (redondeado hacia arriba; en segundos si falta menos de un minuto). |
 | `SESSION_EXPIRED` | Sesión interna o del comprador vencida. |
 | `MAGIC_LINK_EXPIRED` | Enlace mágico vencido. |
 | `MAGIC_LINK_CONSUMED` | Enlace ya utilizado. |
@@ -627,14 +627,17 @@ Reglas:
 }
 ```
 
-Responde `409 DUPLICATE_CLIENT_DOCUMENT` si existe la combinación documento/tipo. Un broker solo obtiene campos de contacto y resumen; nunca perfiles financieros ni documentos.
+Responde `409 DUPLICATE_CLIENT_DOCUMENT` si existe la combinación documento/tipo (también en `PATCH`). Si el usuario puede ver el cliente existente, `details[0]` es `{field: "document_number", code: "EXISTING_CLIENT", resource_id: "<id del cliente>"}`; si no, `details` va vacío. Un broker solo obtiene campos de contacto y resumen; nunca perfiles financieros ni documentos.
+
+- **Forma por rol:** el broker (`INDEPENDENT_BROKER` sin `ADMIN` ni `ADVISOR`) recibe `BrokerClient` (contacto y documento enmascarado) en `GET /clients`, `POST`, `GET /clients/{client_id}` y `PATCH`; el resto recibe `Client` (listado y creación) o `ClientDetail` (detalle y edición, con direcciones). El contrato lo describe con `oneOf` (`PaginatedClientListByRole`, `ClientByRole`, `ClientDetailByRole`).
+- **`applications_count`:** en `Client` y `ClientDetail` de `/clients`, las solicitudes visibles para el usuario en las que el cliente participa con un papel vigente (las mismas de `GET /clients/{client_id}/applications`). Es opcional en el contrato: no viene en el cliente de un participante ni para el broker.
 
 ## 14. Oportunidades comerciales
 
 | Método | Ruta | Permiso | Entrada / filtros | Respuesta |
 | --- | --- | --- | --- | --- |
 | `GET` | `/opportunities` | `opportunities.read` | `status`, `broker_id`, `advisor_id`, `project_id`, `search` | Oportunidades según alcance. |
-| `POST` | `/opportunities` | `opportunities.create` | Cliente, origen y proyecto opcional | Oportunidad `NEW`. |
+| `POST` | `/opportunities` | `opportunities.create` | Cliente, origen, proyecto y nota opcionales | Oportunidad `NEW`, o `ASSIGNED` si la crea un asesor. |
 | `GET` | `/opportunities/{opportunity_id}` | `opportunities.read` | — | Detalle permitido. |
 | `PATCH` | `/opportunities/{opportunity_id}` | `opportunities.update` | Campos comerciales | Oportunidad actualizada. |
 | `POST` | `/opportunities/{opportunity_id}/assignments` | `opportunities.assign` | Asesor responsable | Asignación auditada. |
@@ -655,6 +658,13 @@ Responde `409 DUPLICATE_CLIENT_DOCUMENT` si existe la combinación documento/tip
 ```
 
 Si existe `project_id`, debe estar `ACTIVE`. El partner no usa estos endpoints en el MVP.
+
+- **Forma por rol:** el broker recibe `BrokerOpportunity` (resumen de su prospecto) en `GET /opportunities`, `GET /clients/{client_id}/opportunities`, `POST`, `GET` y `PATCH /opportunities/{id}`; el resto, `Opportunity` (listados) u `OpportunityDetail`. El contrato lo describe con `oneOf` (`PaginatedOpportunityListByRole` y `OpportunityDetailByRole`), como en clientes. `/broker/opportunities` sigue respondiendo `PaginatedBrokerOpportunityList`.
+- **`notes`:** opcional, hasta 2000 caracteres. Queda como la primera nota interna de la oportunidad (una fila `NOTE_ADDED` de la actividad).
+- **Asignación automática:** si quien crea la oportunidad tiene rol `ADVISOR`, queda asignada a él y en `ASSIGNED` en la misma transacción, con su fila en `assignments` (`reason`: "Asignación automática: la creó el asesor.") y la transición `ASSIGN`. Si esa transición no está activa, responde `409 INVALID_STATE_TRANSITION` y no se crea nada. Si la crea un broker o el administrador, queda `NEW` y sin asesor.
+- **`status_label`:** en `Opportunity` y `OpportunityDetail`, la etiqueta del estado (catálogo `opportunity_status`).
+- **`assignments`:** historial de asesores, del más reciente al más antiguo: `[{id, advisor: {id, name}, assigned_by: {id, name} | null, reason, created_at, ended_at}]`.
+- **`available_actions`:** las transiciones que el actor puede ejecutar desde el estado actual (rol y permiso), con la forma de las acciones de la solicitud sin `guard_code`: `[{code, label, kind, target_status, target_status_label, reason_required}]`. `kind`: la conversión (`CONVERT_*`, al crear la solicitud) es `primary`; perder (`MARK_LOST_*`) y cancelar (`CANCEL_*`) son `destructive`; el resto (`ASSIGN`, por `/assignments`, `MARK_CONTACTED`, `START_PROGRESS`) es `secondary`. Sale en ese orden y, dentro de cada grupo, por código. `reason_required` es `true` solo para `LOST` (`reason_code` del catálogo `opportunity_lost_reason`).
 
 ## 15. Mi día y tareas
 
@@ -720,6 +730,7 @@ Los cinco permisos son de `ADMIN` y `ADVISOR`; el broker y la constructora recib
 - **Crear:** exactamente uno de `application_id` u `opportunity_id`, visible para el actor (si no, `400 VALIDATION_ERROR` en ese campo). Una solicitud terminada responde `409 APPLICATION_CLOSED`. `assigned_to_id` es el actor por omisión y debe ser un usuario activo con rol `ADMIN` o `ADVISOR` (si no, `400`). `priority_code` es `MEDIUM` por omisión. Solo se crean tareas `MANUAL`.
 - **Estados:** una tarea `PENDING` se edita, se completa o se cancela; una `COMPLETED` o `CANCELLED` responde `409 TASK_NOT_PENDING`.
 - **`due`** (fecha de Bogotá, solo tareas `PENDING` con fecha): `overdue` (antes de hoy), `today` y `upcoming` (después de hoy).
+- **Etiquetas:** el estado de cada tarea trae `status_label`. Para los filtros, el bootstrap trae los catálogos de sistema `task_status` (`PENDING` "Pendiente", `COMPLETED` "Completada", `CANCELLED` "Cancelada") y `task_due` (`overdue` "Vencidas", `today` "Hoy", `upcoming` "Próximas"), con los mismos códigos del contrato. No se editan desde la administración.
 - **Orden:** `due_at`, con las que no tienen fecha al final; después, la fecha de creación.
 
 Respuesta:
@@ -850,7 +861,10 @@ Reglas de creación:
 
 Detalle (`GET /applications/{application_id}`):
 
-- `property`, `assignments`, `progress_stages` y `available_actions` salen siempre.
+- `property`, `assignments`, `progress_stages`, `available_actions`, `origin_user_name` y `consents` salen siempre.
+- `origin_user_name`: nombre de quien originó la oportunidad (broker o usuario interno); `null` si no hay.
+- `consents`: `{required, accepted}`, los consentimientos vigentes obligatorios del comprador titular y cuántos tiene aceptados hoy (la regla de obligatoriedad de §21).
+- `participants_summary` (listado y detalle) agrega `roles`: `[{code, label, count}]` con los co-solicitantes y deudores solidarios activos (solo los roles con al menos uno), sin quitar `co_applicants` ni `solidary_debtors`.
 - `progress_stages`: las 8 etapas del expediente, con la misma forma y la misma función que `stages` del portal (§8): `BUYER_DATA` (en curso con `DRAFT` y `WAITING_BUYER_DATA`), `DOCUMENT_UPLOAD` (`WAITING_DOCUMENTS`), `DOCUMENT_REVIEW` (`DOCUMENTS_REVIEW`), `READY_TO_FILE`, `FILED` (`FILED`, `FILING_VALIDATION`), `BANK_ANALYSIS` (`CREDIT_ANALYSIS`, `BANK_OBSERVATION`), `APPROVED` (`APPROVED`, `LEGALIZATION`) y `DISBURSED` (todas `done`). `REJECTED`: `done` hasta `BANK_ANALYSIS` y el resto `pending`. `WITHDRAWN`, `CANCELLED`, `OWN_FUNDS` y `EXTERNAL_CREDIT_APPROVED`: lista vacía.
 - Cada código de estado o de tipo que muestra el backoffice trae su `*_label` desde el backend: `status_label` de la solicitud; `role_label` de los participantes y del participante de cada slot; `from_status_label` y `to_status_label` del historial; `target_status_label` de las acciones; `previous_status_label` y `status_label` del cambio de estado; `outcome_label` de las reglas de una evaluación (Cumple, No cumple, Faltan datos); `product_type_label` de los productos elegibles; y las del expediente documental (§19.1).
 - `include` agrega bloques opcionales separados por comas (se toleran espacios): `participants` (solo vigentes) y `financing` (`null` si no existe). `property` se admite sin efecto. Un valor desconocido responde `400` en el campo `include`.
@@ -995,6 +1009,8 @@ Las transiciones de `FILED` en adelante llegan con la radicación (§20).
 
 La lista sale ordenada por grupo (`primary`, `secondary`, `destructive`) y, dentro de cada grupo, por código.
 
+`reason_required` es `true` si la acción exige `reason_code`: los cierres `CANCELLED`, `OWN_FUNDS` y `EXTERNAL_CREDIT_APPROVED`, y el desistimiento (`WITHDRAWN`, por `/withdrawals`).
+
 ```json
 [
   {
@@ -1003,7 +1019,8 @@ La lista sale ordenada por grupo (`primary`, `secondary`, `destructive`) y, dent
     "target_status": "READY_TO_FILE",
     "target_status_label": "Lista para radicar",
     "guard_code": "APPLICATION_READY_TO_FILE",
-    "kind": "primary"
+    "kind": "primary",
+    "reason_required": false
   }
 ]
 ```
@@ -1275,7 +1292,10 @@ Filtros de la lista interna: `status`, `participant_id`, `document_type_code`, `
 
 Estados de un slot: `PENDING`, `UPLOADED`, `APPROVED`, `REJECTED`, `WAIVED`. Estados de una versión: `UPLOADED` (análisis en curso), `IN_REVIEW` (análisis limpio, espera al asesor), `APPROVED`, `REJECTED`. Estados técnicos del archivo: `PENDING`, `CLEAN`, `INFECTED`, `INVALID`.
 
-Etiquetas en las respuestas internas: `status_label` del slot, de la versión vigente (`current_file`), de cada versión y del `scan-status`; `scan_status_label` del archivo; `decision_label` de cada revisión y de `waiver_history`; `holder_scope_label` del tipo documental; y `status_label` de los documentos de la completitud. Salen de las `TextChoices` del modelo.
+Etiquetas en las respuestas internas: `status_label` del slot, de la versión vigente (`current_file`), de cada versión y del `scan-status`; `scan_status_label` del archivo; `decision_label` de cada revisión y de `waiver_history`; `holder_scope_label` del tipo documental; y `status_label` de los documentos de la completitud. Salen de las `TextChoices` del modelo. También llevan `status_label` las versiones que ve el comprador, los paquetes, los enlaces de acceso y los consentimientos del portal.
+
+- `current_file` de la lista de slots trae `size_bytes`, `detected_mime_type` y `last_buyer_comment` (el mensaje al comprador de la última aprobación o rechazo de esa versión; `null` si no hay o va vacío), sin consultas por fila: el front no necesita pedir `GET /document-files/{id}` por cada archivo.
+- `DocumentFile.uploaded_by`: `{type: "buyer" | "user", name}`. Hoy solo carga el comprador: `{type: "buyer", name: "Comprador"}`. Nunca el correo ni el documento.
 
 Estado público del slot (DTO del comprador, sin quitar `status`). Una sola tabla en `apps/documents/models/slot.py` (`PUBLIC_SLOT_STATUS`):
 
@@ -1349,6 +1369,7 @@ Reglas:
 
 | Método | Ruta | Permiso | Descripción |
 | --- | --- | --- | --- |
+| `GET` | `/applications/{application_id}/document-package-jobs` | `filings.prepare`, asesor asignado | Paquetes de la solicitud, paginados, del más nuevo al más antiguo. |
 | `POST` | `/applications/{application_id}/document-package-jobs` | `filings.prepare`, asesor asignado | Pide de forma asíncrona el ZIP para el banco. `201` si crea el trabajo; `200` si devuelve uno vivo con la misma huella. |
 | `GET` | `/document-package-jobs/{job_id}` | `filings.prepare`, asesor asignado | Estado, error, vencimiento y contenido fijado. |
 | `GET` | `/document-package-jobs/{job_id}/download` | `filings.prepare`, asesor asignado | URL firmada del ZIP terminado. |
@@ -1438,7 +1459,7 @@ Acceso:
 | `POST` | `/applications/{application_id}/filings` | `filings.create`, administrador o asesor asignado | Registra la entrega manual al banco. |
 | `GET` | `/filings/{filing_id}` | `filings.read` y alcance | Detalle y estado de la radicación. |
 | `PATCH` | `/filings/{filing_id}` | `filings.update`, administrador o asesor asignado | Corrige `external_reference` o `comment`, sin tocar snapshots ni respuestas. |
-| `GET` | `/filings/{filing_id}/document-snapshots` | Administrador o asesor asignado | Versiones exactas que se entregaron al banco (paginado). |
+| `GET` | `/filings/{filing_id}/document-snapshots` | Administrador o asesor asignado | Versiones exactas que se entregaron al banco (paginado), con `document_type_label` y `slot_label` (el total del juego es el `minimum_files` del slot). |
 
 `POST /applications/{application_id}/filings`:
 
@@ -1476,7 +1497,7 @@ Precondiciones, cada una con su error:
 
 Efectos, en una sola transacción:
 
-- crea la radicación con el `sequence_number` siguiente (1, 2…) y `target_response_at` = `filed_at` + `banks.filing_response_days`, o nulo si el banco no tiene el dato (el FNA: 7 días);
+- crea la radicación con el `sequence_number` siguiente (1, 2…) y `target_response_at` = `filed_at` + `banks.filing_response_days`, o nulo si el banco no tiene el dato (el FNA: 7 días). `is_response_overdue` es `true` si ya pasó `target_response_at` y la radicación no tiene respuestas;
 - guarda un snapshot por cada versión del manifiesto del paquete (los exonerados no tienen archivo) y bloquea esos documentos (`locked_at`);
 - pasa la solicitud a `FILED` con la transición de sistema `FILE`, con historial y `application_status_changed`;
 - emite `filing_created` al confirmar.
@@ -1591,7 +1612,10 @@ Ejemplo de aprobación:
 }
 ```
 
-**Corrección.** Cada respuesta es inmutable. `corrects_response_id` se acepta solo si la respuesta corregida es la última de esa radicación, del mismo tipo, y es `RECEIVED`, `IN_ANALYSIS` u `OTHER`. Corregir no cambia ningún estado. Las demás correcciones quedan fuera del MVP (`409 RESPONSE_CORRECTION_NOT_ALLOWED`).
+**Corrección.** Cada respuesta es inmutable. `corrects_response_id` se acepta solo si la respuesta corregida es la última de esa radicación, del mismo tipo, y es `RECEIVED`, `IN_ANALYSIS`, `OTHER` o `DISBURSED`. Corregir no cambia el estado de la solicitud ni de la radicación. Las demás correcciones quedan fuera del MVP (`409 RESPONSE_CORRECTION_NOT_ALLOWED`).
+
+- **Desembolso (`DISBURSED`):** solo el administrador (`403` para el asesor), con la solicitud ya `DISBURSED` (terminal: es la única corrección que lo admite). Cambia `disbursed_amount_cop` (obligatorio), `received_at`, `external_reference`, `public_message` e `internal_comment`. Comisiones anula la liquidación de la respuesta corregida y liquida otra con la corrección; si alguna parte ya está pagada, solo la marca `needs_review`. El comprador no recibe otro aviso. Un desembolso nuevo (sin `corrects_response_id`) sigue respondiendo `409 APPLICATION_CLOSED`.
+- **Campos por tipo:** los ítems del catálogo `filing_response_type` traen en `metadata` `{fields, required, reason_catalog}`, generados desde las reglas del backend: `fields` son los campos del formulario en orden (los propios del tipo y después `public_message` e `internal_comment`; `received_at` y `external_reference` van siempre).
 
 **Evidencia.** `POST /filing-responses/{response_id}/evidence` es `multipart/form-data` con `file`:
 
@@ -1602,9 +1626,9 @@ Ejemplo de aprobación:
 
 **Lo que ve cada actor de una respuesta:**
 
-- **Administrador y asesor:** todo. Respuesta: `id`, `filing_id`, `response_type`, `response_type_label`, `received_at`, `public_message`, `external_reference`, `reason` (`{code, label}`), `internal_comment`, `observations` (`id`, `document_slot_id`, `reason`, `message`, `resolved_at`, `resolved_by_file_id`, `created_at`), `approved_amount_cop`, `approved_term_months`, `valid_until`, `disbursed_amount_cop`, `evidence` (`filename`, `mime_type`, `size_bytes`, `scan_status`, `scanned_at`, `uploaded_at`), `recorded_by`, `corrects_response_id` y `created_at`.
+- **Administrador y asesor:** todo. Respuesta: `id`, `filing_id`, `response_type`, `response_type_label`, `received_at`, `public_message`, `external_reference`, `reason` (`{code, label}`), `internal_comment`, `observations` (`id`, `document_slot_id`, `reason`, `message`, `resolved_at`, `resolved_by_file_id`, `created_at`), `approved_amount_cop`, `approved_term_months`, `valid_until`, `disbursed_amount_cop`, `evidence` (`filename`, `mime_type`, `size_bytes`, `scan_status`, `scan_status_label`, `scanned_at`, `uploaded_at`), `recorded_by`, `corrects_response_id` y `created_at`.
 - **Broker:** `id`, `filing_id`, `response_type`, `response_type_label`, `received_at`, `public_message` y `created_at`. Nunca `internal_comment`, evidencia ni montos.
-- **Comprador:** `GET /buyer/applications/{id}` trae `latest_bank_update`: la última respuesta con `public_message`, como `{response_type, response_type_label, received_at, public_message}`, o `null` si no hay. Nunca `internal_comment` (REQUERIMIENTOS §4.5).
+- **Comprador:** `GET /buyer/applications/{id}` trae `latest_bank_update`: la última respuesta con `public_message`, como `{response_type, response_type_label, received_at, public_message}`, o `null` si no hay. Nunca `internal_comment` (REQUERIMIENTOS §4.5). También trae `income_summary`: `{participants_with_income, total_monthly_income_cop}` de los perfiles financieros de los participantes activos de esa solicitud.
 
 ## 21. Actividad, notas, consentimientos y notificaciones
 
@@ -2090,7 +2114,9 @@ En bancos y reglas, la configuración (`/banks`, `/bank-products`, `/bank-policy
 | Lecturas generales | 600 / min | Usuario |
 | Exportaciones | 5 trabajos / hora | Usuario |
 
-Al superar el límite se retorna `429 RATE_LIMITED` y `Retry-After`. Los números son configuración inicial y deben ajustarse con observabilidad; no sustituyen los límites de tamaño, cuotas de almacenamiento ni protección perimetral.
+Al superar el límite se retorna `429 RATE_LIMITED` y `Retry-After`, con el mismo texto para todos los límites: "Hiciste demasiados intentos. Vuelve a intentarlo en N minutos." (`N` redondeado hacia arriba; en segundos si falta menos de un minuto). Los números son configuración inicial y deben ajustarse con observabilidad; no sustituyen los límites de tamaño, cuotas de almacenamiento ni protección perimetral.
+
+**Solo en local:** con `DEBUG=True` y la variable `AUTH_RATE_LIMIT_MULTIPLIER` (por omisión 1), cada cupo de `AUTH_RATE_LIMITS` (también el de reportes) se multiplica por ese número, para los E2E locales. Con `DEBUG=False` se ignora siempre.
 
 ## 27. Flujos completos consumiendo la API
 

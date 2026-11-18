@@ -7,7 +7,9 @@ import {
   formatDateTime,
   formatInteger,
   formatPercent,
+  formatDecimal,
   formatPercentDecimal,
+  formatRatio,
   formatRelative,
   parseInteger,
   TIME_ZONE,
@@ -46,6 +48,19 @@ describe("montos y porcentajes", () => {
     expect(formatPercentDecimal(80)).toBe(`80,0${NBSP}%`);
     expect(formatPercentDecimal(Number.NaN)).toBeNull();
     expect(formatPercentDecimal(undefined)).toBeNull();
+  });
+
+  it("decimales y proporciones que llegan como texto", () => {
+    expect(formatDecimal("0.8")).toBe("0,8");
+    expect(formatDecimal("12.35")).toBe("12,4");
+    expect(formatDecimal(3)).toBe("3");
+    expect(formatDecimal(null)).toBeNull();
+    expect(formatDecimal("")).toBeNull();
+    expect(formatDecimal("abc")).toBeNull();
+    expect(formatRatio("0.4857")).toBe(`49${NBSP}%`);
+    expect(formatRatio("1.0000")).toBe(`100${NBSP}%`);
+    expect(formatRatio(null)).toBeNull();
+    expect(formatRatio("x")).toBeNull();
   });
 });
 

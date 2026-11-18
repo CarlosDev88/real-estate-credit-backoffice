@@ -14,6 +14,7 @@ import {
   PortalSkeleton,
 } from "@/features/buyer-portal/portal-notice";
 import { PortalShell } from "@/features/buyer-portal/portal-shell";
+import { useUnreadCount } from "@/features/buyer-notifications/queries";
 import {
   buyerKeys,
   useBuyerLogout,
@@ -49,12 +50,15 @@ function PortalFrame({
 }) {
   const slots = useBuyerSlots(value.applicationId, !hideNav);
   const pendingDocuments = slots.data?.filter((slot) => slot.needs_action).length;
+  // F5: el número de avisos sin leer en la navegación.
+  const unread = useUnreadCount(!hideNav);
   return (
     <PortalProvider value={value}>
       <PortalShell
         buyerName={value.session.buyer.display_name}
         application={value.session.application}
         pendingDocuments={pendingDocuments}
+        unreadNotices={unread.data}
         hideNav={hideNav}
         onLogout={onLogout}
       >

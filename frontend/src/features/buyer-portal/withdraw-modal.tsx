@@ -1,11 +1,12 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Checkbox, Input, Modal, Select } from "antd";
+import { Checkbox, Input, Select } from "antd";
 import { useId } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 
+import { ActionModal } from "@/components/ui/action-modal";
 import { FormField, useFormErrorHandler } from "@/components/ui/form-field";
 import { useBuyerCatalog, useBuyerWithdraw } from "@/features/buyer-portal/queries";
 import { useToast } from "@/providers/toast";
@@ -67,87 +68,79 @@ export function WithdrawModal({ applicationId, version, open, onClose }: Withdra
   );
 
   return (
-    <Modal
+    <ActionModal
       open={open}
       title="¿Ya no quieres continuar?"
       okText="Cerrar mi solicitud"
       cancelText="Volver"
-      okButtonProps={{ danger: true, loading: withdraw.isPending }}
-      onOk={() => void submit()}
+      danger
+      loading={withdraw.isPending}
+      onSubmit={submit}
       onCancel={close}
-      destroyOnHidden
     >
-      <form
-        className="grid gap-4"
-        noValidate
-        onSubmit={(event) => {
-          event.preventDefault();
-          void submit();
-        }}
-      >
-        <p className="text-text-secondary m-0">
-          Si cierras tu solicitud, tu asesor ya no podrá seguir con el trámite. Podrás consultarla,
-          pero no hacer cambios.
-        </p>
-        <FormField id={`${id}-reason`} label="Motivo" error={errors.reason_code?.message}>
-          {(control) => (
-            <Controller
-              control={form.control}
-              name="reason_code"
-              render={({ field }) => (
-                <Select
-                  {...control}
-                  value={field.value || undefined}
-                  onChange={field.onChange}
-                  onBlur={field.onBlur}
-                  size="large"
-                  placeholder="Elige el motivo"
-                  loading={reasons.isPending}
-                  options={reasons.items.map((item) => ({ value: item.code, label: item.label }))}
-                />
-              )}
-            />
-          )}
-        </FormField>
-        <FormField
-          id={`${id}-comment`}
-          label="Comentario"
-          optional="opcional"
-          error={errors.comment?.message}
-        >
-          {(control) => (
-            <Controller
-              control={form.control}
-              name="comment"
-              render={({ field }) => (
-                <Input.TextArea {...control} {...field} rows={3} maxLength={COMMENT_MAX} />
-              )}
-            />
-          )}
-        </FormField>
-        <div className="grid gap-1.5">
+      {/* Texto de 14 px (el del portal), por eso no va en `description`. */}
+      <p className="text-text-secondary m-0">
+        Si cierras tu solicitud, tu asesor ya no podrá seguir con el trámite. Podrás consultarla,
+        pero no hacer cambios.
+      </p>
+      <FormField id={`${id}-reason`} label="Motivo" error={errors.reason_code?.message}>
+        {(control) => (
           <Controller
             control={form.control}
-            name="confirmed"
+            name="reason_code"
             render={({ field }) => (
-              <Checkbox
-                id={`${id}-confirm`}
-                checked={field.value}
-                onChange={(event) => field.onChange(event.target.checked)}
-                aria-invalid={errors.confirmed ? true : undefined}
-                aria-describedby={errors.confirmed ? `${id}-confirm-error` : undefined}
-              >
-                Entiendo que mi solicitud se cerrará
-              </Checkbox>
+              <Select
+                {...control}
+                value={field.value || undefined}
+                onChange={field.onChange}
+                onBlur={field.onBlur}
+                size="large"
+                placeholder="Elige el motivo"
+                loading={reasons.isPending}
+                options={reasons.items.map((item) => ({ value: item.code, label: item.label }))}
+              />
             )}
           />
-          {errors.confirmed && (
-            <p id={`${id}-confirm-error`} className="text-tone-danger-fg m-0 text-sm">
-              {errors.confirmed.message}
-            </p>
+        )}
+      </FormField>
+      <FormField
+        id={`${id}-comment`}
+        label="Comentario"
+        optional="opcional"
+        error={errors.comment?.message}
+      >
+        {(control) => (
+          <Controller
+            control={form.control}
+            name="comment"
+            render={({ field }) => (
+              <Input.TextArea {...control} {...field} rows={3} maxLength={COMMENT_MAX} />
+            )}
+          />
+        )}
+      </FormField>
+      <div className="grid gap-1.5">
+        <Controller
+          control={form.control}
+          name="confirmed"
+          render={({ field }) => (
+            <Checkbox
+              id={`${id}-confirm`}
+              checked={field.value}
+              onChange={(event) => field.onChange(event.target.checked)}
+              aria-invalid={errors.confirmed ? true : undefined}
+              aria-describedby={errors.confirmed ? `${id}-confirm-error` : undefined}
+            >
+              Entiendo que mi solicitud se cerrará
+            </Checkbox>
           )}
-        </div>
-      </form>
-    </Modal>
+        />
+        {errors.confirmed && (
+          <p id={`${id}-confirm-error`} className="text-tone-danger-fg m-0 text-sm">
+            {errors.confirmed.message}
+          </p>
+        )}
+      </div>
+    </ActionModal>
   );
 }

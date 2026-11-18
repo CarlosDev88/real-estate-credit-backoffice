@@ -8,6 +8,13 @@ export interface ScrollTabItem {
   /** Texto de la pestaña: viene de la API (los grupos de estado no los define el frontend). */
   label: string;
   count?: number | null;
+  /** Texto del conteo en lugar del número solo: "6 pendientes" (mockup `solicitud.html`). */
+  countLabel?: string;
+  /**
+   * `warning`: el conteo pide atención (documentos pendientes), en `tone.warning.fg`. Con
+   * texto (`countLabel`), así no depende solo del color.
+   */
+  countTone?: "default" | "warning";
 }
 
 interface ScrollTabsProps {
@@ -23,9 +30,9 @@ const FADE = 48;
 
 function maskFor(left: boolean, right: boolean): string | undefined {
   if (left && right)
-    return `linear-gradient(to right, transparent 0, #000 ${FADE}px, #000 calc(100% - ${FADE}px), transparent 100%)`;
-  if (left) return `linear-gradient(to right, transparent 0, #000 ${FADE}px)`;
-  if (right) return `linear-gradient(to left, transparent 0, #000 ${FADE}px)`;
+    return `linear-gradient(to right, transparent 0, black ${FADE}px, black calc(100% - ${FADE}px), transparent 100%)`;
+  if (left) return `linear-gradient(to right, transparent 0, black ${FADE}px)`;
+  if (right) return `linear-gradient(to left, transparent 0, black ${FADE}px)`;
   return undefined;
 }
 
@@ -136,6 +143,14 @@ export function ScrollTabs({ items, value, onChange, ariaLabel, className = "" }
       >
         {items.map((item) => {
           const selected = item.key === value;
+          const hasCount = item.count !== undefined && item.count !== null;
+          const countText = item.countLabel ?? (hasCount ? String(item.count) : null);
+          const countColor =
+            item.countTone === "warning"
+              ? "text-tone-warning-fg"
+              : selected
+                ? "text-text-link"
+                : "text-text-tertiary";
           return (
             <button
               key={item.key}
@@ -157,12 +172,10 @@ export function ScrollTabs({ items, value, onChange, ariaLabel, className = "" }
             >
               {item.label}
               {/* Espacio para el nombre accesible ("Todas 48"); en flex no se ve. */}
-              {item.count !== undefined && item.count !== null && " "}
-              {item.count !== undefined && item.count !== null && (
-                <span
-                  className={`text-xs font-normal tabular-nums ${selected ? "text-text-link" : "text-text-tertiary"}`}
-                >
-                  {item.count}
+              {countText !== null && " "}
+              {countText !== null && (
+                <span className={`text-xs font-normal tabular-nums ${countColor}`}>
+                  {countText}
                 </span>
               )}
             </button>

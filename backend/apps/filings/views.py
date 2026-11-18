@@ -243,6 +243,14 @@ RESPONSE_RULES_DESCRIPTION = """
 | `DISBURSED` | `LEGALIZATION` | `disbursed_amount_cop` | → `DISBURSED` |
 | `OTHER` | cualquiera no terminal | `internal_comment` | no cambia |
 
+**Corrección** (`corrects_response_id`): solo de la última respuesta, del mismo tipo, y \
+si es `RECEIVED`, `IN_ANALYSIS`, `OTHER` o `DISBURSED` (otra: `409 \
+RESPONSE_CORRECTION_NOT_ALLOWED`). No cambia el estado de la solicitud ni de la \
+radicación. La de `DISBURSED` solo la registra el administrador (`403`), con la \
+solicitud ya `DISBURSED`: corrige `disbursed_amount_cop`, `received_at`, \
+`external_reference` y los comentarios, y la liquidación de comisiones se rehace (o queda \
+`needs_review` si ya tiene pagos). Al comprador no le llega otro aviso.
+
 Los campos de un tipo (`reason_code`, `observations`, montos, plazo y vigencia) no se \
 admiten en otro (`400`). Cada observación de un `RETURNED` rechaza la versión vigente \
 del documento con su motivo y mensaje: el comprador la ve como "Corrígelo" y, después de \
@@ -306,7 +314,8 @@ class FilingResponseListView(ResponseView):
                 **_response_errors(
                     "STALE_VERSION, APPLICATION_CLOSED, INVALID_STATE_TRANSITION (el tipo no "
                     "se admite en el estado actual), FILING_NOT_LATEST o "
-                    "RESPONSE_CORRECTION_NOT_ALLOWED"
+                    "RESPONSE_CORRECTION_NOT_ALLOWED. `403` si quien corrige un "
+                    "`DISBURSED` no es el administrador."
                 ),
             }
         ),

@@ -4,11 +4,12 @@ Los DTO del portal nunca exponen notas, el asesor interno ni las evaluaciones
 bancarias (``specs/TAREA-buyer-access.md``, Parte 3).
 """
 
+import uuid
 from dataclasses import dataclass
 
-from django.db.models import Prefetch, QuerySet
+from django.db.models import Count, Prefetch, Q, QuerySet, Sum
 
-from apps.applications.models import CreditApplication
+from apps.applications.models import CreditApplication, FinancialProfile
 from apps.applications.services import (
     CompletenessItem,
     data_items,
@@ -149,3 +150,18 @@ def buyer_application_detail(session: BuyerSession) -> QuerySet[CreditApplicatio
             )
         )
     )
+
+
+def income_summary(application_id: uuid.UUID) -> dict[str, int]:
+    """Ingresos que el comprador ve en el portal: los perfiles financieros de los
+    participantes activos de la solicitud de su sesión (nunca de otra). Una consulta."""
+    totals = FinancialProfile.objects.filter(
+        participant__application_id=application_id, participant__is_active=True
+    ).aggregate(
+        participants=Count("pk", filter=Q(monthly_income_cop__gt=0)),
+        total=Sum("monthly_income_cop"),
+    )
+    return {
+        "participants_with_income": totals["participants"] or 0,
+        "total_monthly_income_cop": totals["total"] or 0,
+    }
