@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 
+import { DashboardIcon } from "@/features/dashboard/dashboard-icon";
 import { HouseIcon } from "@/components/ui/icons";
 
 // Navegación del backoffice. Es la estructura de la app, no una lista de negocio:
@@ -18,6 +19,15 @@ export interface NavGroup {
 }
 
 export const NAV_ITEMS: NavItem[] = [
+  // F5: el inicio después del login para quien tenga `dashboard.read` (es la primera
+  // entrada permitida, ver `defaultDestination`).
+  {
+    href: "/dashboard",
+    label: "Dashboard",
+    icon: <DashboardIcon />,
+    group: "Operación",
+    permission: "dashboard.read",
+  },
   {
     href: "/solicitudes",
     label: "Solicitudes",

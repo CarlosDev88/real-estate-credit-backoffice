@@ -7,7 +7,7 @@ import {
   resolveDestination,
   visibleNav,
 } from "@/lib/navigation/access";
-import type { NavItem } from "@/lib/navigation/nav-config";
+import { NAV_ITEMS, type NavItem } from "@/lib/navigation/nav-config";
 
 const ITEMS: NavItem[] = [
   {
@@ -30,6 +30,12 @@ describe("visibleNav y defaultDestination", () => {
   it("muestra solo las entradas con permiso, nunca por rol", () => {
     expect(visibleNav(["clients.read"], ITEMS).map((i) => i.href)).toEqual(["/clientes"]);
     expect(defaultDestination(["clients.read", "applications.read"], ITEMS)).toBe("/solicitudes");
+  });
+
+  it("el dashboard es el inicio para quien tiene dashboard.read (menú real)", () => {
+    expect(defaultDestination(["applications.read", "dashboard.read"])).toBe("/dashboard");
+    expect(defaultDestination(["applications.read"])).toBe("/solicitudes");
+    expect(NAV_ITEMS[0]).toMatchObject({ href: "/dashboard", group: "Operación" });
   });
 
   it("sin entradas visibles el destino es la pantalla de sin módulos", () => {
