@@ -122,3 +122,15 @@ docs/adr/
 - **P1.11 Porqué inferido:** cuando la fuente no escribe el motivo, 02 lo explica con lo que el código hace necesario y lo dice (por ejemplo, la devolución no pasa por `WAITING_DOCUMENTS` porque ese estado está en `EDITABLE_APPLICATION_STATUSES`).
 - **P1.12 Personas del recorrido** (Laura, Marta, Juan): ficticias, sin datos reales.
 - **P1.13 Enlaces a documentos futuros** (04 a 12 y `docs/adr/`): se dejan puestos y marcados "(en preparación)". El verificador de enlaces los reporta como faltantes hasta que existan; los demás enlaces y todas las anclas resuelven.
+
+### Parte 2 (docs, 2026-11-18)
+- **P2.1 Grupos de tablas por app dueña.** 05 agrupa las 57 tablas en 9 grupos según la app que las crea (identidad 12, constructoras y CRM 8, solicitud 9, configuración 10, expediente 5, radicación 4, comunicación y plataforma 5, reportes 1, comisiones 3). El inventario de MODELO §3 agrupa distinto (pone `bank_rule_evaluations` en configuración y cuenta `outbox_events`); se enlaza y no se copia.
+- **P2.2 Diagramas ER con campos clave.** Cada `erDiagram` muestra llaves, estados, montos y lo que explica la relación, sacado de los modelos (script AST de solo lectura en el scratchpad). El diccionario completo sigue en `docs/MODELO_DATOS_DER_MVP_CREDITO.md`.
+- **P2.3 Operaciones por módulo.** Se cruzaron los `urls.py` de cada app con `contracts/openapi.json`: las 235 quedan asignadas. `identity` se reparte en los módulos 1 (15), 4 (5) y 9 (28); `documents`, en 7 (13) y 10 (17); el 12 suma `workday` (2), `tasks` (6) y `activity` (4).
+- **P2.4 Pruebas por módulo:** funciones `test_*` por carpeta de `backend/tests/` (1.794 en total, sin contar `parametrize`). Las del módulo 4 están en `tests/identity/`; la carpeta `tests/documents/` incluye la infraestructura (almacenamiento, antivirus) del módulo 10. No se corrió ninguna.
+- **P2.5 Permisos:** 89 códigos, contados en las migraciones de semillas (`backend/apps/*/migrations/*seed*`).
+- **P2.6 Auditorías en curso:** la de seguridad se cita con lo que dijo el buzón (matriz de 235 operaciones × 9 actores sin brechas, rama `chore/security-audit`); `docs/SEGURIDAD.md` y `docs/PERFORMANCE.md` se enlazan "(en preparación)".
+- **P2.7 Pendientes honestos en 04 §10:** lo que REQ pide y `master` no tiene, verificado con `grep` (sin HSTS/CSP en settings, sin límite general de la API, sin MFA, sin análisis de dependencias en el CI, sin métricas, `request_id` sin llegar al worker). No se juzga si es grave: eso es de la auditoría.
+- **P2.8 Desvíos del SQL en dos listas:** lo que sigue distinto entre SQL y código (`outbox_events`, `CITEXT`, nombres de índice acortados, `CHAR(64)`) y los cambios que nacieron en el código y ya se llevaron al SQL, con su fuente.
+- **P2.9 Argon2:** se dice "parámetros por defecto de Django" sin cifras; el código no los fija.
+- **P2.10 Documentos de la Parte 1 ajustados:** se quitaron las marcas "(en preparación)" de los enlaces a 04, 05 y 06 en 01, 02 y 03, y el índice los marca listos. Nada más cambió en esos documentos.

@@ -92,7 +92,7 @@ De dónde sale cada fila en el código:
 - El **alcance** ("sus solicitudes asignadas", "lo que originó") se aplica al construir la consulta: `backend/apps/applications/services.py` (`applications_visible_to`, con la regla en `crm.services.application_scope_condition`). Un recurso fuera del alcance responde `404`, para no revelar que existe.
 - El comprador no tiene fila en `users`: es un `client` con una sesión temporal (`backend/apps/identity/models/`, tablas `buyer_access_links` y `buyer_sessions`).
 
-La matriz completa por recurso está en REQ §8.6 y el detalle por módulo, en [06 · Módulos](06-modulos.md) *(en preparación)*.
+La matriz completa por recurso está en REQ §8.6 y el detalle por módulo, en [06 · Módulos](06-modulos.md).
 
 ## 4. El recorrido del comprador, contado como historia
 

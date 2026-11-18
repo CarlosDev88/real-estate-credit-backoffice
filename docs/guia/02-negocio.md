@@ -195,7 +195,7 @@ Dos personas pueden tener abierta la misma solicitud. Para que una no borre los 
 - Para editar, el cliente reenvía esa versión en `If-Match` (o `expected_version` en el cuerpo de las acciones). Si alguien cambió la solicitud mientras tanto, la API responde `409 STALE_VERSION` y el front avisa "Alguien cambió esta solicitud" sin pisar nada.
 - Sin `If-Match` en un `PUT`/`PATCH`: `428`.
 
-El detalle técnico está en [04 · System design](04-system-design.md) *(en preparación)*.
+El detalle técnico está en [04 · System design §3.4](04-system-design.md#34-etag--if-match-no-pisar-la-edición-de-otro).
 
 ---
 

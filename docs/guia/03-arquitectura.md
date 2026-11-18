@@ -2,7 +2,7 @@
 
 > **En simple:** es un **monolito modular**. Una sola API en Django, partida por dentro en 16 apps de dominio que comparten la misma base PostgreSQL y la misma transacción. Un frontend Next.js le habla a esa API como si fuera del mismo sitio web, y los dos se ponen de acuerdo con un **contrato OpenAPI** que genera el backend y que el CI vigila.
 
-Este documento explica las piezas, cómo se conectan y por qué se eligieron. Las reglas del negocio están en [02 · Negocio](02-negocio.md); los requisitos no funcionales (seguridad, concurrencia, rendimiento…) con su detalle, en [04 · System design](04-system-design.md) *(en preparación)*. Conteos hechos en `master` el **18 de noviembre de 2026**.
+Este documento explica las piezas, cómo se conectan y por qué se eligieron. Las reglas del negocio están en [02 · Negocio](02-negocio.md); los requisitos no funcionales (seguridad, concurrencia, rendimiento…) con su detalle, en [04 · System design](04-system-design.md). Conteos hechos en `master` el **18 de noviembre de 2026**.
 
 ---
 
@@ -166,7 +166,7 @@ Los "16 módulos" del README son el **orden de construcción** (DER §15). En el
 | `reporting` | Dashboard, embudo, reportes y exportaciones CSV | `report_export_jobs` |
 | `commissions` | Planes, liquidación automática, reparto y pagos | `commission_plans`, `commission_settlements`, `commission_shares` |
 
-En total, **57 tablas propias** (cada una con su `db_table` explícito, contadas en `backend/apps/`). El esquema SQL de referencia tiene 58: la diferencia es `outbox_events`, que no se implementó ([§5](#5-cómo-se-hablan-los-módulos-señales-después-del-commit)). El detalle por grupo está en [05 · Modelo de datos](05-modelo-de-datos.md) *(en preparación)*.
+En total, **57 tablas propias** (cada una con su `db_table` explícito, contadas en `backend/apps/`). El esquema SQL de referencia tiene 58: la diferencia es `outbox_events`, que no se implementó ([§5](#5-cómo-se-hablan-los-módulos-señales-después-del-commit)). El detalle por grupo está en [05 · Modelo de datos](05-modelo-de-datos.md) y cada módulo, en [06 · Módulos](06-modulos.md).
 
 ### Dependencias entre apps
 
@@ -481,4 +481,4 @@ La estructura del repositorio es un **monorepo** ([`specs/TAREA-monorepo.md`](..
 
 ---
 
-Siguiente: [04 · System design](04-system-design.md) *(en preparación)* — cada requisito no funcional y cómo se cumple.
+Siguiente: [04 · System design](04-system-design.md) — cada requisito no funcional y cómo se cumple.

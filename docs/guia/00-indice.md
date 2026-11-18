@@ -22,9 +22,9 @@ El proyecto es un MVP para gestionar **solicitudes de crédito de vivienda en Co
 | [01 · El producto](01-el-producto.md) | El problema, los cinco roles, el recorrido del comprador contado como historia, las 22 vistas y el glosario. | ✅ Listo |
 | [02 · Negocio](02-negocio.md) | El crédito de vivienda como dominio: estados de la oportunidad y de la solicitud, documentos, radicación y respuestas del banco, comprador, consentimientos, notificaciones, reportes, comisiones y todas las decisiones de negocio con su porqué. | ✅ Listo |
 | [03 · Arquitectura](03-arquitectura.md) | Contexto y contenedores (estilo C4), monolito modular, capas, señales entre módulos, contrato OpenAPI primero, mismo origen por el proxy de Next, los dos modos locales y el paso a producción. | ✅ Listo |
-| [04 · System design](04-system-design.md) | Cada requisito no funcional (seguridad, concurrencia, asincronía, rendimiento, observabilidad, límites, privacidad, escalabilidad) y cómo se cumple. | *(en preparación)* |
-| [05 · Modelo de datos](05-modelo-de-datos.md) | Las tablas por grupo con su diagrama entidad-relación, las convenciones y los desvíos del SQL. | *(en preparación)* |
-| [06 · Módulos](06-modulos.md) | Los 16 módulos: qué resuelve cada uno, sus tablas, endpoints, permisos, eventos, decisiones y pruebas. | *(en preparación)* |
+| [04 · System design](04-system-design.md) | Cada requisito no funcional (seguridad, concurrencia, asincronía, rendimiento, observabilidad, límites, privacidad, escalabilidad): qué pide, cómo se resolvió, dónde está y qué lo prueba, más lo que queda pendiente dicho claro. | ✅ Listo |
+| [05 · Modelo de datos](05-modelo-de-datos.md) | Las 57 tablas por grupo con un diagrama entidad-relación de cada uno, las convenciones y los desvíos del SQL. | ✅ Listo |
+| [06 · Módulos](06-modulos.md) | Los 16 módulos en orden de construcción: qué resuelve cada uno, sus tablas, endpoints, permisos, reglas, eventos, decisiones, pruebas y lo que quedó fuera. | ✅ Listo |
 | [07 · Flujos](07-flujos.md) | La ruta crítica de punta a punta con diagramas de secuencia y de estados. | *(en preparación)* |
 | [08 · Frontend](08-frontend.md) | App Router, `features/` por dominio, design system, datos tipados, formularios, errores, permisos y las 22 vistas. | *(en preparación)* |
 | [09 · Calidad](09-calidad.md) | Estrategia de pruebas, números reales, CI con reporte en el PR, accesibilidad y contrato verificado. | *(en preparación)* |
