@@ -25,7 +25,11 @@ import {
   type FilingResponse,
   type FilingResponseCreateRequest,
 } from "@/features/filings/queries";
-import { responseForm, type ResponseField } from "@/features/filings/response-fields";
+import {
+  responseForm,
+  type ResponseField,
+  type ResponseForm,
+} from "@/features/filings/response-fields";
 import { useToast } from "@/providers/toast";
 
 const TYPE_CATALOG = "filing_response_type";
@@ -89,7 +93,7 @@ const blank = (value: unknown) =>
   (typeof value === "string" && !value.trim()) ||
   (Array.isArray(value) && value.length === 0);
 
-function makeSchema(filedAt: string) {
+function makeSchema(filedAt: string, formOf: (type: string) => ResponseForm) {
   return z
     .object({
       response_type: z.string().min(1, { error: "Elige el tipo de respuesta." }),
@@ -119,7 +123,7 @@ function makeSchema(filedAt: string) {
       ),
     })
     .superRefine((values, ctx) => {
-      const form = responseForm(values.response_type);
+      const form = formOf(values.response_type);
       for (const field of form.required) {
         if (blank(values[field]))
           ctx.addIssue({ code: "custom", path: [field], message: REQUIRED[field] });
@@ -148,8 +152,8 @@ export function buildResponseBody(
   values: Values,
   version: number,
   correcting: FilingResponse | null,
+  form: ResponseForm,
 ): FilingResponseCreateRequest {
-  const form = responseForm(values.response_type);
   const has = (field: ResponseField) => form.fields.includes(field);
   const text = (value: string) => value.trim() || undefined;
   const body: FilingResponseCreateRequest = {
@@ -328,7 +332,8 @@ const defaults = (type = ""): Values => ({
 
 /**
  * "Registrar respuesta" del banco (API §20.2). Pide solo los campos del tipo elegido
- * (`RESPONSE_FORMS`); la API valida lo demás y sus errores de campo van al campo.
+ * (`metadata` del catálogo `filing_response_type`); la API valida lo demás y sus errores de
+ * campo van al campo.
  */
 export function RecordResponseModal({
   applicationId,
@@ -343,22 +348,24 @@ export function RecordResponseModal({
   const toast = useToast();
   const record = useRecordResponse(applicationId, filing.id);
   const types = useCatalog(TYPE_CATALOG);
-  const returnReasons = useCatalog("filing_return_reason");
-  const rejectionReasons = useCatalog("filing_rejection_reason");
   const observationReasons = useCatalog(OBSERVATION_REASON_CATALOG);
-  const schema = useMemo(() => makeSchema(filing.filed_at), [filing.filed_at]);
+  // Los campos de cada tipo salen del `metadata` del catálogo (API), no de una tabla local.
+  const typeItems = types.items;
+  const schema = useMemo(
+    () => makeSchema(filing.filed_at, (code) => responseForm(code, typeItems)),
+    [filing.filed_at, typeItems],
+  );
   const { control, handleSubmit, setError, reset, formState } = useForm<Values>({
     resolver: zodResolver(schema),
     values: defaults(correcting?.response_type),
   });
   const onError = useFormErrorHandler<Values>(setError, FIELDS);
   const type = useWatch({ control, name: "response_type" });
-  const form = responseForm(type);
+  const form = responseForm(type, types.items);
   const shows = (field: ResponseField) => form.fields.includes(field);
   const optional = (field: ResponseField) =>
     form.required.includes(field) ? undefined : "opcional";
-  const reasons =
-    form.reasonCatalog === "filing_rejection_reason" ? rejectionReasons : returnReasons;
+  const reasons = useCatalog(form.reasonCatalog ?? "");
   const errors = formState.errors;
 
   const close = () => {
@@ -367,17 +374,25 @@ export function RecordResponseModal({
   };
 
   const submit = handleSubmit((values) => {
-    record.mutate(buildResponseBody(values, version, correcting), {
-      onSuccess: (response) => {
-        toast.success({
-          title: correcting ? "Respuesta corregida" : "Respuesta registrada",
-          message: response.response_type_label,
-        });
-        close();
-        onRecorded(response);
+    record.mutate(
+      buildResponseBody(
+        values,
+        version,
+        correcting,
+        responseForm(values.response_type, types.items),
+      ),
+      {
+        onSuccess: (response) => {
+          toast.success({
+            title: correcting ? "Respuesta corregida" : "Respuesta registrada",
+            message: response.response_type_label,
+          });
+          close();
+          onRecorded(response);
+        },
+        onError,
       },
-      onError,
-    });
+    );
   });
 
   const title = correcting

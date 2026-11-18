@@ -1,61 +1,55 @@
-// Qué campos pide el formulario de respuesta según el tipo (API §20.2). Es una regla de
-// pantalla, no de negocio: la API sigue validando y sus errores de campo van al campo. Un
-// tipo nuevo del catálogo que no esté aquí muestra los campos comunes y deja validar a la API.
+import type { MetadataItem } from "@/features/applications/queries";
+
+// Qué campos pide el formulario de respuesta según el tipo (API §20.2). Salen del
+// `metadata` de cada valor del catálogo `filing_response_type` (`fields`, `required` y
+// `reason_catalog`, que la API arma con sus reglas): ya no hay una tabla en el front. La
+// API sigue validando y sus errores de campo van al campo.
 
 /** Campos que dependen del tipo. `received_at` y `external_reference` van siempre. */
-export type ResponseField =
-  | "reason_code"
-  | "public_message"
-  | "internal_comment"
-  | "observations"
-  | "approved_amount_cop"
-  | "approved_term_months"
-  | "valid_until"
-  | "disbursed_amount_cop";
+export const RESPONSE_FIELDS = [
+  "reason_code",
+  "public_message",
+  "internal_comment",
+  "observations",
+  "approved_amount_cop",
+  "approved_term_months",
+  "valid_until",
+  "disbursed_amount_cop",
+] as const;
+export type ResponseField = (typeof RESPONSE_FIELDS)[number];
 
 export interface ResponseForm {
-  /** En el orden en que se muestran. */
+  /** En el orden en que se muestran (el de la API). */
   fields: readonly ResponseField[];
   required: readonly ResponseField[];
   /** Catálogo de `reason_code`, si el tipo lleva motivo. */
   reasonCatalog?: string;
 }
 
-const NOTES: readonly ResponseField[] = ["public_message", "internal_comment"];
+/** Tipo sin `metadata` (o sin elegir): solo los campos comunes. */
+const FALLBACK: ResponseForm = { fields: ["public_message", "internal_comment"], required: [] };
 
-export const RESPONSE_FORMS: Readonly<Record<string, ResponseForm>> = {
-  RECEIVED: { fields: NOTES, required: [] },
-  IN_ANALYSIS: { fields: NOTES, required: [] },
-  RETURNED: {
-    fields: ["reason_code", "public_message", "observations", "internal_comment"],
-    required: ["reason_code", "public_message", "observations"],
-    reasonCatalog: "filing_return_reason",
-  },
-  APPROVED: {
-    fields: [
-      "approved_amount_cop",
-      "approved_term_months",
-      "valid_until",
-      "public_message",
-      "internal_comment",
-    ],
-    required: ["approved_amount_cop", "approved_term_months", "public_message"],
-  },
-  REJECTED: {
-    fields: ["reason_code", "public_message", "internal_comment"],
-    required: ["reason_code", "public_message"],
-    reasonCatalog: "filing_rejection_reason",
-  },
-  DISBURSED: {
-    fields: ["disbursed_amount_cop", "public_message", "internal_comment"],
-    required: ["disbursed_amount_cop"],
-  },
-  OTHER: { fields: ["internal_comment", "public_message"], required: ["internal_comment"] },
-};
+const isField = (value: unknown): value is ResponseField =>
+  typeof value === "string" && (RESPONSE_FIELDS as readonly string[]).includes(value);
 
-/** Tipo sin regla conocida (o sin elegir): solo los campos comunes. */
-const FALLBACK: ResponseForm = { fields: NOTES, required: [] };
+/** Lista de campos conocidos de un valor de `metadata`; lo que no se conoce se ignora. */
+function fieldList(value: unknown): ResponseField[] {
+  return Array.isArray(value) ? value.filter(isField) : [];
+}
 
-export function responseForm(type: string | null | undefined): ResponseForm {
-  return (type && RESPONSE_FORMS[type]) || FALLBACK;
+/** Formulario de un tipo a partir del `metadata` de su valor del catálogo. */
+export function responseForm(
+  type: string | null | undefined,
+  catalog: readonly Pick<MetadataItem, "code" | "metadata">[],
+): ResponseForm {
+  const metadata = type ? catalog.find((item) => item.code === type)?.metadata : undefined;
+  const fields = fieldList(metadata?.fields);
+  if (!metadata || fields.length === 0) return FALLBACK;
+  const reason = metadata.reason_catalog;
+  return {
+    fields,
+    // Un obligatorio va siempre en `fields`; si no, no hay control donde pedirlo.
+    required: fieldList(metadata.required).filter((f) => fields.includes(f)),
+    ...(typeof reason === "string" && reason ? { reasonCatalog: reason } : {}),
+  };
 }

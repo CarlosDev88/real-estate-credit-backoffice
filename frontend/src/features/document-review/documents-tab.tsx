@@ -7,12 +7,7 @@ import { ErrorState, LoadingState } from "@/components/ui/state-views";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { HouseIcon } from "@/components/ui/icons";
 import type { FinancialProfile, Participant } from "@/features/applications/workspace-queries";
-import {
-  useCurrentFiles,
-  useDocumentSlots,
-  type DocumentFile,
-  type DocumentSlot,
-} from "@/features/document-review/queries";
+import { useDocumentSlots, type DocumentSlot } from "@/features/document-review/queries";
 import { ReviewDrawer } from "@/features/document-review/review-drawer";
 import { ReopenModal, useFileViewer, WaiveModal } from "@/features/document-review/slot-dialogs";
 import {
@@ -102,16 +97,17 @@ function DocIcon() {
   );
 }
 
-/** Mensaje al comprador del último rechazo de la versión vigente. */
-function rejectionMessage(slot: DocumentSlot, file: DocumentFile | undefined): string | null {
+/**
+ * Mensaje al comprador del rechazo de la versión vigente: `last_buyer_comment` (el de la
+ * última revisión de esa versión) cuando el slot está rechazado.
+ */
+function rejectionMessage(slot: DocumentSlot): string | null {
   if (slot.status !== "REJECTED") return null;
-  const last = file?.reviews[0];
-  return last?.decision === "REJECTED" ? (last.buyer_comment ?? null) : null;
+  return slot.current_file?.last_buyer_comment ?? null;
 }
 
 interface RowProps {
   slot: DocumentSlot;
-  file: DocumentFile | undefined;
   can: SlotPermissions;
   viewer: ReturnType<typeof useFileViewer>;
   onReview: () => void;
@@ -119,14 +115,14 @@ interface RowProps {
   onReopen: () => void;
 }
 
-function SlotRow({ slot, file, can, viewer, onReview, onWaive, onReopen }: RowProps) {
+function SlotRow({ slot, can, viewer, onReview, onWaive, onReopen }: RowProps) {
   const actions = slotActions(slot, can);
   const current = slot.current_file;
   const facts = current
-    ? [current.client_filename, formatBytes(file?.file.size_bytes), validityText(slot)]
+    ? [current.client_filename, formatBytes(current.size_bytes), validityText(slot)]
     : [slot.waiver_reason ? `Exonerado: ${slot.waiver_reason.label}` : "Sin archivo"];
   const scan = scanMessage(current?.scan_status);
-  const rejection = rejectionMessage(slot, file);
+  const rejection = rejectionMessage(slot);
   const viewError = viewer.errorFor(current?.id);
 
   return (
@@ -157,8 +153,8 @@ function SlotRow({ slot, file, can, viewer, onReview, onWaive, onReopen }: RowPr
               viewer.show({
                 fileId: current.id,
                 name: current.client_filename,
-                mimeType: file?.file.detected_mime_type,
-                sizeBytes: file?.file.size_bytes,
+                mimeType: current.detected_mime_type,
+                sizeBytes: current.size_bytes,
               })
             }
           >
@@ -224,7 +220,6 @@ export function DocumentsTab({
   onOpenSlot,
 }: DocumentsTabProps) {
   const slots = useDocumentSlots(applicationId);
-  const files = useCurrentFiles(slots.data);
   const viewer = useFileViewer();
   const [waiving, setWaiving] = useState<DocumentSlot | null>(null);
   const [reopening, setReopening] = useState<DocumentSlot | null>(null);
@@ -284,7 +279,6 @@ export function DocumentsTab({
                   <SlotRow
                     key={slot.id}
                     slot={slot}
-                    file={slot.current_file ? files.get(slot.current_file.id) : undefined}
                     can={can}
                     viewer={viewer}
                     onReview={() => onOpenSlot(slot.id)}

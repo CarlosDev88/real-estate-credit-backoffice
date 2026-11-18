@@ -98,6 +98,11 @@ function slot(spec: SlotSpec, order: number): DocumentSlot {
           expires_at: spec.validity ? "2026-12-02" : null,
           scan_status: spec.scan ?? "CLEAN",
           scan_status_label: SCAN_LABEL[spec.scan ?? "CLEAN"]!,
+          // `CurrentFile` trae el tamaño, el tipo y el último mensaje al comprador (los
+          // mismos que el detalle de `makeFile`).
+          size_bytes: 421_888,
+          detected_mime_type: spec.id === "cedula" ? "image/png" : "application/pdf",
+          last_buyer_comment: spec.status === "REJECTED" ? "La foto está borrosa." : null,
           created_at: "2026-11-10T09:00:00Z",
         }
       : null,

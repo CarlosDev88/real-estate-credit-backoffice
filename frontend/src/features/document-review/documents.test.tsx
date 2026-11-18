@@ -11,6 +11,7 @@ import {
 import { WorkspaceScreen } from "@/features/applications/workspace-screen";
 import { useDocumentsApi } from "@/features/document-review/documents.fixtures";
 import { QueryProvider } from "@/providers/query-provider";
+import { server } from "@/test/msw-server";
 
 const nav = vi.hoisted(() => {
   const listeners = new Set<() => void>();
@@ -93,6 +94,13 @@ describe("pestaña Documentos", { timeout: 20_000 }, () => {
   it("agrupa por participante y deja al final los de la solicitud, sin los retirados", async () => {
     useWorkspaceApi();
     useDocumentsApi();
+    // El listado usa `CurrentFile`: ningún `GET /document-files/{id}` por archivo.
+    const fileDetails: string[] = [];
+    const onRequest = ({ request }: { request: Request }) => {
+      const path = new URL(request.url).pathname;
+      if (/\/document-files\/[^/]+$/.test(path)) fileDetails.push(path);
+    };
+    server.events.on("request:start", onRequest);
     await renderDocuments();
 
     // El perfil laboral ("Empleada") llega en otra consulta: se espera a que esté.
@@ -128,6 +136,8 @@ describe("pestaña Documentos", { timeout: 20_000 }, () => {
         "Mensaje al comprador: La foto está borrosa.",
       ),
     );
+    server.events.removeListener("request:start", onRequest);
+    expect(fileDetails).toEqual([]);
   });
 
   it("acciones por estado y permiso; análisis pendiente o fallido en línea", async () => {

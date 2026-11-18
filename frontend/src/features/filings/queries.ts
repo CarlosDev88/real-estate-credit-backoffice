@@ -31,7 +31,36 @@ export const filingKeys = {
   list: (applicationId: string) => [...workspaceKeys.all(applicationId), "filings"] as const,
   snapshots: (filingId: string) => ["filing", filingId, "snapshots"] as const,
   packageJob: (jobId: string) => ["document-package-job", jobId] as const,
+  packageJobs: (applicationId: string) =>
+    [...workspaceKeys.all(applicationId), "document-package-jobs"] as const,
 };
+
+/** Paquetes que se muestran en la pestaña (los más recientes). */
+export const PACKAGES_PAGE_SIZE = 10;
+
+/**
+ * Paquetes pedidos para la solicitud, del más nuevo al más antiguo (`filings.prepare`).
+ * Mientras alguno se arma, la lista se vuelve a pedir cada 3 s.
+ */
+export function usePackageJobs(applicationId: string, enabled: boolean) {
+  return useQuery({
+    queryKey: filingKeys.packageJobs(applicationId),
+    queryFn: async () =>
+      (
+        await call(
+          api.GET("/api/v1/applications/{application_id}/document-package-jobs", {
+            params: {
+              path: { application_id: applicationId },
+              query: { page_size: PACKAGES_PAGE_SIZE },
+            },
+          }),
+        )
+      ).data,
+    enabled,
+    refetchInterval: (query) =>
+      query.state.data?.items.some((job) => isPackageRunning(job)) ? PACKAGE_POLL_MS : false,
+  });
+}
 
 /** Radicaciones de la solicitud, la más reciente primero (API §20.1). */
 export function useFilings(applicationId: string, enabled = true) {
@@ -91,15 +120,22 @@ export function useRequestPackage(applicationId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     meta: { handlesErrors: true },
-    mutationFn: async () =>
+    mutationFn: async (key: string) =>
       (
         await call(
           api.POST("/api/v1/applications/{application_id}/document-package-jobs", {
-            params: { path: { application_id: applicationId } },
+            params: {
+              path: { application_id: applicationId },
+              header: { "Idempotency-Key": key },
+            },
           }),
         )
       ).data,
-    onSuccess: (job) => queryClient.setQueryData(filingKeys.packageJob(job.id), job),
+    onSuccess: (job) => {
+      queryClient.setQueryData(filingKeys.packageJob(job.id), job);
+      // Sin esperar la lista: el panel sigue con el paquete apenas responde el `POST`.
+      void queryClient.invalidateQueries({ queryKey: filingKeys.packageJobs(applicationId) });
+    },
   });
 }
 

@@ -11,15 +11,18 @@ import type { AvailableAction } from "@/features/applications/workspace-queries"
 import { openObservations } from "@/features/filings/filing-banner";
 import {
   apiError,
+  FILING_BOOTSTRAP,
   makeFiling,
   makeResponse,
   useFilingsApi,
   type FilingsApi,
 } from "@/features/filings/filings.fixtures";
-import { RESPONSE_FORMS, responseForm } from "@/features/filings/response-fields";
+import { responseForm } from "@/features/filings/response-fields";
 import { buildResponseBody, observableSlots } from "@/features/filings/response-modal";
 import { QueryProvider } from "@/providers/query-provider";
 import { apiUrl, server } from "@/test/msw-server";
+
+const TYPES = FILING_BOOTSTRAP.catalogs.filing_response_type;
 
 const nav = vi.hoisted(() => {
   const listeners = new Set<() => void>();
@@ -274,7 +277,7 @@ describe("respuestas: formulario por tipo", { timeout: 30_000 }, () => {
       "received_at",
       "expected_version",
       "external_reference",
-      ...RESPONSE_FORMS[c.type]!.fields,
+      ...responseForm(c.type, TYPES).fields,
     ]);
     expect(Object.keys(body).filter((k) => !allowed.has(k))).toEqual([]);
     expect(await screen.findByText("Respuesta registrada")).toBeInTheDocument();
@@ -711,17 +714,31 @@ describe("respuestas: banners", { timeout: 30_000 }, () => {
 });
 
 describe("respuestas: reglas de pantalla", () => {
-  it("cada tipo pide un subconjunto de sus campos; un tipo desconocido, solo los comunes", () => {
-    for (const form of Object.values(RESPONSE_FORMS)) {
-      expect(form.required.every((f) => form.fields.includes(f))).toBe(true);
-    }
-    expect(RESPONSE_FORMS.RETURNED!.reasonCatalog).toBe("filing_return_reason");
-    expect(RESPONSE_FORMS.REJECTED!.reasonCatalog).toBe("filing_rejection_reason");
-    expect(responseForm("NEW_TYPE")).toEqual({
-      fields: ["public_message", "internal_comment"],
-      required: [],
+  it("los campos de cada tipo salen del metadata del catálogo; sin metadata, solo los comunes", () => {
+    expect(responseForm("RETURNED", TYPES)).toEqual({
+      fields: ["reason_code", "observations", "public_message", "internal_comment"],
+      required: ["reason_code", "public_message", "observations"],
+      reasonCatalog: "filing_return_reason",
     });
-    expect(responseForm(null).required).toEqual([]);
+    expect(responseForm("REJECTED", TYPES).reasonCatalog).toBe("filing_rejection_reason");
+    expect(responseForm("RECEIVED", TYPES).reasonCatalog).toBeUndefined();
+    const common = { fields: ["public_message", "internal_comment"], required: [] };
+    expect(responseForm("NEW_TYPE", TYPES)).toEqual(common);
+    expect(responseForm(null, TYPES)).toEqual(common);
+    // Un campo que el front no conoce se ignora; un obligatorio fuera de `fields`, también.
+    const odd = [
+      {
+        code: "X",
+        metadata: {
+          fields: ["public_message", "nuevo"],
+          required: ["nuevo", "public_message", "reason_code"],
+        },
+      },
+    ];
+    expect(responseForm("X", odd)).toEqual({
+      fields: ["public_message"],
+      required: ["public_message"],
+    });
   });
 
   it("el cuerpo lleva solo los campos del tipo", () => {
@@ -738,14 +755,19 @@ describe("respuestas: reglas de pantalla", () => {
       disbursed_amount_cop: 7,
       observations: [{ document_slot_id: "s-1", reason_code: "X", message: " m " }],
     };
-    expect(buildResponseBody(values, 3, null)).toEqual({
+    expect(buildResponseBody(values, 3, null, responseForm("RECEIVED", TYPES))).toEqual({
       response_type: "RECEIVED",
       received_at: new Date("2026-11-17T09:00").toISOString(),
       internal_comment: "Nota",
       expected_version: 3,
     });
     expect(
-      buildResponseBody({ ...values, response_type: "RETURNED" }, 3, makeResponse(1)),
+      buildResponseBody(
+        { ...values, response_type: "RETURNED" },
+        3,
+        makeResponse(1),
+        responseForm("RETURNED", TYPES),
+      ),
     ).toMatchObject({
       reason_code: "OTHER",
       observations: [{ document_slot_id: "s-1", reason_code: "X", message: "m" }],
