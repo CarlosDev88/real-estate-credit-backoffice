@@ -1962,10 +1962,53 @@ La liquidación se crea automáticamente al procesar el evento `APPLICATION_DISB
 
 | Método | Ruta | Permiso | Descripción |
 | --- | --- | --- | --- |
-| `GET` | `/audit-events` | `audit.read` | Busca eventos por actor, recurso, acción, fecha o request ID. |
-| `GET` | `/audit-events/{event_id}` | `audit.read` | Detalle de cambios permitidos y contexto técnico. |
+| `GET` | `/audit-events` | `audit.read` (solo `ADMIN`) | Busca eventos por actor, recurso, acción, resultado, fecha o `request_id`. |
+| `GET` | `/audit-events/{event_id}` | `audit.read` (solo `ADMIN`) | Detalle de un evento. |
 
-La auditoría es de solo lectura desde la API. Registra autenticación, enlaces mágicos, lectura/descarga de archivos, cambios de datos sensibles, revisiones, asignaciones, transiciones, radicaciones, respuestas bancarias, exportaciones y cambios de configuración. Contraseñas, tokens, archivos y secretos nunca se copian al evento.
+La auditoría es técnica, inmutable y de solo lectura desde la API. No es la actividad del expediente (§21.1), que leen el asesor y el comprador. El broker, el asesor y la constructora reciben `403`, y ese intento también queda auditado.
+
+**Qué se registra** (`action`, con su etiqueta en `action_label`):
+
+| Grupo | Acciones |
+| --- | --- |
+| Autenticación | `AUTH_LOGIN`, `AUTH_LOGIN_FAILED` (con el correo enmascarado), `AUTH_LOGOUT`, `AUTH_REFRESH_REJECTED`, `AUTH_PASSWORD_RESET_REQUESTED`, `AUTH_PASSWORD_RESET_COMPLETED` y `AUTH_RATE_LIMITED` (todo `429`) |
+| Comprador | `BUYER_LINK_CREATED`, `BUYER_LINK_CONSUMED`, `BUYER_LINK_FAILED` (con el código del error), `BUYER_SESSION_CLOSED`, `CONSENT_ACCEPTED` y `CONSENT_WITHDRAWN` |
+| Archivos | `DOCUMENT_UPLOADED`, `DOCUMENT_DOWNLOADED`, `PACKAGE_DOWNLOADED` y `EVIDENCE_DOWNLOADED` (quién y qué recurso, sin la URL firmada) |
+| Expediente | `APPLICATION_STATUS_CHANGED`, `APPLICATION_WITHDRAWN`, `APPLICATION_ASSIGNED`, `DOCUMENT_REVIEWED`, `DOCUMENT_WAIVED` y `DOCUMENT_WAIVER_REOPENED` |
+| Radicación | `FILING_CREATED`, `FILING_UPDATED` y `BANK_RESPONSE_RECORDED` (también las correcciones) |
+| Configuración | `CATALOG_CHANGED`, `WORKFLOW_TRANSITION_CHANGED`, `BANK_CHANGED`, `BANK_PRODUCT_CHANGED`, `BANK_RULE_CHANGED`, `DOCUMENT_TYPE_CHANGED`, `DOCUMENT_REQUIREMENT_CHANGED`, `USER_CHANGED`, `USER_ROLES_CHANGED` y `USER_STATUS_CHANGED` |
+| Acceso | `ACCESS_DENIED`: todo `403` de la API, con la ruta, el método y el código del error, sin el cuerpo |
+
+Las tareas, las notas, las notificaciones y la actividad no se auditan aquí: tienen su propio registro.
+
+**Resultado** (`result`): `SUCCESS`, `DENIED` o `FAILED`. Un éxito se escribe al confirmar la transacción. Un denegado o fallido se escribe de inmediato, por una conexión aparte, así que el rollback de la operación no lo borra. Un error al auditar nunca rompe la operación.
+
+**Qué nunca se guarda:** contraseñas, tokens, cookies, la cabecera `Authorization`, URLs firmadas, cuerpos de las peticiones ni números de documento completos (solo los últimos 4). `metadata` lleva códigos, ids, estados y los **nombres** de los campos cambiados, nunca sus valores. Los textos se recortan a 500 caracteres.
+
+**Contexto:** `request_id` (el de `X-Request-ID`) e `ip_address` (de `REMOTE_ADDR`; no se confía en `X-Forwarded-For` mientras no haya un proxy de confianza).
+
+**Filtros de `/audit-events`:** `actor_user_id`, `actor_buyer_session_id`, `action` (se puede repetir), `resource_type` (la tabla, por ejemplo `credit_applications`), `resource_id`, `result`, `request_id`, `created_from` y `created_to` (una fecha `AAAA-MM-DD`, que es el día completo en Bogotá, o una fecha y hora ISO). Un valor desconocido o mal formado responde `400`. Paginado, del más nuevo al más viejo.
+
+```json
+{
+  "id": "uuid",
+  "created_at": "2026-11-17T10:32:05-05:00",
+  "action": "DOCUMENT_DOWNLOADED",
+  "action_label": "Documento descargado",
+  "result": "SUCCESS",
+  "result_label": "Correcto",
+  "resource_type": "document_files",
+  "resource_id": "uuid",
+  "actor": { "id": "uuid", "name": "Paula Rincón" },
+  "request_id": "4f6c…",
+  "ip_address": "10.0.0.7",
+  "metadata": { "method": "GET", "path": "/api/v1/document-files/…/download", "fields": [] }
+}
+```
+
+`actor` es `{id, name}` del usuario interno o de la sesión del comprador ("Comprador (sesión 1a2b3c4d)"), o nulo (un intento anónimo o un comando).
+
+**Retención:** `purge_audit_events` borra lo que tiene más de 365 días (`AUDIT_RETENTION_DAYS`). Es la única forma de borrar: el modelo rechaza la edición y el borrado, y un trigger de PostgreSQL bloquea `UPDATE`.
 
 ### 24.2 Estado del servicio y contrato OpenAPI
 

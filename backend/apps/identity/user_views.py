@@ -18,6 +18,7 @@ from rest_framework.generics import GenericAPIView
 from rest_framework.request import Request
 from rest_framework.response import Response
 
+from apps.audit.actions import AuditAction
 from apps.identity import users
 from apps.identity.models import Role, RolePermission, User, UserStatus, user_status_filter
 from apps.identity.permissions import HasPermissionCode
@@ -67,6 +68,9 @@ def _user_data(user_id: Any) -> dict[str, Any]:
 
 
 class UserListView(_UserAdminView):
+    # Auditoría (módulo 14, apps/audit/hooks.py).
+    audit_actions = {"POST": AuditAction.USER_CHANGED}
+    audit_resource_type = "users"
     required_permissions = {"GET": "users.read", "POST": "users.create"}
     filter_backends = [SearchFilter, StrictOrderingFilter]
     search_fields = ["email", "first_name", "last_name"]
@@ -134,6 +138,9 @@ class UserListView(_UserAdminView):
 
 
 class UserDetailView(_UserAdminView):
+    # Auditoría (módulo 14, apps/audit/hooks.py).
+    audit_actions = {"PATCH": AuditAction.USER_CHANGED}
+    audit_resource_type = "users"
     required_permissions = {"GET": "users.read", "PATCH": "users.update"}
 
     @extend_schema(
@@ -212,6 +219,9 @@ class UserDeactivateView(_UserStatusView):
 
 
 class UserRolesView(_UserAdminView):
+    # Auditoría (módulo 14, apps/audit/hooks.py).
+    audit_actions = {"PUT": AuditAction.USER_ROLES_CHANGED}
+    audit_resource_type = "users"
     required_permissions = {"PUT": "roles.assign"}
 
     @extend_schema(

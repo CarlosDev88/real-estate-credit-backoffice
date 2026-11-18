@@ -41,6 +41,19 @@ export default defineConfig({
       dependencies: ["setup"],
       use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } },
     },
+    { name: "portal-setup", testMatch: /portal\/portal\.setup\.ts/, dependencies: ["setup"] },
+    {
+      name: "portal-mobile",
+      testMatch: /e2e[\/]portal[\/].*\.spec\.ts/,
+      dependencies: ["portal-setup"],
+      use: { ...devices["Desktop Chrome"], viewport: { width: 390, height: 844 }, hasTouch: true },
+    },
+    {
+      name: "portal-desktop",
+      testMatch: /e2e[\/]portal[\/].*\.spec\.ts/,
+      dependencies: ["portal-setup"],
+      use: { ...devices["Desktop Chrome"], viewport: { width: 1280, height: 800 } },
+    },
   ],
   // Reutiliza `pnpm dev` si ya corre en ese puerto; si no, lo levanta.
   webServer: {

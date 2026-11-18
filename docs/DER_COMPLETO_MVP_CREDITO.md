@@ -723,7 +723,7 @@ erDiagram
         uuid id PK
         uuid actor_user_id FK
         uuid actor_buyer_session_id FK
-        uuid request_id
+        varchar request_id
     }
     OUTBOX_EVENTS {
         uuid id PK

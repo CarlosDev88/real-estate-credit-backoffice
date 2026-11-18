@@ -139,6 +139,13 @@ def _scope_filter(user: User, scope: CrmScope) -> Q | None:
     return condition
 
 
+def application_scope_filter(user: User, scope: CrmScope | None = None) -> Q | None:
+    """Filtro público de las solicitudes visibles para ``user`` (el mismo de
+    ``applications_visible_to``), o ``None`` si ve todas. Lo usan los reportes para no
+    duplicar el alcance; ``scope`` evita recalcular el perfil si ya se tiene."""
+    return _scope_filter(user, scope if scope is not None else get_application_scope(user))
+
+
 def _active_participants(role: str) -> Coalesce:
     """Cantidad de participantes activos con ese rol, como subconsulta: sin consultas
     por fila y sin multiplicar las filas del listado."""
