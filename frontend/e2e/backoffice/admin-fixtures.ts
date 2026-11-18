@@ -1,9 +1,10 @@
+import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 
 import { request, test as base, type Page } from "@playwright/test";
 
-import { BASE_URL } from "../../playwright.config";
+import { AUTH_FILE, BASE_URL } from "../../playwright.config";
 
 // Sesión del administrador para las pantallas de administración (F6). El usuario sale de
 // `.env.local` (E2E_ADMIN_EMAIL y E2E_ADMIN_PASSWORD; Playwright lo carga). Al empezar la
@@ -16,12 +17,12 @@ export const NO_ADMIN =
   "Sin sesión del administrador: falta E2E_ADMIN_EMAIL / E2E_ADMIN_PASSWORD en frontend/.env.local.";
 
 /**
- * Renueva la sesión guardada (`POST /auth/refresh`, con su `X-CSRFToken`) sin gastar un
+ * Renueva una sesión guardada (`POST /auth/refresh`, con su `X-CSRFToken`) sin gastar un
  * intento de login. `false` si no hay archivo o el refresh ya no sirve.
  */
-async function refreshSaved(): Promise<boolean> {
-  if (!existsSync(ADMIN_AUTH_FILE)) return false;
-  const context = await request.newContext({ baseURL: BASE_URL, storageState: ADMIN_AUTH_FILE });
+async function refreshSaved(file: string): Promise<boolean> {
+  if (!existsSync(file)) return false;
+  const context = await request.newContext({ baseURL: BASE_URL, storageState: file });
   try {
     const { cookies } = await context.storageState();
     const csrf = cookies.find((cookie) => cookie.name === "app_csrf")?.value ?? "";
@@ -29,8 +30,32 @@ async function refreshSaved(): Promise<boolean> {
       headers: { "X-CSRFToken": csrf, Referer: BASE_URL },
     });
     if (!response.ok()) return false;
-    await context.storageState({ path: ADMIN_AUTH_FILE });
+    await context.storageState({ path: file });
     return true;
+  } finally {
+    await context.dispose();
+  }
+}
+
+/**
+ * Sesión de un usuario en `file`: renueva la guardada y, si no sirve, inicia sesión por la
+ * API (un intento de login). Devuelve el archivo para `storageState`.
+ */
+export async function ensureSession(
+  file: string,
+  email: string,
+  password: string,
+): Promise<string> {
+  if (await refreshSaved(file)) return file;
+  const context = await request.newContext({ baseURL: BASE_URL });
+  try {
+    const response = await context.post("/api/v1/auth/login", { data: { email, password } });
+    if (!response.ok()) {
+      throw new Error(`Login de ${email}: ${response.status()} ${await response.text()}`);
+    }
+    mkdirSync(dirname(file), { recursive: true });
+    await context.storageState({ path: file });
+    return file;
   } finally {
     await context.dispose();
   }
@@ -40,18 +65,15 @@ async function loginAsAdmin(): Promise<string | null> {
   const email = process.env.E2E_ADMIN_EMAIL;
   const password = process.env.E2E_ADMIN_PASSWORD;
   if (!email || !password) return null;
-  if (await refreshSaved()) return ADMIN_AUTH_FILE;
-  const context = await request.newContext({ baseURL: BASE_URL });
-  const response = await context.post("/api/v1/auth/login", { data: { email, password } });
-  if (!response.ok()) {
-    const body = await response.text();
-    await context.dispose();
-    throw new Error(`Login del administrador: ${response.status()} ${body}`);
-  }
-  mkdirSync(dirname(ADMIN_AUTH_FILE), { recursive: true });
-  await context.storageState({ path: ADMIN_AUTH_FILE });
-  await context.dispose();
-  return ADMIN_AUTH_FILE;
+  return ensureSession(ADMIN_AUTH_FILE, email, password);
+}
+
+/** Sesión del asesor de `.env.local` (la misma que guarda `auth.setup`), o `null`. */
+export async function advisorSession(): Promise<string | null> {
+  const email = process.env.E2E_USER_EMAIL;
+  const password = process.env.E2E_USER_PASSWORD;
+  if (!email || !password) return null;
+  return ensureSession(AUTH_FILE, email, password);
 }
 
 /**
@@ -172,6 +194,31 @@ export async function hideDevOverlay(page: Page): Promise<void> {
       document.head.append(style);
     });
   });
+}
+
+/** Contenedor del backend local; su correo sale por consola (`EMAIL_BACKEND` de `local.py`). */
+const BACKEND_CONTAINER = process.env.E2E_BACKEND_CONTAINER || "mvp-credit-backend-backend-1";
+
+/**
+ * Token de la última invitación enviada a `email`, leído del correo que el backend local
+ * imprime en su log (`docker logs`). `null` si todavía no aparece.
+ */
+export function invitationToken(email: string): string | null {
+  let logs = "";
+  try {
+    logs = execFileSync("docker", ["logs", "--since", "10m", BACKEND_CONTAINER], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+      maxBuffer: 64 * 1024 * 1024,
+    });
+  } catch (error) {
+    const out = error as { stdout?: string; stderr?: string };
+    logs = `${out.stdout ?? ""}${out.stderr ?? ""}`;
+  }
+  const start = logs.lastIndexOf(`To: ${email}`);
+  if (start < 0) return null;
+  const match = /aceptar-invitacion\?token=([A-Za-z0-9_\-]+)/.exec(logs.slice(start));
+  return match?.[1] ?? null;
 }
 
 /** Pruebas con la sesión del administrador; sin usuario configurado, se saltan. */
