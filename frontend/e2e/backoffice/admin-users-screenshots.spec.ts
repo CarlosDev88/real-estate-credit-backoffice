@@ -1,6 +1,6 @@
 import { test as base, type Page } from "@playwright/test";
 
-import { adminTest as test } from "./admin-fixtures";
+import { adminTest as test, hideDevOverlay } from "./admin-fixtures";
 import { expect, expectNoSeriousA11yViolations, useTheme, type Theme } from "./fixtures";
 
 // Capturas y `axe` de `/admin/usuarios` (usuarios, panel, roles, invitaciones, invitar) y de
@@ -43,6 +43,7 @@ const dialogWith = (page: Page, title: string) =>
 for (const theme of THEMES) {
   test(`usuarios en tema ${theme}`, async ({ page }) => {
     await useTheme(page, theme);
+    await hideDevOverlay(page);
     const granted = await permissions(page);
     test.skip(!granted.includes("users.read"), NO_USERS_READ);
 
@@ -125,6 +126,7 @@ publicTest.describe.configure({ timeout: 300_000 });
 for (const theme of THEMES) {
   publicTest(`aceptar invitación en tema ${theme}`, async ({ page }) => {
     await useTheme(page, theme);
+    await hideDevOverlay(page);
     for (const size of SIZES) {
       await page.setViewportSize({ width: size.width, height: size.height });
       const tag = `${size.name}-${theme}`;

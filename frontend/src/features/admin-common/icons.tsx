@@ -32,3 +32,12 @@ export function ProjectIcon(props: IconProps) {
     </svg>
   );
 }
+
+/** Edificio con columnas: entrada "Bancos". */
+export function BankIcon(props: IconProps) {
+  return (
+    <svg {...base} fill="currentColor" width={16} height={16} {...props}>
+      <path d="M10 2 18 6v2H2V6l8-4ZM4 9h2v6H4V9Zm5 0h2v6H9V9Zm5 0h2v6h-2V9ZM2 16h16v2H2v-2Z" />
+    </svg>
+  );
+}

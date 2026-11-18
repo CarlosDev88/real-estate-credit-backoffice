@@ -120,6 +120,60 @@ export async function ensurePartnerAndProject(page: Page): Promise<void> {
   }
 }
 
+export const E2E_PRODUCT = { code: "E2E_CAPTURAS", name: "Producto E2E Capturas" };
+export const E2E_RULE = "E2E_CAPTURAS_PLAZO";
+
+/**
+ * Deja un producto de prueba (en el primer banco) con una regla en borrador, si no existen,
+ * para las capturas de bancos y reglas. Devuelve el id del producto.
+ */
+export async function ensureProductAndRule(page: Page): Promise<string> {
+  type Item = { id: string };
+  let product = await firstItem<Item>(page, `/api/v1/bank-products?search=${E2E_PRODUCT.code}`);
+  if (!product) {
+    const bank = await firstItem<Item>(page, "/api/v1/banks?ordering=name");
+    if (!bank) throw new Error("La base no tiene bancos.");
+    const types = (await (await page.request.get("/api/v1/metadata/bootstrap")).json()) as {
+      catalogs: Record<string, { code: string }[]>;
+    };
+    product = (await apiWrite(page, "POST", "/api/v1/bank-products", {
+      ...E2E_PRODUCT,
+      bank_id: bank.id,
+      product_type_code: types.catalogs.bank_product_type?.[0]?.code,
+      min_term_months: 60,
+      max_term_months: 360,
+    })) as Item;
+  }
+  const rule = await firstItem<Item>(
+    page,
+    `/api/v1/bank-policy-rules?bank_product_id=${product.id}&code=${E2E_RULE}`,
+  );
+  if (!rule) {
+    await apiWrite(page, "POST", "/api/v1/bank-policy-rules", {
+      bank_product_id: product.id,
+      code: E2E_RULE,
+      severity: "WARNING",
+      message: "Datos de prueba de las capturas: plazo de hasta 20 años.",
+      condition: { operator: "lte", left: { field: "financing.term_months" }, right: 240 },
+    });
+  }
+  return product.id;
+}
+
+/**
+ * Oculta el botón flotante de `next dev` (solo existe en desarrollo): en 390 px tapa los
+ * botones del pie de los paneles y sale en las capturas.
+ */
+export async function hideDevOverlay(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    document.addEventListener("DOMContentLoaded", () => {
+      const style = document.createElement("style");
+      style.textContent = "nextjs-portal { display: none !important; }";
+      document.head.append(style);
+    });
+  });
+}
+
 /** Pruebas con la sesión del administrador; sin usuario configurado, se saltan. */
 export const adminTest = base.extend<object, { adminState: string | null }>({
   adminState: [

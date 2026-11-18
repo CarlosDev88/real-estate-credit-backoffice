@@ -1,6 +1,6 @@
 import type { Page } from "@playwright/test";
 
-import { adminTest as test, ensurePartnerAndProject } from "./admin-fixtures";
+import { adminTest as test, hideDevOverlay, ensurePartnerAndProject } from "./admin-fixtures";
 import { expect, expectNoSeriousA11yViolations, useTheme, type Theme } from "./fixtures";
 
 // Capturas y `axe` de `/admin/constructoras` y `/proyectos` (F6, parte 2), con la sesión del
@@ -51,6 +51,7 @@ async function cancel(page: Page, title: string) {
 for (const theme of THEMES) {
   test(`constructoras y proyectos en tema ${theme}`, async ({ page }) => {
     await useTheme(page, theme);
+    await hideDevOverlay(page);
     await page.goto("/proyectos");
     await ensurePartnerAndProject(page);
 

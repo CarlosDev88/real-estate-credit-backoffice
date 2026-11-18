@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
 import { HouseIcon, UsersIcon } from "@/components/ui/icons";
-import { BuildingIcon, ProjectIcon, UserShieldIcon } from "@/features/admin-common/icons";
+import { BankIcon, BuildingIcon, ProjectIcon, UserShieldIcon } from "@/features/admin-common/icons";
 
 // Navegación del backoffice. Es la estructura de la app, no una lista de negocio:
 // cada entrada pide un permiso de `/auth/me` y solo aparece si la ruta existe.
@@ -58,6 +58,14 @@ export const NAV_ITEMS: NavItem[] = [
     icon: <ProjectIcon />,
     group: "Administración",
     permission: "projects.read",
+  },
+  // `banks.read` también lo tiene el asesor (lo usa en solicitudes): pide `banks.create`.
+  {
+    href: "/admin/bancos",
+    label: "Bancos",
+    icon: <BankIcon />,
+    group: "Administración",
+    permission: "banks.create",
   },
 ];
 
