@@ -55,11 +55,10 @@ describe("groupNav", () => {
       ["Configuración", 1],
     ]);
     expect(groupNav([])).toEqual([]);
-    // El menú empieza por las entradas comerciales; las demás fases agregan las suyas después.
-    expect(NAV_ITEMS.slice(0, 2).map((i) => i.permission)).toEqual([
-      "applications.read",
-      "clients.read",
-    ]);
+    // Solo lo que esta prueba necesita: las entradas nuevas del menú no la rompen.
+    expect(NAV_ITEMS.map((i) => i.permission)).toEqual(
+      expect.arrayContaining(["applications.read", "clients.read"]),
+    );
   });
 });
 

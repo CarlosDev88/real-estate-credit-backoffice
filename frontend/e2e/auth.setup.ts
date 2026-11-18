@@ -20,7 +20,8 @@ setup("login del asesor", async ({ page }) => {
   await page.getByLabel("Contraseña", { exact: true }).fill(password!);
   await page.getByRole("button", { name: "Ingresar" }).click();
 
-  await expect(page).toHaveURL(/\/solicitudes/);
-  await expect(page.getByRole("heading", { name: "Solicitudes", level: 1 })).toBeVisible();
+  // F5: con `dashboard.read`, el inicio es el dashboard (primera entrada del menú).
+  await expect(page).toHaveURL(/\/dashboard/);
+  await expect(page.getByRole("heading", { name: "Dashboard", level: 1 })).toBeVisible();
   await page.context().storageState({ path: AUTH_FILE });
 });
