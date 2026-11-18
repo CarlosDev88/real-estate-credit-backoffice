@@ -52,8 +52,8 @@ const count = (n: number) => formatInteger(n) || "0";
 const money = (value: string) => formatCOP(Number(value)) ?? "—";
 
 /** Rutas de "Mi día" con el filtro de tareas (`due` de `GET /tasks`). */
-export const MY_DAY_OVERDUE = "/mi-dia?due=overdue";
-export const MY_DAY_TODAY = "/mi-dia?due=today";
+export const MY_DAY_OVERDUE = "/mi-dia?tab=tareas&due=overdue";
+export const MY_DAY_TODAY = "/mi-dia?tab=tareas&due=today";
 
 export function SummaryTiles({
   query,

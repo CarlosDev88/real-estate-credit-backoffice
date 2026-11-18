@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 import { DashboardIcon } from "@/features/dashboard/dashboard-icon";
+import { MyDayIcon } from "@/features/workday/my-day-icon";
 import { HouseIcon } from "@/components/ui/icons";
 import { UsersIcon } from "@/features/clients/components/icons";
 
@@ -28,6 +29,14 @@ export const NAV_ITEMS: NavItem[] = [
     icon: <DashboardIcon />,
     group: "Operación",
     permission: "dashboard.read",
+  },
+  // F5: bandeja de atención y tareas; el permiso es el de `GET /workday/applications`.
+  {
+    href: "/mi-dia",
+    label: "Mi día",
+    icon: <MyDayIcon />,
+    group: "Operación",
+    permission: "workday.read",
   },
   {
     href: "/solicitudes",

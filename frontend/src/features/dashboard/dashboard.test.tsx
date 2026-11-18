@@ -155,11 +155,11 @@ describe("DashboardScreen", { timeout: 30_000 }, () => {
     // Las tareas enlazan a "Mi día" con el filtro.
     expect(within(tiles).getByRole("link", { name: /Tareas vencidas/ })).toHaveAttribute(
       "href",
-      "/mi-dia?due=overdue",
+      "/mi-dia?tab=tareas&due=overdue",
     );
     expect(within(tiles).getByRole("link", { name: /Tareas para hoy/ })).toHaveAttribute(
       "href",
-      "/mi-dia?due=today",
+      "/mi-dia?tab=tareas&due=today",
     );
 
     // Foto por estado: los estados en 0 se ocultan hasta "Mostrar todos".

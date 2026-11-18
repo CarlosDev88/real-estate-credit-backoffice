@@ -63,3 +63,25 @@
 - **Barras de estado sin enlace:** el listado `/solicitudes` no lee `status` de la URL (`list-params.ts` de `features/applications`), aunque la API lo acepta. Queda como brecha para el front 1.
 - **Gráficos:** foto por estado = lista de barras (texto y número escritos, barra `aria-hidden`, color con `toneFor`); embudo = tabla con barra (la tabla es el gráfico). En contenedores angostos la barra baja debajo del nombre (container queries).
 - **Piezas locales candidatas a la librería:** `StatTile`, `BarList`/`Bar`, `FunnelTable`, `DashboardIcon`, `EmptyNote` (vacío de una línea dentro de una tarjeta).
+
+**Parte 2 (front 2, 2026-11-18):**
+- **Menú:** "Mi día" es la segunda entrada del grupo "Operación", con `workday.read` (el permiso de `GET /workday/applications`).
+- **Pestañas en la URL** (`tab=bandeja|tareas`) y no una columna lateral: en 1280 la tabla de la bandeja necesita todo el ancho. Con `due` en la URL y sin `tab`, se abre "Mis tareas". Por eso los enlaces del dashboard quedaron en `/mi-dia?tab=tareas&due=overdue|today`.
+- **Bandeja:**
+  - Los segmentos de `GET /workday/summary` son botones con `aria-pressed`: "Todas" (con `total`) y un botón por segmento. Un segundo clic quita el filtro.
+  - Filtros en la URL: `search`, `stage`, `bank_id`, `purpose`, `attention`, `advisor_id` (solo con `users.read`), `ordering`, `page` y `page_size`. El resumen recibe los mismos filtros, menos el segmento, la búsqueda (la API no la acepta) y la página.
+  - Etapas: las del catálogo `application_status`, filtradas a los códigos no terminales del enum `stage` del contrato (`WORKDAY_STAGES`).
+  - Orden: un select con los campos de `ordering_fields` (`days_in_stage`, `updated_at`, `code`) y encabezados ordenables. Sin orden, se usa el de la API (primero lo que pide atención).
+  - En la tabla, la etapa y la siguiente acción van en la misma celda, para que quepa en 1280 sin desplazamiento horizontal. En móvil, tarjetas.
+  - Las señales de atención van en tono neutro: `toneFor` no tiene un tipo para los segmentos. El texto sale de la API.
+- **Tareas:**
+  - `GET /tasks` con `assigned_to_id` = el usuario actual por defecto. El administrador (`users.read`) elige otro asesor o "todos" (`assigned_to_id=all` en la URL, que no se manda a la API).
+  - Filtros: `due`, `task_status` (pendientes por defecto) y `priority` (catálogo `task_priority`).
+  - **Textos de las opciones de `due` y `status`:** el contrato fija esos valores pero no trae un catálogo con sus textos, así que los nombres de las opciones del filtro ("vencidas", "hoy", "próximas", "pendientes", "completadas", "canceladas") están en el front. El estado de cada tarea se muestra con `status_label`. Es una brecha para el backend: un catálogo `task_status`.
+- **Crear y editar** con `ActionModal`:
+  - Título, descripción, vence (`datetime-local`) y prioridad (por defecto `MEDIUM`, el valor por omisión del contrato).
+  - Responsable: solo el administrador.
+  - Desde una fila de la bandeja, la solicitud ya viene elegida. Desde "Nueva tarea", hay un buscador de solicitudes (`GET /workday/applications?search=`).
+  - Las tareas de oportunidad no se crean desde Mi día: eso va en `features/clients`. Mi día sí las lista; no hay ruta de oportunidad, así que van sin enlace.
+- **Completar y cancelar:** completar es una confirmación; cancelar pide el motivo (obligatorio en la API). Un `409 TASK_NOT_PENDING` va al toast y refresca la lista.
+- **Piezas locales candidatas a la librería:** `FilterToolbar` (búsqueda, selects, hoja inferior y chips), los segmentos como botones con conteo, y `MyDayIcon`.
