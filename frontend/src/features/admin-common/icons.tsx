@@ -14,3 +14,21 @@ export function UserShieldIcon(props: IconProps) {
     </svg>
   );
 }
+
+/** Edificio: entrada "Constructoras". */
+export function BuildingIcon(props: IconProps) {
+  return (
+    <svg {...base} fill="currentColor" width={16} height={16} {...props}>
+      <path d="M3 2h9v5h5v11H3V2Zm2 2v12h2v-3h2v3h1V4H5Zm1 1h2v2H6V5Zm0 4h2v2H6V9Zm6 0v7h3V9h-3Z" />
+    </svg>
+  );
+}
+
+/** Plano con grúa: entrada "Proyectos". */
+export function ProjectIcon(props: IconProps) {
+  return (
+    <svg {...base} fill="currentColor" width={16} height={16} {...props}>
+      <path d="M2 3h10v2H8v3h4l5 4v6H3v-6l3-2.4V5H2V3Zm3 10v3h3v-3H5Zm5 0v3h5v-3.1L12 10.6V13h-2Z" />
+    </svg>
+  );
+}

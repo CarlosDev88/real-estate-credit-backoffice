@@ -253,7 +253,7 @@ function AcceptForm({
         {alert && (
           <Alert type="error" showIcon title={alert.title} description={alert.description} />
         )}
-        <div className="grid gap-5 min-[600px]:grid-cols-2">
+        <div className="grid items-start gap-5 min-[600px]:grid-cols-2">
           {text("first_name", "Nombre", "given-name")}
           {text("last_name", "Apellido", "family-name")}
         </div>

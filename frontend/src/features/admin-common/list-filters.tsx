@@ -20,6 +20,10 @@ export interface SelectFilter {
   value: string;
   options: FilterOption[];
   loading?: boolean;
+  /** Lista larga (municipios): se filtra escribiendo. */
+  searchable?: boolean;
+  /** Nombre accesible del control; por defecto, "Filtrar por <label>". */
+  ariaLabel?: string;
 }
 
 export interface SearchFilter {
@@ -103,12 +107,14 @@ export function AdminListFilters({
   const control = (filter: SelectFilter, block: boolean) => (
     <Select
       key={filter.key}
-      aria-label={`Filtrar por ${filter.label.toLowerCase()}`}
+      aria-label={filter.ariaLabel ?? `Filtrar por ${filter.label.toLowerCase()}`}
       value={filter.value}
       onChange={(value: string) => onSelect(filter.key, value)}
       options={[{ value: "", label: ALL_LABEL }, ...filter.options]}
       loading={filter.loading}
-      virtual={false}
+      showSearch={filter.searchable ? { optionFilterProp: "label" } : undefined}
+      // Las listas largas se virtualizan; las cortas no, para que el lector las recorra.
+      virtual={filter.searchable ?? false}
       popupMatchSelectWidth={false}
       size={block ? "large" : "middle"}
       // En el control se ve "Rol: Asesor"; en la lista, solo el valor.

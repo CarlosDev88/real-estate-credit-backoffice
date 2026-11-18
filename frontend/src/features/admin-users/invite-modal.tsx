@@ -8,9 +8,9 @@ import { z } from "zod";
 
 import { ActionModal } from "@/components/ui/action-modal";
 import { FormField, useFormErrorHandler } from "@/components/ui/form-field";
+import { PartnerSelect } from "@/features/admin-common/partner-select";
 import { useCreateInvitation, type Role } from "@/features/admin-users/queries";
 import { PARTNER_ROLE } from "@/features/admin-users/status";
-import { PartnerSelect } from "@/features/admin-users/user-modals";
 import { isApiError } from "@/lib/api/errors";
 import { useToast } from "@/providers/toast";
 

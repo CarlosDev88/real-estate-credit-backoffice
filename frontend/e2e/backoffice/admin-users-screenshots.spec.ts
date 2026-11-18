@@ -1,10 +1,12 @@
 import { test as base, type Page } from "@playwright/test";
 
-import { expect, expectNoSeriousA11yViolations, test, useTheme, type Theme } from "./fixtures";
+import { adminTest as test } from "./admin-fixtures";
+import { expect, expectNoSeriousA11yViolations, useTheme, type Theme } from "./fixtures";
 
 // Capturas y `axe` de `/admin/usuarios` (usuarios, panel, roles, invitaciones, invitar) y de
 // la página pública `/aceptar-invitacion` (F6, parte 1). No corren en la suite normal:
-// `E2E_PORT=3002 E2E_SCREENSHOTS=1 node ./node_modules/@playwright/test/cli.js test admin-users-screenshots`.
+// `E2E_PORT=3002 E2E_SCREENSHOTS=1 node ./node_modules/@playwright/test/cli.js test admin-users-screenshots --project=backoffice --no-deps`
+// (con la sesión del administrador de `admin-fixtures.ts`; `--no-deps` evita el login del asesor).
 // Salen en `test-results/screenshots/` (no se versiona). No cambian datos: los modales se
 // cancelan y los formularios se envían vacíos (los frena la validación del front). En
 // `/aceptar-invitacion` se manda un token falso, que la API rechaza.
@@ -16,8 +18,7 @@ const SIZES = [
   { name: "390", width: 390, height: 844 },
 ];
 const THEMES: Theme[] = ["light", "dark"];
-const NO_ADMIN =
-  "El usuario de prueba no tiene `users.read` (solo el administrador): no hay capturas de /admin/usuarios.";
+const NO_USERS_READ = "El usuario no tiene `users.read`: no hay capturas de /admin/usuarios.";
 
 test.skip(!process.env.E2E_SCREENSHOTS, "Capturas: corre con E2E_SCREENSHOTS=1.");
 test.describe.configure({ timeout: 300_000 });
@@ -43,7 +44,7 @@ for (const theme of THEMES) {
   test(`usuarios en tema ${theme}`, async ({ page }) => {
     await useTheme(page, theme);
     const granted = await permissions(page);
-    test.skip(!granted.includes("users.read"), NO_ADMIN);
+    test.skip(!granted.includes("users.read"), NO_USERS_READ);
 
     for (const size of SIZES) {
       await page.setViewportSize({ width: size.width, height: size.height });

@@ -18,7 +18,6 @@ export type InvitationPage = Schemas["PaginatedInvitationList"];
 export type InvitationCreateRequest = Schemas["InvitationCreateRequest"];
 export type InvitationAcceptRequest = Schemas["InvitationAcceptRequest"];
 export type AcceptedUser = Schemas["AcceptedUser"];
-export type Partner = Schemas["Partner"];
 
 /** Lo que la API devuelve en `partner` e `invited_by`: `{ id, name }`. */
 export interface NamedRef {
@@ -38,7 +37,6 @@ export const adminUserKeys = {
   roles: ["admin-users", "roles"] as const,
   invitations: ["admin-users", "invitations"] as const,
   invitationList: (query: object) => ["admin-users", "invitations", query] as const,
-  partners: (search: string) => ["admin-users", "partners", search] as const,
 };
 
 /** Límite de `page_size` de la API: los roles caben en una sola página. */
@@ -91,35 +89,6 @@ export function useRoles(enabled = true) {
 /** Nombre del rol por su código; mientras llegan los roles (o si no existe), el código. */
 export function roleName(roles: readonly Role[] | undefined, code: string): string {
   return roles?.find((role) => role.code === code)?.name ?? code;
-}
-
-/** `GET /partners?status=ACTIVE`: constructoras activas para el rol de constructora. */
-export function useActivePartners(search: string, enabled: boolean) {
-  return useQuery({
-    queryKey: adminUserKeys.partners(search),
-    queryFn: async () =>
-      (
-        await call(
-          api.GET("/api/v1/partners", {
-            params: {
-              query: compact({
-                status: "ACTIVE" as const,
-                search,
-                ordering: "legal_name",
-                page_size: 50,
-              }),
-            },
-          }),
-        )
-      ).data.items as Partner[],
-    placeholderData: keepPreviousData,
-    enabled,
-  });
-}
-
-/** Nombre de una constructora: el comercial y, si no hay, la razón social. */
-export function partnerName(partner: Pick<Partner, "trade_name" | "legal_name">): string {
-  return partner.trade_name || partner.legal_name;
 }
 
 function useSaveUser(id: string) {

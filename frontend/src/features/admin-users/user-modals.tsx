@@ -1,16 +1,15 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Checkbox, Input, Select } from "antd";
-import { useId, useState } from "react";
+import { Checkbox, Input } from "antd";
+import { useId } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 
 import { ActionModal } from "@/components/ui/action-modal";
 import { FormField, useFormErrorHandler } from "@/components/ui/form-field";
+import { PartnerSelect } from "@/features/admin-common/partner-select";
 import {
-  partnerName,
-  useActivePartners,
   useReplaceRoles,
   useRoles,
   useSetUserActive,
@@ -124,7 +123,7 @@ export function EditUserModal({ user, open, onClose }: UserModalProps) {
       onSubmit={submit}
       onCancel={onClose}
     >
-      <div className="grid gap-4 min-[600px]:grid-cols-2">
+      <div className="grid items-start gap-4 min-[600px]:grid-cols-2">
         {text("first_name", "Nombre", NAME_MAX)}
         {text("last_name", "Apellido", NAME_MAX)}
       </div>
@@ -141,37 +140,6 @@ const rolesSchema = z.object({
 });
 type RolesValues = z.infer<typeof rolesSchema>;
 const ROLES_FIELDS = ["role_codes", "partner_id"] as const;
-
-/** Constructora activa para el rol de constructora, con búsqueda en la API. */
-export function PartnerSelect({
-  value,
-  onChange,
-  control,
-  enabled,
-}: {
-  value: string;
-  onChange: (value: string) => void;
-  control: object;
-  enabled: boolean;
-}) {
-  const [search, setSearch] = useState("");
-  const partners = useActivePartners(search, enabled);
-  return (
-    <Select
-      {...control}
-      value={value || undefined}
-      onChange={onChange}
-      placeholder="Busca la constructora"
-      showSearch={{ filterOption: false, onSearch: setSearch }}
-      loading={partners.isFetching}
-      notFoundContent={partners.isPending ? "Cargando…" : "No hay constructoras activas"}
-      options={(partners.data ?? []).map((partner) => ({
-        value: partner.id,
-        label: partnerName(partner),
-      }))}
-    />
-  );
-}
 
 /**
  * `PUT /users/{id}/roles`: reemplaza los roles. Si queda con el rol de constructora y aún
