@@ -5,8 +5,8 @@
 
 **Qué se probó:** que nadie vea ni toque lo que no le corresponde (OWASP API1:2023 *Broken
 Object Level Authorization* y API5:2023 *Broken Function Level Authorization*). Cada una
-de las 234 operaciones del contrato se pide como cada uno de los 9 actores, sobre
-los recursos del **lado A**, y se compara el estado con lo esperado: **2106 casos**.
+de las 235 operaciones del contrato se pide como cada uno de los 9 actores, sobre
+los recursos del **lado A**, y se compara el estado con lo esperado: **2115 casos**.
 
 **Resultado:** **ninguna brecha.** Todas las operaciones responden lo esperado para los 9 actores. Además, en las respuestas permitidas al broker y al comprador
 se comprueba que no lleguen campos prohibidos (montos detallados, archivos y URL firmadas,
@@ -59,15 +59,15 @@ permisos sembrados por rol.
 
 | Actor | ✓ | ✗ 401 | ✗ 403 | ✗ 404 |
 | --- | --- | --- | --- | --- |
-| `anon` | 7 | 227 | 0 | 0 |
-| `admin` | 199 | 33 | 2 | 0 |
-| `advisor_owner` | 127 | 33 | 74 | 0 |
-| `advisor_other` | 53 | 33 | 74 | 74 |
-| `broker_owner` | 38 | 33 | 163 | 0 |
-| `broker_other` | 23 | 33 | 160 | 18 |
-| `partner` | 20 | 33 | 181 | 0 |
-| `buyer_owner` | 39 | 195 | 0 | 0 |
-| `buyer_other` | 13 | 195 | 0 | 26 |
+| `anon` | 7 | 228 | 0 | 0 |
+| `admin` | 200 | 33 | 2 | 0 |
+| `advisor_owner` | 128 | 33 | 74 | 0 |
+| `advisor_other` | 53 | 33 | 74 | 75 |
+| `broker_owner` | 38 | 33 | 164 | 0 |
+| `broker_other` | 23 | 33 | 161 | 18 |
+| `partner` | 20 | 33 | 182 | 0 |
+| `buyer_owner` | 39 | 196 | 0 | 0 |
+| `buyer_other` | 13 | 196 | 0 | 26 |
 
 ## Patrones
 
@@ -84,7 +84,7 @@ Cada fila de la matriz usa uno de estos patrones (una letra por actor: `A` permi
 | `ADMIN_ADVISOR_PARTNER` | `UAAAFFAUU` | 5 | Además la constructora sobre lo de su partner (API §11 y §12). |
 | `ADMIN_PARTNER` | `UAFFFFAUU` | 2 | Administrador y la constructora dueña (API §11.2). |
 | `INTERNAL_NO_PARTNER` | `UAAAAAFUU` | 8 | Listados con alcance; la constructora no ve expedientes (REQ §3). |
-| `ASSIGNED` | `UAAHFFFUU` | 56 | Asesor asignado; otro asesor 404; broker y constructora 403 (REQ §3, API §25). |
+| `ASSIGNED` | `UAAHFFFUU` | 57 | Asesor asignado; otro asesor 404; broker y constructora 403 (REQ §3, API §25). |
 | `ASSIGNED_OR_ORIGINATED` | `UAAHAHFUU` | 15 | Además el broker originador (resumen y seguimiento, REQ §3); los otros, 404. |
 | `ORIGINATED_NO_FILES` | `UAAHFHFUU` | 3 | Archivos o enlace ajeno: broker originador 403, otro broker 404. |
 | `BROKER_ONLY` | `UFFFAAFUU` | 1 | Solo brokers, cada uno lo suyo. |
@@ -122,6 +122,7 @@ Cada fila de la matriz usa uno de estos patrones (una letra por actor: `A` permi
 | `POST /applications/{application_id}/commission-settlement` | `ADMIN_ONLY` | ✗ 401 | ✓ | ✗ 403 | ✗ 403 | ✗ 403 | ✗ 403 | ✗ 403 | ✗ 401 | ✗ 401 |
 | `GET /applications/{application_id}/completeness` | `ASSIGNED` | ✗ 401 | ✓ | ✓ | ✗ 404 | ✗ 403 | ✗ 403 | ✗ 403 | ✗ 401 | ✗ 401 |
 | `GET /applications/{application_id}/consents` | `ASSIGNED` | ✗ 401 | ✓ | ✓ | ✗ 404 | ✗ 403 | ✗ 403 | ✗ 403 | ✗ 401 | ✗ 401 |
+| `GET /applications/{application_id}/document-package-jobs` | `ASSIGNED` | ✗ 401 | ✓ | ✓ | ✗ 404 | ✗ 403 | ✗ 403 | ✗ 403 | ✗ 401 | ✗ 401 |
 | `POST /applications/{application_id}/document-package-jobs` | `ASSIGNED` | ✗ 401 | ✓ | ✓ | ✗ 404 | ✗ 403 | ✗ 403 | ✗ 403 | ✗ 401 | ✗ 401 |
 | `GET /applications/{application_id}/document-slots` | `ASSIGNED` | ✗ 401 | ✓ | ✓ | ✗ 404 | ✗ 403 | ✗ 403 | ✗ 403 | ✗ 401 | ✗ 401 |
 | `POST /applications/{application_id}/document-slots/refresh` | `ASSIGNED` | ✗ 401 | ✓ | ✓ | ✗ 404 | ✗ 403 | ✗ 403 | ✗ 403 | ✗ 401 | ✗ 401 |

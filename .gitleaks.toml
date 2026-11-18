@@ -54,3 +54,12 @@ description = "Valores inventados de la prueba de aceptar invitación (frontend)
 commits = ["ccac3251b2bcddec29ab7800e98fecf7af90e09f"]
 paths = ['''^frontend/src/features/admin-users/accept-invitation\.test\.tsx$''']
 condition = "AND"
+
+# `PASSWORD` de las pruebas end-to-end del backoffice (#34): la contraseña inventada con la
+# que se crean los usuarios de E2E en una base de usar y tirar. No sirve fuera de esas pruebas.
+[[allowlists]]
+description = "Contraseña inventada de los usuarios de E2E del backoffice"
+regexTarget = "match"
+regexes = ['''Umbral-Prueba-E2E-2026''']
+paths = ['''^frontend/e2e/backoffice/admin-flows\.spec\.ts$''']
+condition = "AND"

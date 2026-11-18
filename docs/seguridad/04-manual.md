@@ -27,7 +27,7 @@ cita.
 ## Cómo se corre
 
 ```
-pytest tests/security                     # toda la carpeta: 2401 pruebas, ~105 s con base nueva
+pytest tests/security                     # toda la carpeta: 2411 pruebas, ~90-105 s con base nueva
 python manage.py shell -c "exec(open('security/race_checks.py').read())"   # carreras, con DEBUG
 ```
 

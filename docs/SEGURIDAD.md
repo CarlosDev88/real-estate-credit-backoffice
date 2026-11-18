@@ -10,14 +10,14 @@ pública y solo funciona en local.
 
 ## 1. Resumen ejecutivo
 
-**Qué se revisó.** La API del backend completa: las 234 operaciones del contrato
+**Qué se revisó.** La API del backend completa: las 235 operaciones del contrato
 (`contracts/openapi.json`), con los cinco tipos de usuario (administración, asesor, broker
 independiente, constructora y comprador con enlace mágico), más el código, las dependencias,
 el historial de git y los contenedores.
 
 **Cómo.** Con herramientas automáticas (analizadores de código, de dependencias y de
 secretos), con ataques simulados contra una copia local de la API (más de 110 000
-peticiones), con una prueba que pide **cada operación como cada tipo de usuario** (2106
+peticiones), con una prueba que pide **cada operación como cada tipo de usuario** (2115
 casos) y con una revisión manual del código de los controles más sensibles. Todo en local,
 sobre datos de demo. Lo que se pudo automatizar quedó como prueba en el repo y corre en cada
 cambio.
@@ -59,7 +59,7 @@ puede qué": `docs/REQUERIMIENTOS_MVP_CREDITO.md` §3 y §9 y `docs/API_REST_MVP
 | 2 | Fuzzing de la API con 4 sesiones | schemathesis 4.33.4 (~42 000 casos) | [`02-dinamico.md`](seguridad/02-dinamico.md) |
 | 2 | Escaneo pasivo y activo | OWASP ZAP 2.17.0 (~72 000 peticiones) | idem |
 | 2 | Cabeceras, CORS, cookies, límites, errores | curl 8.23.0 y scripts propios | idem |
-| 3 | Matriz de acceso (BOLA/BFLA): 234 operaciones × 9 actores | pytest (`tests/security`) | [`03-matriz-acceso.md`](seguridad/03-matriz-acceso.md) |
+| 3 | Matriz de acceso (BOLA/BFLA): 235 operaciones × 9 actores | pytest (`tests/security`) | [`03-matriz-acceso.md`](seguridad/03-matriz-acceso.md) |
 | 4 | Revisión manual de 10 áreas | lectura de código, pytest y `race_checks.py` | [`04-manual.md`](seguridad/04-manual.md) |
 
 Todo corrió en un servidor local propio, con una base de datos de usar y tirar y contenedores
@@ -126,7 +126,7 @@ una URL firmada de vida corta; la base y el almacenamiento no se exponen.
 | CSRF en toda escritura autenticada por cookie | `apps/identity/authentication.py` (`enforce_csrf`) | Partes 2 y 4.1 |
 | Cookies `HttpOnly`, `Secure`, `SameSite=Lax`, prefijo `__Host-` | `apps/identity/cookies.py` | Parte 2.3 |
 | Argon2id (≥ mínimos OWASP) y validadores de contraseña | `config/settings/base.py` | Parte 4.1 |
-| Permiso por código en cada vista (403) | `apps/identity/permissions.py` (`HasPermissionCode`, `required_permissions`) | Parte 3: 2106 casos |
+| Permiso por código en cada vista (403) | `apps/identity/permissions.py` (`HasPermissionCode`, `required_permissions`) | Parte 3: 2115 casos |
 | Alcance por objeto: fuera del alcance responde 404 | `apps/*/services.py` (`*_visible_to`) | Parte 3 |
 | Portal del comprador limitado a su solicitud | `apps/identity/buyer_authentication.py`, `buyer_sessions.py` | Partes 3 y 4.2 |
 | Enlace mágico de 256 bits, hasheado, un solo uso, a prueba de carreras | `apps/identity/buyer_access.py`, `buyer_sessions.py` | Parte 4.2 (`race_checks.py`) |
@@ -146,20 +146,20 @@ una URL firmada de vida corta; la base y el almacenamiento no se exponen.
 
 Cada operación de la API se probó como cada uno de estos actores: sin sesión, admin, la
 asesora dueña del recurso, otro asesor, el broker que originó la oportunidad, otro broker, la
-constructora, el comprador dueño y otro comprador. **2106 casos, todos con el resultado
+constructora, el comprador dueño y otro comprador. **2115 casos, todos con el resultado
 esperado: ninguna brecha de acceso.**
 
 | Actor | Permitido | 401 | 403 | 404 (fuera de alcance) |
 | --- | --- | --- | --- | --- |
-| sin sesión | 7 | 227 | 0 | 0 |
-| admin | 199 | 33 | 2 | 0 |
-| asesora dueña | 127 | 33 | 74 | 0 |
-| otro asesor | 53 | 33 | 74 | 74 |
-| broker dueño | 38 | 33 | 163 | 0 |
-| otro broker | 23 | 33 | 160 | 18 |
-| constructora | 20 | 33 | 181 | 0 |
-| comprador dueño | 39 | 195 | 0 | 0 |
-| otro comprador | 13 | 195 | 0 | 26 |
+| sin sesión | 7 | 228 | 0 | 0 |
+| admin | 200 | 33 | 2 | 0 |
+| asesora dueña | 128 | 33 | 74 | 0 |
+| otro asesor | 53 | 33 | 74 | 75 |
+| broker dueño | 38 | 33 | 164 | 0 |
+| otro broker | 23 | 33 | 161 | 18 |
+| constructora | 20 | 33 | 182 | 0 |
+| comprador dueño | 39 | 196 | 0 | 0 |
+| otro comprador | 13 | 196 | 0 | 26 |
 
 Además: ids de otro alcance en el cuerpo, filtros de listados, el detalle de la solicitud
 que ve el broker (solo el resumen), la constructora en todas las rutas de expedientes, y un

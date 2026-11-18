@@ -157,6 +157,9 @@ MATRIX: dict[str, str] = {
     "POST /api/v1/applications/{application_id}/commission-settlement": ADMIN_ONLY,
     "GET /api/v1/applications/{application_id}/completeness": ASSIGNED,
     "GET /api/v1/applications/{application_id}/consents": ASSIGNED,
+    # Lista de paquetes de la solicitud (#31): mismo permiso (`filings.prepare`) y alcance
+    # (`get_application`) que el POST.
+    "GET /api/v1/applications/{application_id}/document-package-jobs": ASSIGNED,
     "POST /api/v1/applications/{application_id}/document-package-jobs": ASSIGNED,
     "GET /api/v1/applications/{application_id}/document-slots": ASSIGNED,
     "POST /api/v1/applications/{application_id}/document-slots/refresh": ASSIGNED,
