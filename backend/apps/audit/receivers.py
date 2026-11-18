@@ -19,6 +19,12 @@ from apps.banking.signals import (
     bank_status_changed,
 )
 from apps.catalogs.workflow import ApplicationStatus
+from apps.commissions.models import CommissionSettlement, CommissionShare
+from apps.commissions.signals import (
+    commission_settled,
+    commission_settlement_voided,
+    commission_share_paid,
+)
 from apps.documents.models import ApplicationDocumentSlot, DocumentFile, DocumentReview
 from apps.documents.models import ReviewDecision as D
 from apps.documents.signals import (
@@ -277,4 +283,52 @@ def on_document_type_status(
         document_type,
         actor=actor,
         metadata={"is_active": is_active, "reason": reason or ""},
+    )
+
+
+# --- Comisiones -------------------------------------------------------------------------
+# Solo ids y códigos: nunca montos.
+
+
+@receiver(commission_settled, dispatch_uid="audit.commission_settled")
+def on_commission_settled(
+    sender: Any, settlement: CommissionSettlement, actor: User | None, **_: Any
+) -> None:
+    record_audit(
+        A.COMMISSION_SETTLED,
+        settlement,
+        actor=actor,
+        metadata={
+            "application_id": str(settlement.application_id),
+            "plan_id": str(settlement.plan_id),
+            "filing_response_id": str(settlement.filing_response_id),
+            "lead_origin_code": settlement.lead_origin_code,
+            "needs_review": settlement.needs_review,
+        },
+    )
+
+
+@receiver(commission_settlement_voided, dispatch_uid="audit.commission_settlement_voided")
+def on_commission_settlement_voided(
+    sender: Any, settlement: CommissionSettlement, reason: str, actor: User | None, **_: Any
+) -> None:
+    record_audit(
+        A.COMMISSION_SETTLEMENT_VOIDED,
+        settlement,
+        actor=actor,
+        metadata={"application_id": str(settlement.application_id), "reason": reason},
+    )
+
+
+@receiver(commission_share_paid, dispatch_uid="audit.commission_share_paid")
+def on_commission_share_paid(sender: Any, share: CommissionShare, actor: User, **_: Any) -> None:
+    record_audit(
+        A.COMMISSION_SHARE_PAID,
+        share,
+        actor=actor,
+        metadata={
+            "settlement_id": str(share.settlement_id),
+            "beneficiary_role": share.beneficiary_role,
+            "beneficiary_user_id": str(share.beneficiary_user_id),
+        },
     )

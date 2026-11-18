@@ -16,4 +16,14 @@ urlpatterns = [
         views.CommissionPlanCloseView.as_view(),
         name="plan-close",
     ),
+    path(
+        "applications/<uuid:application_id>/commission-settlement",
+        views.ApplicationCommissionSettlementView.as_view(),
+        name="application-settlement",
+    ),
+    path(
+        "commission-settlements/<uuid:settlement_id>/void",
+        views.CommissionSettlementVoidView.as_view(),
+        name="settlement-void",
+    ),
 ]

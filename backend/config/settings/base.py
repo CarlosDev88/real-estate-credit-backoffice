@@ -177,6 +177,10 @@ SPECTACULAR_SETTINGS = {
         # Auditoría: acción y resultado.
         "AuditActionEnum": "apps.audit.actions.AuditAction",
         "AuditResultEnum": "apps.audit.actions.AuditResult",
+        # Comisiones: estados de la liquidación y de la parte, y rol del beneficiario.
+        "CommissionSettlementStatusEnum": "apps.commissions.models.SettlementStatus",
+        "CommissionShareStatusEnum": "apps.commissions.models.ShareStatus",
+        "BeneficiaryRoleEnum": "apps.commissions.models.BeneficiaryRole",
     },
 }
 

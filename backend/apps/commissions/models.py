@@ -99,8 +99,11 @@ class CommissionSettlement(models.Model):
         on_delete=models.RESTRICT,
         related_name="commission_settlements",
     )
-    filing_response = models.OneToOneField(
-        "filings.FilingResponse", on_delete=models.RESTRICT, related_name="commission_settlement"
+    # Desvío del SQL (``UNIQUE``): la respuesta es única solo entre las vigentes
+    # (``uq_commission_settlements_response_active``), para poder volver a liquidar con el
+    # mismo desembolso después de anular.
+    filing_response = models.ForeignKey(
+        "filings.FilingResponse", on_delete=models.RESTRICT, related_name="commission_settlements"
     )
     plan = models.ForeignKey(CommissionPlan, on_delete=models.RESTRICT, related_name="settlements")
     lead_origin_code = models.CharField(max_length=50)
@@ -144,6 +147,11 @@ class CommissionSettlement(models.Model):
                 fields=["application"],
                 condition=Q(status=SettlementStatus.ACTIVE),
                 name="uq_commission_settlements_active",
+            ),
+            models.UniqueConstraint(
+                fields=["filing_response"],
+                condition=Q(status=SettlementStatus.ACTIVE),
+                name="uq_commission_settlements_response_active",
             ),
         ]
         indexes = [

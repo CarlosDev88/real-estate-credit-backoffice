@@ -1,4 +1,4 @@
-"""Comisiones (API §23.6). Parte 1: planes por producto."""
+"""Comisiones (API §23.6): planes, liquidaciones, pagos y "mis comisiones"."""
 
 from typing import Any, cast
 
@@ -13,15 +13,19 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 
 from apps.applications.concurrency import expected_version, with_etag
+from apps.applications.models import CreditApplication
 from apps.audit.actions import AuditAction
-from apps.commissions import plans
-from apps.commissions.models import CommissionPlan
+from apps.commissions import plans, settlement
+from apps.commissions.models import CommissionPlan, CommissionSettlement
 from apps.commissions.serializers import (
     CommissionPlanCloseSerializer,
     CommissionPlanCreateSerializer,
     CommissionPlanSerializer,
     CommissionPlanUpdateSerializer,
+    CommissionSettlementSerializer,
+    SettlementVoidSerializer,
 )
+from apps.idempotency.decorators import IDEMPOTENCY_PARAMETER, idempotency_responses, idempotent
 from apps.identity.models import User
 from apps.identity.permissions import HasPermissionCode
 from config.filters import parse_uuid_param
@@ -197,3 +201,87 @@ class CommissionPlanCloseView(PermissionCodeView):
         serializer = CommissionPlanCloseSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         return _plan_response(plans.close_plan(plan, serializer.validated_data["valid_until"]))
+
+
+# --------------------------------------------------------------------------------------
+# Liquidaciones (Parte 2)
+# --------------------------------------------------------------------------------------
+
+SETTLEMENTS_TAG = "Commission settlements"
+MANAGE_COMMISSIONS = "commissions.manage"
+
+
+def _settlement_response(settlement_id: Any, status_code: int = status.HTTP_200_OK) -> Response:
+    fresh = settlement.settlements_queryset().get(pk=settlement_id)
+    return Response(CommissionSettlementSerializer(fresh).data, status=status_code)
+
+
+class ApplicationCommissionSettlementView(PermissionCodeView):
+    required_permissions = {"POST": MANAGE_COMMISSIONS}
+
+    @extend_schema(
+        tags=[SETTLEMENTS_TAG],
+        operation_id="applications_commission_settlement_create",
+        summary="Liquidar a mano la comisión de una solicitud desembolsada",
+        description=(
+            "Usa el último desembolso de la solicitud y el plan vigente del producto en "
+            "esa fecha (Bogotá). Idempotente: si ya hay una liquidación vigente, la "
+            "devuelve (`200`) sin crear otra; si la crea, `201`. Sin plan vigente, `422 "
+            "COMMISSION_PLAN_NOT_FOUND`: se crea el plan y se vuelve a liquidar."
+        ),
+        request=None,
+        parameters=[IDEMPOTENCY_PARAMETER],
+        responses=idempotency_responses(
+            {
+                200: CommissionSettlementSerializer,
+                201: CommissionSettlementSerializer,
+                **NOT_FOUND,
+                409: _error("APPLICATION_NOT_DISBURSED"),
+                422: _error("COMMISSION_PLAN_NOT_FOUND"),
+                **COMMON_ERRORS,
+            },
+            extra_409="APPLICATION_NOT_DISBURSED",
+        ),
+    )
+    @idempotent()
+    def post(self, request: Request, application_id: Any) -> Response:
+        application = get_object_or_404(CreditApplication.objects.all(), pk=application_id)
+        result = settlement.settle_application(application.pk, actor=self.actor)
+        code = status.HTTP_201_CREATED if result.created else status.HTTP_200_OK
+        return _settlement_response(result.settlement.pk, code)
+
+
+class CommissionSettlementVoidView(PermissionCodeView):
+    required_permissions = {"POST": MANAGE_COMMISSIONS}
+
+    @extend_schema(
+        tags=[SETTLEMENTS_TAG],
+        operation_id="commission_settlements_void",
+        summary="Anular una liquidación sin pagos",
+        description=(
+            "`reason` obligatorio. Con alguna parte pagada responde `409 "
+            "COMMISSION_SETTLEMENT_HAS_PAYMENTS`. Anula también las partes. Anular una ya "
+            "anulada la devuelve igual. Después se puede volver a liquidar."
+        ),
+        request=SettlementVoidSerializer,
+        parameters=[IDEMPOTENCY_PARAMETER],
+        responses=idempotency_responses(
+            {
+                200: CommissionSettlementSerializer,
+                **VALIDATION,
+                **NOT_FOUND,
+                409: _error("COMMISSION_SETTLEMENT_HAS_PAYMENTS"),
+                **COMMON_ERRORS,
+            },
+            extra_409="COMMISSION_SETTLEMENT_HAS_PAYMENTS",
+        ),
+    )
+    @idempotent()
+    def post(self, request: Request, settlement_id: Any) -> Response:
+        current = get_object_or_404(CommissionSettlement.objects.all(), pk=settlement_id)
+        serializer = SettlementVoidSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        voided = settlement.void_settlement(
+            current, actor=self.actor, reason=serializer.validated_data["reason"]
+        )
+        return _settlement_response(voided.pk)

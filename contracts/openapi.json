@@ -978,6 +978,10 @@
                                     "BANK_RESPONSE_RECORDED",
                                     "BUYER_LINK_SENT",
                                     "BUYER_SESSION_STARTED",
+                                    "COMMISSION_PLAN_MISSING",
+                                    "COMMISSION_SETTLED",
+                                    "COMMISSION_SETTLEMENT_VOIDED",
+                                    "COMMISSION_SHARE_PAID",
                                     "CONSENT_RECORDED",
                                     "DOCUMENT_REVIEWED",
                                     "DOCUMENT_UPLOADED",
@@ -1663,6 +1667,122 @@
                             }
                         },
                         "description": "IDEMPOTENCY_CONFLICT"
+                    }
+                }
+            }
+        },
+        "/api/v1/applications/{application_id}/commission-settlement": {
+            "post": {
+                "operationId": "applications_commission_settlement_create",
+                "description": "Usa el último desembolso de la solicitud y el plan vigente del producto en esa fecha (Bogotá). Idempotente: si ya hay una liquidación vigente, la devuelve (`200`) sin crear otra; si la crea, `201`. Sin plan vigente, `422 COMMISSION_PLAN_NOT_FOUND`: se crea el plan y se vuelve a liquidar.",
+                "summary": "Liquidar a mano la comisión de una solicitud desembolsada",
+                "parameters": [
+                    {
+                        "in": "header",
+                        "name": "Idempotency-Key",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Opcional. Clave única de la operación (1 a 100 caracteres visibles; por ejemplo, un UUID), válida 24 horas para el actor, el método y la ruta. Repetirla con el mismo cuerpo devuelve la respuesta original; con otro cuerpo, `422 IDEMPOTENCY_CONFLICT`; mientras la primera sigue en curso, `409 IDEMPOTENCY_IN_PROGRESS`. Solo se guardan las respuestas `2xx`."
+                    },
+                    {
+                        "in": "path",
+                        "name": "application_id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "Commission settlements"
+                ],
+                "security": [
+                    {
+                        "internalSession": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CommissionSettlement"
+                                }
+                            }
+                        },
+                        "description": ""
+                    },
+                    "201": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CommissionSettlement"
+                                }
+                            }
+                        },
+                        "description": ""
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "RESOURCE_NOT_FOUND"
+                    },
+                    "409": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "APPLICATION_NOT_DISBURSED; IDEMPOTENCY_IN_PROGRESS o APPLICATION_NOT_DISBURSED"
+                    },
+                    "422": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "COMMISSION_PLAN_NOT_FOUND; IDEMPOTENCY_CONFLICT"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "NOT_AUTHENTICATED o SESSION_EXPIRED"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "VALIDATION_ERROR (`Idempotency-Key` mal formada)"
                     }
                 }
             }
@@ -6497,6 +6617,10 @@
                                     "BANK_RESPONSE_RECORDED",
                                     "BUYER_LINK_SENT",
                                     "BUYER_SESSION_STARTED",
+                                    "COMMISSION_PLAN_MISSING",
+                                    "COMMISSION_SETTLED",
+                                    "COMMISSION_SETTLEMENT_VOIDED",
+                                    "COMMISSION_SHARE_PAID",
                                     "CONSENT_RECORDED",
                                     "DOCUMENT_REVIEWED",
                                     "DOCUMENT_UPLOADED",
@@ -11628,6 +11752,122 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    }
+                }
+            }
+        },
+        "/api/v1/commission-settlements/{settlement_id}/void": {
+            "post": {
+                "operationId": "commission_settlements_void",
+                "description": "`reason` obligatorio. Con alguna parte pagada responde `409 COMMISSION_SETTLEMENT_HAS_PAYMENTS`. Anula también las partes. Anular una ya anulada la devuelve igual. Después se puede volver a liquidar.",
+                "summary": "Anular una liquidación sin pagos",
+                "parameters": [
+                    {
+                        "in": "header",
+                        "name": "Idempotency-Key",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Opcional. Clave única de la operación (1 a 100 caracteres visibles; por ejemplo, un UUID), válida 24 horas para el actor, el método y la ruta. Repetirla con el mismo cuerpo devuelve la respuesta original; con otro cuerpo, `422 IDEMPOTENCY_CONFLICT`; mientras la primera sigue en curso, `409 IDEMPOTENCY_IN_PROGRESS`. Solo se guardan las respuestas `2xx`."
+                    },
+                    {
+                        "in": "path",
+                        "name": "settlement_id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "Commission settlements"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SettlementVoidRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "security": [
+                    {
+                        "internalSession": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CommissionSettlement"
+                                }
+                            }
+                        },
+                        "description": ""
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "VALIDATION_ERROR; VALIDATION_ERROR (`Idempotency-Key` mal formada)"
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "RESOURCE_NOT_FOUND"
+                    },
+                    "409": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "COMMISSION_SETTLEMENT_HAS_PAYMENTS; IDEMPOTENCY_IN_PROGRESS o COMMISSION_SETTLEMENT_HAS_PAYMENTS"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "NOT_AUTHENTICATED o SESSION_EXPIRED"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "422": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "IDEMPOTENCY_CONFLICT"
                     }
                 }
             }
@@ -19241,10 +19481,14 @@
                     "TASK_CANCELLED",
                     "NOTE_ADDED",
                     "FILING_CREATED",
-                    "BANK_RESPONSE_RECORDED"
+                    "BANK_RESPONSE_RECORDED",
+                    "COMMISSION_SETTLED",
+                    "COMMISSION_SETTLEMENT_VOIDED",
+                    "COMMISSION_SHARE_PAID",
+                    "COMMISSION_PLAN_MISSING"
                 ],
                 "type": "string",
-                "description": "* `APPLICATION_CREATED` - Solicitud creada\n* `STATUS_CHANGED` - Cambio de estado\n* `ADVISOR_ASSIGNED` - Asesor asignado\n* `PARTICIPANT_ADDED` - Participante agregado\n* `PARTICIPANT_REMOVED` - Participante retirado\n* `DOCUMENT_UPLOADED` - Documento cargado\n* `DOCUMENT_REVIEWED` - Documento revisado\n* `BUYER_LINK_SENT` - Enlace enviado al comprador\n* `BUYER_SESSION_STARTED` - Ingreso del comprador\n* `CONSENT_RECORDED` - Consentimiento registrado\n* `TASK_CREATED` - Tarea creada\n* `TASK_COMPLETED` - Tarea completada\n* `TASK_CANCELLED` - Tarea cancelada\n* `NOTE_ADDED` - Nota interna\n* `FILING_CREATED` - Radicación\n* `BANK_RESPONSE_RECORDED` - Respuesta del banco"
+                "description": "* `APPLICATION_CREATED` - Solicitud creada\n* `STATUS_CHANGED` - Cambio de estado\n* `ADVISOR_ASSIGNED` - Asesor asignado\n* `PARTICIPANT_ADDED` - Participante agregado\n* `PARTICIPANT_REMOVED` - Participante retirado\n* `DOCUMENT_UPLOADED` - Documento cargado\n* `DOCUMENT_REVIEWED` - Documento revisado\n* `BUYER_LINK_SENT` - Enlace enviado al comprador\n* `BUYER_SESSION_STARTED` - Ingreso del comprador\n* `CONSENT_RECORDED` - Consentimiento registrado\n* `TASK_CREATED` - Tarea creada\n* `TASK_COMPLETED` - Tarea completada\n* `TASK_CANCELLED` - Tarea cancelada\n* `NOTE_ADDED` - Nota interna\n* `FILING_CREATED` - Radicación\n* `BANK_RESPONSE_RECORDED` - Respuesta del banco\n* `COMMISSION_SETTLED` - Comisión liquidada\n* `COMMISSION_SETTLEMENT_VOIDED` - Liquidación de comisión anulada\n* `COMMISSION_SHARE_PAID` - Pago de comisión\n* `COMMISSION_PLAN_MISSING` - Comisión sin plan vigente"
             },
             "Address": {
                 "type": "object",
@@ -21170,6 +21414,14 @@
                     "id",
                     "name"
                 ]
+            },
+            "BeneficiaryRoleEnum": {
+                "enum": [
+                    "ADVISOR",
+                    "INDEPENDENT_BROKER"
+                ],
+                "type": "string",
+                "description": "* `ADVISOR` - Asesor\n* `INDEPENDENT_BROKER` - Broker independiente"
             },
             "Bootstrap": {
                 "type": "object",
@@ -24057,6 +24309,22 @@
                     "name"
                 ]
             },
+            "CommissionApplicationRef": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "code": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "code",
+                    "id"
+                ]
+            },
             "CommissionPlan": {
                 "type": "object",
                 "properties": {
@@ -24204,6 +24472,224 @@
                     "rate_pct",
                     "valid_from"
                 ]
+            },
+            "CommissionSettlement": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "readOnly": true
+                    },
+                    "application": {
+                        "$ref": "#/components/schemas/CommissionApplicationRef"
+                    },
+                    "filing_response_id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "readOnly": true
+                    },
+                    "plan_id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "readOnly": true
+                    },
+                    "lead_origin_code": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "lead_origin_label": {
+                        "type": "string",
+                        "description": "Etiqueta del origen (catálogo `lead_origin`)."
+                    },
+                    "base_amount_cop": {
+                        "type": "integer",
+                        "readOnly": true
+                    },
+                    "rate_pct": {
+                        "type": "string",
+                        "format": "decimal",
+                        "pattern": "^-?\\d{0,4}(?:\\.\\d{0,4})?$",
+                        "readOnly": true
+                    },
+                    "total_amount_cop": {
+                        "type": "integer",
+                        "readOnly": true
+                    },
+                    "status": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/CommissionSettlementStatusEnum"
+                            }
+                        ],
+                        "readOnly": true
+                    },
+                    "status_label": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "needs_review": {
+                        "type": "boolean",
+                        "readOnly": true
+                    },
+                    "voided_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time",
+                        "readOnly": true
+                    },
+                    "voided_by": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/UserRef"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "void_reason": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "shares": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/CommissionShare"
+                        }
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "readOnly": true
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "readOnly": true
+                    }
+                },
+                "required": [
+                    "application",
+                    "base_amount_cop",
+                    "created_at",
+                    "filing_response_id",
+                    "id",
+                    "lead_origin_code",
+                    "lead_origin_label",
+                    "needs_review",
+                    "plan_id",
+                    "rate_pct",
+                    "shares",
+                    "status",
+                    "status_label",
+                    "total_amount_cop",
+                    "updated_at",
+                    "void_reason",
+                    "voided_at",
+                    "voided_by"
+                ]
+            },
+            "CommissionSettlementStatusEnum": {
+                "enum": [
+                    "ACTIVE",
+                    "VOIDED"
+                ],
+                "type": "string",
+                "description": "* `ACTIVE` - Vigente\n* `VOIDED` - Anulada"
+            },
+            "CommissionShare": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "readOnly": true
+                    },
+                    "beneficiary": {
+                        "$ref": "#/components/schemas/UserRef"
+                    },
+                    "beneficiary_role": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/BeneficiaryRoleEnum"
+                            }
+                        ],
+                        "readOnly": true
+                    },
+                    "beneficiary_role_label": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "share_pct": {
+                        "type": "string",
+                        "format": "decimal",
+                        "pattern": "^-?\\d{0,4}(?:\\.\\d{0,4})?$",
+                        "readOnly": true
+                    },
+                    "amount_cop": {
+                        "type": "integer",
+                        "readOnly": true
+                    },
+                    "status": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/CommissionShareStatusEnum"
+                            }
+                        ],
+                        "readOnly": true
+                    },
+                    "status_label": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "paid_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date",
+                        "readOnly": true
+                    },
+                    "paid_by": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/UserRef"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "payment_reference": {
+                        "type": "string",
+                        "readOnly": true
+                    }
+                },
+                "required": [
+                    "amount_cop",
+                    "beneficiary",
+                    "beneficiary_role",
+                    "beneficiary_role_label",
+                    "id",
+                    "paid_at",
+                    "paid_by",
+                    "payment_reference",
+                    "share_pct",
+                    "status",
+                    "status_label"
+                ]
+            },
+            "CommissionShareStatusEnum": {
+                "enum": [
+                    "PENDING",
+                    "PAID",
+                    "VOIDED"
+                ],
+                "type": "string",
+                "description": "* `PENDING` - Pendiente de pago\n* `PAID` - Pagada\n* `VOIDED` - Anulada"
             },
             "Completeness": {
                 "type": "object",
@@ -32224,6 +32710,20 @@
                 "required": [
                     "assigned_applications_only",
                     "partner_id"
+                ]
+            },
+            "SettlementVoidRequest": {
+                "type": "object",
+                "description": "Serializer que rechaza campos no declarados (``additionalProperties: false``).\n\nEvita la asignación masiva: el cliente solo puede enviar los campos permitidos.",
+                "properties": {
+                    "reason": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 255
+                    }
+                },
+                "required": [
+                    "reason"
                 ]
             },
             "SeverityEnum": {

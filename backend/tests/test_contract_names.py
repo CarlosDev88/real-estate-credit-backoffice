@@ -42,6 +42,9 @@ STABLE_ENUMS = {
     "ActionEnum": ["ACCEPTED", "WITHDRAWN"],
     "AuditResultEnum": ["SUCCESS", "DENIED", "FAILED"],
     "AuditActionEnum": AuditAction.values,
+    "CommissionSettlementStatusEnum": ["ACTIVE", "VOIDED"],
+    "CommissionShareStatusEnum": ["PENDING", "PAID", "VOIDED"],
+    "BeneficiaryRoleEnum": ["ADVISOR", "INDEPENDENT_BROKER"],
     "ActivityEventTypeEnum": [
         "APPLICATION_CREATED",
         "STATUS_CHANGED",
@@ -59,6 +62,10 @@ STABLE_ENUMS = {
         "NOTE_ADDED",
         "FILING_CREATED",
         "BANK_RESPONSE_RECORDED",
+        "COMMISSION_SETTLED",
+        "COMMISSION_SETTLEMENT_VOIDED",
+        "COMMISSION_SHARE_PAID",
+        "COMMISSION_PLAN_MISSING",
     ],
 }
 
