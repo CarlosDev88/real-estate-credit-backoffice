@@ -20,9 +20,12 @@ import { optionsOf } from "@/features/clients/catalog-options";
 import {
   APPLICATION_ALREADY_OPEN,
   LOAN_PURPOSE_CATALOG,
+  LOST_REASON_CATALOG,
   useAssignOpportunity,
   useCreateApplication,
   useOpportunity,
+  useTransitionOpportunity,
+  type OpportunityAction,
   type OpportunityAssignment,
   type OpportunityDetail,
 } from "@/features/clients/detail-queries";
@@ -318,6 +321,143 @@ function CreateApplicationModal({
   );
 }
 
+// ---------- transiciones ----------
+
+/**
+ * Estados a los que no se llega con `/transitions`: `ASSIGNED` va por `/assignments`
+ * ("Asignar asesor") y `CONVERTED` al crear la solicitud (contrato de `available_actions`).
+ */
+const NOT_BY_TRANSITION = new Set(["ASSIGNED", "CONVERTED"]);
+const COMMENT_MAX = 1000;
+
+/** Botones de transición: los de `available_actions` que van por `/transitions`. */
+export function transitionActions(opportunity: OpportunityDetail): OpportunityAction[] {
+  return opportunity.available_actions.filter((a) => !NOT_BY_TRANSITION.has(a.target_status));
+}
+
+const transitionSchema = (reasonRequired: boolean) =>
+  z.object({
+    reason_code: reasonRequired ? z.string().min(1, { error: "Elige el motivo." }) : z.string(),
+    comment: z
+      .string()
+      .trim()
+      .max(COMMENT_MAX, { error: `Máximo ${COMMENT_MAX} caracteres.` }),
+  });
+type TransitionValues = { reason_code: string; comment: string };
+const TRANSITION_FIELDS = ["reason_code", "comment"] as const;
+
+/**
+ * Confirmación de una transición destructiva o con motivo (`reason_required`: el motivo
+ * sale del catálogo `opportunity_lost_reason`). El texto del botón es el `label` de la API.
+ */
+function TransitionModal({
+  clientId,
+  opportunity,
+  action,
+  onClose,
+}: {
+  clientId: string;
+  opportunity: OpportunityDetail;
+  action: OpportunityAction | null;
+  onClose: () => void;
+}) {
+  const ids = useId();
+  const toast = useToast();
+  const transition = useTransitionOpportunity(clientId, opportunity.id);
+  const reasons = useCatalog(LOST_REASON_CATALOG);
+  const reasonRequired = action?.reason_required ?? false;
+  const { control, handleSubmit, setError, reset, formState } = useForm<TransitionValues>({
+    resolver: zodResolver(transitionSchema(reasonRequired)),
+    defaultValues: { reason_code: "", comment: "" },
+  });
+  const onError = useFormErrorHandler<TransitionValues>(setError, TRANSITION_FIELDS);
+
+  const close = () => {
+    reset({ reason_code: "", comment: "" });
+    onClose();
+  };
+
+  const submit = handleSubmit((values) => {
+    if (!action) return;
+    transition.mutate(
+      {
+        target_status: action.target_status,
+        ...(reasonRequired ? { reason_code: values.reason_code } : {}),
+        comment: values.comment,
+      },
+      {
+        onSuccess: (updated) => {
+          toast.success({ title: action.label, message: updated.status_label });
+          close();
+        },
+        onError,
+      },
+    );
+  });
+
+  return (
+    <ActionModal
+      open={!!action}
+      title={action?.label ?? ""}
+      description={
+        action ? (
+          <>
+            La oportunidad pasa a <b className="text-text-primary">{action.target_status_label}</b>.
+          </>
+        ) : undefined
+      }
+      okText={action?.label ?? "Confirmar"}
+      cancelText="Volver"
+      danger={action?.kind === "destructive"}
+      loading={transition.isPending}
+      onSubmit={submit}
+      onCancel={close}
+    >
+      {reasonRequired && (
+        <FormField
+          id={`${ids}-reason`}
+          label="Motivo"
+          error={formState.errors.reason_code?.message}
+        >
+          {(ctl) => (
+            <Controller
+              control={control}
+              name="reason_code"
+              render={({ field }) => (
+                <Select
+                  {...ctl}
+                  value={field.value || undefined}
+                  onChange={field.onChange}
+                  placeholder="Elige el motivo"
+                  options={optionsOf(reasons.items)}
+                  loading={reasons.isPending}
+                  virtual={false}
+                />
+              )}
+            />
+          )}
+        </FormField>
+      )}
+      <FormField
+        id={`${ids}-comment`}
+        label="Comentario"
+        optional="opcional"
+        error={formState.errors.comment?.message}
+      >
+        {(ctl) => (
+          <Controller
+            control={control}
+            name="comment"
+            render={({ field }) => (
+              <Input.TextArea {...field} {...ctl} rows={3} maxLength={COMMENT_MAX} />
+            )}
+          />
+        )}
+      </FormField>
+    </ActionModal>
+  );
+}
+
 // ---------- panel ----------
 
 function AssignmentHistory({ assignments }: { assignments: OpportunityAssignment[] }) {
@@ -330,7 +470,7 @@ function AssignmentHistory({ assignments }: { assignments: OpportunityAssignment
       <ol className="m-0 grid list-none gap-2 p-0">
         {assignments.map((a) => (
           <li key={a.id} className="text-sm">
-            <span className="font-medium">{a.advisor?.name ?? "—"}</span>
+            <span className="font-medium">{a.advisor.name}</span>
             <span className="text-text-tertiary">
               {" "}
               · {formatDateTime(a.created_at)}
@@ -357,12 +497,37 @@ function PanelBody({
   permissions: PanelPermissions;
 }) {
   const [dialog, setDialog] = useState<Dialog>(null);
+  const [confirming, setConfirming] = useState<OpportunityAction | null>(null);
   const toast = useToast();
   const showError = useApiErrorToast();
   const assign = useAssignOpportunity(clientId, opportunity.id);
-  const assignments = opportunity.assignments as unknown as OpportunityAssignment[];
+  const transition = useTransitionOpportunity(clientId, opportunity.id);
   const selfId = permissions.selfAssignId;
-  const canAssignSelf = selfId !== null && opportunity.assigned_advisor?.id !== selfId;
+  // El asesor que crea la oportunidad ya queda asignado: "Asignarme" solo sirve en una
+  // `NEW` sin asesor (la que registró un broker o el administrador).
+  const canAssignSelf =
+    selfId !== null && opportunity.status === "NEW" && !opportunity.assigned_advisor;
+  const actions = transitionActions(opportunity);
+  // "Crear solicitud" es la conversión: solo si la API ofrece pasar a `CONVERTED`.
+  const canConvert =
+    permissions.canCreateApplication &&
+    opportunity.available_actions.some((a) => a.target_status === "CONVERTED");
+
+  /** Destructivas o con motivo, con confirmación; las demás, directo. */
+  const run = (action: OpportunityAction) => {
+    if (action.kind === "destructive" || action.reason_required) {
+      setConfirming(action);
+      return;
+    }
+    transition.mutate(
+      { target_status: action.target_status, comment: "" },
+      {
+        onSuccess: (updated) =>
+          toast.success({ title: action.label, message: updated.status_label }),
+        onError: (error) => showError(error),
+      },
+    );
+  };
 
   const assignSelf = () => {
     if (!selfId) return;
@@ -378,7 +543,7 @@ function PanelBody({
   return (
     <div className="grid gap-5">
       <div className="flex flex-wrap gap-2">
-        {permissions.canCreateApplication && (
+        {canConvert && (
           <Button type="primary" onClick={() => setDialog("application")}>
             Crear solicitud de crédito
           </Button>
@@ -393,11 +558,23 @@ function PanelBody({
             Asignarme
           </Button>
         )}
+        {actions.map((action) => (
+          <Button
+            key={action.code}
+            danger={action.kind === "destructive"}
+            loading={
+              transition.isPending && transition.variables?.target_status === action.target_status
+            }
+            onClick={() => run(action)}
+          >
+            {action.label}
+          </Button>
+        ))}
       </div>
 
       <DataList>
         <Datum label="Estado">
-          <OpportunityStatus status={opportunity.status} />
+          <OpportunityStatus status={opportunity.status} label={opportunity.status_label} />
         </Datum>
         <Datum label="Origen">{opportunity.origin.label}</Datum>
         <Datum label="Proyecto">{projectText(opportunity)}</Datum>
@@ -412,7 +589,7 @@ function PanelBody({
         )}
       </DataList>
 
-      <AssignmentHistory assignments={assignments} />
+      <AssignmentHistory assignments={opportunity.assignments} />
 
       {permissions.canAssign && (
         <AssignModal
@@ -422,7 +599,13 @@ function PanelBody({
           onClose={() => setDialog(null)}
         />
       )}
-      {permissions.canCreateApplication && (
+      <TransitionModal
+        clientId={clientId}
+        opportunity={opportunity}
+        action={confirming}
+        onClose={() => setConfirming(null)}
+      />
+      {canConvert && (
         <CreateApplicationModal
           clientId={clientId}
           opportunity={opportunity}

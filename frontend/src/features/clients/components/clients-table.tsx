@@ -50,6 +50,17 @@ const makeColumns = (hrefOf: (client: Client) => string) =>
       header: "Origen",
       cell: ({ row }) => <OriginCell client={row.original} />,
     }),
+    // Solicitudes visibles para el usuario en las que participa (`applications_count`).
+    helper.display({
+      id: "applications_count",
+      header: "Solicitudes",
+      cell: ({ row }) =>
+        row.original.applications_count === undefined ? (
+          <span className="text-text-tertiary">—</span>
+        ) : (
+          <span className="tabular-nums">{row.original.applications_count}</span>
+        ),
+    }),
     helper.accessor((row) => row.created_at, {
       id: "created_at",
       header: "Creado",
@@ -87,6 +98,7 @@ export function ClientsTable({ rows, sorting, onSort, onOpen, hrefOf, busy }: Cl
       onOpen={onOpen}
       busy={busy}
       stickyColumn="last_names"
+      alignRight={["applications_count"]}
     />
   );
 }

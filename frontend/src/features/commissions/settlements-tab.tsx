@@ -304,7 +304,9 @@ export function SettlementsTab({
         active={filtered}
         mobile={mobile}
       />
-      <Card title="Liquidaciones">{content}</Card>
+      <Card title="Liquidaciones" className="min-w-0">
+        {content}
+      </Card>
       <SettlementPanel
         id={openId || null}
         initial={openRow}

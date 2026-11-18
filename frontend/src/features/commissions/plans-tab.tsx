@@ -680,6 +680,7 @@ export function PlansTab({
       )}
       <Card
         title="Planes"
+        className="min-w-0"
         action={
           canManage ? (
             <Button type="primary" onClick={() => edit(null)}>

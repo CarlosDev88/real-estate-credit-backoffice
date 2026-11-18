@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  audienceOf,
   defaultDestination,
   isForbiddenPath,
   NO_MODULES_PATH,
@@ -76,5 +77,46 @@ describe("isForbiddenPath", () => {
 
   it("no marca rutas que no son del menú", () => {
     expect(isForbiddenPath("/sin-modulos", [], ITEMS)).toBe(false);
+  });
+});
+
+describe("broker sin rol interno (audience)", () => {
+  // Los permisos reales del rol `INDEPENDENT_BROKER` en la API.
+  const BROKER = [
+    "applications.read",
+    "applications.read_summary",
+    "buyer_access.create",
+    "clients.create",
+    "clients.read",
+    "commissions.read_own",
+    "dashboard.read",
+    "opportunities.create",
+    "opportunities.read",
+  ];
+
+  it("es broker solo sin ADMIN ni ADVISOR", () => {
+    expect(audienceOf(["INDEPENDENT_BROKER"])).toBe("broker");
+    expect(audienceOf(["INDEPENDENT_BROKER", "ADVISOR"])).toBe("internal");
+    expect(audienceOf(["ADMIN"])).toBe("internal");
+    expect(audienceOf([null])).toBe("internal");
+  });
+
+  it("ve su bandeja y sus comisiones; su inicio es la bandeja", () => {
+    expect(visibleNav(BROKER, NAV_ITEMS, "broker").map((i) => i.href)).toEqual([
+      "/prospectos",
+      "/mis-comisiones",
+    ]);
+    expect(defaultDestination(BROKER, NAV_ITEMS, "broker")).toBe("/prospectos");
+    expect(resolveDestination("/solicitudes/abc", BROKER, NAV_ITEMS, "broker")).toBe("/prospectos");
+  });
+
+  it("las pantallas internas le quedan prohibidas, y su bandeja a los demás", () => {
+    expect(isForbiddenPath("/solicitudes/abc", BROKER, NAV_ITEMS, "broker")).toBe(true);
+    expect(isForbiddenPath("/dashboard", BROKER, NAV_ITEMS, "broker")).toBe(true);
+    expect(isForbiddenPath("/prospectos", BROKER, NAV_ITEMS, "broker")).toBe(false);
+    expect(isForbiddenPath("/prospectos", BROKER, NAV_ITEMS, "internal")).toBe(true);
+    expect(visibleNav(BROKER, NAV_ITEMS, "internal").map((i) => i.href)).not.toContain(
+      "/prospectos",
+    );
   });
 });

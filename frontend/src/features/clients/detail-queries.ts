@@ -21,22 +21,14 @@ export type ClientApplication = Schemas["Application"];
 export type Project = Schemas["Project"];
 export type MetadataItem = Schemas["MetadataItem"];
 
-/**
- * Asignación del historial de una oportunidad. El contrato la deja como objeto libre
- * (`OpportunityDetail.assignments`); estos son los campos que manda `AssignmentSerializer`.
- */
-export interface OpportunityAssignment {
-  id: string;
-  advisor: { id: string; name: string } | null;
-  assigned_by: { id: string; name: string } | null;
-  reason: string;
-  created_at: string;
-  ended_at: string | null;
-}
+export type OpportunityAssignment = Schemas["OpportunityAssignment"];
+export type OpportunityAction = Schemas["OpportunityAvailableAction"];
+export type OpportunityTransitionRequest = Schemas["OpportunityTransitionRequest"];
 
 /** Catálogos de la Parte 2. Los valores y etiquetas vienen de la API. */
 export const OPPORTUNITY_STATUS_CATALOG = "opportunity_status";
 export const LOAN_PURPOSE_CATALOG = "loan_purpose";
+export const LOST_REASON_CATALOG = "opportunity_lost_reason";
 export const ADDRESS_TYPE_CATALOG = "address_type";
 export const MUNICIPALITY_CATALOG = "municipality";
 
@@ -145,6 +137,30 @@ export function useAssignOpportunity(clientId: string, id: string) {
       (
         await call(
           api.POST("/api/v1/opportunities/{opportunity_id}/assignments", {
+            params: { path: { opportunity_id: id } },
+            body,
+          }),
+        )
+      ).data,
+    onSuccess: (opportunity) => {
+      queryClient.setQueryData(detailKeys.opportunity(id), opportunity);
+      return queryClient.invalidateQueries({ queryKey: detailKeys.opportunities(clientId) });
+    },
+  });
+}
+
+/**
+ * `POST /opportunities/{id}/transitions` (botones de `available_actions`). El contrato no
+ * admite `Idempotency-Key` en esta ruta.
+ */
+export function useTransitionOpportunity(clientId: string, id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    meta: { handlesErrors: true },
+    mutationFn: async (body: OpportunityTransitionRequest) =>
+      (
+        await call(
+          api.POST("/api/v1/opportunities/{opportunity_id}/transitions", {
             params: { path: { opportunity_id: id } },
             body,
           }),

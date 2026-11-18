@@ -187,7 +187,9 @@ export function MyCommissionsScreen() {
         active={filtered}
         mobile={mobile}
       />
-      <Card title="Comisiones">{content}</Card>
+      <Card title="Comisiones" className="min-w-0">
+        {content}
+      </Card>
     </div>
   );
 }

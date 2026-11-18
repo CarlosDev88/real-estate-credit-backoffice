@@ -31,10 +31,13 @@ import { useToast } from "@/providers/toast";
 /** `409` de `POST /opportunities`: ya hay una oportunidad abierta para ese proyecto. */
 export const DUPLICATE_OPPORTUNITY = "DUPLICATE_OPPORTUNITY";
 
-/** Estado de la oportunidad: etiqueta del catálogo `opportunity_status` y tono de `toneFor`. */
-export function OpportunityStatus({ status }: { status: string }) {
-  const label = useCatalogLabel(OPPORTUNITY_STATUS_CATALOG);
-  return <StatusBadge kind="opportunity" code={status} label={label(status)} />;
+/**
+ * Estado de la oportunidad con el tono de `toneFor`. El texto es el `status_label` de la
+ * API; si la respuesta no lo trae (`BrokerOpportunity`), el del catálogo `opportunity_status`.
+ */
+export function OpportunityStatus({ status, label }: { status: string; label?: string }) {
+  const fromCatalog = useCatalogLabel(OPPORTUNITY_STATUS_CATALOG);
+  return <StatusBadge kind="opportunity" code={status} label={label || fromCatalog(status)} />;
 }
 
 export function projectText(opportunity: Pick<Opportunity, "project">): string | null {
@@ -64,7 +67,7 @@ function OpportunityRow({
         className="hover:bg-brand-subtle focus-visible:outline-focus-ring grid w-full cursor-pointer gap-1 border-0 bg-transparent px-4 py-3 text-left text-inherit focus-visible:outline-2 focus-visible:-outline-offset-2 min-[861px]:grid-cols-[150px_1fr_1fr_1fr_110px] min-[861px]:items-center min-[861px]:gap-3"
       >
         <span>
-          <OpportunityStatus status={opportunity.status} />
+          <OpportunityStatus status={opportunity.status} label={opportunity.status_label} />
         </span>
         <span className="min-w-0 truncate font-medium">
           {project ?? <span className="text-text-tertiary font-normal">{NO_PROJECT}</span>}
