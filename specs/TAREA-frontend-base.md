@@ -284,6 +284,29 @@ Las cuatro primeras se resolvieron en `TAREA-applications-listado.md` (PR #16). 
 
 **Idempotencia:** "Preparar exportación" ya manda `Idempotency-Key` (una por intento, la misma en los reintentos con los mismos filtros). Siguen pendientes las cinco operaciones de la sección anterior.
 
+### Brechas que dejó la F6 (administración, `TAREA-front-admin.md`)
+**Etiquetas que la API no manda** (el front las copia de los `TextChoices` del backend, en `features/admin-*/`):
+- **Pendiente del backend:** `status_label` en `User` (`ACTIVE`, `PENDING`, `INACTIVE`) e `Invitation` (`PENDING`, `ACCEPTED`, `EXPIRED`, `REVOKED`).
+- **Pendiente del backend:** `status_label` en `Partner`, `Membership`, `Bank` y `BankProduct` (`ACTIVE`/`INACTIVE`, el mismo `PartnerStatusEnum`).
+- **Pendiente del backend:** `status_label` y `severity_label` en `BankPolicyRule`, y `outcome_label` en cada resultado de `POST /bank-policy-rules/{id}/test` (las evaluaciones de la solicitud sí lo traen).
+- **Pendiente del backend:** `status_label` en `DocumentRequirement`, y `holder_scope_label` en `DocumentType`. Además, la etiqueta del rol del participante (`participant_role`) en requisitos y en la vista previa.
+- **Pendiente del backend:** la etiqueta del flujo (`flow_type`) en `WorkflowTransition`. Los estados `from_status`/`to_status` ya se leen del catálogo de cada flujo.
+
+**Acciones y campos:**
+- **Pendiente del backend:** `ProjectDetail.available_actions` trae solo códigos de transición, y `workflow-transitions` es solo para el administrador. El front decide a qué endpoint va cada código (`submit`, `activate`, `reject`, `archive`) y su texto. Lo correcto: `[{code, label, target_status, endpoint}]`, como `AvailableAction` de solicitudes.
+- **Pendiente del backend:** la lista blanca de campos de las reglas bancarias (`apps/banking/rule_fields.py`) no tiene endpoint. Sin ella, la condición se edita como JSON (la API la valida) y no hay editor visual. Propuesta: `GET /bank-policy-rules/fields` con nombre, tipo y descripción.
+- **Pendiente del backend:** `PartnerDetail.metrics` es un objeto libre en el contrato. El front asume la forma de `partner_metrics` (`projects_by_status`, `active_members`).
+- **Pendiente del backend (menor):** `partners` no ordena por `trade_name` (solo `legal_name`). En los listados y selectores se muestra el nombre comercial, pero el orden es por razón social.
+- **Pendiente del front:** el selector de constructora del filtro de `/proyectos` usa las primeras 50 constructoras (`page_size`). Hace falta un `Select` con búsqueda remota en `components/ui` (candidato a la librería).
+
+**Candidatos a la librería** (hoy en `features/admin-common/`):
+- `AdminListFilters` (barra de búsqueda y filtros con hoja inferior y chips; `searchable` y `ariaLabel`) y `useListParams` (estado de un listado en la URL).
+- `ReasonModal` (confirmación con motivo opcional u obligatorio).
+- Íconos: `UserShieldIcon`, `BuildingIcon`, `ProjectIcon`, `BankIcon`, `DocumentsIcon`, `CatalogIcon`, `FlowIcon`, `ArrowUpIcon` y `ArrowDownIcon`.
+- `ActiveStatusBadge`, mientras la API no mande `status_label`.
+- La lista ordenable con subir y bajar (catálogos), anunciando el puesto nuevo.
+- El editor de JSON con Formatear (reglas y casos de prueba).
+
 ## Pruebas
 - **Unitarias** (Vitest + Testing Library): componentes de `ui`, formularios con validación, manejo de `ApiError` y formato de montos.
 - **Integración** con MSW: errores de la API, `409 STALE_VERSION`, `CONSENT_REQUIRED`, carga y reemplazo de documentos, filtros en la URL.
