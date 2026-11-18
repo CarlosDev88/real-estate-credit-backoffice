@@ -134,3 +134,14 @@ docs/adr/
 - **P2.8 Desvíos del SQL en dos listas:** lo que sigue distinto entre SQL y código (`outbox_events`, `CITEXT`, nombres de índice acortados, `CHAR(64)`) y los cambios que nacieron en el código y ya se llevaron al SQL, con su fuente.
 - **P2.9 Argon2:** se dice "parámetros por defecto de Django" sin cifras; el código no los fija.
 - **P2.10 Documentos de la Parte 1 ajustados:** se quitaron las marcas "(en preparación)" de los enlaces a 04, 05 y 06 en 01, 02 y 03, y el índice los marca listos. Nada más cambió en esos documentos.
+
+### Parte 3 y 3b (docs, 2026-11-18)
+- **P3.1 Recolección delegada y verificada.** Los datos del front (rutas, capa de datos, navegación, endpoints por pantalla) y de calidad y método (CI, reporte, errores atrapados, worktrees, PR) los juntaron dos agentes de solo lectura; antes de escribir se verificaron en el código los que se citan (configuración de TanStack Query, `NAV_ITEMS`, `capture="environment"`, el comentario del grupo de concurrencia, la lista de la prueba de idempotencia, los commits citados de #26 y #27).
+- **P3.2 Errores atrapados sin narración en las specs:** las migraciones con el mismo número (evidencia: `audit/0005_commission_actions.py` depende de `0004_report_actions`, y P1.9 de comisiones todavía dice `0004`), la lista a mano de idempotencia y los imports rotos (evidencia: commits dentro de #27 y #26). 11 lo dice así en cada fila.
+- **P3.3 "La regla de colores"** no tiene ese nombre en ninguna spec: se documenta como la prueba `frontend/src/test/no-hardcoded-colors.test.ts` (Parte 3 de `TAREA-design-system.md`) más "el estado nunca solo por color".
+- **P3.4 E2E fuera del CI:** `frontend.yml` no corre Playwright; 09 §7 lo dice ("Qué no cubre el CI").
+- **P3.5 Navegación por audiencia del broker** (`NavItem.audience`, `audienceOf`) citada "en curso" (rama `feat/front-f7`), según el buzón; no existe en `master`.
+- **P3.6 ADR:** 15, uno por cada ejemplo de la spec (Celery en modo inmediato y los modos locales quedaron separados: 0011 y 0015). Fecha de registro 2026-11-18; la de la decisión se indica por el paso o PR donde se tomó.
+- **P3.7 12-auditorias:** las tres auditorías siguen sin fusionar. Se deja la estructura completa (método, severidades, tabla por hallazgo con causa, solución, verificación y PR, aceptados y "lo que aprendimos"), las filas SEC-01 a SEC-13 "en curso" y el único dato conocido (matriz 235 × 9 sin brechas). No se leyó la rama `chore/security-audit`. "Lo que aprendimos" adelanta los patrones de la construcción con la regla de CI que dejaron.
+- **P3.8 Enlaces a 10-operacion-local:** quedan marcados "(en preparación)"; 10 va con la demo en el PR 2, así que en el PR 1 esos enlaces siguen sin destino.
+- **P3.9 Corrección en 03:** `identity/buyer_sessions.py` sí llama a `record_audit` (cierre de sesión del comprador, vista pública); se agregó la excepción en las dos frases que decían que ningún módulo de dominio llama a la auditoría.

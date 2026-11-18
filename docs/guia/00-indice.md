@@ -25,13 +25,13 @@ El proyecto es un MVP para gestionar **solicitudes de crédito de vivienda en Co
 | [04 · System design](04-system-design.md) | Cada requisito no funcional (seguridad, concurrencia, asincronía, rendimiento, observabilidad, límites, privacidad, escalabilidad): qué pide, cómo se resolvió, dónde está y qué lo prueba, más lo que queda pendiente dicho claro. | ✅ Listo |
 | [05 · Modelo de datos](05-modelo-de-datos.md) | Las 57 tablas por grupo con un diagrama entidad-relación de cada uno, las convenciones y los desvíos del SQL. | ✅ Listo |
 | [06 · Módulos](06-modulos.md) | Los 16 módulos en orden de construcción: qué resuelve cada uno, sus tablas, endpoints, permisos, reglas, eventos, decisiones, pruebas y lo que quedó fuera. | ✅ Listo |
-| [07 · Flujos](07-flujos.md) | La ruta crítica de punta a punta con diagramas de secuencia y de estados. | *(en preparación)* |
-| [08 · Frontend](08-frontend.md) | App Router, `features/` por dominio, design system, datos tipados, formularios, errores, permisos y las 22 vistas. | *(en preparación)* |
-| [09 · Calidad](09-calidad.md) | Estrategia de pruebas, números reales, CI con reporte en el PR, accesibilidad y contrato verificado. | *(en preparación)* |
+| [07 · Flujos](07-flujos.md) | La ruta crítica de punta a punta en seis flujos de secuencia, con lo que valida el backend en cada paso. | ✅ Listo |
+| [08 · Frontend](08-frontend.md) | App Router, `features/` por dominio, design system, datos tipados, formularios, errores, permisos, portal móvil, accesibilidad y las 22 vistas con sus endpoints. | ✅ Listo |
+| [09 · Calidad](09-calidad.md) | Estrategia de pruebas, números reales, CI con reporte en el PR, contrato verificado, la regla de colores y lo que el CI no cubre. | ✅ Listo |
 | [10 · Operación local](10-operacion-local.md) | Cómo correrlo, la demo en un comando, los dos modos, comandos útiles y problemas comunes. | *(en preparación)* |
-| [11 · Cómo se construyó](11-como-se-construyo.md) | El método: specs cerradas, agentes en paralelo, revisión, el CI como filtro y los errores reales que se atraparon. | *(en preparación)* |
-| [12 · Auditorías](12-auditorias.md) | Las auditorías de seguridad, performance del front y carga del backend: qué se encontró y cómo se solucionó. | *(en preparación)* |
-| [ADR](../adr/README.md) | Registros de decisiones de arquitectura: contexto, opciones, decisión y consecuencias. | *(en preparación)* |
+| [11 · Cómo se construyó](11-como-se-construyo.md) | El método: specs cerradas, agentes en paralelo, revisión, el CI como filtro y los errores reales que se atraparon. | ✅ Listo |
+| [12 · Auditorías](12-auditorias.md) | Las auditorías de seguridad, performance del front y carga del backend: qué se encontró y cómo se solucionó. | 🔄 Estructura lista; se llena al cierre de las auditorías |
+| [ADR](../adr/README.md) | Registros de decisiones de arquitectura: 15 decisiones con contexto, opciones, decisión y consecuencias. | ✅ Listo |
 
 ## Documentación de referencia (ya existente)
 

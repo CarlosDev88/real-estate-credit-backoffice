@@ -371,7 +371,7 @@ Requisitos de REQ que el código de `master` **no** cumple todavía, para que na
 | Respaldo y restauración probados | Fuera del alcance (sin despliegue) | RNF-09 |
 | Medición del p95 | En la auditoría de carga, en preparación | RNF-17 |
 
-Varios de estos puntos son materia de la auditoría de seguridad en curso; su resultado y sus correcciones quedarán en [12 · Auditorías](12-auditorias.md) *(en preparación)*.
+Varios de estos puntos son materia de la auditoría de seguridad en curso; su resultado y sus correcciones quedarán en [12 · Auditorías](12-auditorias.md).
 
 ---
 

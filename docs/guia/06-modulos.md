@@ -599,4 +599,4 @@ flowchart LR
 
 ---
 
-Siguiente: [07 · Flujos](07-flujos.md) *(en preparación)* — la ruta crítica de punta a punta con diagramas de secuencia.
+Siguiente: [07 · Flujos](07-flujos.md) — la ruta crítica de punta a punta con diagramas de secuencia.

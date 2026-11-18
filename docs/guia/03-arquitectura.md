@@ -213,7 +213,7 @@ flowchart BT
 Las flechas continuas siguen el orden de construcción y los imports reales (por ejemplo, `backend/apps/filings/responses.py` importa de `apps.applications.services` y de `apps.documents`). El diagrama está simplificado; los imports cruzados que no dibuja, revisados con `grep` sobre `backend/apps/`:
 
 - casi todo importa `identity` y `catalogs`;
-- `banking`, `documents`, `filings`, `commissions` y `reporting` importan **solo el enum** `AuditAction` de `apps.audit.actions`, para declarar `audit_actions` en sus vistas; nunca un servicio de auditoría;
+- `banking`, `documents`, `filings`, `commissions` y `reporting` importan **solo el enum** `AuditAction` de `apps.audit.actions`, para declarar `audit_actions` en sus vistas; nunca un servicio de auditoría. La única llamada directa a la auditoría está en `backend/apps/identity/buyer_sessions.py` (`record_audit` al cerrar la sesión del comprador), porque esa vista es pública y no pasa por el registro automático (P2.6 de [`specs/TAREA-auditoria.md`](../../specs/TAREA-auditoria.md));
 - ningún módulo de dominio (`crm`, `identity`, `applications`, `documents`, `filings`) importa `notifications`, `activity` ni `commissions`;
 - hay dos imports "hacia arriba" que se resuelven sin ciclos: `applications` usa `apps.filings.observations.open_observation_problems` (un archivo que solo importa modelos, Precisión 3 de la Parte 1 de [`specs/TAREA-radicacion.md`](../../specs/TAREA-radicacion.md)) y `documents` usa modelos y servicios de `applications` para sincronizar los slots.
 
@@ -265,7 +265,7 @@ Dos piezas transversales que ve toda petición:
 
 ## 5. Cómo se hablan los módulos: señales después del commit
 
-Cuando un módulo de dominio hace algo importante, **no llama** a notificaciones, actividad, auditoría ni comisiones. Emite una **señal** de Django (un evento dentro del mismo proceso) y quien esté interesado la escucha.
+Cuando un módulo de dominio hace algo importante, **no llama** a notificaciones, actividad, auditoría ni comisiones (con la única excepción del cierre de sesión del comprador, ver [Dependencias entre apps](#dependencias-entre-apps)). Emite una **señal** de Django (un evento dentro del mismo proceso) y quien esté interesado la escucha.
 
 Las señales que emite cada app (`backend/apps/*/signals.py`) y quién las escucha (`backend/apps/*/receivers.py`):
 
@@ -464,7 +464,7 @@ Versiones fijadas en el repositorio (`backend/requirements.txt`, `frontend/packa
 | | TanStack Query | 5.107.1 |
 | | React Hook Form + Zod | 7.92.0 + 4.6.7 |
 | | openapi-fetch + openapi-typescript | 0.17.0 + 7.13.0 |
-| Pruebas | pytest, Vitest, MSW, Playwright, Storybook | ver [09 · Calidad](09-calidad.md) *(en preparación)* |
+| Pruebas | pytest, Vitest, MSW, Playwright, Storybook | ver [09 · Calidad](09-calidad.md) |
 
 La estructura del repositorio es un **monorepo** ([`specs/TAREA-monorepo.md`](../../specs/TAREA-monorepo.md)):
 
