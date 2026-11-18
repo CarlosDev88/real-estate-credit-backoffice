@@ -9,7 +9,7 @@ import type { ReactNode } from "react";
 import { Controller, useForm, type FieldNamesMarkedBoolean } from "react-hook-form";
 import { z } from "zod";
 
-import { FormField } from "@/features/applications/form-field";
+import { FormField } from "@/components/ui/form-field";
 import { useCatalog } from "@/features/applications/queries";
 import {
   clientHref,

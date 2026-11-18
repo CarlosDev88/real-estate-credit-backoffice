@@ -10,7 +10,7 @@ import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 
 import { applicationHref } from "@/features/applications/applications-table";
-import { FormField, useFormErrorHandler } from "@/features/applications/form-field";
+import { FormField, useFormErrorHandler } from "@/components/ui/form-field";
 import { useCatalog } from "@/features/applications/queries";
 import { useAdvisors } from "@/features/applications/workspace-queries";
 import { optionsOf } from "@/features/clients/catalog-options";

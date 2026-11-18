@@ -8,7 +8,7 @@ import { z } from "zod";
 
 import { EmptyState } from "@/components/ui/empty-state";
 import { StatusBadge } from "@/components/ui/status-badge";
-import { FormField } from "@/features/applications/form-field";
+import { FormField } from "@/components/ui/form-field";
 import { useCatalog } from "@/features/applications/queries";
 import { optionsOf, useCatalogLabel } from "@/features/clients/catalog-options";
 import { PlusIcon } from "@/features/clients/components/icons";
