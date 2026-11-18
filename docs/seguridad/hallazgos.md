@@ -12,6 +12,13 @@ uno expone un valor, se describe y se corta.
 | [SEC-04](#sec-04--djangorestframework-3172-tiene-dos-cve-de-denegación-de-servicio-sin-sesión) | `djangorestframework` 3.17.2 tiene dos CVE de denegación de servicio sin sesión | Media | API4 | abierto | 1 |
 | [SEC-05](#sec-05--el-compose-publica-postgresql-y-el-backend-en-todas-las-interfaces-del-equipo) | El compose publica PostgreSQL y el backend en todas las interfaces del equipo | Baja | API8 | abierto | 1 |
 | [SEC-06](#sec-06--imagen-del-backend-base-sin-digest-pip-sin-versión-y-runserver-como-comando) | Imagen del backend: base sin digest, `pip` sin versión y `runserver` como comando | Informativa | API8 | abierto | 1 |
+| [SEC-07](#sec-07--options-responde-500-en-27-rutas-una-de-ellas-pública) | `OPTIONS` responde 500 en 27 rutas, una de ellas pública | Baja | API8 | abierto | 2 |
+| [SEC-08](#sec-08--las-respuestas-con-datos-personales-no-llevan-cache-control-no-store-ni-vary-cookie) | Las respuestas con datos personales no llevan `Cache-Control: no-store` (ni `Vary: Cookie`) | Media | API8 | abierto | 2 |
+| [SEC-09](#sec-09--el-límite-de-login-y-de-recuperación-se-salta-con-otros-correos-o-con-otras-ip) | El límite de login y de recuperación se salta con otros correos o con otras IP | Media | API2 | abierto | 2 |
+| [SEC-10](#sec-10--no-existen-los-límites-generales-por-usuario-que-piden-req-93-y-api-26) | No existen los límites generales por usuario que piden REQ §9.3 y API §26 | Media | API4 | abierto | 2 |
+| [SEC-11](#sec-11--un-json-de-más-de-25-mb-responde-500-sin-debug-o-la-página-de-depuración-con-debug-no-413) | Un JSON de más de 2,5 MB responde 500 (sin `DEBUG`) o la página de depuración (con `DEBUG`), no 413 | Baja | API8 | abierto | 2 |
+| [SEC-12](#sec-12--las-rutas-inexistentes-y-los-ids-que-no-son-uuid-responden-html-de-django-no-el-formato-de-error-de-la-api) | Las rutas inexistentes y los ids que no son UUID responden HTML de Django, no el formato de error de la API | Baja | API8 | abierto | 2 |
+| [SEC-13](#sec-13--el-contrato-no-coincide-con-la-api-en-2-respuestas-y-no-documenta-varios-estados) | El contrato no coincide con la API en 2 respuestas y no documenta varios estados | Informativa | API9 | abierto | 2 |
 
 ---
 
@@ -83,9 +90,93 @@ uno expone un valor, se describe y se corta.
 - **Severidad:** Informativa (aplica al desplegar).
 - **Categoría:** OWASP API8:2023 — Security Misconfiguration
 - **Dónde:** `backend/Dockerfile`.
-- **Cómo reproducirlo:** `hadolint` 2.15.1 → `DL3013` (línea 11, `pip install --upgrade pip` sin versión). Revisión manual: `FROM python:3.11-slim` sin `@sha256:`; `CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]`; `COPY . ./` deja `tests/`, `scripts/` y `docker-compose.yml` dentro de la imagen.
+- **Cómo reproducirlo:** `hadolint` 2.15.1 → `DL3013` (línea 11, `pip install --upgrade pip` sin versión). En la Parte 2, ZAP (10036) y la revisión de cabeceras: `runserver` responde `Server: WSGIServer/0.2 CPython/3.11.18`, que revela la versión exacta de Python. Revisión manual: `FROM python:3.11-slim` sin `@sha256:`; `CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]`; `COPY . ./` deja `tests/`, `scripts/` y `docker-compose.yml` dentro de la imagen.
 - **Qué pasa:** dos construcciones de la misma versión del código pueden dar imágenes distintas (la base y `pip` cambian solas), y la imagen arranca con el servidor de desarrollo de Django.
 - **Qué debería pasar:** imagen reproducible y servidor de aplicación (`gunicorn`, ya en `requirements.txt`) en la imagen de producción.
 - **Lo que ya está bien (verificado):** usuario no root (`id` en el contenedor → `uid=100(app) gid=101(app)`, también en `mvp-sec-api`); sin `.env` en la imagen (`.dockerignore` lo excluye; `test -e /app/.env` → no existe); sin secretos en `ENV` ni en las capas (`docker image inspect` y `docker history`: el único `GPG_KEY` es el id público de la clave de firma de Python); `/data/documents` con dueño `app` y modo `755`.
 - **Corrección sugerida:** `FROM python:3.11-slim@sha256:<digest>`, `pip install pip==<versión>`, una etapa o `CMD` de producción con `gunicorn config.wsgi` (junto con SEC-01), y excluir `tests/` del contexto de la imagen de producción.
+- **Esfuerzo estimado:** pequeño.
+
+### SEC-07 — `OPTIONS` responde 500 en 27 rutas, una de ellas pública
+- **Severidad:** Baja (sin `DEBUG` la respuesta es el error genérico, sin fuga; una de las rutas no pide sesión).
+- **Categoría:** OWASP API8:2023 — Security Misconfiguration
+- **Dónde:** las vistas genéricas de DRF con escritura que no declaran `serializer_class` (lo arman a mano en `post`/`put`): `apps/identity/invitation_views.py` (`InvitationAcceptView`), `apps/identity/buyer_access_views.py` (`ApplicationBuyerAccessLinksView`), `apps/filings/views.py` (`ApplicationFilingListView`, `FilingResponseListView`), `apps/commissions` (`CommissionPlanListView`), `apps/tasks` (`TaskListView`) y las de `/applications`, `/clients`, `/users`, `/banks`, `/bank-products`, `/partners`, `/projects`, `/opportunities`, `/invitations`, `/document-types`, `/document-requirements`, `/reports/applications/export-jobs`, entre otras (lista completa en el reporte crudo `options_500_admin.txt`). La metadata de `OPTIONS` es la de DRF por defecto (`SimpleMetadata`): no hay `DEFAULT_METADATA_CLASS` en `base.py`.
+- **Cómo reproducirlo:** `curl -X OPTIONS http://localhost:8010/api/v1/invitations/accept` (sin sesión) → `500`; con `DEBUG`, página de depuración con `AssertionError: 'InvitationAcceptView' should either include a serializer_class attribute…`; sin `DEBUG` (8011) → `500 INTERNAL_ERROR` y un "Error no controlado en la API" en el log. schemathesis (`ST101`, check `unsupported_method`) lo encontró en 6 vistas; un barrido con `OPTIONS` a las 175 rutas dio 27 con sesión de admin y 1 sin sesión.
+- **Qué pasa:** `SimpleMetadata.determine_actions` llama `get_serializer()` para describir los campos de escritura; sin `serializer_class` salta el `assert` de DRF. Donde no falla, `OPTIONS` responde el nombre y la descripción de la vista, los *renderers* y los *parsers* (sin campos).
+- **Qué debería pasar:** ningún 500 (spec §4, Parte 2: "cualquier 500 es hallazgo"). `OPTIONS` solo hace falta para el *preflight* de CORS, que ya responde `corsheaders` antes de llegar a DRF.
+- **Impacto:** cualquiera, sin cuenta, llena el log de errores no controlados (ruido que tapa alertas reales y puede disparar avisos de monitoreo); con `DEBUG`, la traza revela rutas y código.
+- **Corrección sugerida:** `REST_FRAMEWORK["DEFAULT_METADATA_CLASS"] = None` (DRF responde `405` a `OPTIONS` en las vistas; el *preflight* sigue funcionando por `corsheaders`) y una prueba que haga `OPTIONS` a todas las rutas y exija que ninguna dé 5xx.
+- **Esfuerzo estimado:** pequeño.
+
+### SEC-08 — Las respuestas con datos personales no llevan `Cache-Control: no-store` (ni `Vary: Cookie`)
+- **Severidad:** Media (falta de una cabecera que importa; CVSS 3.1 ~4.3: AV:N/AC:H/PR:N/UI:R/S:U/C:L/I:N/A:N).
+- **Categoría:** OWASP API8:2023 — Security Misconfiguration
+- **Dónde:** comportamiento por defecto de DRF; solo algunas vistas ponen la cabecera a mano (`apps/documents/dossier_views.py:318`, `storage_views.py:54`, `apps/identity/buyer_portal_views.py:80`, `apps/notifications/views.py:59`; `apps/catalogs/views.py:533` usa `private, no-cache` con ETag).
+- **Cómo reproducirlo:** `curl -D - -H "Cookie: <admin>" http://localhost:8010/api/v1/auth/me` (y `/users`, `/applications/{id}`, `/clients/{id}`, `/application-participants/{id}/financial-profile`, `/reports/applications.csv`) → ninguna trae `Cache-Control`; el `Vary` es solo `origin` (sin `Cookie`). Igual en el servidor sin `DEBUG` (8011). ZAP 10049 ("Storable and Cacheable Content") lo marca en el perfil financiero y los participantes.
+- **Qué pasa:** respuestas con nombre, documento, ingresos, deudas y datos de contacto se pueden guardar en la caché del navegador (disco) y, si hay un proxy o CDN delante, en una caché compartida: al no variar por `Cookie`, una caché compartida podría servir la respuesta de un usuario a otro con la misma URL.
+- **Qué debería pasar:** spec §4, Parte 2.3: `Cache-Control: no-store` en respuestas con datos personales y en las descargas. Las descargas ya lo tienen; el resto de la API no.
+- **Impacto:** exposición de datos personales y financieros en equipos compartidos (otro usuario del mismo navegador) o por una caché intermedia mal configurada.
+- **Corrección sugerida:** un *middleware* que ponga `Cache-Control: no-store` (y `Vary: Cookie`) en toda respuesta de `/api/v1/` que no traiga ya un `Cache-Control` propio (así los catálogos con ETag conservan `private, no-cache`); una prueba que lo verifique en un listado, un detalle y el CSV.
+- **Esfuerzo estimado:** pequeño.
+
+### SEC-09 — El límite de login y de recuperación se salta con otros correos o con otras IP
+- **Severidad:** Media (límite de consumo que se salta; CVSS 3.1 ~5.3: AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N).
+- **Categoría:** OWASP API2:2023 — Broken Authentication
+- **Dónde:** `apps/identity/throttling.py`, `AuthRateThrottle.get_cache_key` (clave única `IP|correo`), usada por `LoginRateThrottle` y `PasswordResetRequestRateThrottle`. No hay límite por IP sobre todos los correos, ni por cuenta sobre todas las IP, ni demora progresiva.
+- **Cómo reproducirlo (8010, `_security-work/scripts/rate_limits.py`):**
+  - **rociado:** desde una IP, una contraseña contra 12 correos distintos → 12 × `401`, ningún `429`;
+  - **una cuenta desde varias IP:** desde `172.20.0.5`, 5 × `401` y luego `429`; desde `172.20.0.6`, otros 5 × `401` y luego `429`; desde una tercera IP, la contraseña correcta → `200`. Cada IP nueva da 5 intentos más por cada 15 minutos;
+  - **recuperación:** 6 correos distintos desde la misma IP → 6 × `202` (3 por correo e IP: con varias IP, una víctima recibe correos sin límite).
+- **Qué pasa:** el número de intentos por cuenta crece con el número de IP del atacante, y desde una sola IP no hay tope si se cambia de correo.
+- **Qué debería pasar:** REQ §9.3: "Login, recuperación y otros flujos sensibles requieren protección reforzada contra fuerza bruta y *credential stuffing*" y "demora progresiva" en el login. La clave "IP + correo" de API §26 se cumple, pero sola no alcanza.
+- **Lo que sí funciona (probado):** el límite por IP + correo (`5/15m`, `3/1h`) con `Retry-After`; no se salta con mayúsculas, espacios, `X-Forwarded-For`, `X-Real-IP` ni otro `User-Agent`; el `429` y el `401` son iguales para un correo existente y uno inexistente.
+- **Impacto:** *credential stuffing* y rociado de contraseñas contra todas las cuentas internas desde una sola máquina; fuerza bruta distribuida contra una cuenta concreta (por ejemplo, la del administrador); bombardeo de correos de recuperación a una persona.
+- **Corrección sugerida:** sumar a la vista dos *throttles* más, con la misma caché: uno por IP sobre todos los correos (por ejemplo `20/15m` en login, `10/1h` en recuperación) y uno por correo sobre todas las IP (por ejemplo `10/15m` y `5/1h`); opcional, una demora progresiva por cuenta después del tercer fallo. Pruebas en `tests/security/` para los tres casos de arriba.
+- **Esfuerzo estimado:** pequeño.
+
+### SEC-10 — No existen los límites generales por usuario que piden REQ §9.3 y API §26
+- **Severidad:** Media (límites de consumo que faltan).
+- **Categoría:** OWASP API4:2023 — Unrestricted Resource Consumption
+- **Dónde:** `backend/config/settings/base.py`, `REST_FRAMEWORK`: no hay `DEFAULT_THROTTLE_CLASSES` ni `DEFAULT_THROTTLE_RATES`. Solo tienen límite las vistas de `AUTH_RATE_LIMITS` (login, recuperación, enlace del comprador, cargas, descargas y reportes).
+- **Cómo reproducirlo:** como `asesora.lucia`, 150 `POST /api/v1/clients` en 4 s → 150 × `400`, ningún `429`; 650 `GET /api/v1/clients` en 33 s → 650 × `200`. El ZAP activo hizo ~72 000 peticiones como admin en 16 minutos (unas 75 por segundo).
+- **Qué pasa:** un usuario con sesión (o una sesión robada) puede escribir, cambiar estados y crear radicaciones sin tope.
+- **Qué debería pasar:** REQ §9.3 y API §26: 120 escrituras por minuto, 600 lecturas por minuto, 20 cambios de estado o radicaciones por minuto, por usuario.
+- **Impacto:** abuso de recursos (base de datos, almacenamiento, correo) por un usuario interno o con una sesión robada; automatización masiva de cambios sin freno.
+- **Corrección sugerida:** `DEFAULT_THROTTLE_CLASSES` con dos *throttles* por usuario o sesión de comprador (lecturas y escrituras, según el método) y uno de alcance propio (`ScopedRateThrottle`) en `status-transitions`, `filings` y `withdrawals`, todos en la caché compartida; tasas en `AUTH_RATE_LIMITS` para poder ajustarlas.
+- **Esfuerzo estimado:** pequeño.
+
+### SEC-11 — Un JSON de más de 2,5 MB responde 500 (sin `DEBUG`) o la página de depuración (con `DEBUG`), no 413
+- **Severidad:** Baja (el límite de tamaño sí corta; el problema es la respuesta). Con `DEBUG` la página de depuración es Informativa: solo pasa en local.
+- **Categoría:** OWASP API8:2023 — Security Misconfiguration
+- **Dónde:** `backend/config/exceptions.py`, `api_exception_handler`: `RequestDataTooBig` (de `DATA_UPLOAD_MAX_MEMORY_SIZE`, 2,5 MB por defecto) no es una excepción de DRF, así que el manejador devuelve `None` y termina en el 500 genérico.
+- **Cómo reproducirlo:** `POST /api/v1/auth/login` (sin sesión) o `POST /api/v1/clients` (con sesión) con un JSON de 5 MB → en el 8011 (sin `DEBUG`) `500 INTERNAL_ERROR` y un "Error no controlado en la API" en el log por cada petición; en el 8010 (`DEBUG`) `400` con la página HTML de depuración (traza, rutas de `/app/` y `/usr/local`).
+- **Qué pasa:** un cuerpo demasiado grande se trata como un error del servidor.
+- **Qué debería pasar:** `413` con el formato de error de la API (como ya hacen las cargas de documentos con `PAYLOAD_TOO_LARGE`).
+- **Impacto:** cualquiera, sin cuenta, genera errores no controlados en el log a voluntad; las métricas de 5xx dejan de servir para detectar fallas reales.
+- **Corrección sugerida:** en `api_exception_handler`, convertir `RequestDataTooBig` en `413 PAYLOAD_TOO_LARGE` antes de llamar al manejador de DRF; una prueba con un cuerpo de 3 MB.
+- **Esfuerzo estimado:** pequeño.
+
+### SEC-12 — Las rutas inexistentes y los ids que no son UUID responden HTML de Django, no el formato de error de la API
+- **Severidad:** Baja (mensajes; sin fuga fuera de `DEBUG`).
+- **Categoría:** OWASP API8:2023 — Security Misconfiguration
+- **Dónde:** `backend/config/urls.py`: no define `handler404` ni `handler500`. Las rutas usan `<uuid:…>`, así que un id mal formado no llega a DRF.
+- **Cómo reproducirlo:** `GET /api/v1/no-existe` o `GET /api/v1/applications/abc` → `404` con `text/html` (en el 8011, la página "Not Found" de Django de 179 bytes; en el 8010, la página de depuración con la lista completa de rutas). schemathesis `ST105` y ZAP 100001 lo marcan en 13 operaciones.
+- **Qué pasa:** el cliente recibe HTML donde espera `{code, message, details, request_id}`; con `DEBUG`, la página enumera todas las rutas de la API.
+- **Qué debería pasar:** API §5.3: toda respuesta de error tiene el formato común.
+- **Impacto:** bajo: el frontend no puede mostrar un error coherente y, en local, la página de depuración entrega el inventario de rutas.
+- **Corrección sugerida:** `handler404` y `handler500` en `config/urls.py` que respondan JSON con `build_error_body` cuando la ruta empieza por `/api/`.
+- **Esfuerzo estimado:** pequeño.
+
+### SEC-13 — El contrato no coincide con la API en 2 respuestas y no documenta varios estados
+- **Severidad:** Informativa (inventario; no expone datos).
+- **Categoría:** OWASP API9:2023 — Improper Inventory Management
+- **Dónde:** `contracts/openapi.json` frente a las vistas.
+- **Cómo reproducirlo:** schemathesis (`ST108`, `ST103`, `ST203`):
+  - `GET /applications/{id}/available-actions` devuelve una lista y el contrato dice `PaginatedAvailableActionList`;
+  - `GET /clients` como broker devuelve `document_type: "CC"` (texto) y el contrato dice `CatalogItemRef` (objeto);
+  - 400 de reglas de negocio y 404 sin documentar en ~66 operaciones; `428 PRECONDITION_REQUIRED` (sin `If-Match`) sin documentar en 6.
+- **Qué pasa:** el contrato describe de menos o distinto lo que la API hace.
+- **Qué debería pasar:** el contrato es la fuente de verdad del frontend y de las pruebas (`schema.d.ts`).
+- **Impacto:** herramientas que validan contra el contrato (incluido el propio frontend tipado) no detectan cambios reales; dificulta auditar qué expone cada rol.
+- **Corrección sugerida:** corregir los dos serializers o su `extend_schema`, y documentar `400`/`404`/`428` donde aplican; regenerar `schema.d.ts`.
 - **Esfuerzo estimado:** pequeño.
