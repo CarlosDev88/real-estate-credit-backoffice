@@ -11758,6 +11758,212 @@
                 }
             }
         },
+        "/api/v1/commission-settlements": {
+            "get": {
+                "operationId": "commission_settlements_list",
+                "description": "De la más reciente a la más antigua, con sus partes.",
+                "summary": "Liquidaciones de comisión",
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "advisor_id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "description": "Asesor beneficiario."
+                    },
+                    {
+                        "in": "query",
+                        "name": "bank_id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "broker_id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "description": "Broker beneficiario."
+                    },
+                    {
+                        "in": "query",
+                        "name": "date_from",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        },
+                        "description": "Desembolso desde (Bogotá)."
+                    },
+                    {
+                        "in": "query",
+                        "name": "date_to",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        },
+                        "description": "Desembolso hasta, incluido."
+                    },
+                    {
+                        "in": "query",
+                        "name": "needs_review",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "name": "page",
+                        "required": false,
+                        "in": "query",
+                        "description": "Un número de página dentro del conjunto de resultados paginado.",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "page_size",
+                        "required": false,
+                        "in": "query",
+                        "description": "Número de resultados a devolver por página.",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "status",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "ACTIVE",
+                                "VOIDED"
+                            ]
+                        }
+                    }
+                ],
+                "tags": [
+                    "Commission settlements"
+                ],
+                "security": [
+                    {
+                        "internalSession": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PaginatedCommissionSettlementList"
+                                }
+                            }
+                        },
+                        "description": ""
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "VALIDATION_ERROR"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "NOT_AUTHENTICATED o SESSION_EXPIRED"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    }
+                }
+            }
+        },
+        "/api/v1/commission-settlements/{settlement_id}": {
+            "get": {
+                "operationId": "commission_settlements_retrieve",
+                "summary": "Detalle de una liquidación con sus partes",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "settlement_id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "Commission settlements"
+                ],
+                "security": [
+                    {
+                        "internalSession": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CommissionSettlement"
+                                }
+                            }
+                        },
+                        "description": ""
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "RESOURCE_NOT_FOUND"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "NOT_AUTHENTICATED o SESSION_EXPIRED"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    }
+                }
+            }
+        },
         "/api/v1/commission-settlements/{settlement_id}/void": {
             "post": {
                 "operationId": "commission_settlements_void",
@@ -11840,6 +12046,122 @@
                             }
                         },
                         "description": "COMMISSION_SETTLEMENT_HAS_PAYMENTS; IDEMPOTENCY_IN_PROGRESS o COMMISSION_SETTLEMENT_HAS_PAYMENTS"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "NOT_AUTHENTICATED o SESSION_EXPIRED"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "422": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "IDEMPOTENCY_CONFLICT"
+                    }
+                }
+            }
+        },
+        "/api/v1/commission-shares/{share_id}/pay": {
+            "post": {
+                "operationId": "commission_shares_pay",
+                "description": "Solo una parte `PENDING` (`409 COMMISSION_SHARE_NOT_PAYABLE`); las de una liquidación anulada ya están `VOIDED`. `paid_at` no puede ser futura. Responde la liquidación completa. Con la misma `Idempotency-Key`, la respuesta original.",
+                "summary": "Registrar el pago de una parte",
+                "parameters": [
+                    {
+                        "in": "header",
+                        "name": "Idempotency-Key",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Opcional. Clave única de la operación (1 a 100 caracteres visibles; por ejemplo, un UUID), válida 24 horas para el actor, el método y la ruta. Repetirla con el mismo cuerpo devuelve la respuesta original; con otro cuerpo, `422 IDEMPOTENCY_CONFLICT`; mientras la primera sigue en curso, `409 IDEMPOTENCY_IN_PROGRESS`. Solo se guardan las respuestas `2xx`."
+                    },
+                    {
+                        "in": "path",
+                        "name": "share_id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "Commission shares"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SharePayRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "security": [
+                    {
+                        "internalSession": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CommissionSettlement"
+                                }
+                            }
+                        },
+                        "description": ""
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "VALIDATION_ERROR; VALIDATION_ERROR (`Idempotency-Key` mal formada)"
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "RESOURCE_NOT_FOUND"
+                    },
+                    "409": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "COMMISSION_SHARE_NOT_PAYABLE; IDEMPOTENCY_IN_PROGRESS o COMMISSION_SHARE_NOT_PAYABLE"
                     },
                     "401": {
                         "content": {
@@ -15887,6 +16209,113 @@
                             }
                         },
                         "description": "RATE_LIMITED"
+                    }
+                }
+            }
+        },
+        "/api/v1/me/commissions": {
+            "get": {
+                "operationId": "me_commissions_list",
+                "description": "Solo las partes propias del asesor o del broker autenticado, de la más reciente a la más antigua (por desembolso). Cada fila trae solo la parte propia: nunca la base, la tasa, el total ni la parte del otro beneficiario.",
+                "summary": "Mis comisiones",
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "date_from",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        },
+                        "description": "Desembolso desde (Bogotá)."
+                    },
+                    {
+                        "in": "query",
+                        "name": "date_to",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        },
+                        "description": "Desembolso hasta, incluido."
+                    },
+                    {
+                        "name": "page",
+                        "required": false,
+                        "in": "query",
+                        "description": "Un número de página dentro del conjunto de resultados paginado.",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "page_size",
+                        "required": false,
+                        "in": "query",
+                        "description": "Número de resultados a devolver por página.",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "status",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "PAID",
+                                "PENDING",
+                                "VOIDED"
+                            ]
+                        }
+                    }
+                ],
+                "tags": [
+                    "Commission shares"
+                ],
+                "security": [
+                    {
+                        "internalSession": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PaginatedMyCommissionList"
+                                }
+                            }
+                        },
+                        "description": ""
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "VALIDATION_ERROR"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "NOT_AUTHENTICATED o SESSION_EXPIRED"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "PERMISSION_DENIED o CSRF_FAILED"
                     }
                 }
             }
@@ -26509,6 +26938,12 @@
                         "type": "string",
                         "description": "Etiqueta del origen (catálogo `lead_origin`)."
                     },
+                    "disbursed_on": {
+                        "type": "string",
+                        "format": "date",
+                        "readOnly": true,
+                        "description": "Fecha de desembolso (Bogotá)."
+                    },
                     "base_amount_cop": {
                         "type": "integer",
                         "readOnly": true
@@ -26582,6 +27017,7 @@
                     "application",
                     "base_amount_cop",
                     "created_at",
+                    "disbursed_on",
                     "filing_response_id",
                     "id",
                     "lead_origin_code",
@@ -30310,6 +30746,70 @@
                     "parent_id"
                 ]
             },
+            "MyCommission": {
+                "type": "object",
+                "description": "La parte propia, nada más: sin base, tasa, total ni la parte del otro beneficiario.",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "readOnly": true
+                    },
+                    "application_code": {
+                        "type": "string"
+                    },
+                    "client_display_name": {
+                        "type": "string"
+                    },
+                    "disbursed_on": {
+                        "type": "string",
+                        "format": "date",
+                        "readOnly": true,
+                        "description": "Fecha de desembolso (Bogotá)."
+                    },
+                    "share_pct": {
+                        "type": "string",
+                        "format": "decimal",
+                        "pattern": "^-?\\d{0,4}(?:\\.\\d{0,4})?$",
+                        "readOnly": true
+                    },
+                    "amount_cop": {
+                        "type": "integer",
+                        "readOnly": true
+                    },
+                    "status": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/CommissionShareStatusEnum"
+                            }
+                        ],
+                        "readOnly": true
+                    },
+                    "status_label": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "paid_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date",
+                        "readOnly": true
+                    }
+                },
+                "required": [
+                    "amount_cop",
+                    "application_code",
+                    "client_display_name",
+                    "disbursed_on",
+                    "id",
+                    "paid_at",
+                    "share_pct",
+                    "status",
+                    "status_label"
+                ]
+            },
             "NamedRef": {
                 "type": "object",
                 "properties": {
@@ -31970,6 +32470,47 @@
                     }
                 }
             },
+            "PaginatedCommissionSettlementList": {
+                "type": "object",
+                "required": [
+                    "items",
+                    "page",
+                    "page_size",
+                    "total",
+                    "next",
+                    "previous"
+                ],
+                "properties": {
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/CommissionSettlement"
+                        }
+                    },
+                    "page": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "page_size": {
+                        "type": "integer",
+                        "example": 25
+                    },
+                    "total": {
+                        "type": "integer",
+                        "example": 128
+                    },
+                    "next": {
+                        "type": "string",
+                        "nullable": true,
+                        "example": "/api/v1/x?page=2"
+                    },
+                    "previous": {
+                        "type": "string",
+                        "nullable": true,
+                        "example": null
+                    }
+                }
+            },
             "PaginatedConsentRecordList": {
                 "type": "object",
                 "required": [
@@ -32436,6 +32977,47 @@
                         "type": "array",
                         "items": {
                             "$ref": "#/components/schemas/Membership"
+                        }
+                    },
+                    "page": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "page_size": {
+                        "type": "integer",
+                        "example": 25
+                    },
+                    "total": {
+                        "type": "integer",
+                        "example": 128
+                    },
+                    "next": {
+                        "type": "string",
+                        "nullable": true,
+                        "example": "/api/v1/x?page=2"
+                    },
+                    "previous": {
+                        "type": "string",
+                        "nullable": true,
+                        "example": null
+                    }
+                }
+            },
+            "PaginatedMyCommissionList": {
+                "type": "object",
+                "required": [
+                    "items",
+                    "page",
+                    "page_size",
+                    "total",
+                    "next",
+                    "previous"
+                ],
+                "properties": {
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/MyCommission"
                         }
                     },
                     "page": {
@@ -35372,6 +35954,27 @@
                 ],
                 "type": "string",
                 "description": "* `WARNING` - Advertencia\n* `BLOCKING` - Bloqueante"
+            },
+            "SharePayRequest": {
+                "type": "object",
+                "description": "Serializer que rechaza campos no declarados (``additionalProperties: false``).\n\nEvita la asignación masiva: el cliente solo puede enviar los campos permitidos.",
+                "properties": {
+                    "paid_at": {
+                        "type": "string",
+                        "format": "date",
+                        "description": "Fecha del pago. No puede ser futura."
+                    },
+                    "payment_reference": {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": "Referencia del pago (transferencia, comprobante).",
+                        "maxLength": 100
+                    }
+                },
+                "required": [
+                    "paid_at",
+                    "payment_reference"
+                ]
             },
             "SlotDecision": {
                 "type": "object",

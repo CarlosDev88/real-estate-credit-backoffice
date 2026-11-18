@@ -1634,6 +1634,7 @@ Porcentaje de comisión y reparto por producto bancario, con vigencia.
 | `valid_until` | `DATE` | Sí | Fin de vigencia, exclusivo; nulo si no tiene fin. |
 | `notes` | `VARCHAR(255)` | Sí | Nota interna. |
 | `created_by_id` | `UUID` | No | FK `users`, `RESTRICT`. |
+| `version` | `INTEGER` | No | `DEFAULT 1`; sube con cada edición o cierre. Es el `ETag` y el `If-Match` de `PATCH /commission-plans/{id}`. |
 
 Relación N:1 con producto bancario porque un producto cambia de plan en el tiempo. El servicio impide vigencias solapadas para el mismo producto. Un plan usado por una liquidación no se edita: se cierra y se crea otro.
 
@@ -1649,7 +1650,7 @@ Liquidación de la comisión de una solicitud desembolsada.
 | `created_at` | `TIMESTAMPTZ` | No | Fecha y hora de creación. |
 | `updated_at` | `TIMESTAMPTZ` | No | Fecha y hora de última modificación. |
 | `application_id` | `UUID` | No | FK `credit_applications`, `RESTRICT`. |
-| `filing_response_id` | `UUID` | No | FK `filing_responses`, `RESTRICT`; UQ; respuesta de desembolso usada. |
+| `filing_response_id` | `UUID` | No | FK `filing_responses`, `RESTRICT`; respuesta de desembolso usada. Única entre las liquidaciones `ACTIVE` (índice parcial): después de anular se puede volver a liquidar con el mismo desembolso. |
 | `plan_id` | `UUID` | No | FK `commission_plans`, `RESTRICT`. |
 | `lead_origin_code` | `VARCHAR(50)` | No | Instantánea del origen de la oportunidad. |
 | `base_amount_cop` | `BIGINT` | No | Monto desembolsado. |
@@ -1663,7 +1664,9 @@ Liquidación de la comisión de una solicitud desembolsada.
 
 Relación N:1 con solicitud para conservar liquidaciones anuladas; un índice único parcial garantiza una sola `ACTIVE` por solicitud. Los valores del cálculo se copian para que un cambio de plan no altere la historia.
 
-Índices: UQ parcial (`application_id`) `WHERE status = 'ACTIVE'`; (`status`, `created_at DESC`).
+Índices: UQ parcial (`application_id`) `WHERE status = 'ACTIVE'`; UQ parcial (`filing_response_id`) `WHERE status = 'ACTIVE'`; (`status`, `created_at DESC`).
+
+En la implementación, los textos opcionales (`notes`, `void_reason`, `payment_reference`) son texto vacío en lugar de nulos; el `CHECK` de la anulación exige un `void_reason` no vacío.
 
 ### 14.3 `commission_shares`
 

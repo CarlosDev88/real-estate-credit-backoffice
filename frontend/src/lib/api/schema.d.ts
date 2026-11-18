@@ -1978,6 +1978,43 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/commission-settlements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Liquidaciones de comisión
+         * @description De la más reciente a la más antigua, con sus partes.
+         */
+        get: operations["commission_settlements_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/commission-settlements/{settlement_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Detalle de una liquidación con sus partes */
+        get: operations["commission_settlements_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/commission-settlements/{settlement_id}/void": {
         parameters: {
             query?: never;
@@ -1992,6 +2029,26 @@ export interface paths {
          * @description `reason` obligatorio. Con alguna parte pagada responde `409 COMMISSION_SETTLEMENT_HAS_PAYMENTS`. Anula también las partes. Anular una ya anulada la devuelve igual. Después se puede volver a liquidar.
          */
         post: operations["commission_settlements_void"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/commission-shares/{share_id}/pay": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Registrar el pago de una parte
+         * @description Solo una parte `PENDING` (`409 COMMISSION_SHARE_NOT_PAYABLE`); las de una liquidación anulada ya están `VOIDED`. `paid_at` no puede ser futura. Responde la liquidación completa. Con la misma `Idempotency-Key`, la respuesta original.
+         */
+        post: operations["commission_shares_pay"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2674,6 +2731,26 @@ export interface paths {
          * @description `first_name` y `last_name` son obligatorios si el usuario todavía no existe. No inicia sesión: después se usa `POST /auth/login`.
          */
         post: operations["invitations_accept"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/commissions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Mis comisiones
+         * @description Solo las partes propias del asesor o del broker autenticado, de la más reciente a la más antigua (por desembolso). Cada fila trae solo la parte propia: nunca la base, la tasa, el total ni la parte del otro beneficiario.
+         */
+        get: operations["me_commissions_list"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -5012,6 +5089,11 @@ export interface components {
             readonly lead_origin_code: string;
             /** @description Etiqueta del origen (catálogo `lead_origin`). */
             lead_origin_label: string;
+            /**
+             * Format: date
+             * @description Fecha de desembolso (Bogotá).
+             */
+            readonly disbursed_on: string;
             readonly base_amount_cop: number;
             /** Format: decimal */
             readonly rate_pct: string;
@@ -6105,6 +6187,25 @@ export interface components {
                 [key: string]: unknown;
             };
         };
+        /** @description La parte propia, nada más: sin base, tasa, total ni la parte del otro beneficiario. */
+        MyCommission: {
+            /** Format: uuid */
+            readonly id: string;
+            application_code: string;
+            client_display_name: string;
+            /**
+             * Format: date
+             * @description Fecha de desembolso (Bogotá).
+             */
+            readonly disbursed_on: string;
+            /** Format: decimal */
+            readonly share_pct: string;
+            readonly amount_cop: number;
+            readonly status: components["schemas"]["CommissionShareStatusEnum"];
+            readonly status_label: string;
+            /** Format: date */
+            readonly paid_at: string | null;
+        };
         NamedRef: {
             /** Format: uuid */
             id: string;
@@ -6630,6 +6731,19 @@ export interface components {
             /** @example null */
             previous: string | null;
         };
+        PaginatedCommissionSettlementList: {
+            items: components["schemas"]["CommissionSettlement"][];
+            /** @example 1 */
+            page: number;
+            /** @example 25 */
+            page_size: number;
+            /** @example 128 */
+            total: number;
+            /** @example /api/v1/x?page=2 */
+            next: string | null;
+            /** @example null */
+            previous: string | null;
+        };
         PaginatedConsentRecordList: {
             items: components["schemas"]["ConsentRecord"][];
             /** @example 1 */
@@ -6775,6 +6889,19 @@ export interface components {
         };
         PaginatedMembershipList: {
             items: components["schemas"]["Membership"][];
+            /** @example 1 */
+            page: number;
+            /** @example 25 */
+            page_size: number;
+            /** @example 128 */
+            total: number;
+            /** @example /api/v1/x?page=2 */
+            next: string | null;
+            /** @example null */
+            previous: string | null;
+        };
+        PaginatedMyCommissionList: {
+            items: components["schemas"]["MyCommission"][];
             /** @example 1 */
             page: number;
             /** @example 25 */
@@ -7760,6 +7887,20 @@ export interface components {
          * @enum {string}
          */
         SeverityEnum: "WARNING" | "BLOCKING";
+        /**
+         * @description Serializer que rechaza campos no declarados (``additionalProperties: false``).
+         *
+         *     Evita la asignación masiva: el cliente solo puede enviar los campos permitidos.
+         */
+        SharePayRequest: {
+            /**
+             * Format: date
+             * @description Fecha del pago. No puede ser futura.
+             */
+            paid_at: string;
+            /** @description Referencia del pago (transferencia, comprobante). */
+            payment_reference: string;
+        };
         /**
          * @description Exoneración o reapertura del slot. ``decision_batch_id`` es el lote: los slots de
          *     un grupo alternativo exonerados juntos lo comparten.
@@ -15719,6 +15860,116 @@ export interface operations {
             };
         };
     };
+    commission_settlements_list: {
+        parameters: {
+            query?: {
+                /** @description Asesor beneficiario. */
+                advisor_id?: string;
+                bank_id?: string;
+                /** @description Broker beneficiario. */
+                broker_id?: string;
+                /** @description Desembolso desde (Bogotá). */
+                date_from?: string;
+                /** @description Desembolso hasta, incluido. */
+                date_to?: string;
+                needs_review?: boolean;
+                /** @description Un número de página dentro del conjunto de resultados paginado. */
+                page?: number;
+                /** @description Número de resultados a devolver por página. */
+                page_size?: number;
+                status?: "ACTIVE" | "VOIDED";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedCommissionSettlementList"];
+                };
+            };
+            /** @description VALIDATION_ERROR */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description PERMISSION_DENIED o CSRF_FAILED */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    commission_settlements_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                settlement_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommissionSettlement"];
+                };
+            };
+            /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description PERMISSION_DENIED o CSRF_FAILED */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description RESOURCE_NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
     commission_settlements_void: {
         parameters: {
             query?: never;
@@ -15782,6 +16033,88 @@ export interface operations {
                 };
             };
             /** @description COMMISSION_SETTLEMENT_HAS_PAYMENTS; IDEMPOTENCY_IN_PROGRESS o COMMISSION_SETTLEMENT_HAS_PAYMENTS */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description IDEMPOTENCY_CONFLICT */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    commission_shares_pay: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Opcional. Clave única de la operación (1 a 100 caracteres visibles; por ejemplo, un UUID), válida 24 horas para el actor, el método y la ruta. Repetirla con el mismo cuerpo devuelve la respuesta original; con otro cuerpo, `422 IDEMPOTENCY_CONFLICT`; mientras la primera sigue en curso, `409 IDEMPOTENCY_IN_PROGRESS`. Solo se guardan las respuestas `2xx`. */
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                share_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SharePayRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommissionSettlement"];
+                };
+            };
+            /** @description VALIDATION_ERROR; VALIDATION_ERROR (`Idempotency-Key` mal formada) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description PERMISSION_DENIED o CSRF_FAILED */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description RESOURCE_NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description COMMISSION_SHARE_NOT_PAYABLE; IDEMPOTENCY_IN_PROGRESS o COMMISSION_SHARE_NOT_PAYABLE */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -18279,6 +18612,62 @@ export interface operations {
             };
             /** @description RATE_LIMITED */
             429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    me_commissions_list: {
+        parameters: {
+            query?: {
+                /** @description Desembolso desde (Bogotá). */
+                date_from?: string;
+                /** @description Desembolso hasta, incluido. */
+                date_to?: string;
+                /** @description Un número de página dentro del conjunto de resultados paginado. */
+                page?: number;
+                /** @description Número de resultados a devolver por página. */
+                page_size?: number;
+                status?: "PAID" | "PENDING" | "VOIDED";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedMyCommissionList"];
+                };
+            };
+            /** @description VALIDATION_ERROR */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description PERMISSION_DENIED o CSRF_FAILED */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };

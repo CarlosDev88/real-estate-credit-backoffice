@@ -1120,6 +1120,8 @@ CREATE TABLE commission_plans (
     valid_until DATE,
     notes VARCHAR(255),
     created_by_id UUID NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    -- Concurrencia optimista: ETag e If-Match de PATCH /commission-plans/{id}.
+    version INTEGER NOT NULL DEFAULT 1,
     CONSTRAINT ck_commission_plans_shares_sum CHECK (advisor_share_pct + broker_share_pct = 100),
     CONSTRAINT ck_commission_plans_advisor_major CHECK (advisor_share_pct > broker_share_pct AND broker_share_pct >= 0),
     CONSTRAINT ck_commission_plans_validity CHECK (valid_until IS NULL OR valid_until > valid_from)
@@ -1130,7 +1132,8 @@ CREATE TABLE commission_settlements (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     application_id UUID NOT NULL REFERENCES credit_applications(id) ON DELETE RESTRICT,
-    filing_response_id UUID NOT NULL UNIQUE REFERENCES filing_responses(id) ON DELETE RESTRICT,
+    -- Única entre las liquidaciones ACTIVE (índice parcial abajo): anulada, se puede volver a liquidar.
+    filing_response_id UUID NOT NULL REFERENCES filing_responses(id) ON DELETE RESTRICT,
     plan_id UUID NOT NULL REFERENCES commission_plans(id) ON DELETE RESTRICT,
     lead_origin_code VARCHAR(50) NOT NULL,
     base_amount_cop BIGINT NOT NULL CHECK (base_amount_cop > 0),
@@ -1165,6 +1168,7 @@ CREATE TABLE commission_shares (
 
 CREATE INDEX ix_commission_plans_product ON commission_plans (bank_product_id, valid_from DESC);
 CREATE UNIQUE INDEX uq_commission_settlements_active ON commission_settlements (application_id) WHERE status = 'ACTIVE';
+CREATE UNIQUE INDEX uq_commission_settlements_response_active ON commission_settlements (filing_response_id) WHERE status = 'ACTIVE';
 CREATE INDEX ix_commission_settlements_status ON commission_settlements (status, created_at DESC);
 CREATE INDEX ix_commission_shares_beneficiary ON commission_shares (beneficiary_user_id, status, created_at DESC);
 

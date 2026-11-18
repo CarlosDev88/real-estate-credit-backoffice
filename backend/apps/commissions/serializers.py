@@ -1,6 +1,8 @@
+from datetime import date
 from typing import Any
 
 from django.db.models import QuerySet
+from django.utils import timezone
 from rest_framework import serializers
 
 from apps.banking.models import BankProduct
@@ -119,6 +121,7 @@ class CommissionSettlementSerializer(serializers.ModelSerializer):
     )
     status_label = ChoiceLabelField(SettlementStatus, source="status")
     voided_by = UserRefSerializer(allow_null=True)
+    disbursed_on = serializers.SerializerMethodField(help_text="Fecha de desembolso (Bogotá).")
     shares = CommissionShareSerializer(many=True)
 
     class Meta:
@@ -130,6 +133,7 @@ class CommissionSettlementSerializer(serializers.ModelSerializer):
             "plan_id",
             "lead_origin_code",
             "lead_origin_label",
+            "disbursed_on",
             "base_amount_cop",
             "rate_pct",
             "total_amount_cop",
@@ -145,6 +149,45 @@ class CommissionSettlementSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = fields
 
+    def get_disbursed_on(self, obj: CommissionSettlement) -> date:
+        return timezone.localtime(obj.filing_response.received_at).date()
+
 
 class SettlementVoidSerializer(StrictSerializer):
     reason = serializers.CharField(max_length=255)
+
+
+class SharePaySerializer(StrictSerializer):
+    paid_at = serializers.DateField(help_text="Fecha del pago. No puede ser futura.")
+    payment_reference = serializers.CharField(
+        max_length=100, help_text="Referencia del pago (transferencia, comprobante)."
+    )
+
+
+class MyCommissionSerializer(serializers.ModelSerializer):
+    """La parte propia, nada más: sin base, tasa, total ni la parte del otro beneficiario."""
+
+    application_code = serializers.CharField(source="settlement.application.code")
+    client_display_name = serializers.CharField(
+        source="settlement.application.opportunity.client.full_name"
+    )
+    disbursed_on = serializers.SerializerMethodField(help_text="Fecha de desembolso (Bogotá).")
+    status_label = ChoiceLabelField(ShareStatus, source="status")
+
+    class Meta:
+        model = CommissionShare
+        fields = [
+            "id",
+            "application_code",
+            "client_display_name",
+            "disbursed_on",
+            "share_pct",
+            "amount_cop",
+            "status",
+            "status_label",
+            "paid_at",
+        ]
+        read_only_fields = fields
+
+    def get_disbursed_on(self, obj: CommissionShare) -> date:
+        return timezone.localtime(obj.settlement.filing_response.received_at).date()

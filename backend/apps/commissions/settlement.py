@@ -234,7 +234,7 @@ def settlements_queryset() -> QuerySet[CommissionSettlement]:
     ).values("label")[:1]
     shares = CommissionShare.objects.select_related("beneficiary_user", "paid_by")
     return (
-        CommissionSettlement.objects.select_related("application", "voided_by")
+        CommissionSettlement.objects.select_related("application", "voided_by", "filing_response")
         .prefetch_related(Prefetch("shares", queryset=shares))
         .annotate(lead_origin_label=Coalesce(Subquery(label), F("lead_origin_code")))
     )

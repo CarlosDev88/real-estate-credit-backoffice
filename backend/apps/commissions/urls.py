@@ -26,4 +26,20 @@ urlpatterns = [
         views.CommissionSettlementVoidView.as_view(),
         name="settlement-void",
     ),
+    path(
+        "commission-settlements",
+        views.CommissionSettlementListView.as_view(),
+        name="settlement-list",
+    ),
+    path(
+        "commission-settlements/<uuid:settlement_id>",
+        views.CommissionSettlementDetailView.as_view(),
+        name="settlement-detail",
+    ),
+    path(
+        "commission-shares/<uuid:share_id>/pay",
+        views.CommissionSharePayView.as_view(),
+        name="share-pay",
+    ),
+    path("me/commissions", views.MyCommissionsView.as_view(), name="me-commissions"),
 ]

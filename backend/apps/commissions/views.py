@@ -1,5 +1,6 @@
 """Comisiones (API §23.6): planes, liquidaciones, pagos y "mis comisiones"."""
 
+from datetime import date
 from typing import Any, cast
 
 from django.shortcuts import get_object_or_404
@@ -15,20 +16,28 @@ from rest_framework.response import Response
 from apps.applications.concurrency import expected_version, with_etag
 from apps.applications.models import CreditApplication
 from apps.audit.actions import AuditAction
-from apps.commissions import plans, settlement
-from apps.commissions.models import CommissionPlan, CommissionSettlement
+from apps.commissions import payments, plans, settlement
+from apps.commissions.models import (
+    CommissionPlan,
+    CommissionSettlement,
+    CommissionShare,
+    SettlementStatus,
+    ShareStatus,
+)
 from apps.commissions.serializers import (
     CommissionPlanCloseSerializer,
     CommissionPlanCreateSerializer,
     CommissionPlanSerializer,
     CommissionPlanUpdateSerializer,
     CommissionSettlementSerializer,
+    MyCommissionSerializer,
     SettlementVoidSerializer,
+    SharePaySerializer,
 )
 from apps.idempotency.decorators import IDEMPOTENCY_PARAMETER, idempotency_responses, idempotent
 from apps.identity.models import User
 from apps.identity.permissions import HasPermissionCode
-from config.filters import parse_uuid_param
+from config.filters import parse_bool_param, parse_uuid_param
 from config.openapi import etag_response_headers
 from config.serializers import ErrorSerializer
 
@@ -285,3 +294,154 @@ class CommissionSettlementVoidView(PermissionCodeView):
             current, actor=self.actor, reason=serializer.validated_data["reason"]
         )
         return _settlement_response(voided.pk)
+
+
+# --------------------------------------------------------------------------------------
+# Consultas, pagos y "mis comisiones" (Parte 3)
+# --------------------------------------------------------------------------------------
+
+READ_COMMISSIONS = "commissions.read"
+READ_OWN = "commissions.read_own"
+SHARES_TAG = "Commission shares"
+
+
+def _date_param(request: Request, name: str) -> date | None:
+    raw = request.query_params.get(name)
+    if not raw:
+        return None
+    try:
+        value = parse_date(raw)
+    except ValueError:
+        value = None
+    if value is None:
+        raise ValidationError({name: ["Debe ser una fecha (AAAA-MM-DD)."]})
+    return value
+
+
+def _choice(request: Request, name: str, choices: list[str]) -> str | None:
+    value = request.query_params.get(name)
+    if value and value not in choices:
+        options = ", ".join(choices)
+        raise ValidationError({name: [f"Valor no permitido. Opciones: {options}."]})
+    return value or None
+
+
+DATE_PARAMETERS = [
+    OpenApiParameter("date_from", OpenApiTypes.DATE, description="Desembolso desde (Bogotá)."),
+    OpenApiParameter("date_to", OpenApiTypes.DATE, description="Desembolso hasta, incluido."),
+]
+
+
+class CommissionSettlementListView(PermissionCodeView):
+    required_permissions = {"GET": READ_COMMISSIONS}
+
+    @extend_schema(
+        tags=[SETTLEMENTS_TAG],
+        operation_id="commission_settlements_list",
+        summary="Liquidaciones de comisión",
+        description="De la más reciente a la más antigua, con sus partes.",
+        parameters=[
+            OpenApiParameter("status", OpenApiTypes.STR, enum=SettlementStatus.values),
+            OpenApiParameter("bank_id", OpenApiTypes.UUID),
+            OpenApiParameter("advisor_id", OpenApiTypes.UUID, description="Asesor beneficiario."),
+            OpenApiParameter("broker_id", OpenApiTypes.UUID, description="Broker beneficiario."),
+            OpenApiParameter("needs_review", OpenApiTypes.BOOL),
+            *DATE_PARAMETERS,
+        ],
+        responses={200: CommissionSettlementSerializer(many=True), **VALIDATION, **COMMON_ERRORS},
+    )
+    def get(self, request: Request) -> Response:
+        rows = payments.filter_settlements(
+            settlement.settlements_queryset(),
+            status=_choice(request, "status", SettlementStatus.values),
+            bank_id=parse_uuid_param(request, "bank_id"),
+            advisor_id=parse_uuid_param(request, "advisor_id"),
+            broker_id=parse_uuid_param(request, "broker_id"),
+            needs_review=parse_bool_param(request, "needs_review"),
+            date_from=_date_param(request, "date_from"),
+            date_to=_date_param(request, "date_to"),
+        ).order_by("-created_at", "-id")
+        page = self.paginate_queryset(rows)
+        return self.get_paginated_response(CommissionSettlementSerializer(page, many=True).data)
+
+
+class CommissionSettlementDetailView(PermissionCodeView):
+    required_permissions = {"GET": READ_COMMISSIONS}
+
+    @extend_schema(
+        tags=[SETTLEMENTS_TAG],
+        operation_id="commission_settlements_retrieve",
+        summary="Detalle de una liquidación con sus partes",
+        responses={200: CommissionSettlementSerializer, **NOT_FOUND, **COMMON_ERRORS},
+    )
+    def get(self, request: Request, settlement_id: Any) -> Response:
+        found = get_object_or_404(settlement.settlements_queryset(), pk=settlement_id)
+        return Response(CommissionSettlementSerializer(found).data)
+
+
+class CommissionSharePayView(PermissionCodeView):
+    required_permissions = {"POST": MANAGE_COMMISSIONS}
+
+    @extend_schema(
+        tags=[SHARES_TAG],
+        operation_id="commission_shares_pay",
+        summary="Registrar el pago de una parte",
+        description=(
+            "Solo una parte `PENDING` (`409 COMMISSION_SHARE_NOT_PAYABLE`); las de una "
+            "liquidación anulada ya están `VOIDED`. `paid_at` no puede ser futura. Responde "
+            "la liquidación completa. Con la misma `Idempotency-Key`, la respuesta original."
+        ),
+        request=SharePaySerializer,
+        parameters=[IDEMPOTENCY_PARAMETER],
+        responses=idempotency_responses(
+            {
+                200: CommissionSettlementSerializer,
+                **VALIDATION,
+                **NOT_FOUND,
+                409: _error("COMMISSION_SHARE_NOT_PAYABLE"),
+                **COMMON_ERRORS,
+            },
+            extra_409="COMMISSION_SHARE_NOT_PAYABLE",
+        ),
+    )
+    @idempotent()
+    def post(self, request: Request, share_id: Any) -> Response:
+        share = get_object_or_404(CommissionShare.objects.all(), pk=share_id)
+        serializer = SharePaySerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        paid = payments.pay_share(
+            share,
+            actor=self.actor,
+            paid_at=serializer.validated_data["paid_at"],
+            reference=serializer.validated_data["payment_reference"],
+        )
+        return _settlement_response(paid.settlement_id)
+
+
+class MyCommissionsView(PermissionCodeView):
+    required_permissions = {"GET": READ_OWN}
+
+    @extend_schema(
+        tags=[SHARES_TAG],
+        operation_id="me_commissions_list",
+        summary="Mis comisiones",
+        description=(
+            "Solo las partes propias del asesor o del broker autenticado, de la más reciente "
+            "a la más antigua (por desembolso). Cada fila trae solo la parte propia: nunca la "
+            "base, la tasa, el total ni la parte del otro beneficiario."
+        ),
+        parameters=[
+            OpenApiParameter("status", OpenApiTypes.STR, enum=ShareStatus.values),
+            *DATE_PARAMETERS,
+        ],
+        responses={200: MyCommissionSerializer(many=True), **VALIDATION, **COMMON_ERRORS},
+    )
+    def get(self, request: Request) -> Response:
+        rows = payments.filter_my_shares(
+            payments.my_shares(self.actor),
+            status=_choice(request, "status", ShareStatus.values),
+            date_from=_date_param(request, "date_from"),
+            date_to=_date_param(request, "date_to"),
+        )
+        page = self.paginate_queryset(rows)
+        return self.get_paginated_response(MyCommissionSerializer(page, many=True).data)
