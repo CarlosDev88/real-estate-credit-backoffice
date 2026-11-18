@@ -52,6 +52,7 @@ const TAB_LABELS: Record<ClientTab, string> = {
 function ClientDetailView({ client }: { client: ClientDetail }) {
   useShellTrail(client.full_name);
   const has = usePermissions();
+  const me = useMe();
   const { tab: requested, opportunityId, go } = useClientTab();
   const canReadApplications = has("applications.read");
   const canReadOpportunities = has("opportunities.read");
@@ -69,6 +70,7 @@ function ClientDetailView({ client }: { client: ClientDetail }) {
     canAssign: has("opportunities.assign") && has("users.read"),
     canCreateApplication: has("applications.create"),
     canListAdvisors: has("users.read"),
+    selfAssignId: has("opportunities.assign") && !has("users.read") ? (me.data?.id ?? null) : null,
   };
 
   return (

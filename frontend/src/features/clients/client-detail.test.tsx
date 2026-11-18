@@ -376,12 +376,59 @@ describe("detalle del cliente", { timeout: 20_000 }, () => {
     expect(await screen.findByText("Asesor asignado")).toBeInTheDocument();
   });
 
-  it("sin `users.read` no ofrece asignar", async () => {
+  it("sin `users.read` no ofrece elegir asesor; si ya es suya, tampoco 'Asignarme'", async () => {
     useApi({ me: { ...ME, permissions: ALL_PERMISSIONS.filter((p) => p !== "users.read") } });
     await renderDetail("?tab=oportunidades&oportunidad=op-1");
     const panel = await screen.findByRole("dialog");
     await within(panel).findByRole("button", { name: "Crear solicitud de crédito" });
     expect(within(panel).queryByRole("button", { name: /asesor/ })).not.toBeInTheDocument();
+    // La oportunidad ya es de este usuario (u-1).
+    expect(within(panel).queryByRole("button", { name: "Asignarme" })).not.toBeInTheDocument();
+  });
+
+  it("sin `users.read`, el asesor puede asignarse una oportunidad sin asesor", async () => {
+    const recorded = useApi({
+      me: { ...ME, permissions: ALL_PERMISSIONS.filter((p) => p !== "users.read") },
+      opportunities: [makeOpportunity(1, { assigned_advisor: null, status: "NEW" })],
+    });
+    const user = await renderDetail("?tab=oportunidades&oportunidad=op-1");
+    const panel = await screen.findByRole("dialog");
+    await user.click(await within(panel).findByRole("button", { name: "Asignarme" }));
+    await waitFor(() => expect(recorded.assignments).toEqual([{ advisor_id: "u-1", reason: "" }]));
+    expect(await screen.findByText("Te asignaste la oportunidad")).toBeInTheDocument();
+  });
+
+  it("sin asesor ni `users.read`, el error de asesor de la API va al aviso", async () => {
+    useApi({
+      me: { ...ME, permissions: ALL_PERMISSIONS.filter((p) => p !== "users.read") },
+      opportunities: [makeOpportunity(1, { assigned_advisor: null })],
+    });
+    server.use(
+      http.post(apiUrl("/applications"), () =>
+        HttpResponse.json(
+          apiError("VALIDATION_ERROR", "Revisa los datos.", [
+            {
+              field: "assigned_advisor_id",
+              code: "invalid",
+              message: "La oportunidad no tiene asesor: indica uno.",
+            },
+          ]),
+          { status: 400 },
+        ),
+      ),
+    );
+    const user = await renderDetail("?tab=oportunidades&oportunidad=op-1");
+    const panel = await screen.findByRole("dialog");
+    await user.click(
+      await within(panel).findByRole("button", { name: "Crear solicitud de crédito" }),
+    );
+    const dialog = await modalTitled("Crear solicitud de crédito");
+    expect(within(dialog).getByText(/la solicitud necesita uno/)).toBeInTheDocument();
+    await pick(user, "Finalidad del crédito", "Vivienda nueva");
+    await user.click(within(dialog).getByRole("button", { name: "Crear solicitud" }));
+    expect(
+      await screen.findByText("La oportunidad no tiene asesor: indica uno."),
+    ).toBeInTheDocument();
   });
 
   it("crea la solicitud desde la oportunidad y va al expediente", async () => {

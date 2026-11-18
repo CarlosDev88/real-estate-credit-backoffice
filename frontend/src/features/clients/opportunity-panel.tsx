@@ -38,6 +38,11 @@ export interface PanelPermissions {
   canCreateApplication: boolean;
   /** `users.read`: elegir asesor al crear la solicitud si la oportunidad no tiene. */
   canListAdvisors: boolean;
+  /**
+   * Id del usuario si puede asignarse a sí mismo: tiene `opportunities.assign` pero no
+   * `users.read` (no puede listar asesores). Si no, `null`.
+   */
+  selfAssignId: string | null;
 }
 
 function Datum({ label, children }: { label: string; children: ReactNode }) {
@@ -219,7 +224,9 @@ function CreateApplicationModal({
       return;
     }
     if (!isApiError(error) || error.details.length === 0) return showError(error);
-    const fields = needsAdvisor ? APPLICATION_FIELDS : (["purpose_code"] as const);
+    // El error de `assigned_advisor_id` va al campo solo si se ve; si no, al aviso.
+    const fields =
+      needsAdvisor && canListAdvisors ? APPLICATION_FIELDS : (["purpose_code"] as const);
     const leftover = applyFieldErrors(error, setError, fields);
     if (leftover.length) showError(error, leftover);
   };
@@ -376,7 +383,23 @@ function PanelBody({
   permissions: PanelPermissions;
 }) {
   const [dialog, setDialog] = useState<Dialog>(null);
+  const toast = useToast();
+  const showError = useApiErrorToast();
+  const assign = useAssignOpportunity(clientId, opportunity.id);
   const assignments = opportunity.assignments as unknown as OpportunityAssignment[];
+  const selfId = permissions.selfAssignId;
+  const canAssignSelf = selfId !== null && opportunity.assigned_advisor?.id !== selfId;
+
+  const assignSelf = () => {
+    if (!selfId) return;
+    assign.mutate(
+      { advisor_id: selfId, reason: "" },
+      {
+        onSuccess: () => toast.success({ title: "Te asignaste la oportunidad" }),
+        onError: (error) => showError(error),
+      },
+    );
+  };
 
   return (
     <div className="grid gap-5">
@@ -389,6 +412,11 @@ function PanelBody({
         {permissions.canAssign && (
           <Button onClick={() => setDialog("assign")}>
             {opportunity.assigned_advisor ? "Cambiar asesor" : "Asignar asesor"}
+          </Button>
+        )}
+        {canAssignSelf && (
+          <Button onClick={assignSelf} loading={assign.isPending}>
+            Asignarme
           </Button>
         )}
       </div>
