@@ -35,6 +35,7 @@ describe("proxy", () => {
     for (const path of [
       "/login",
       "/acceso",
+      "/aceptar-invitacion",
       "/portal/documentos",
       "/dev/ui",
       "/api/v1/auth/me",
@@ -43,7 +44,7 @@ describe("proxy", () => {
     ]) {
       expect(matcher.test(path), path).toBe(false);
     }
-    for (const path of ["/solicitudes", "/solicitudes/abc", "/sin-modulos"]) {
+    for (const path of ["/solicitudes", "/solicitudes/abc", "/sin-modulos", "/admin/usuarios"]) {
       expect(matcher.test(path), path).toBe(true);
     }
   });
