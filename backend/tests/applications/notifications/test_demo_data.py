@@ -32,10 +32,11 @@ def test_the_demo_notifies_its_buyers_once(
     created = by_type()
     filed = Filing.objects.count()
     rejected = DocumentReview.objects.filter(decision=ReviewDecision.REJECTED).count()
-    assert created[NotificationType.FILED] == filed == 3
+    assert created[NotificationType.FILED] == filed == 4
     assert created[NotificationType.DOCUMENT_REJECTED] == rejected > 0
     assert created[NotificationType.BANK_RETURNED] == 1
-    assert created[NotificationType.BANK_APPROVED] == 1
+    assert created[NotificationType.BANK_APPROVED] == 2
+    assert created[NotificationType.DISBURSED] == 1
     assert created[NotificationType.ACCESS_GRANTED] > 0
     assert NotificationDelivery.objects.count() == 2 * sum(created.values())
 

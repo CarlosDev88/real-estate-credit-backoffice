@@ -6,11 +6,6 @@ import type { ReactNode } from "react";
 import { ErrorState, LoadingState } from "@/components/ui/state-views";
 import { isFilterError } from "@/features/dashboard/queries";
 
-/** Bloque sin datos para los filtros: una línea, sin ocupar el alto de un estado vacío. */
-export function EmptyNote({ children }: { children: ReactNode }) {
-  return <p className="text-text-tertiary m-0 text-sm">{children}</p>;
-}
-
 /** Error de un filtro: el detalle va en el filtro; el bloque solo lo avisa. */
 export function FilterErrorNote() {
   return (

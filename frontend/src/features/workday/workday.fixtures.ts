@@ -165,6 +165,16 @@ export const BOOTSTRAP = {
   catalogs: {
     loan_purpose: [item("NEW", "Vivienda nueva", 1)],
     task_priority: [item("LOW", "Baja", 10), item("MEDIUM", "Media", 20), item("HIGH", "Alta", 30)],
+    task_status: [
+      item("PENDING", "Pendiente", 10),
+      item("COMPLETED", "Completada", 20),
+      item("CANCELLED", "Cancelada", 30),
+    ],
+    task_due: [
+      item("overdue", "Vencidas", 10),
+      item("today", "Hoy", 20),
+      item("upcoming", "Próximas", 30),
+    ],
     application_status: [
       item("DRAFT", "Borrador", 10),
       item("WAITING_BUYER_DATA", "Esperando datos del comprador", 20),

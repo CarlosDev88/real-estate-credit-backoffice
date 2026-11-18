@@ -110,3 +110,14 @@
   - `e2e/backoffice/operations.spec.ts`: dashboard, Mi día y reportes, con axe en claro para no pasar el cupo de 20 por minuto.
   - Los avisos van dentro del flujo existente de `e2e/portal/portal.spec.ts`, para no gastar otro enlace del comprador por proyecto.
   - `e2e/auth.setup.ts` ahora espera `/dashboard` después del login (el inicio nuevo).
+
+**Merge de master (#28 y #31), front 2, 2026-11-18:**
+- **Cómo resolví el merge:** en los archivos que mis commits no tocaron, quedó la versión de master tal cual. Así no reviven líneas viejas del design system que el #28 cambió o quitó: el #28 es la versión final de los commits del design system que esta rama traía.
+- **Conflictos de mis archivos:**
+  - `nav-config.tsx`: Dashboard, Mi día, Reportes, Solicitudes y Clientes, todos los íconos desde `@/components/ui/icons` o desde mis features. Quité el comentario de F4 sobre el ícono de Clientes, porque ya está en la librería.
+  - `portal-shell.tsx`: el `leading-(--um-leading-sm)` y el `px-1` de master, con mi `label` del número ("sin leer").
+- **Contrato:** `contracts/openapi.json` y `schema.d.ts` quedan como en master; `api:gen` da el mismo archivo.
+- **Del #31:**
+  - "Estado" y "Vencimiento" de "Mis tareas" salen de los catálogos `task_status` y `task_due`. Sin filtro, "Estado" dice la etiqueta de `PENDING`.
+  - `EmptyNote` se reemplazó por `EmptyState size="sm"`.
+  - Las etiquetas sueltas (atención, "Vencida" y "Nuevo") pasan a `ToneBadge`.

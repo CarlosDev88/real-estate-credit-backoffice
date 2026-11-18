@@ -28,7 +28,7 @@ from apps.documents.models import (
 from apps.documents.models.review import FILE_DECISIONS
 from apps.documents.scans import SECURITY_REJECTION_MESSAGE
 from apps.documents.uploads import upload_block
-from config.serializers import StrictSerializer
+from config.serializers import ChoiceLabelField, StrictSerializer
 
 
 class BuyerRejectionSerializer(serializers.Serializer):
@@ -69,6 +69,7 @@ class BuyerDocumentFileSerializer(serializers.ModelSerializer):
     """Versión cargada, vista por el comprador. ``UPLOADED`` significa que el análisis
     de seguridad sigue en curso; ``IN_REVIEW``, que espera al asesor."""
 
+    status_label = ChoiceLabelField(DocumentFileStatus, source="status")
     mime_type = serializers.CharField(source="file_object.detected_mime_type", read_only=True)
     size_bytes = serializers.IntegerField(source="file_object.size_bytes", read_only=True)
     rejection = serializers.SerializerMethodField()
@@ -79,6 +80,7 @@ class BuyerDocumentFileSerializer(serializers.ModelSerializer):
             "id",
             "version_number",
             "status",
+            "status_label",
             "client_filename",
             "document_date",
             "expires_at",

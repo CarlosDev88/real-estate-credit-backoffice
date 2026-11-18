@@ -1,11 +1,12 @@
 "use client";
 
-import { Button, Drawer, Input, Select } from "antd";
+import { Button, Input, Select } from "antd";
 import { useEffect, useState } from "react";
 
+import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { FilterChips } from "@/components/ui/filter-chips";
 import { SEARCH_DEBOUNCE_MS } from "@/features/applications/list-filters";
-import { FilterIcon, SearchIcon } from "@/features/clients/components/icons";
+import { FilterIcon, SearchIcon } from "@/components/ui/icons";
 import type { ClientListParams } from "@/features/clients/list-params";
 
 export interface OriginOption {
@@ -127,14 +128,11 @@ export function ClientsFilters({
             onRemove={() => onChange({ origin: "" })}
             onClearAll={onClear}
           />
-          <Drawer
+          <BottomSheet
             open={sheetOpen}
             onClose={() => setSheetOpen(false)}
-            placement="bottom"
-            size="auto"
             title="Filtros"
-            closable={{ "aria-label": "Cerrar filtros" }}
-            styles={{ body: { paddingTop: 8 } }}
+            closeLabel="Cerrar filtros"
             footer={
               <div className="flex gap-2">
                 <Button size="large" className="flex-1" onClick={onClear}>
@@ -154,7 +152,7 @@ export function ClientsFilters({
             <div role="group" aria-label="Filtros" className="grid gap-3">
               {select(true)}
             </div>
-          </Drawer>
+          </BottomSheet>
         </>
       )}
     </>

@@ -6,6 +6,7 @@ import "@fontsource/inter/700.css";
 import "@fontsource/jetbrains-mono/400.css";
 import "@fontsource/jetbrains-mono/500.css";
 import "../src/app/globals.css";
+import "./docs.css";
 
 import type { Preview } from "@storybook/nextjs-vite";
 
@@ -74,6 +75,7 @@ const preview: Preview = {
       storySort: {
         order: [
           "Introducción",
+          "Guía de uso",
           "Fundamentos",
           [
             "Colores",

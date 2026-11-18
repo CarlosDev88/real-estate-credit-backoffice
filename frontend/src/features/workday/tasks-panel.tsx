@@ -9,7 +9,7 @@ import { CardList, DataTable, dataColumns } from "@/components/ui/data-table";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ListPagination } from "@/components/ui/list-pagination";
 import { ErrorState, LoadingState } from "@/components/ui/state-views";
-import { TONE_CLASS } from "@/components/ui/status-badge";
+import { ToneBadge } from "@/components/ui/status-badge";
 import type { Task } from "@/features/workday/queries";
 import { applicationHref } from "@/features/workday/tray";
 import { PAGE_SIZES } from "@/features/workday/workday-params";
@@ -59,13 +59,7 @@ function DueCell({ task }: { task: Task }) {
   return (
     <span className="flex flex-wrap items-center gap-1.5">
       <span className="tabular-nums">{formatDateTime(task.due_at)}</span>
-      {task.is_overdue && (
-        <span
-          className={`inline-flex h-[22px] items-center rounded-full border px-2 text-xs font-medium ${TONE_CLASS.danger}`}
-        >
-          Vencida
-        </span>
-      )}
+      {task.is_overdue && <ToneBadge tone="danger">Vencida</ToneBadge>}
     </span>
   );
 }

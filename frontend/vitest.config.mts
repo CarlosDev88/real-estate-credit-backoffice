@@ -32,8 +32,6 @@ export default defineConfig({
         "scripts/__fixtures__/**",
         "src/test/**",
         "src/lib/api/schema.d.ts",
-        // Demos de desarrollo: en producción no existen.
-        "src/app/(dev)/**",
       ],
       // Sin umbral aquí: el mínimo (70 % de líneas, REQ §10.5) lo aplica el paso "Cobertura"
       // del CI con `node scripts/ci-report.ts --check-coverage`.

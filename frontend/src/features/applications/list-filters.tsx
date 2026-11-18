@@ -1,9 +1,11 @@
 "use client";
 
-import { Button, Drawer, Input, Select } from "antd";
+import { Button, Input, Select } from "antd";
 import { useEffect, useState } from "react";
 
+import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { FilterChips, type FilterChip } from "@/components/ui/filter-chips";
+import { FilterIcon, SearchIcon } from "@/components/ui/icons";
 import type { FilterKey, ListParams } from "@/features/applications/list-params";
 import { FILTER_KEYS } from "@/features/applications/list-params";
 
@@ -51,18 +53,7 @@ function SearchInput({ value, onChange }: { value: string; onChange: (value: str
       onChange={(event) => setText(event.target.value)}
       placeholder="Código, nombre o cédula"
       aria-label="Buscar en solicitudes por código, nombre o cédula"
-      prefix={
-        <svg
-          viewBox="0 0 20 20"
-          fill="currentColor"
-          width={16}
-          height={16}
-          aria-hidden="true"
-          className="text-text-tertiary"
-        >
-          <path d="M8.5 2a6.5 6.5 0 0 1 5.2 10.4l4.2 4.2-1.4 1.4-4.2-4.2A6.5 6.5 0 1 1 8.5 2Zm0 2a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9Z" />
-        </svg>
-      }
+      prefix={<SearchIcon className="text-text-tertiary" />}
       className="min-w-0 flex-[1_1_200px]"
     />
   );
@@ -110,18 +101,35 @@ interface ListFiltersProps {
   onClear: () => void;
   /** ≤ 860 px: los filtros van en una hoja inferior y los activos se ven como chips. */
   mobile: boolean;
+  /**
+   * Filtros que llegan en la URL y no tienen control en la barra (el estado, desde el
+   * tablero): se ven como chips en todos los tamaños, para poder quitarlos.
+   */
+  hiddenChips?: FilterChip[];
 }
 
-export function ListFilters({ params, filters, onChange, onClear, mobile }: ListFiltersProps) {
+export function ListFilters({
+  params,
+  filters,
+  onChange,
+  onClear,
+  mobile,
+  hiddenChips = [],
+}: ListFiltersProps) {
   const [sheetOpen, setSheetOpen] = useState(false);
   const active = filters.filter((def) => params[def.key] !== "");
-  const anyActive = active.length > 0 || params.search !== "";
+  const anyActive = active.length > 0 || params.search !== "" || hiddenChips.length > 0;
 
-  const chips: FilterChip[] = active.map((def) => ({
-    key: def.key,
-    label: def.label,
-    value: optionLabel(def, params[def.key]),
-  }));
+  const chips: FilterChip[] = [
+    ...hiddenChips,
+    ...(mobile
+      ? active.map((def) => ({
+          key: def.key,
+          label: def.label,
+          value: optionLabel(def, params[def.key]),
+        }))
+      : []),
+  ];
 
   const selects = (block: boolean) =>
     filters.map((def) => (
@@ -144,17 +152,7 @@ export function ListFilters({ params, filters, onChange, onClear, mobile }: List
           <Button
             aria-expanded={sheetOpen}
             onClick={() => setSheetOpen(true)}
-            icon={
-              <svg
-                viewBox="0 0 20 20"
-                fill="currentColor"
-                width={16}
-                height={16}
-                aria-hidden="true"
-              >
-                <path d="M3 4h14v2l-5 5v5l-4 1v-6L3 6V4Z" />
-              </svg>
-            }
+            icon={<FilterIcon />}
           >
             {active.length ? `Filtros (${active.length})` : "Filtros"}
           </Button>
@@ -170,23 +168,20 @@ export function ListFilters({ params, filters, onChange, onClear, mobile }: List
         )}
       </div>
 
+      <FilterChips
+        chips={chips}
+        onRemove={(key) => {
+          if ((FILTER_KEYS as string[]).includes(key) || key === "status") onChange({ [key]: "" });
+        }}
+        onClearAll={onClear}
+      />
       {mobile && (
         <>
-          <FilterChips
-            chips={chips}
-            onRemove={(key) => {
-              if ((FILTER_KEYS as string[]).includes(key)) onChange({ [key]: "" });
-            }}
-            onClearAll={onClear}
-          />
-          <Drawer
+          <BottomSheet
             open={sheetOpen}
             onClose={() => setSheetOpen(false)}
-            placement="bottom"
-            size="auto"
             title="Filtros"
-            closable={{ "aria-label": "Cerrar filtros" }}
-            styles={{ body: { paddingTop: 8 } }}
+            closeLabel="Cerrar filtros"
             footer={
               <div className="flex gap-2">
                 <Button size="large" className="flex-1" onClick={onClear}>
@@ -206,7 +201,7 @@ export function ListFilters({ params, filters, onChange, onClear, mobile }: List
             <div role="group" aria-label="Filtros" className="grid gap-3">
               {selects(true)}
             </div>
-          </Drawer>
+          </BottomSheet>
         </>
       )}
     </>

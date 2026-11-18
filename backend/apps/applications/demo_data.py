@@ -668,6 +668,11 @@ def seed_demo_data(*, extra_advisor: User | None = None) -> DemoResult:
         advisors.append(extra_advisor)
     broker = users[DEMO_USERS[3].email]
     _ensure_leasing_products()
+    # Planes de comisión (paso 16) antes de los casos: un desembolso se liquida solo.
+    # Import local: `commissions` depende de `applications`.
+    from apps.commissions.demo_data import seed_plans, settle_disbursed
+
+    seed_plans(admin)
 
     result = DemoResult(users=list(DEMO_USERS))
     names = _Names()
@@ -688,7 +693,7 @@ def seed_demo_data(*, extra_advisor: User | None = None) -> DemoResult:
         if case.portal_link:
             portal = (advisor, application)
 
-    # Tres más, radicadas y con respuestas del banco (paso 11). Import local: `filings`
+    # Cuatro más, radicadas y con respuestas del banco (paso 11). Import local: `filings`
     # depende de `applications`.
     from apps.filings.demo_data import seed_filed_cases
 
@@ -709,6 +714,7 @@ def seed_demo_data(*, extra_advisor: User | None = None) -> DemoResult:
     owner = extra_advisor or advisors[0]
     seed_tasks(owner, result.applications)
     seed_notes(owner, result.applications)
+    settle_disbursed(admin, result.applications)
 
     # Al final, para que ninguna otra emisión lo revoque.
     assert portal is not None

@@ -3,13 +3,14 @@
 import { Alert, Button, Select } from "antd";
 import { useMemo, useState } from "react";
 
+import { EmptyState } from "@/components/ui/empty-state";
 import { Card } from "@/components/ui/card";
 import { ListPagination } from "@/components/ui/list-pagination";
 import { PageHeader } from "@/components/ui/page-header";
 import { ScrollTabs } from "@/components/ui/scroll-tabs";
 import { ErrorState, LoadingState } from "@/components/ui/state-views";
 import { useMe } from "@/features/auth/queries";
-import { EmptyNote, FilterErrorNote } from "@/features/dashboard/block-state";
+import { FilterErrorNote } from "@/features/dashboard/block-state";
 import {
   DashboardFiltersBar,
   periodLabel,
@@ -249,7 +250,7 @@ export function ReportsScreen() {
         />
       );
     } else if ((funnel.data.stages[0]?.count ?? 0) === 0) {
-      content = <EmptyNote>No se crearon solicitudes con estos filtros.</EmptyNote>;
+      content = <EmptyState size="sm" title="No se crearon solicitudes con estos filtros" />;
     } else if (funnel.data.group_by && groupOption) {
       content = (
         <div className="-mx-5 -mb-5">
@@ -273,7 +274,7 @@ export function ReportsScreen() {
       />
     );
   } else if (applications.data.items.length === 0) {
-    content = <EmptyNote>No hay solicitudes con estos filtros.</EmptyNote>;
+    content = <EmptyState size="sm" title="No hay solicitudes con estos filtros" />;
   } else {
     content = (
       <div className="-mx-5 -mb-5">

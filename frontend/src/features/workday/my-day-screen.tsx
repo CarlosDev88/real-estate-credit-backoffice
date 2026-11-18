@@ -64,23 +64,6 @@ const ORDER_OPTIONS = [
   { value: "code", label: "código" },
 ];
 
-/**
- * Filtros de las tareas. El contrato fija estos valores (`due` y `status` de `GET /tasks`)
- * y no trae un catálogo con sus textos: los nombres de las opciones van aquí; el estado de
- * cada tarea se muestra con `status_label`.
- */
-const DUE_OPTIONS = [
-  { value: "overdue", label: "vencidas" },
-  { value: "today", label: "hoy" },
-  { value: "upcoming", label: "próximas" },
-];
-const STATUS_OPTIONS = [
-  { value: "PENDING", label: "pendientes" },
-  { value: "COMPLETED", label: "completadas" },
-  { value: "CANCELLED", label: "canceladas" },
-  { value: ALL, label: "todas" },
-];
-
 /** "Mi día" (`/mi-dia`, vista 3): la bandeja de atención y las tareas del usuario. */
 export function MyDayScreen() {
   const me = useMe();
@@ -105,6 +88,12 @@ export function MyDayScreen() {
   const statuses = useCatalog("application_status");
   const purposes = useCatalog("loan_purpose");
   const priorities = useCatalog("task_priority");
+  // Textos de los filtros de tareas: catálogos de sistema con los códigos del contrato
+  // (`due` y `status` de `GET /tasks`).
+  const dues = useCatalog("task_due");
+  const taskStatuses = useCatalog("task_status");
+  const toOptions = (items: { code: string; label: string }[]) =>
+    items.map((i) => ({ value: i.code, label: i.label }));
   const banks = useActiveBanks(can("banks.read"));
   const advisors = useAdvisors(isAdmin);
 
@@ -197,16 +186,19 @@ export function MyDayScreen() {
       label: "Vencimiento",
       allLabel: "todas",
       value: params.due,
-      options: DUE_OPTIONS,
+      options: toOptions(dues.items),
+      loading: dues.isPending,
       width: 190,
     },
     {
       key: "task_status",
       label: "Estado",
-      allLabel: "pendientes",
+      // Sin filtro en la URL: las pendientes (el valor por defecto se nombra con su etiqueta).
+      allLabel: taskStatuses.items.find((i) => i.code === DEFAULT_TASK_STATUS)?.label ?? "…",
       value: params.task_status,
       defaultValue: DEFAULT_TASK_STATUS,
-      options: STATUS_OPTIONS,
+      options: [...toOptions(taskStatuses.items), { value: ALL, label: "todas" }],
+      loading: taskStatuses.isPending,
       width: 190,
     },
     {

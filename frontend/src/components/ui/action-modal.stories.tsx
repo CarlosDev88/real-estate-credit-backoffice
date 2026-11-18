@@ -110,6 +110,7 @@ export const Destructiva: Story = {
       cancelText="Volver"
       description="Si cierras tu solicitud, tu asesor ya no podrá seguir con el trámite."
       danger
+      withFields={false}
     />
   ),
 };

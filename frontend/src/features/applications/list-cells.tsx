@@ -58,7 +58,9 @@ export function ApplicantCell({ application }: { application: Application }) {
   const extra = participantsText(application.participants_summary);
   return (
     <div className="min-w-0">
-      <b className="block leading-[18px] font-medium">{application.applicant.full_name}</b>
+      <b className="block leading-(--um-leading-sm) font-medium">
+        {application.applicant.full_name}
+      </b>
       {extra && <span className="text-text-tertiary text-xs">{extra}</span>}
     </div>
   );
@@ -120,11 +122,11 @@ export function ProductTypeCell({ application }: { application: Application }) {
     // Ancho máximo: una finalidad larga no debe empujar "Actualizada" fuera de la vista.
     <div className="max-w-[190px]">
       {type ? (
-        <span className="block truncate leading-[18px]" title={type}>
+        <span className="block truncate leading-(--um-leading-sm)" title={type}>
           {type}
         </span>
       ) : (
-        <span className="text-text-tertiary block leading-[18px]">—</span>
+        <span className="text-text-tertiary block leading-(--um-leading-sm)">—</span>
       )}
       {application.purpose?.label && (
         <span

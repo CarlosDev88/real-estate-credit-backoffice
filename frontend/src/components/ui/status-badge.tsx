@@ -1,4 +1,5 @@
 import { toneFor, type StatusKind, type Tone } from "@design/status-tones";
+import type { ReactNode } from "react";
 
 // Clases completas (no interpoladas) para que Tailwind las detecte.
 export const TONE_CLASS: Record<Tone, string> = {
@@ -22,14 +23,33 @@ interface StatusBadgeProps {
 
 /** Etiqueta de estado: punto de color y texto de la API (el estado nunca es solo color). */
 export function StatusBadge({ kind, code, label, className = "" }: StatusBadgeProps) {
-  const tone = toneFor(kind, code);
+  return (
+    <ToneBadge tone={toneFor(kind, code)} className={className}>
+      {label}
+    </ToneBadge>
+  );
+}
+
+/**
+ * La misma píldora con un tono directo, para lo que no es un código de estado de la API
+ * (el resultado de una evaluación, una muestra en la documentación).
+ */
+export function ToneBadge({
+  tone,
+  children,
+  className = "",
+}: {
+  tone: Tone;
+  children: ReactNode;
+  className?: string;
+}) {
   return (
     <span
       data-tone={tone}
       className={`inline-flex h-[22px] items-center gap-1.5 rounded-full border px-2 text-xs font-medium whitespace-nowrap ${TONE_CLASS[tone]} ${className}`}
     >
       <span aria-hidden="true" className="size-1.5 flex-none rounded-full bg-current" />
-      {label}
+      {children}
     </span>
   );
 }

@@ -978,6 +978,10 @@
                                     "BANK_RESPONSE_RECORDED",
                                     "BUYER_LINK_SENT",
                                     "BUYER_SESSION_STARTED",
+                                    "COMMISSION_PLAN_MISSING",
+                                    "COMMISSION_SETTLED",
+                                    "COMMISSION_SETTLEMENT_VOIDED",
+                                    "COMMISSION_SHARE_PAID",
                                     "CONSENT_RECORDED",
                                     "DOCUMENT_REVIEWED",
                                     "DOCUMENT_UPLOADED",
@@ -1667,6 +1671,122 @@
                 }
             }
         },
+        "/api/v1/applications/{application_id}/commission-settlement": {
+            "post": {
+                "operationId": "applications_commission_settlement_create",
+                "description": "Usa el último desembolso de la solicitud y el plan vigente del producto en esa fecha (Bogotá). Idempotente: si ya hay una liquidación vigente, la devuelve (`200`) sin crear otra; si la crea, `201`. Sin plan vigente, `422 COMMISSION_PLAN_NOT_FOUND`: se crea el plan y se vuelve a liquidar.",
+                "summary": "Liquidar a mano la comisión de una solicitud desembolsada",
+                "parameters": [
+                    {
+                        "in": "header",
+                        "name": "Idempotency-Key",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Opcional. Clave única de la operación (1 a 100 caracteres visibles; por ejemplo, un UUID), válida 24 horas para el actor, el método y la ruta. Repetirla con el mismo cuerpo devuelve la respuesta original; con otro cuerpo, `422 IDEMPOTENCY_CONFLICT`; mientras la primera sigue en curso, `409 IDEMPOTENCY_IN_PROGRESS`. Solo se guardan las respuestas `2xx`."
+                    },
+                    {
+                        "in": "path",
+                        "name": "application_id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "Commission settlements"
+                ],
+                "security": [
+                    {
+                        "internalSession": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CommissionSettlement"
+                                }
+                            }
+                        },
+                        "description": ""
+                    },
+                    "201": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CommissionSettlement"
+                                }
+                            }
+                        },
+                        "description": ""
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "RESOURCE_NOT_FOUND"
+                    },
+                    "409": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "APPLICATION_NOT_DISBURSED; IDEMPOTENCY_IN_PROGRESS o APPLICATION_NOT_DISBURSED"
+                    },
+                    "422": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "COMMISSION_PLAN_NOT_FOUND; IDEMPOTENCY_CONFLICT"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "NOT_AUTHENTICATED o SESSION_EXPIRED"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "VALIDATION_ERROR (`Idempotency-Key` mal formada)"
+                    }
+                }
+            }
+        },
         "/api/v1/applications/{application_id}/completeness": {
             "get": {
                 "operationId": "applications_completeness",
@@ -1831,6 +1951,90 @@
             }
         },
         "/api/v1/applications/{application_id}/document-package-jobs": {
+            "get": {
+                "operationId": "applications_document_package_jobs_list",
+                "description": "Todos los paquetes pedidos para la solicitud, del más nuevo al más antiguo, con el mismo permiso que pedirlos (`filings.prepare`).",
+                "summary": "Paquetes para radicar de la solicitud",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "application_id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "required": true
+                    },
+                    {
+                        "name": "page",
+                        "required": false,
+                        "in": "query",
+                        "description": "Un número de página dentro del conjunto de resultados paginado.",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "page_size",
+                        "required": false,
+                        "in": "query",
+                        "description": "Número de resultados a devolver por página.",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "tags": [
+                    "Document dossier"
+                ],
+                "security": [
+                    {
+                        "internalSession": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PaginatedDocumentPackageJobList"
+                                }
+                            }
+                        },
+                        "description": ""
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "RESOURCE_NOT_FOUND (inexistente o fuera del alcance)"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "NOT_AUTHENTICATED o SESSION_EXPIRED"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    }
+                }
+            },
             "post": {
                 "operationId": "applications_document_package_jobs_create",
                 "description": "Arma en segundo plano un ZIP con la versión vigente aprobada de cada documento, en carpetas por titular (`00_SOLICITUD`, `01_TITULAR_...`), y un `manifest.json` para el banco. Exige solo los documentos: los obligatorios aprobados y no vencidos, o exonerados. No exige `If-Match` ni evalúa las reglas del banco. El contenido queda fijo al pedirlo: una carga posterior no entra en el ZIP.\n\nSi ya hay un paquete pendiente, en proceso o listo y sin vencer con la misma huella documental, responde ese con `200` en lugar de crear otro (`201`). Se consulta en `GET /document-package-jobs/{job_id}`.",
@@ -3881,6 +4085,10 @@
                                     "BUYER_LINK_FAILED",
                                     "BUYER_SESSION_CLOSED",
                                     "CATALOG_CHANGED",
+                                    "COMMISSION_PLAN_CHANGED",
+                                    "COMMISSION_SETTLED",
+                                    "COMMISSION_SETTLEMENT_VOIDED",
+                                    "COMMISSION_SHARE_PAID",
                                     "CONSENT_ACCEPTED",
                                     "CONSENT_WITHDRAWN",
                                     "DOCUMENT_DOWNLOADED",
@@ -6188,22 +6396,20 @@
                         }
                     },
                     {
-                        "name": "page",
-                        "required": false,
                         "in": "query",
-                        "description": "Un número de página dentro del conjunto de resultados paginado.",
+                        "name": "page",
                         "schema": {
                             "type": "integer"
-                        }
+                        },
+                        "description": "Un número de página dentro del conjunto de resultados paginado."
                     },
                     {
-                        "name": "page_size",
-                        "required": false,
                         "in": "query",
-                        "description": "Número de resultados a devolver por página.",
+                        "name": "page_size",
                         "schema": {
                             "type": "integer"
-                        }
+                        },
+                        "description": "Número de resultados a devolver por página."
                     },
                     {
                         "in": "query",
@@ -6495,6 +6701,10 @@
                                     "BANK_RESPONSE_RECORDED",
                                     "BUYER_LINK_SENT",
                                     "BUYER_SESSION_STARTED",
+                                    "COMMISSION_PLAN_MISSING",
+                                    "COMMISSION_SETTLED",
+                                    "COMMISSION_SETTLEMENT_VOIDED",
+                                    "COMMISSION_SHARE_PAID",
                                     "CONSENT_RECORDED",
                                     "DOCUMENT_REVIEWED",
                                     "DOCUMENT_UPLOADED",
@@ -10470,7 +10680,7 @@
         "/api/v1/clients": {
             "get": {
                 "operationId": "clients_list",
-                "description": "El broker recibe solo datos de contacto y el documento enmascarado.",
+                "description": "Página de `Client` con `applications_count`. El broker (`INDEPENDENT_BROKER` sin `ADMIN` ni `ADVISOR`) recibe `BrokerClient`: contacto y documento enmascarado, sin direcciones ni `applications_count`.",
                 "summary": "Clientes dentro del alcance",
                 "parameters": [
                     {
@@ -10499,22 +10709,20 @@
                         "description": "Código de `lead_origin`."
                     },
                     {
-                        "name": "page",
-                        "required": false,
                         "in": "query",
-                        "description": "Un número de página dentro del conjunto de resultados paginado.",
+                        "name": "page",
                         "schema": {
                             "type": "integer"
-                        }
+                        },
+                        "description": "Un número de página dentro del conjunto de resultados paginado."
                     },
                     {
-                        "name": "page_size",
-                        "required": false,
                         "in": "query",
-                        "description": "Número de resultados a devolver por página.",
+                        "name": "page_size",
                         "schema": {
                             "type": "integer"
-                        }
+                        },
+                        "description": "Número de resultados a devolver por página."
                     },
                     {
                         "name": "search",
@@ -10539,7 +10747,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/PaginatedClientList"
+                                    "$ref": "#/components/schemas/PaginatedClientListByRole"
                                 }
                             }
                         },
@@ -10569,6 +10777,7 @@
             },
             "post": {
                 "operationId": "clients_create",
+                "description": "Responde `Client`. El broker (`INDEPENDENT_BROKER` sin `ADMIN` ni `ADVISOR`) recibe `BrokerClient`: contacto y documento enmascarado, sin direcciones ni `applications_count`.",
                 "summary": "Crear un cliente",
                 "tags": [
                     "Clients"
@@ -10593,7 +10802,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/Client"
+                                    "$ref": "#/components/schemas/ClientByRole"
                                 }
                             }
                         },
@@ -10607,7 +10816,7 @@
                                 }
                             }
                         },
-                        "description": "DUPLICATE_CLIENT_DOCUMENT. Si el cliente es visible para el usuario, `details[0].resource_id` trae su id."
+                        "description": "DUPLICATE_CLIENT_DOCUMENT: ya hay un cliente con ese tipo y número de documento. Si el usuario puede ver ese cliente, `details[0]` trae `{field: \"document_number\", code: \"EXISTING_CLIENT\", resource_id: <id del cliente>}`; si no, `details` va vacío."
                     },
                     "401": {
                         "content": {
@@ -10635,6 +10844,7 @@
         "/api/v1/clients/{client_id}": {
             "get": {
                 "operationId": "clients_retrieve",
+                "description": "`ClientDetail` con direcciones y `applications_count`. El broker (`INDEPENDENT_BROKER` sin `ADMIN` ni `ADVISOR`) recibe `BrokerClient`: contacto y documento enmascarado, sin direcciones ni `applications_count`.",
                 "summary": "Detalle del cliente según el rol",
                 "parameters": [
                     {
@@ -10660,7 +10870,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/ClientDetail"
+                                    "$ref": "#/components/schemas/ClientDetailByRole"
                                 }
                             }
                         },
@@ -10700,7 +10910,7 @@
             },
             "patch": {
                 "operationId": "clients_partial_update",
-                "description": "El broker solo puede cambiar datos de contacto, no el documento.",
+                "description": "El broker solo puede cambiar datos de contacto, no el documento. Responde `ClientDetail`. El broker (`INDEPENDENT_BROKER` sin `ADMIN` ni `ADVISOR`) recibe `BrokerClient`: contacto y documento enmascarado, sin direcciones ni `applications_count`.",
                 "summary": "Actualizar un cliente",
                 "parameters": [
                     {
@@ -10735,7 +10945,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/ClientDetail"
+                                    "$ref": "#/components/schemas/ClientDetailByRole"
                                 }
                             }
                         },
@@ -10749,7 +10959,7 @@
                                 }
                             }
                         },
-                        "description": "DUPLICATE_CLIENT_DOCUMENT"
+                        "description": "DUPLICATE_CLIENT_DOCUMENT: ya hay un cliente con ese tipo y número de documento. Si el usuario puede ver ese cliente, `details[0]` trae `{field: \"document_number\", code: \"EXISTING_CLIENT\", resource_id: <id del cliente>}`; si no, `details` va vacío."
                     },
                     "404": {
                         "content": {
@@ -11060,6 +11270,7 @@
         "/api/v1/clients/{client_id}/opportunities": {
             "get": {
                 "operationId": "clients_opportunities_list",
+                "description": "Página de `Opportunity`. El broker (`INDEPENDENT_BROKER` sin `ADMIN` ni `ADVISOR`) recibe `BrokerOpportunity`: el resumen de su prospecto, sin acciones ni historial de asesores.",
                 "summary": "Oportunidades del cliente visibles para el usuario",
                 "parameters": [
                     {
@@ -11072,22 +11283,20 @@
                         "required": true
                     },
                     {
-                        "name": "page",
-                        "required": false,
                         "in": "query",
-                        "description": "Un número de página dentro del conjunto de resultados paginado.",
+                        "name": "page",
                         "schema": {
                             "type": "integer"
-                        }
+                        },
+                        "description": "Un número de página dentro del conjunto de resultados paginado."
                     },
                     {
-                        "name": "page_size",
-                        "required": false,
                         "in": "query",
-                        "description": "Número de resultados a devolver por página.",
+                        "name": "page_size",
                         "schema": {
                             "type": "integer"
-                        }
+                        },
+                        "description": "Número de resultados a devolver por página."
                     },
                     {
                         "in": "query",
@@ -11127,7 +11336,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/PaginatedOpportunityList"
+                                    "$ref": "#/components/schemas/PaginatedOpportunityListByRole"
                                 }
                             }
                         },
@@ -11162,6 +11371,908 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    }
+                }
+            }
+        },
+        "/api/v1/commission-plans": {
+            "get": {
+                "operationId": "commission_plans_list",
+                "description": "Por producto y del más reciente al más antiguo. `vigente_en` deja los planes vigentes en esa fecha (`valid_from` <= fecha < `valid_until`).",
+                "summary": "Planes de comisión",
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "bank_product_id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    },
+                    {
+                        "name": "page",
+                        "required": false,
+                        "in": "query",
+                        "description": "Un número de página dentro del conjunto de resultados paginado.",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "page_size",
+                        "required": false,
+                        "in": "query",
+                        "description": "Número de resultados a devolver por página.",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "vigente_en",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    }
+                ],
+                "tags": [
+                    "Commission plans"
+                ],
+                "security": [
+                    {
+                        "internalSession": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PaginatedCommissionPlanList"
+                                }
+                            }
+                        },
+                        "description": ""
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "VALIDATION_ERROR"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "NOT_AUTHENTICATED o SESSION_EXPIRED"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    }
+                }
+            },
+            "post": {
+                "operationId": "commission_plans_create",
+                "description": "`rate_pct` mayor que 0 y como mucho 100. `advisor_share_pct` + `broker_share_pct` = 100, y el asesor lleva la porción mayor. La vigencia no puede solaparse con otro plan del mismo producto (`409 COMMISSION_PLAN_OVERLAP`).",
+                "summary": "Crear un plan de comisión",
+                "tags": [
+                    "Commission plans"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CommissionPlanCreateRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "security": [
+                    {
+                        "internalSession": []
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "headers": {
+                            "ETag": {
+                                "schema": {
+                                    "type": "string"
+                                },
+                                "description": "Versión del plan, por ejemplo `\"2\"`. Se reenvía en `If-Match` al editarlo.",
+                                "required": true
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CommissionPlan"
+                                }
+                            }
+                        },
+                        "description": ""
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "VALIDATION_ERROR"
+                    },
+                    "409": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "COMMISSION_PLAN_OVERLAP"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "NOT_AUTHENTICATED o SESSION_EXPIRED"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    }
+                }
+            }
+        },
+        "/api/v1/commission-plans/{plan_id}": {
+            "get": {
+                "operationId": "commission_plans_retrieve",
+                "summary": "Detalle de un plan de comisión",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "plan_id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "Commission plans"
+                ],
+                "security": [
+                    {
+                        "internalSession": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "headers": {
+                            "ETag": {
+                                "schema": {
+                                    "type": "string"
+                                },
+                                "description": "Versión del plan, por ejemplo `\"2\"`. Se reenvía en `If-Match` al editarlo.",
+                                "required": true
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CommissionPlan"
+                                }
+                            }
+                        },
+                        "description": ""
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "RESOURCE_NOT_FOUND"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "NOT_AUTHENTICATED o SESSION_EXPIRED"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    }
+                }
+            },
+            "patch": {
+                "operationId": "commission_plans_partial_update",
+                "description": "Exige `If-Match` con la versión del plan (`428` sin ella, `409 STALE_VERSION` con otra). Un plan en uso no se edita (`409 COMMISSION_PLAN_IN_USE`): se cierra y se crea uno nuevo. El producto no cambia.",
+                "summary": "Editar un plan que ninguna liquidación usó",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "plan_id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "Commission plans"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PatchedCommissionPlanUpdateRequest"
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "internalSession": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "headers": {
+                            "ETag": {
+                                "schema": {
+                                    "type": "string"
+                                },
+                                "description": "Versión del plan, por ejemplo `\"2\"`. Se reenvía en `If-Match` al editarlo.",
+                                "required": true
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CommissionPlan"
+                                }
+                            }
+                        },
+                        "description": ""
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "VALIDATION_ERROR"
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "RESOURCE_NOT_FOUND"
+                    },
+                    "409": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "STALE_VERSION, COMMISSION_PLAN_IN_USE o COMMISSION_PLAN_OVERLAP"
+                    },
+                    "428": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "PRECONDITION_REQUIRED"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "NOT_AUTHENTICATED o SESSION_EXPIRED"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    }
+                }
+            }
+        },
+        "/api/v1/commission-plans/{plan_id}/close": {
+            "post": {
+                "operationId": "commission_plans_close",
+                "description": "Fija `valid_until` (exclusivo). Se permite también en un plan en uso. Solo adelanta el fin: un plan ya cerrado no se alarga.",
+                "summary": "Cerrar un plan de comisión",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "plan_id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "Commission plans"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CommissionPlanCloseRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "security": [
+                    {
+                        "internalSession": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "headers": {
+                            "ETag": {
+                                "schema": {
+                                    "type": "string"
+                                },
+                                "description": "Versión del plan, por ejemplo `\"2\"`. Se reenvía en `If-Match` al editarlo.",
+                                "required": true
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CommissionPlan"
+                                }
+                            }
+                        },
+                        "description": ""
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "VALIDATION_ERROR"
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "RESOURCE_NOT_FOUND"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "NOT_AUTHENTICATED o SESSION_EXPIRED"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    }
+                }
+            }
+        },
+        "/api/v1/commission-settlements": {
+            "get": {
+                "operationId": "commission_settlements_list",
+                "description": "De la más reciente a la más antigua, con sus partes.",
+                "summary": "Liquidaciones de comisión",
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "advisor_id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "description": "Asesor beneficiario."
+                    },
+                    {
+                        "in": "query",
+                        "name": "bank_id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "broker_id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "description": "Broker beneficiario."
+                    },
+                    {
+                        "in": "query",
+                        "name": "date_from",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        },
+                        "description": "Desembolso desde (Bogotá)."
+                    },
+                    {
+                        "in": "query",
+                        "name": "date_to",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        },
+                        "description": "Desembolso hasta, incluido."
+                    },
+                    {
+                        "in": "query",
+                        "name": "needs_review",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "name": "page",
+                        "required": false,
+                        "in": "query",
+                        "description": "Un número de página dentro del conjunto de resultados paginado.",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "page_size",
+                        "required": false,
+                        "in": "query",
+                        "description": "Número de resultados a devolver por página.",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "status",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "ACTIVE",
+                                "VOIDED"
+                            ]
+                        }
+                    }
+                ],
+                "tags": [
+                    "Commission settlements"
+                ],
+                "security": [
+                    {
+                        "internalSession": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PaginatedCommissionSettlementList"
+                                }
+                            }
+                        },
+                        "description": ""
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "VALIDATION_ERROR"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "NOT_AUTHENTICATED o SESSION_EXPIRED"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    }
+                }
+            }
+        },
+        "/api/v1/commission-settlements/{settlement_id}": {
+            "get": {
+                "operationId": "commission_settlements_retrieve",
+                "summary": "Detalle de una liquidación con sus partes",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "settlement_id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "Commission settlements"
+                ],
+                "security": [
+                    {
+                        "internalSession": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CommissionSettlement"
+                                }
+                            }
+                        },
+                        "description": ""
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "RESOURCE_NOT_FOUND"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "NOT_AUTHENTICATED o SESSION_EXPIRED"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    }
+                }
+            }
+        },
+        "/api/v1/commission-settlements/{settlement_id}/void": {
+            "post": {
+                "operationId": "commission_settlements_void",
+                "description": "`reason` obligatorio. Con alguna parte pagada responde `409 COMMISSION_SETTLEMENT_HAS_PAYMENTS`. Anula también las partes. Anular una ya anulada la devuelve igual. Después se puede volver a liquidar.",
+                "summary": "Anular una liquidación sin pagos",
+                "parameters": [
+                    {
+                        "in": "header",
+                        "name": "Idempotency-Key",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Opcional. Clave única de la operación (1 a 100 caracteres visibles; por ejemplo, un UUID), válida 24 horas para el actor, el método y la ruta. Repetirla con el mismo cuerpo devuelve la respuesta original; con otro cuerpo, `422 IDEMPOTENCY_CONFLICT`; mientras la primera sigue en curso, `409 IDEMPOTENCY_IN_PROGRESS`. Solo se guardan las respuestas `2xx`."
+                    },
+                    {
+                        "in": "path",
+                        "name": "settlement_id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "Commission settlements"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SettlementVoidRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "security": [
+                    {
+                        "internalSession": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CommissionSettlement"
+                                }
+                            }
+                        },
+                        "description": ""
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "VALIDATION_ERROR; VALIDATION_ERROR (`Idempotency-Key` mal formada)"
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "RESOURCE_NOT_FOUND"
+                    },
+                    "409": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "COMMISSION_SETTLEMENT_HAS_PAYMENTS; IDEMPOTENCY_IN_PROGRESS o COMMISSION_SETTLEMENT_HAS_PAYMENTS"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "NOT_AUTHENTICATED o SESSION_EXPIRED"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "422": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "IDEMPOTENCY_CONFLICT"
+                    }
+                }
+            }
+        },
+        "/api/v1/commission-shares/{share_id}/pay": {
+            "post": {
+                "operationId": "commission_shares_pay",
+                "description": "Solo una parte `PENDING` (`409 COMMISSION_SHARE_NOT_PAYABLE`); las de una liquidación anulada ya están `VOIDED`. `paid_at` no puede ser futura. Responde la liquidación completa. Con la misma `Idempotency-Key`, la respuesta original.",
+                "summary": "Registrar el pago de una parte",
+                "parameters": [
+                    {
+                        "in": "header",
+                        "name": "Idempotency-Key",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Opcional. Clave única de la operación (1 a 100 caracteres visibles; por ejemplo, un UUID), válida 24 horas para el actor, el método y la ruta. Repetirla con el mismo cuerpo devuelve la respuesta original; con otro cuerpo, `422 IDEMPOTENCY_CONFLICT`; mientras la primera sigue en curso, `409 IDEMPOTENCY_IN_PROGRESS`. Solo se guardan las respuestas `2xx`."
+                    },
+                    {
+                        "in": "path",
+                        "name": "share_id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "Commission shares"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SharePayRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "security": [
+                    {
+                        "internalSession": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CommissionSettlement"
+                                }
+                            }
+                        },
+                        "description": ""
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "VALIDATION_ERROR; VALIDATION_ERROR (`Idempotency-Key` mal formada)"
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "RESOURCE_NOT_FOUND"
+                    },
+                    "409": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "COMMISSION_SHARE_NOT_PAYABLE; IDEMPOTENCY_IN_PROGRESS o COMMISSION_SHARE_NOT_PAYABLE"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "NOT_AUTHENTICATED o SESSION_EXPIRED"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "422": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "IDEMPOTENCY_CONFLICT"
                     }
                 }
             }
@@ -14269,7 +15380,7 @@
             },
             "post": {
                 "operationId": "filings_responses_create",
-                "description": "Se registra a mano y solo contra la última radicación de la solicitud. Es inmutable: una corrección es otra respuesta con `corrects_response_id`. `expected_version` va en el cuerpo. Responde `ETag` con la versión de la solicitud. Solo el administrador o el asesor asignado a la solicitud (`403`).\n\n| `response_type` | Estados admitidos | Obligatorio | Efecto en la solicitud |\n| --- | --- | --- | --- |\n| `RECEIVED` | `FILED`, `FILING_VALIDATION` | — | → `FILING_VALIDATION` (si ya está, no cambia) |\n| `IN_ANALYSIS` | `FILED`, `FILING_VALIDATION` | — | → `CREDIT_ANALYSIS` |\n| `RETURNED` | `FILED`, `FILING_VALIDATION`, `CREDIT_ANALYSIS` | `reason_code`, `public_message`, `observations` | → `BANK_OBSERVATION` |\n| `APPROVED` | `FILED`, `FILING_VALIDATION`, `CREDIT_ANALYSIS` | `approved_amount_cop`, `approved_term_months`, `public_message` | → `APPROVED` |\n| `REJECTED` | `FILED`, `FILING_VALIDATION`, `CREDIT_ANALYSIS`, `BANK_OBSERVATION` | `reason_code`, `public_message` | → `REJECTED` |\n| `DISBURSED` | `LEGALIZATION` | `disbursed_amount_cop` | → `DISBURSED` |\n| `OTHER` | cualquiera no terminal | `internal_comment` | no cambia |\n\nLos campos de un tipo (`reason_code`, `observations`, montos, plazo y vigencia) no se admiten en otro (`400`). Cada observación de un `RETURNED` rechaza la versión vigente del documento con su motivo y mensaje: el comprador la ve como \"Corrígelo\" y, después de radicar, solo reemplaza esos documentos. Aprobar la versión nueva resuelve la observación.\n",
+                "description": "Se registra a mano y solo contra la última radicación de la solicitud. Es inmutable: una corrección es otra respuesta con `corrects_response_id`. `expected_version` va en el cuerpo. Responde `ETag` con la versión de la solicitud. Solo el administrador o el asesor asignado a la solicitud (`403`).\n\n| `response_type` | Estados admitidos | Obligatorio | Efecto en la solicitud |\n| --- | --- | --- | --- |\n| `RECEIVED` | `FILED`, `FILING_VALIDATION` | — | → `FILING_VALIDATION` (si ya está, no cambia) |\n| `IN_ANALYSIS` | `FILED`, `FILING_VALIDATION` | — | → `CREDIT_ANALYSIS` |\n| `RETURNED` | `FILED`, `FILING_VALIDATION`, `CREDIT_ANALYSIS` | `reason_code`, `public_message`, `observations` | → `BANK_OBSERVATION` |\n| `APPROVED` | `FILED`, `FILING_VALIDATION`, `CREDIT_ANALYSIS` | `approved_amount_cop`, `approved_term_months`, `public_message` | → `APPROVED` |\n| `REJECTED` | `FILED`, `FILING_VALIDATION`, `CREDIT_ANALYSIS`, `BANK_OBSERVATION` | `reason_code`, `public_message` | → `REJECTED` |\n| `DISBURSED` | `LEGALIZATION` | `disbursed_amount_cop` | → `DISBURSED` |\n| `OTHER` | cualquiera no terminal | `internal_comment` | no cambia |\n\n**Corrección** (`corrects_response_id`): solo de la última respuesta, del mismo tipo, y si es `RECEIVED`, `IN_ANALYSIS`, `OTHER` o `DISBURSED` (otra: `409 RESPONSE_CORRECTION_NOT_ALLOWED`). No cambia el estado de la solicitud ni de la radicación. La de `DISBURSED` solo la registra el administrador (`403`), con la solicitud ya `DISBURSED`: corrige `disbursed_amount_cop`, `received_at`, `external_reference` y los comentarios, y la liquidación de comisiones se rehace (o queda `needs_review` si ya tiene pagos). Al comprador no le llega otro aviso.\n\nLos campos de un tipo (`reason_code`, `observations`, montos, plazo y vigencia) no se admiten en otro (`400`). Cada observación de un `RETURNED` rechaza la versión vigente del documento con su motivo y mensaje: el comprador la ve como \"Corrígelo\" y, después de radicar, solo reemplaza esos documentos. Aprobar la versión nueva resuelve la observación.\n",
                 "summary": "Registrar una respuesta del banco",
                 "parameters": [
                     {
@@ -14336,7 +15447,7 @@
                                 }
                             }
                         },
-                        "description": "STALE_VERSION, APPLICATION_CLOSED, INVALID_STATE_TRANSITION (el tipo no se admite en el estado actual), FILING_NOT_LATEST o RESPONSE_CORRECTION_NOT_ALLOWED; IDEMPOTENCY_IN_PROGRESS"
+                        "description": "STALE_VERSION, APPLICATION_CLOSED, INVALID_STATE_TRANSITION (el tipo no se admite en el estado actual), FILING_NOT_LATEST o RESPONSE_CORRECTION_NOT_ALLOWED. `403` si quien corrige un `DISBURSED` no es el administrador.; IDEMPOTENCY_IN_PROGRESS"
                     },
                     "404": {
                         "content": {
@@ -15183,6 +16294,113 @@
                 }
             }
         },
+        "/api/v1/me/commissions": {
+            "get": {
+                "operationId": "me_commissions_list",
+                "description": "Solo las partes propias del asesor o del broker autenticado, de la más reciente a la más antigua (por desembolso). Cada fila trae solo la parte propia: nunca la base, la tasa, el total ni la parte del otro beneficiario.",
+                "summary": "Mis comisiones",
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "date_from",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        },
+                        "description": "Desembolso desde (Bogotá)."
+                    },
+                    {
+                        "in": "query",
+                        "name": "date_to",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        },
+                        "description": "Desembolso hasta, incluido."
+                    },
+                    {
+                        "name": "page",
+                        "required": false,
+                        "in": "query",
+                        "description": "Un número de página dentro del conjunto de resultados paginado.",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "page_size",
+                        "required": false,
+                        "in": "query",
+                        "description": "Número de resultados a devolver por página.",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "status",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "PAID",
+                                "PENDING",
+                                "VOIDED"
+                            ]
+                        }
+                    }
+                ],
+                "tags": [
+                    "Commission shares"
+                ],
+                "security": [
+                    {
+                        "internalSession": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PaginatedMyCommissionList"
+                                }
+                            }
+                        },
+                        "description": ""
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "VALIDATION_ERROR"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "NOT_AUTHENTICATED o SESSION_EXPIRED"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    }
+                }
+            }
+        },
         "/api/v1/metadata/bootstrap": {
             "get": {
                 "operationId": "metadata_bootstrap",
@@ -15337,6 +16555,7 @@
         "/api/v1/opportunities": {
             "get": {
                 "operationId": "opportunities_list",
+                "description": "Página de `Opportunity`. El broker (`INDEPENDENT_BROKER` sin `ADMIN` ni `ADVISOR`) recibe `BrokerOpportunity`: el resumen de su prospecto, sin acciones ni historial de asesores.",
                 "summary": "Oportunidades según el alcance",
                 "parameters": [
                     {
@@ -15374,22 +16593,20 @@
                         }
                     },
                     {
-                        "name": "page",
-                        "required": false,
                         "in": "query",
-                        "description": "Un número de página dentro del conjunto de resultados paginado.",
+                        "name": "page",
                         "schema": {
                             "type": "integer"
-                        }
+                        },
+                        "description": "Un número de página dentro del conjunto de resultados paginado."
                     },
                     {
-                        "name": "page_size",
-                        "required": false,
                         "in": "query",
-                        "description": "Número de resultados a devolver por página.",
+                        "name": "page_size",
                         "schema": {
                             "type": "integer"
-                        }
+                        },
+                        "description": "Número de resultados a devolver por página."
                     },
                     {
                         "in": "query",
@@ -15438,7 +16655,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/PaginatedOpportunityList"
+                                    "$ref": "#/components/schemas/PaginatedOpportunityListByRole"
                                 }
                             }
                         },
@@ -15468,8 +16685,8 @@
             },
             "post": {
                 "operationId": "opportunities_create",
-                "description": "Si llega `project_id`, el proyecto debe estar `ACTIVE`.",
-                "summary": "Crear una oportunidad NEW",
+                "description": "Si llega `project_id`, el proyecto debe estar `ACTIVE`. Si quien la crea tiene rol `ADVISOR`, queda asignada a él y en `ASSIGNED` (con su fila en `assignments`); si la crea un broker o el administrador, queda `NEW` y sin asesor. `notes` queda como la primera nota interna de la oportunidad. Responde `OpportunityDetail`. El broker (`INDEPENDENT_BROKER` sin `ADMIN` ni `ADVISOR`) recibe `BrokerOpportunity`: el resumen de su prospecto, sin acciones ni historial de asesores.",
+                "summary": "Crear una oportunidad",
                 "tags": [
                     "Opportunities"
                 ],
@@ -15493,7 +16710,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/OpportunityDetail"
+                                    "$ref": "#/components/schemas/OpportunityDetailByRole"
                                 }
                             }
                         },
@@ -15545,6 +16762,7 @@
         "/api/v1/opportunities/{opportunity_id}": {
             "get": {
                 "operationId": "opportunities_retrieve",
+                "description": "`OpportunityDetail`. El broker (`INDEPENDENT_BROKER` sin `ADMIN` ni `ADVISOR`) recibe `BrokerOpportunity`: el resumen de su prospecto, sin acciones ni historial de asesores.",
                 "summary": "Detalle de la oportunidad, acciones disponibles e historial de asesores",
                 "parameters": [
                     {
@@ -15570,7 +16788,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/OpportunityDetail"
+                                    "$ref": "#/components/schemas/OpportunityDetailByRole"
                                 }
                             }
                         },
@@ -15610,6 +16828,7 @@
             },
             "patch": {
                 "operationId": "opportunities_partial_update",
+                "description": "Responde `OpportunityDetail`. El broker (`INDEPENDENT_BROKER` sin `ADMIN` ni `ADVISOR`) recibe `BrokerOpportunity`: el resumen de su prospecto, sin acciones ni historial de asesores.",
                 "summary": "Cambiar el origen o el proyecto de una oportunidad abierta",
                 "parameters": [
                     {
@@ -15644,7 +16863,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/OpportunityDetail"
+                                    "$ref": "#/components/schemas/OpportunityDetailByRole"
                                 }
                             }
                         },
@@ -20663,10 +21882,14 @@
                     "TASK_CANCELLED",
                     "NOTE_ADDED",
                     "FILING_CREATED",
-                    "BANK_RESPONSE_RECORDED"
+                    "BANK_RESPONSE_RECORDED",
+                    "COMMISSION_SETTLED",
+                    "COMMISSION_SETTLEMENT_VOIDED",
+                    "COMMISSION_SHARE_PAID",
+                    "COMMISSION_PLAN_MISSING"
                 ],
                 "type": "string",
-                "description": "* `APPLICATION_CREATED` - Solicitud creada\n* `STATUS_CHANGED` - Cambio de estado\n* `ADVISOR_ASSIGNED` - Asesor asignado\n* `PARTICIPANT_ADDED` - Participante agregado\n* `PARTICIPANT_REMOVED` - Participante retirado\n* `DOCUMENT_UPLOADED` - Documento cargado\n* `DOCUMENT_REVIEWED` - Documento revisado\n* `BUYER_LINK_SENT` - Enlace enviado al comprador\n* `BUYER_SESSION_STARTED` - Ingreso del comprador\n* `CONSENT_RECORDED` - Consentimiento registrado\n* `TASK_CREATED` - Tarea creada\n* `TASK_COMPLETED` - Tarea completada\n* `TASK_CANCELLED` - Tarea cancelada\n* `NOTE_ADDED` - Nota interna\n* `FILING_CREATED` - Radicación\n* `BANK_RESPONSE_RECORDED` - Respuesta del banco"
+                "description": "* `APPLICATION_CREATED` - Solicitud creada\n* `STATUS_CHANGED` - Cambio de estado\n* `ADVISOR_ASSIGNED` - Asesor asignado\n* `PARTICIPANT_ADDED` - Participante agregado\n* `PARTICIPANT_REMOVED` - Participante retirado\n* `DOCUMENT_UPLOADED` - Documento cargado\n* `DOCUMENT_REVIEWED` - Documento revisado\n* `BUYER_LINK_SENT` - Enlace enviado al comprador\n* `BUYER_SESSION_STARTED` - Ingreso del comprador\n* `CONSENT_RECORDED` - Consentimiento registrado\n* `TASK_CREATED` - Tarea creada\n* `TASK_COMPLETED` - Tarea completada\n* `TASK_CANCELLED` - Tarea cancelada\n* `NOTE_ADDED` - Nota interna\n* `FILING_CREATED` - Radicación\n* `BANK_RESPONSE_RECORDED` - Respuesta del banco\n* `COMMISSION_SETTLED` - Comisión liquidada\n* `COMMISSION_SETTLEMENT_VOIDED` - Liquidación de comisión anulada\n* `COMMISSION_SHARE_PAID` - Pago de comisión\n* `COMMISSION_PLAN_MISSING` - Comisión sin plan vigente"
             },
             "Address": {
                 "type": "object",
@@ -21133,7 +22356,7 @@
             },
             "ApplicationDetail": {
                 "type": "object",
-                "description": "Expediente interno. ``context[\"include\"]`` agrega `participants` y `financing`, y\n``context[\"available_actions\"]`` trae las transiciones que el actor puede ejecutar.\n\nLos bloques opcionales no se declaran de solo lectura para que OpenAPI no los marque\ncomo obligatorios: faltan en la respuesta si no se pidieron. `participants` lee los\nvigentes precargados en ``active_participants`` (``services.application_detail``).",
+                "description": "Expediente interno. ``context[\"include\"]`` agrega `participants` y `financing`,\n``context[\"available_actions\"]`` trae las transiciones que el actor puede ejecutar y\n``context[\"consents\"]``, los conteos de consentimientos del titular.\n\nLos bloques opcionales no se declaran de solo lectura para que OpenAPI no los marque\ncomo obligatorios: faltan en la respuesta si no se pidieron. `participants` lee los\nvigentes precargados en ``active_participants`` (``services.application_detail``).",
                 "properties": {
                     "id": {
                         "type": "string",
@@ -21346,6 +22569,23 @@
                         },
                         "readOnly": true,
                         "description": "Transiciones que el actor puede ejecutar ahora (rol y permiso; la guarda se evalúa al ejecutarla). `WITHDRAW_*` se ejecuta por `/withdrawals`."
+                    },
+                    "origin_user_name": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "readOnly": true,
+                        "description": "Quien originó la oportunidad (broker o usuario interno); nulo si no hay."
+                    },
+                    "consents": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/ConsentsSummary"
+                            }
+                        ],
+                        "readOnly": true,
+                        "description": "Consentimientos obligatorios del comprador titular y cuántos aceptó."
                     }
                 },
                 "required": [
@@ -21358,12 +22598,14 @@
                     "closed_at",
                     "code",
                     "completeness_pct",
+                    "consents",
                     "created_at",
                     "current_stage_started_at",
                     "id",
                     "last_buyer_activity_at",
                     "opportunity_id",
                     "origin",
+                    "origin_user_name",
                     "participants_summary",
                     "progress_stages",
                     "project",
@@ -21788,10 +23030,14 @@
                     "USER_STATUS_CHANGED",
                     "REPORT_EXPORTED",
                     "REPORT_EXPORT_DOWNLOADED",
+                    "COMMISSION_PLAN_CHANGED",
+                    "COMMISSION_SETTLED",
+                    "COMMISSION_SETTLEMENT_VOIDED",
+                    "COMMISSION_SHARE_PAID",
                     "ACCESS_DENIED"
                 ],
                 "type": "string",
-                "description": "* `AUTH_LOGIN` - Inicio de sesión\n* `AUTH_LOGIN_FAILED` - Inicio de sesión fallido\n* `AUTH_LOGOUT` - Cierre de sesión\n* `AUTH_REFRESH_REJECTED` - Renovación de sesión rechazada\n* `AUTH_PASSWORD_RESET_REQUESTED` - Restablecimiento de contraseña solicitado\n* `AUTH_PASSWORD_RESET_COMPLETED` - Contraseña restablecida\n* `AUTH_RATE_LIMITED` - Bloqueo por límite de consumo\n* `BUYER_LINK_CREATED` - Enlace de acceso creado\n* `BUYER_LINK_CONSUMED` - Enlace de acceso usado\n* `BUYER_LINK_FAILED` - Enlace de acceso rechazado\n* `BUYER_SESSION_CLOSED` - Sesión del comprador cerrada\n* `CONSENT_ACCEPTED` - Consentimiento aceptado\n* `CONSENT_WITHDRAWN` - Consentimiento retirado\n* `DOCUMENT_UPLOADED` - Documento cargado\n* `DOCUMENT_DOWNLOADED` - Documento descargado\n* `PACKAGE_DOWNLOADED` - Paquete descargado\n* `EVIDENCE_DOWNLOADED` - Evidencia descargada\n* `APPLICATION_STATUS_CHANGED` - Cambio de estado\n* `APPLICATION_WITHDRAWN` - Desistimiento\n* `APPLICATION_ASSIGNED` - Reasignación\n* `DOCUMENT_REVIEWED` - Revisión de documento\n* `DOCUMENT_WAIVED` - Exoneración de documento\n* `DOCUMENT_WAIVER_REOPENED` - Reapertura de exoneración\n* `FILING_CREATED` - Radicación creada\n* `FILING_UPDATED` - Radicación corregida\n* `BANK_RESPONSE_RECORDED` - Respuesta del banco registrada\n* `CATALOG_CHANGED` - Cambio de catálogo\n* `BANK_CHANGED` - Cambio de banco\n* `BANK_PRODUCT_CHANGED` - Cambio de producto bancario\n* `BANK_RULE_CHANGED` - Cambio de regla bancaria\n* `DOCUMENT_TYPE_CHANGED` - Cambio de tipo documental\n* `DOCUMENT_REQUIREMENT_CHANGED` - Cambio de requisito documental\n* `WORKFLOW_TRANSITION_CHANGED` - Cambio de transición\n* `USER_CHANGED` - Cambio de usuario\n* `USER_ROLES_CHANGED` - Cambio de roles\n* `USER_STATUS_CHANGED` - Cambio de estado de usuario\n* `REPORT_EXPORTED` - Reporte exportado\n* `REPORT_EXPORT_DOWNLOADED` - Exportación descargada\n* `ACCESS_DENIED` - Acceso denegado"
+                "description": "* `AUTH_LOGIN` - Inicio de sesión\n* `AUTH_LOGIN_FAILED` - Inicio de sesión fallido\n* `AUTH_LOGOUT` - Cierre de sesión\n* `AUTH_REFRESH_REJECTED` - Renovación de sesión rechazada\n* `AUTH_PASSWORD_RESET_REQUESTED` - Restablecimiento de contraseña solicitado\n* `AUTH_PASSWORD_RESET_COMPLETED` - Contraseña restablecida\n* `AUTH_RATE_LIMITED` - Bloqueo por límite de consumo\n* `BUYER_LINK_CREATED` - Enlace de acceso creado\n* `BUYER_LINK_CONSUMED` - Enlace de acceso usado\n* `BUYER_LINK_FAILED` - Enlace de acceso rechazado\n* `BUYER_SESSION_CLOSED` - Sesión del comprador cerrada\n* `CONSENT_ACCEPTED` - Consentimiento aceptado\n* `CONSENT_WITHDRAWN` - Consentimiento retirado\n* `DOCUMENT_UPLOADED` - Documento cargado\n* `DOCUMENT_DOWNLOADED` - Documento descargado\n* `PACKAGE_DOWNLOADED` - Paquete descargado\n* `EVIDENCE_DOWNLOADED` - Evidencia descargada\n* `APPLICATION_STATUS_CHANGED` - Cambio de estado\n* `APPLICATION_WITHDRAWN` - Desistimiento\n* `APPLICATION_ASSIGNED` - Reasignación\n* `DOCUMENT_REVIEWED` - Revisión de documento\n* `DOCUMENT_WAIVED` - Exoneración de documento\n* `DOCUMENT_WAIVER_REOPENED` - Reapertura de exoneración\n* `FILING_CREATED` - Radicación creada\n* `FILING_UPDATED` - Radicación corregida\n* `BANK_RESPONSE_RECORDED` - Respuesta del banco registrada\n* `CATALOG_CHANGED` - Cambio de catálogo\n* `BANK_CHANGED` - Cambio de banco\n* `BANK_PRODUCT_CHANGED` - Cambio de producto bancario\n* `BANK_RULE_CHANGED` - Cambio de regla bancaria\n* `DOCUMENT_TYPE_CHANGED` - Cambio de tipo documental\n* `DOCUMENT_REQUIREMENT_CHANGED` - Cambio de requisito documental\n* `WORKFLOW_TRANSITION_CHANGED` - Cambio de transición\n* `USER_CHANGED` - Cambio de usuario\n* `USER_ROLES_CHANGED` - Cambio de roles\n* `USER_STATUS_CHANGED` - Cambio de estado de usuario\n* `REPORT_EXPORTED` - Reporte exportado\n* `REPORT_EXPORT_DOWNLOADED` - Exportación descargada\n* `COMMISSION_PLAN_CHANGED` - Cambio de plan de comisión\n* `COMMISSION_SETTLED` - Comisión liquidada\n* `COMMISSION_SETTLEMENT_VOIDED` - Liquidación de comisión anulada\n* `COMMISSION_SHARE_PAID` - Pago de comisión registrado\n* `ACCESS_DENIED` - Acceso denegado"
             },
             "AuditActor": {
                 "type": "object",
@@ -21939,6 +23185,11 @@
                         ],
                         "description": "primary: avanza en el camino principal; secondary: cierra por fuera del banco o retrocede; destructive: cancela o desiste. La lista sale en ese orden.",
                         "readOnly": true
+                    },
+                    "reason_required": {
+                        "type": "boolean",
+                        "readOnly": true,
+                        "description": "La acción exige `reason_code`: `CANCELLED`, `OWN_FUNDS`, `EXTERNAL_CREDIT_APPROVED` y `WITHDRAWN` (por `/withdrawals`)."
                     }
                 },
                 "required": [
@@ -21946,6 +23197,7 @@
                     "guard_code",
                     "kind",
                     "label",
+                    "reason_required",
                     "target_status",
                     "target_status_label"
                 ]
@@ -22706,6 +23958,14 @@
                     "name"
                 ]
             },
+            "BeneficiaryRoleEnum": {
+                "enum": [
+                    "ADVISOR",
+                    "INDEPENDENT_BROKER"
+                ],
+                "type": "string",
+                "description": "* `ADVISOR` - Asesor\n* `INDEPENDENT_BROKER` - Broker independiente"
+            },
             "Bootstrap": {
                 "type": "object",
                 "properties": {
@@ -22753,6 +24013,68 @@
                     "metadata_version",
                     "on_demand_catalogs",
                     "permissions"
+                ]
+            },
+            "BrokerClient": {
+                "type": "object",
+                "description": "Vista del broker: contacto y resumen. El documento va enmascarado (RF-14).",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "readOnly": true
+                    },
+                    "document_type": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "document_number": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "first_names": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "last_names": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "full_name": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "email": {
+                        "type": "string",
+                        "format": "email",
+                        "readOnly": true
+                    },
+                    "phone": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "readOnly": true
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "readOnly": true
+                    }
+                },
+                "required": [
+                    "created_at",
+                    "document_number",
+                    "document_type",
+                    "email",
+                    "first_names",
+                    "full_name",
+                    "id",
+                    "last_names",
+                    "phone",
+                    "updated_at"
                 ]
             },
             "BrokerOpportunity": {
@@ -22879,6 +24201,10 @@
                     "status": {
                         "$ref": "#/components/schemas/BuyerAccessLinkStatusEnum"
                     },
+                    "status_label": {
+                        "type": "string",
+                        "readOnly": true
+                    },
                     "delivery_channel": {
                         "oneOf": [
                             {
@@ -22943,7 +24269,8 @@
                     "id",
                     "revoked_at",
                     "session",
-                    "status"
+                    "status",
+                    "status_label"
                 ]
             },
             "BuyerAccessLinkCreateRequest": {
@@ -22979,6 +24306,10 @@
                     },
                     "status": {
                         "$ref": "#/components/schemas/BuyerAccessLinkStatusEnum"
+                    },
+                    "status_label": {
+                        "type": "string",
+                        "readOnly": true
                     },
                     "delivery_channel": {
                         "oneOf": [
@@ -23050,6 +24381,7 @@
                     "revoked_at",
                     "session",
                     "status",
+                    "status_label",
                     "url"
                 ]
             },
@@ -23256,6 +24588,15 @@
                         ],
                         "readOnly": true,
                         "description": "Última respuesta del banco con mensaje público; nulo si no hay. Nunca trae el comentario interno."
+                    },
+                    "income_summary": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/BuyerIncomeSummary"
+                            }
+                        ],
+                        "readOnly": true,
+                        "description": "Ingresos que cargaron los participantes activos de esta solicitud."
                     }
                 },
                 "required": [
@@ -23264,6 +24605,7 @@
                     "created_at",
                     "financing",
                     "id",
+                    "income_summary",
                     "is_closed",
                     "is_editable",
                     "latest_bank_update",
@@ -23375,6 +24717,10 @@
                     "status": {
                         "$ref": "#/components/schemas/BuyerConsentStatusEnum"
                     },
+                    "status_label": {
+                        "type": "string",
+                        "readOnly": true
+                    },
                     "accepted_at": {
                         "type": [
                             "string",
@@ -23392,6 +24738,7 @@
                     "id",
                     "required",
                     "status",
+                    "status_label",
                     "title",
                     "version"
                 ]
@@ -23508,6 +24855,10 @@
                         ],
                         "readOnly": true
                     },
+                    "status_label": {
+                        "type": "string",
+                        "readOnly": true
+                    },
                     "client_filename": {
                         "type": "string",
                         "readOnly": true
@@ -23563,6 +24914,7 @@
                     "rejection",
                     "size_bytes",
                     "status",
+                    "status_label",
                     "version_number"
                 ]
             },
@@ -23758,6 +25110,10 @@
                         ],
                         "readOnly": true
                     },
+                    "status_label": {
+                        "type": "string",
+                        "readOnly": true
+                    },
                     "client_filename": {
                         "type": "string",
                         "readOnly": true
@@ -23818,6 +25174,7 @@
                     "rejection",
                     "size_bytes",
                     "status",
+                    "status_label",
                     "version_number"
                 ]
             },
@@ -24245,6 +25602,23 @@
                 "required": [
                     "monthly_amount_cop",
                     "source_type_code"
+                ]
+            },
+            "BuyerIncomeSummary": {
+                "type": "object",
+                "properties": {
+                    "participants_with_income": {
+                        "type": "integer",
+                        "description": "Participantes activos de la solicitud con ingreso mensual mayor a 0."
+                    },
+                    "total_monthly_income_cop": {
+                        "type": "integer",
+                        "description": "Suma del `monthly_income_cop` de sus perfiles financieros."
+                    }
+                },
+                "required": [
+                    "participants_with_income",
+                    "total_monthly_income_cop"
                 ]
             },
             "BuyerNotification": {
@@ -25355,6 +26729,10 @@
                         ],
                         "readOnly": true
                     },
+                    "applications_count": {
+                        "type": "integer",
+                        "description": "Solicitudes visibles para el usuario en las que el cliente participa con un papel vigente (las de `GET /clients/{id}/applications`). Viene en el listado, el detalle, la creación y la edición de `/clients`; no en el cliente de un participante."
+                    },
                     "created_at": {
                         "type": "string",
                         "format": "date-time",
@@ -25380,6 +26758,16 @@
                     "origin",
                     "phone",
                     "updated_at"
+                ]
+            },
+            "ClientByRole": {
+                "oneOf": [
+                    {
+                        "$ref": "#/components/schemas/Client"
+                    },
+                    {
+                        "$ref": "#/components/schemas/BrokerClient"
+                    }
                 ]
             },
             "ClientCreateRequest": {
@@ -25515,6 +26903,10 @@
                         ],
                         "readOnly": true
                     },
+                    "applications_count": {
+                        "type": "integer",
+                        "description": "Solicitudes visibles para el usuario en las que el cliente participa con un papel vigente (las de `GET /clients/{id}/applications`). Viene en el listado, el detalle, la creación y la edición de `/clients`; no en el cliente de un participante."
+                    },
                     "created_at": {
                         "type": "string",
                         "format": "date-time",
@@ -25548,6 +26940,16 @@
                     "origin",
                     "phone",
                     "updated_at"
+                ]
+            },
+            "ClientDetailByRole": {
+                "oneOf": [
+                    {
+                        "$ref": "#/components/schemas/ClientDetail"
+                    },
+                    {
+                        "$ref": "#/components/schemas/BrokerClient"
+                    }
                 ]
             },
             "ClientRef": {
@@ -25591,6 +26993,395 @@
                     "code",
                     "name"
                 ]
+            },
+            "CommissionApplicationRef": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "code": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "code",
+                    "id"
+                ]
+            },
+            "CommissionPlan": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "readOnly": true
+                    },
+                    "bank_product": {
+                        "$ref": "#/components/schemas/RuleProductRef"
+                    },
+                    "rate_pct": {
+                        "type": "string",
+                        "format": "decimal",
+                        "pattern": "^-?\\d{0,4}(?:\\.\\d{0,4})?$",
+                        "readOnly": true
+                    },
+                    "advisor_share_pct": {
+                        "type": "string",
+                        "format": "decimal",
+                        "pattern": "^-?\\d{0,4}(?:\\.\\d{0,4})?$",
+                        "readOnly": true
+                    },
+                    "broker_share_pct": {
+                        "type": "string",
+                        "format": "decimal",
+                        "pattern": "^-?\\d{0,4}(?:\\.\\d{0,4})?$",
+                        "readOnly": true
+                    },
+                    "valid_from": {
+                        "type": "string",
+                        "format": "date",
+                        "readOnly": true
+                    },
+                    "valid_until": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date",
+                        "readOnly": true
+                    },
+                    "notes": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "in_use": {
+                        "type": "boolean",
+                        "description": "Alguna liquidación lo usó: ya no se edita, solo se cierra."
+                    },
+                    "version": {
+                        "type": "integer",
+                        "readOnly": true
+                    },
+                    "created_by": {
+                        "$ref": "#/components/schemas/UserRef"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "readOnly": true
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "readOnly": true
+                    }
+                },
+                "required": [
+                    "advisor_share_pct",
+                    "bank_product",
+                    "broker_share_pct",
+                    "created_at",
+                    "created_by",
+                    "id",
+                    "in_use",
+                    "notes",
+                    "rate_pct",
+                    "updated_at",
+                    "valid_from",
+                    "valid_until",
+                    "version"
+                ]
+            },
+            "CommissionPlanCloseRequest": {
+                "type": "object",
+                "description": "Serializer que rechaza campos no declarados (``additionalProperties: false``).\n\nEvita la asignación masiva: el cliente solo puede enviar los campos permitidos.",
+                "properties": {
+                    "valid_until": {
+                        "type": "string",
+                        "format": "date",
+                        "description": "Fin de vigencia (exclusivo)."
+                    }
+                },
+                "required": [
+                    "valid_until"
+                ]
+            },
+            "CommissionPlanCreateRequest": {
+                "type": "object",
+                "description": "Serializer que rechaza campos no declarados (``additionalProperties: false``).\n\nEvita la asignación masiva: el cliente solo puede enviar los campos permitidos.",
+                "properties": {
+                    "bank_product_id": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "rate_pct": {
+                        "type": "string",
+                        "format": "decimal",
+                        "pattern": "^-?\\d{0,4}(?:\\.\\d{0,4})?$",
+                        "description": "Porcentaje sobre el monto desembolsado."
+                    },
+                    "advisor_share_pct": {
+                        "type": "string",
+                        "format": "decimal",
+                        "pattern": "^-?\\d{0,4}(?:\\.\\d{0,4})?$"
+                    },
+                    "broker_share_pct": {
+                        "type": "string",
+                        "format": "decimal",
+                        "pattern": "^-?\\d{0,4}(?:\\.\\d{0,4})?$"
+                    },
+                    "valid_from": {
+                        "type": "string",
+                        "format": "date"
+                    },
+                    "valid_until": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date",
+                        "description": "Exclusivo. Nulo: sin fin."
+                    },
+                    "notes": {
+                        "type": "string",
+                        "default": "",
+                        "maxLength": 255
+                    }
+                },
+                "required": [
+                    "advisor_share_pct",
+                    "bank_product_id",
+                    "broker_share_pct",
+                    "rate_pct",
+                    "valid_from"
+                ]
+            },
+            "CommissionSettlement": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "readOnly": true
+                    },
+                    "application": {
+                        "$ref": "#/components/schemas/CommissionApplicationRef"
+                    },
+                    "filing_response_id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "readOnly": true
+                    },
+                    "plan_id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "readOnly": true
+                    },
+                    "lead_origin_code": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "lead_origin_label": {
+                        "type": "string",
+                        "description": "Etiqueta del origen (catálogo `lead_origin`)."
+                    },
+                    "disbursed_on": {
+                        "type": "string",
+                        "format": "date",
+                        "readOnly": true,
+                        "description": "Fecha de desembolso (Bogotá)."
+                    },
+                    "base_amount_cop": {
+                        "type": "integer",
+                        "readOnly": true
+                    },
+                    "rate_pct": {
+                        "type": "string",
+                        "format": "decimal",
+                        "pattern": "^-?\\d{0,4}(?:\\.\\d{0,4})?$",
+                        "readOnly": true
+                    },
+                    "total_amount_cop": {
+                        "type": "integer",
+                        "readOnly": true
+                    },
+                    "status": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/CommissionSettlementStatusEnum"
+                            }
+                        ],
+                        "readOnly": true
+                    },
+                    "status_label": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "needs_review": {
+                        "type": "boolean",
+                        "readOnly": true
+                    },
+                    "voided_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time",
+                        "readOnly": true
+                    },
+                    "voided_by": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/UserRef"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "void_reason": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "shares": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/CommissionShare"
+                        }
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "readOnly": true
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "readOnly": true
+                    }
+                },
+                "required": [
+                    "application",
+                    "base_amount_cop",
+                    "created_at",
+                    "disbursed_on",
+                    "filing_response_id",
+                    "id",
+                    "lead_origin_code",
+                    "lead_origin_label",
+                    "needs_review",
+                    "plan_id",
+                    "rate_pct",
+                    "shares",
+                    "status",
+                    "status_label",
+                    "total_amount_cop",
+                    "updated_at",
+                    "void_reason",
+                    "voided_at",
+                    "voided_by"
+                ]
+            },
+            "CommissionSettlementStatusEnum": {
+                "enum": [
+                    "ACTIVE",
+                    "VOIDED"
+                ],
+                "type": "string",
+                "description": "* `ACTIVE` - Vigente\n* `VOIDED` - Anulada"
+            },
+            "CommissionShare": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "readOnly": true
+                    },
+                    "beneficiary": {
+                        "$ref": "#/components/schemas/UserRef"
+                    },
+                    "beneficiary_role": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/BeneficiaryRoleEnum"
+                            }
+                        ],
+                        "readOnly": true
+                    },
+                    "beneficiary_role_label": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "share_pct": {
+                        "type": "string",
+                        "format": "decimal",
+                        "pattern": "^-?\\d{0,4}(?:\\.\\d{0,4})?$",
+                        "readOnly": true
+                    },
+                    "amount_cop": {
+                        "type": "integer",
+                        "readOnly": true
+                    },
+                    "status": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/CommissionShareStatusEnum"
+                            }
+                        ],
+                        "readOnly": true
+                    },
+                    "status_label": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "paid_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date",
+                        "readOnly": true
+                    },
+                    "paid_by": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/UserRef"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "payment_reference": {
+                        "type": "string",
+                        "readOnly": true
+                    }
+                },
+                "required": [
+                    "amount_cop",
+                    "beneficiary",
+                    "beneficiary_role",
+                    "beneficiary_role_label",
+                    "id",
+                    "paid_at",
+                    "paid_by",
+                    "payment_reference",
+                    "share_pct",
+                    "status",
+                    "status_label"
+                ]
+            },
+            "CommissionShareStatusEnum": {
+                "enum": [
+                    "PENDING",
+                    "PAID",
+                    "VOIDED"
+                ],
+                "type": "string",
+                "description": "* `PENDING` - Pendiente de pago\n* `PAID` - Pagada\n* `VOIDED` - Anulada"
             },
             "Completeness": {
                 "type": "object",
@@ -25899,8 +27690,26 @@
                     "user_agent_summary"
                 ]
             },
+            "ConsentsSummary": {
+                "type": "object",
+                "properties": {
+                    "required": {
+                        "type": "integer",
+                        "description": "Consentimientos vigentes obligatorios para el titular."
+                    },
+                    "accepted": {
+                        "type": "integer",
+                        "description": "Cuántos de esos tiene aceptados hoy."
+                    }
+                },
+                "required": [
+                    "accepted",
+                    "required"
+                ]
+            },
             "CurrentFile": {
                 "type": "object",
+                "description": "Versión vigente del slot. ``context[\"last_buyer_comment\"]`` trae el comentario.",
                 "properties": {
                     "id": {
                         "type": "string",
@@ -25950,6 +27759,20 @@
                         "type": "string",
                         "readOnly": true
                     },
+                    "size_bytes": {
+                        "type": "integer"
+                    },
+                    "detected_mime_type": {
+                        "type": "string"
+                    },
+                    "last_buyer_comment": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "readOnly": true,
+                        "description": "Mensaje al comprador de la última aprobación o rechazo de esta versión; nulo si no hay o va vacío."
+                    },
                     "created_at": {
                         "type": "string",
                         "format": "date-time",
@@ -25959,11 +27782,14 @@
                 "required": [
                     "client_filename",
                     "created_at",
+                    "detected_mime_type",
                     "document_date",
                     "expires_at",
                     "id",
+                    "last_buyer_comment",
                     "scan_status",
                     "scan_status_label",
+                    "size_bytes",
                     "status",
                     "status_label",
                     "version_number"
@@ -26146,6 +27972,14 @@
                         "format": "uuid",
                         "readOnly": true
                     },
+                    "uploaded_by": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/UploadedBy"
+                            }
+                        ],
+                        "readOnly": true
+                    },
                     "file": {
                         "allOf": [
                             {
@@ -26179,6 +28013,7 @@
                     "slot_id",
                     "status",
                     "status_label",
+                    "uploaded_by",
                     "uploaded_by_buyer_session_id",
                     "version_number"
                 ]
@@ -26281,6 +28116,10 @@
                         "readOnly": true,
                         "description": "`EXPIRED` en cuanto pasa `expires_at`, aunque el comando no haya corrido.\n\n* `PENDING` - Pendiente\n* `RUNNING` - En proceso\n* `COMPLETED` - Terminado\n* `FAILED` - Fallido\n* `EXPIRED` - Vencido"
                     },
+                    "status_label": {
+                        "type": "string",
+                        "readOnly": true
+                    },
                     "error_code": {
                         "type": [
                             "string",
@@ -26363,7 +28202,8 @@
                     "output",
                     "requested_by",
                     "started_at",
-                    "status"
+                    "status",
+                    "status_label"
                 ]
             },
             "DocumentPackageJobStatusEnum": {
@@ -27281,6 +29121,14 @@
                     "name"
                 ]
             },
+            "DocumentUploaderTypeEnum": {
+                "enum": [
+                    "buyer",
+                    "user"
+                ],
+                "type": "string",
+                "description": "* `buyer` - Comprador\n* `user` - Usuario interno"
+            },
             "EligibleBankProduct": {
                 "type": "object",
                 "description": "Producto disponible para la finalidad, con una evaluación no guardada.\n\n``context[\"evaluations\"]`` trae el resumen de cada producto, por id.",
@@ -27447,6 +29295,10 @@
                         ],
                         "readOnly": true
                     },
+                    "scan_status_label": {
+                        "type": "string",
+                        "readOnly": true
+                    },
                     "scanned_at": {
                         "type": [
                             "string",
@@ -27465,6 +29317,7 @@
                     "filename",
                     "mime_type",
                     "scan_status",
+                    "scan_status_label",
                     "scanned_at",
                     "size_bytes",
                     "uploaded_at"
@@ -27730,6 +29583,11 @@
                         "readOnly": true,
                         "description": "Respuestas del banco registradas, incluidas las correcciones."
                     },
+                    "is_response_overdue": {
+                        "type": "boolean",
+                        "readOnly": true,
+                        "description": "Pasó `target_response_at` y el banco todavía no responde."
+                    },
                     "application_status": {
                         "allOf": [
                             {
@@ -27764,6 +29622,7 @@
                     "filed_at",
                     "filed_by",
                     "id",
+                    "is_response_overdue",
                     "package_job_id",
                     "responses_count",
                     "sequence_number",
@@ -27853,6 +29712,16 @@
                         "type": "string",
                         "readOnly": true
                     },
+                    "document_type_label": {
+                        "type": "string",
+                        "readOnly": true,
+                        "description": "Nombre del tipo de documento, leído al consultar."
+                    },
+                    "slot_label": {
+                        "type": "string",
+                        "readOnly": true,
+                        "description": "Etiqueta del slot: \"Desprendible de nómina 2 de 3\" o solo el nombre del tipo. El total es el `minimum_files` del slot."
+                    },
                     "client_filename": {
                         "type": "string",
                         "readOnly": true
@@ -27880,11 +29749,13 @@
                     "created_at",
                     "document_file_id",
                     "document_type_code",
+                    "document_type_label",
                     "id",
                     "mime_type",
                     "sha256",
                     "size_bytes",
                     "slot_id",
+                    "slot_label",
                     "version_number"
                 ]
             },
@@ -29204,6 +31075,70 @@
                     "parent_id"
                 ]
             },
+            "MyCommission": {
+                "type": "object",
+                "description": "La parte propia, nada más: sin base, tasa, total ni la parte del otro beneficiario.",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "readOnly": true
+                    },
+                    "application_code": {
+                        "type": "string"
+                    },
+                    "client_display_name": {
+                        "type": "string"
+                    },
+                    "disbursed_on": {
+                        "type": "string",
+                        "format": "date",
+                        "readOnly": true,
+                        "description": "Fecha de desembolso (Bogotá)."
+                    },
+                    "share_pct": {
+                        "type": "string",
+                        "format": "decimal",
+                        "pattern": "^-?\\d{0,4}(?:\\.\\d{0,4})?$",
+                        "readOnly": true
+                    },
+                    "amount_cop": {
+                        "type": "integer",
+                        "readOnly": true
+                    },
+                    "status": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/CommissionShareStatusEnum"
+                            }
+                        ],
+                        "readOnly": true
+                    },
+                    "status_label": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "paid_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date",
+                        "readOnly": true
+                    }
+                },
+                "required": [
+                    "amount_cop",
+                    "application_code",
+                    "client_display_name",
+                    "disbursed_on",
+                    "id",
+                    "paid_at",
+                    "share_pct",
+                    "status",
+                    "status_label"
+                ]
+            },
             "NamedRef": {
                 "type": "object",
                 "properties": {
@@ -29470,6 +31405,10 @@
                         ],
                         "readOnly": true
                     },
+                    "status_label": {
+                        "type": "string",
+                        "readOnly": true
+                    },
                     "origin": {
                         "allOf": [
                             {
@@ -29541,7 +31480,106 @@
                     "origin_user",
                     "project",
                     "status",
+                    "status_label",
                     "updated_at"
+                ]
+            },
+            "OpportunityAssignment": {
+                "type": "object",
+                "description": "Una fila del historial de asesores; `ended_at` es nulo en la vigente.",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "readOnly": true
+                    },
+                    "advisor": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/UserRef"
+                            }
+                        ],
+                        "readOnly": true
+                    },
+                    "assigned_by": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/UserRef"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "readOnly": true
+                    },
+                    "reason": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "readOnly": true
+                    },
+                    "ended_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time",
+                        "readOnly": true
+                    }
+                },
+                "required": [
+                    "advisor",
+                    "assigned_by",
+                    "created_at",
+                    "ended_at",
+                    "id",
+                    "reason"
+                ]
+            },
+            "OpportunityAvailableAction": {
+                "type": "object",
+                "description": "Transición que el actor puede ejecutar ahora. Misma forma que `AvailableAction` de\nla solicitud, sin `guard_code` (el flujo de la oportunidad no tiene guardas).",
+                "properties": {
+                    "code": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "label": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "kind": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/AvailableActionKindEnum"
+                            }
+                        ],
+                        "description": "primary: la conversión (se ejecuta al crear la solicitud); destructive: perder o cancelar; secondary: el resto. La lista sale en ese orden.",
+                        "readOnly": true
+                    },
+                    "target_status": {
+                        "$ref": "#/components/schemas/OpportunityStatusEnum"
+                    },
+                    "target_status_label": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "reason_required": {
+                        "type": "boolean",
+                        "readOnly": true,
+                        "description": "La acción exige `reason_code` (catálogo `opportunity_lost_reason`): solo `LOST`."
+                    }
+                },
+                "required": [
+                    "code",
+                    "kind",
+                    "label",
+                    "reason_required",
+                    "target_status",
+                    "target_status_label"
                 ]
             },
             "OpportunityCreateRequest": {
@@ -29562,6 +31600,11 @@
                             "null"
                         ],
                         "format": "uuid"
+                    },
+                    "notes": {
+                        "type": "string",
+                        "description": "Queda como la primera nota interna de la oportunidad (actividad).",
+                        "maxLength": 2000
                     }
                 },
                 "required": [
@@ -29571,6 +31614,7 @@
             },
             "OpportunityDetail": {
                 "type": "object",
+                "description": "Detalle de la oportunidad con sus acciones disponibles y el historial de asesores.",
                 "properties": {
                     "id": {
                         "type": "string",
@@ -29602,6 +31646,10 @@
                                 "$ref": "#/components/schemas/OpportunityStatusEnum"
                             }
                         ],
+                        "readOnly": true
+                    },
+                    "status_label": {
+                        "type": "string",
                         "readOnly": true
                     },
                     "origin": {
@@ -29666,17 +31714,18 @@
                     "available_actions": {
                         "type": "array",
                         "items": {
-                            "type": "string"
+                            "$ref": "#/components/schemas/OpportunityAvailableAction"
                         },
-                        "readOnly": true
+                        "readOnly": true,
+                        "description": "Transiciones que el actor puede ejecutar ahora (rol y permiso). `ASSIGN` va por `/assignments` y `CONVERT_*` al crear la solicitud."
                     },
                     "assignments": {
                         "type": "array",
                         "items": {
-                            "type": "object",
-                            "additionalProperties": {}
+                            "$ref": "#/components/schemas/OpportunityAssignment"
                         },
-                        "readOnly": true
+                        "readOnly": true,
+                        "description": "Historial de asesores, del más reciente al más antiguo."
                     }
                 },
                 "required": [
@@ -29692,7 +31741,18 @@
                     "origin_user",
                     "project",
                     "status",
+                    "status_label",
                     "updated_at"
+                ]
+            },
+            "OpportunityDetailByRole": {
+                "oneOf": [
+                    {
+                        "$ref": "#/components/schemas/OpportunityDetail"
+                    },
+                    {
+                        "$ref": "#/components/schemas/BrokerOpportunity"
+                    }
                 ]
             },
             "OpportunityStatusEnum": {
@@ -30331,16 +32391,48 @@
                     }
                 }
             },
-            "PaginatedBrokerOpportunityList": {
+            "PaginatedBrokerClientList": {
                 "type": "object",
+                "properties": {
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/BrokerClient"
+                        }
+                    },
+                    "page": {
+                        "type": "integer"
+                    },
+                    "page_size": {
+                        "type": "integer"
+                    },
+                    "total": {
+                        "type": "integer"
+                    },
+                    "next": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "previous": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    }
+                },
                 "required": [
                     "items",
+                    "next",
                     "page",
                     "page_size",
-                    "total",
-                    "next",
-                    "previous"
-                ],
+                    "previous",
+                    "total"
+                ]
+            },
+            "PaginatedBrokerOpportunityList": {
+                "type": "object",
                 "properties": {
                     "items": {
                         "type": "array",
@@ -30349,28 +32441,35 @@
                         }
                     },
                     "page": {
-                        "type": "integer",
-                        "example": 1
+                        "type": "integer"
                     },
                     "page_size": {
-                        "type": "integer",
-                        "example": 25
+                        "type": "integer"
                     },
                     "total": {
-                        "type": "integer",
-                        "example": 128
+                        "type": "integer"
                     },
                     "next": {
-                        "type": "string",
-                        "nullable": true,
-                        "example": "/api/v1/x?page=2"
+                        "type": [
+                            "string",
+                            "null"
+                        ]
                     },
                     "previous": {
-                        "type": "string",
-                        "nullable": true,
-                        "example": null
+                        "type": [
+                            "string",
+                            "null"
+                        ]
                     }
-                }
+                },
+                "required": [
+                    "items",
+                    "next",
+                    "page",
+                    "page_size",
+                    "previous",
+                    "total"
+                ]
             },
             "PaginatedBuyerAccessLinkList": {
                 "type": "object",
@@ -30784,6 +32883,56 @@
             },
             "PaginatedClientList": {
                 "type": "object",
+                "properties": {
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/Client"
+                        }
+                    },
+                    "page": {
+                        "type": "integer"
+                    },
+                    "page_size": {
+                        "type": "integer"
+                    },
+                    "total": {
+                        "type": "integer"
+                    },
+                    "next": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "previous": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    }
+                },
+                "required": [
+                    "items",
+                    "next",
+                    "page",
+                    "page_size",
+                    "previous",
+                    "total"
+                ]
+            },
+            "PaginatedClientListByRole": {
+                "oneOf": [
+                    {
+                        "$ref": "#/components/schemas/PaginatedClientList"
+                    },
+                    {
+                        "$ref": "#/components/schemas/PaginatedBrokerClientList"
+                    }
+                ]
+            },
+            "PaginatedCommissionPlanList": {
+                "type": "object",
                 "required": [
                     "items",
                     "page",
@@ -30796,7 +32945,48 @@
                     "items": {
                         "type": "array",
                         "items": {
-                            "$ref": "#/components/schemas/Client"
+                            "$ref": "#/components/schemas/CommissionPlan"
+                        }
+                    },
+                    "page": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "page_size": {
+                        "type": "integer",
+                        "example": 25
+                    },
+                    "total": {
+                        "type": "integer",
+                        "example": 128
+                    },
+                    "next": {
+                        "type": "string",
+                        "nullable": true,
+                        "example": "/api/v1/x?page=2"
+                    },
+                    "previous": {
+                        "type": "string",
+                        "nullable": true,
+                        "example": null
+                    }
+                }
+            },
+            "PaginatedCommissionSettlementList": {
+                "type": "object",
+                "required": [
+                    "items",
+                    "page",
+                    "page_size",
+                    "total",
+                    "next",
+                    "previous"
+                ],
+                "properties": {
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/CommissionSettlement"
                         }
                     },
                     "page": {
@@ -30879,6 +33069,47 @@
                         "type": "array",
                         "items": {
                             "$ref": "#/components/schemas/DocumentFile"
+                        }
+                    },
+                    "page": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "page_size": {
+                        "type": "integer",
+                        "example": 25
+                    },
+                    "total": {
+                        "type": "integer",
+                        "example": 128
+                    },
+                    "next": {
+                        "type": "string",
+                        "nullable": true,
+                        "example": "/api/v1/x?page=2"
+                    },
+                    "previous": {
+                        "type": "string",
+                        "nullable": true,
+                        "example": null
+                    }
+                }
+            },
+            "PaginatedDocumentPackageJobList": {
+                "type": "object",
+                "required": [
+                    "items",
+                    "page",
+                    "page_size",
+                    "total",
+                    "next",
+                    "previous"
+                ],
+                "properties": {
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/DocumentPackageJob"
                         }
                     },
                     "page": {
@@ -31315,6 +33546,47 @@
                     }
                 }
             },
+            "PaginatedMyCommissionList": {
+                "type": "object",
+                "required": [
+                    "items",
+                    "page",
+                    "page_size",
+                    "total",
+                    "next",
+                    "previous"
+                ],
+                "properties": {
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/MyCommission"
+                        }
+                    },
+                    "page": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "page_size": {
+                        "type": "integer",
+                        "example": 25
+                    },
+                    "total": {
+                        "type": "integer",
+                        "example": 128
+                    },
+                    "next": {
+                        "type": "string",
+                        "nullable": true,
+                        "example": "/api/v1/x?page=2"
+                    },
+                    "previous": {
+                        "type": "string",
+                        "nullable": true,
+                        "example": null
+                    }
+                }
+            },
             "PaginatedNoteList": {
                 "type": "object",
                 "required": [
@@ -31358,14 +33630,6 @@
             },
             "PaginatedOpportunityList": {
                 "type": "object",
-                "required": [
-                    "items",
-                    "page",
-                    "page_size",
-                    "total",
-                    "next",
-                    "previous"
-                ],
                 "properties": {
                     "items": {
                         "type": "array",
@@ -31374,28 +33638,45 @@
                         }
                     },
                     "page": {
-                        "type": "integer",
-                        "example": 1
+                        "type": "integer"
                     },
                     "page_size": {
-                        "type": "integer",
-                        "example": 25
+                        "type": "integer"
                     },
                     "total": {
-                        "type": "integer",
-                        "example": 128
+                        "type": "integer"
                     },
                     "next": {
-                        "type": "string",
-                        "nullable": true,
-                        "example": "/api/v1/x?page=2"
+                        "type": [
+                            "string",
+                            "null"
+                        ]
                     },
                     "previous": {
-                        "type": "string",
-                        "nullable": true,
-                        "example": null
+                        "type": [
+                            "string",
+                            "null"
+                        ]
                     }
-                }
+                },
+                "required": [
+                    "items",
+                    "next",
+                    "page",
+                    "page_size",
+                    "previous",
+                    "total"
+                ]
+            },
+            "PaginatedOpportunityListByRole": {
+                "oneOf": [
+                    {
+                        "$ref": "#/components/schemas/PaginatedOpportunityList"
+                    },
+                    {
+                        "$ref": "#/components/schemas/PaginatedBrokerOpportunityList"
+                    }
+                ]
             },
             "PaginatedPartnerList": {
                 "type": "object",
@@ -31877,6 +34158,25 @@
                     "role_code"
                 ]
             },
+            "ParticipantRoleCount": {
+                "type": "object",
+                "properties": {
+                    "code": {
+                        "$ref": "#/components/schemas/ParticipantRoleEnum"
+                    },
+                    "label": {
+                        "type": "string"
+                    },
+                    "count": {
+                        "type": "integer"
+                    }
+                },
+                "required": [
+                    "code",
+                    "count",
+                    "label"
+                ]
+            },
             "ParticipantRoleEnum": {
                 "enum": [
                     "PRIMARY",
@@ -31895,10 +34195,18 @@
                     },
                     "solidary_debtors": {
                         "type": "integer"
+                    },
+                    "roles": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/ParticipantRoleCount"
+                        },
+                        "description": "Los mismos conteos con la etiqueta del rol (co-solicitantes y después deudores solidarios); solo los roles con al menos uno."
                     }
                 },
                 "required": [
                     "co_applicants",
+                    "roles",
                     "solidary_debtors"
                 ]
             },
@@ -32470,6 +34778,42 @@
                             "null"
                         ],
                         "format": "date"
+                    }
+                }
+            },
+            "PatchedCommissionPlanUpdateRequest": {
+                "type": "object",
+                "description": "Serializer que rechaza campos no declarados (``additionalProperties: false``).\n\nEvita la asignación masiva: el cliente solo puede enviar los campos permitidos.",
+                "properties": {
+                    "rate_pct": {
+                        "type": "string",
+                        "format": "decimal",
+                        "pattern": "^-?\\d{0,4}(?:\\.\\d{0,4})?$"
+                    },
+                    "advisor_share_pct": {
+                        "type": "string",
+                        "format": "decimal",
+                        "pattern": "^-?\\d{0,4}(?:\\.\\d{0,4})?$"
+                    },
+                    "broker_share_pct": {
+                        "type": "string",
+                        "format": "decimal",
+                        "pattern": "^-?\\d{0,4}(?:\\.\\d{0,4})?$"
+                    },
+                    "valid_from": {
+                        "type": "string",
+                        "format": "date"
+                    },
+                    "valid_until": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date"
+                    },
+                    "notes": {
+                        "type": "string",
+                        "maxLength": 255
                     }
                 }
             },
@@ -34168,6 +36512,20 @@
                     "partner_id"
                 ]
             },
+            "SettlementVoidRequest": {
+                "type": "object",
+                "description": "Serializer que rechaza campos no declarados (``additionalProperties: false``).\n\nEvita la asignación masiva: el cliente solo puede enviar los campos permitidos.",
+                "properties": {
+                    "reason": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 255
+                    }
+                },
+                "required": [
+                    "reason"
+                ]
+            },
             "SeverityEnum": {
                 "enum": [
                     "WARNING",
@@ -34175,6 +36533,27 @@
                 ],
                 "type": "string",
                 "description": "* `WARNING` - Advertencia\n* `BLOCKING` - Bloqueante"
+            },
+            "SharePayRequest": {
+                "type": "object",
+                "description": "Serializer que rechaza campos no declarados (``additionalProperties: false``).\n\nEvita la asignación masiva: el cliente solo puede enviar los campos permitidos.",
+                "properties": {
+                    "paid_at": {
+                        "type": "string",
+                        "format": "date",
+                        "description": "Fecha del pago. No puede ser futura."
+                    },
+                    "payment_reference": {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": "Referencia del pago (transferencia, comprobante).",
+                        "maxLength": 100
+                    }
+                },
+                "required": [
+                    "paid_at",
+                    "payment_reference"
+                ]
             },
             "SlotDecision": {
                 "type": "object",
@@ -34857,6 +37236,23 @@
                 ],
                 "type": "string",
                 "description": "* `PENDING` - Pendiente\n* `COMPLETED` - Completada\n* `CANCELLED` - Cancelada"
+            },
+            "UploadedBy": {
+                "type": "object",
+                "description": "Quién cargó la versión. Nunca el correo ni el documento.",
+                "properties": {
+                    "type": {
+                        "$ref": "#/components/schemas/DocumentUploaderTypeEnum"
+                    },
+                    "name": {
+                        "type": "string",
+                        "description": "\"Comprador\" para el comprador; el nombre del usuario interno."
+                    }
+                },
+                "required": [
+                    "name",
+                    "type"
+                ]
             },
             "User": {
                 "type": "object",

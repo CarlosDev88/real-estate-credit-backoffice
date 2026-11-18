@@ -1,5 +1,24 @@
 # Tarea: módulo de comisiones (`commissions`, paso 16)
 
+> ## Precisiones del orquestador (2026-11-17) — MANDAN sobre el resto de esta spec
+> Esta spec se escribió antes de construir los módulos 11 a 14. Donde choque con lo de abajo, gana esto:
+>
+> 1. **No hay outbox.** El proyecto usa señales de Django que se envían después del commit. El disparo automático es un receptor de `filing_response_recorded` (`apps/filings/signals.py`) cuando `response` es de tipo `DISBURSED` (la solicitud pasa a `DISBURSED` en ese mismo registro). Base = `response.disbursed_amount_cop`; fecha = `response.received_at` (fecha de Bogotá). No crees un evento `APPLICATION_DISBURSED` ni una tabla de eventos.
+> 2. **Sin plan vigente:** el receptor no lanza error (la respuesta del banco ya quedó guardada): registra una actividad visible para el admin con `record_activity` (`apps/activity/services.py`) y un `logger.warning` sin datos personales. El admin crea el plan y liquida con el endpoint manual, que sí responde `422 COMMISSION_PLAN_NOT_FOUND`.
+> 3. **Corrección del desembolso:** la corrección llega como otra `FilingResponse` con `corrects_response` apuntando a la anterior, por la misma señal. Si la respuesta corregida tenía una liquidación `ACTIVE` → regla de "Corrección del desembolso". `filing_response_id` de la liquidación nueva = la respuesta que corrige.
+> 4. **Idempotency-Key:** usa el decorador `@idempotent` del #23 en los tres POST (liquidar, anular y pagar), **opcional como en el resto de la API** (no obligatorio). Además, la lógica es idempotente por sí misma (liquidación única `ACTIVE`, pagar una parte ya `PAID` → `409 COMMISSION_SHARE_NOT_PAYABLE`).
+> 5. **Auditoría (módulo 14, ya en master):** usa el mismo mecanismo que dejó el módulo 14: atributos `audit_actions` en las vistas y, si emites señales nuevas (`commission_settled`, `commission_settlement_voided`, `commission_share_paid`), un receptor en `apps/audit/receivers.py`. Agrega las acciones nuevas al enum de auditoría. Nunca guardes montos en `metadata`, solo ids y códigos.
+> 6. **`If-Match`** en `PATCH /commission-plans/{id}` con el helper de ETag del proyecto (`config/openapi.py`, `etag_response_headers`), igual que en `banking`.
+> 7. **Etiquetas:** todo `status` sale con su `status_label` (`ChoiceLabelField`), también `beneficiary_role_label` y `lead_origin_label`.
+> 8. **Demo:** `seed_demo_data` crea un plan vigente por cada producto de demo (`rate_pct = 1.0000`, asesor 70 / broker 30, vigente desde el 1 de enero de 2026) y, si hay solicitudes de demo en `DISBURSED`, las liquida. Idempotente, como el resto del seed.
+> 9. **Alcance de `/me/commissions`:** paginado, filtros `status` y `date_from`/`date_to` (fecha de desembolso). Para el broker, cada fila trae **solo**: código de la solicitud, nombre del cliente, fecha de desembolso, `share_pct`, `amount_cop`, `status`, `status_label` y `paid_at`.
+> 10. **Reglas de trabajo** (reemplazan "Reglas para el agente" del final): git solo lectura; **no preguntes**: si algo es ambiguo, decide lo más simple, anótalo en "Precisiones acordadas" de esta spec y en el reporte; pruebas **acotadas** (`tests/commissions/` y lo que toques), la suite completa la corre el CI; siempre `ruff`, `mypy .`, `makemigrations --check` y `spectacular --validate --fail-on-warn`; `DATABASE_NAME=mvp_credit_a`.
+>
+> ### Partes
+> - **Parte 1 — Planes:** app `apps.commissions`, las 3 tablas con sus `CHECK` e índices, permisos (migración), CRUD de planes con solapamiento (bloqueo de los planes del producto), cierre e "en uso". Pruebas de planes.
+> - **Parte 2 — Liquidación:** `settle_application`, cálculo y redondeo, reparto por origen, receptor de la señal, endpoint manual, corrección del desembolso, anulación, casos borde, actividad. Pruebas de cálculo, idempotencia, corrección y anulación.
+> - **Parte 3 — Pagos, consulta y cierre:** pagar una parte, listados y detalle de liquidaciones, `/me/commissions`, matriz de permisos completa, auditoría, demo, contrato y docs (lista del final), brecha de pantalla de comisiones en `TAREA-frontend-base.md`, título y descripción del PR.
+
 ## Objetivo
 Calcular automáticamente la comisión de cada crédito desembolsado, repartirla entre asesor y broker, y registrar el pago de cada parte con trazabilidad.
 
@@ -181,3 +200,44 @@ Todas bajo `/api/v1`, con los formatos comunes de la API (§5) y `If-Match` en `
 - `MODELO_DATOS_DER_MVP_CREDITO.md`: inventario y nueva §14 con las 3 tablas.
 - `ESQUEMA_POSTGRESQL_MVP_CREDITO.sql`: 3 tablas e índices.
 - `API_REST_MVP_CREDITO.md`: errores §5.5, nueva §23.6 y fila en la matriz §25.
+
+## Precisiones acordadas
+_(las agrega el agente)_
+
+### Parte 1
+- **P1.1 `version` en los planes.** El `If-Match` del proyecto (`apps/applications/concurrency.py`, API §6) se basa en un entero. Por eso `commission_plans` tiene `version` (desvío del SQL, que se documenta al cierre). Sube con cada edición o cierre, y la responden `ETag` del detalle, la creación, la edición y el cierre. `banking` no usa `If-Match`; se tomó el mecanismo del expediente.
+- **P1.2 Bloqueo para el solapamiento.** Se bloquea la fila del producto (`select_for_update` sobre `bank_products`) antes de validar el solapamiento. Bloquear solo los planes existentes no impide que entre uno nuevo en paralelo. Así, dos altas o ediciones del mismo producto se serializan.
+- **P1.3 Vigencia.** `[valid_from, valid_until)`: el fin es exclusivo, así que un plan puede empezar el mismo día en que termina otro. `vigente_en` sigue la misma regla.
+- **P1.4 Validación.** Las reglas de los `CHECK` responden `400` en su campo, antes de llegar a la base. Con `broker_share_pct` negativo, el error va en `broker_share_pct`; si la suma no da 100 o el asesor no lleva la mayor, en `advisor_share_pct`; con un fin no posterior al inicio, en `valid_until`. Asesor 100 / broker 0 es válido.
+- **P1.5 Edición.** `PATCH` admite `rate_pct`, los dos porcentajes, `valid_from`, `valid_until` y `notes`. El producto no cambia (un campo desconocido responde `400`). Se revalida el plan completo, y un `PATCH` vacío no sube la versión.
+- **P1.6 "En uso".** Cuenta cualquier liquidación, vigente o anulada: el plan es la instantánea de una liquidación que existió. `in_use` sale en cada plan (anotado, sin consultas por fila).
+- **P1.7 Cierre.** `POST /close` con `valid_until` (obligatorio, posterior a `valid_from`). Se permite en un plan en uso. Solo adelanta el fin: alargar un plan ya cerrado podría solaparse, así que responde `400`. Para alargarlo se crea un plan nuevo.
+- **P1.8 Textos opcionales.** `notes`, `void_reason` y `payment_reference` son texto vacío en lugar de nulos (convención de Django); el `CHECK` de la anulación exige un `void_reason` no vacío.
+- **P1.9 Auditoría.** `COMMISSION_PLAN_CHANGED` para crear, editar y cerrar (por `audit_actions`). Las acciones de las partes 2 y 3 (`COMMISSION_SETTLED`, `COMMISSION_SETTLEMENT_VOIDED` y `COMMISSION_SHARE_PAID`) ya quedaron en el enum, en la misma migración `audit.0004`, para no generar una por parte.
+- **P1.10 Permisos.** Los 5 de la spec en una migración: `commission_plans.read` y `.manage` y `commissions.read` y `.manage` para `ADMIN`; `commissions.read_own` para `ADVISOR` e `INDEPENDENT_BROKER`.
+
+### Parte 2
+- **P2.1 Producto del plan.** Es el de la radicación de la respuesta de desembolso (`filing.bank_product`), el que de verdad se radicó.
+- **P2.2 Desembolso para liquidar a mano.** La última respuesta `DISBURSED` de la solicitud que nadie corrigió (por `received_at` y después por `created_at`). El receptor usa la respuesta que llega con la señal.
+- **P2.3 Bloqueo.** `settle_application` bloquea la fila de la solicitud (`select_for_update`). Dos liquidaciones simultáneas se serializan: la segunda ve la vigente y la devuelve. Está probado con dos hilos y dos conexiones (`transaction=True`) y un `_create` lento que retiene el bloqueo. El índice único parcial es la última barrera.
+- **P2.4 Unicidad de la respuesta (desvío del SQL).** `UNIQUE (filing_response_id)` pasó a un índice único parcial entre las vigentes (`uq_commission_settlements_response_active`). Con el `UNIQUE` total, una liquidación anulada a mano impedía volver a liquidar con el mismo desembolso (por ejemplo, después de corregir el plan). La regla "una vigente por solicitud" sigue igual. Se documenta en el SQL al cierre.
+- **P2.5 Plan con porción de broker 0.** Con origen `BROKER`, todo va al asesor (100 %) y no se crea la parte del broker (`share_pct` exige más de 0). No marca `needs_review`: es lo que dice el plan.
+- **P2.6 Desembolso sin monto.** `409 APPLICATION_NOT_DISBURSED` con el detalle. `filings` siempre lo exige, así que solo es una guarda.
+- **P2.7 Corrección del desembolso.** La regla está implementada y probada mandando la señal, pero hoy `filings` no permite corregir una respuesta `DISBURSED`: solo corrige `RECEIVED`, `IN_ANALYSIS` y `OTHER` (`409 RESPONSE_CORRECTION_NOT_ALLOWED`). No toqué `filings`. Cuando lo permita, la corrección ya llega por la misma señal y se liquida sola. Mientras tanto, el admin corrige con anular y liquidar.
+- **P2.8 Anulación.** Una liquidación ya anulada se devuelve igual (idempotente). Las partes pasan a `VOIDED`. Después se puede volver a liquidar.
+- **P2.9 Respuestas del endpoint manual.** `201` si crea la liquidación y `200` si ya había una vigente. Con `Idempotency-Key` repetida, `@idempotent` devuelve la respuesta original (también el `201`).
+- **P2.10 Señales y registros.** `commission_settled`, `commission_settlement_voided`, `commission_share_paid` (Parte 3) y `commission_plan_missing`, en `apps/commissions/signals.py`, con `on_commit`. Las consumen `apps/activity/receivers.py` (los tipos de evento nuevos van en la migración `activity.0004`) y `apps/audit/receivers.py`. Así `commissions` no importa ni `activity` ni `audit`: la actividad de "sin plan" se registra con `record_activity` desde el receptor de la actividad.
+- **P2.11 Sin montos en la actividad.** El asesor ve la actividad interna de la solicitud y no debe ver la parte del broker, así que los títulos y mensajes no llevan montos ("Comisión liquidada", "Liquidación de comisión anulada" con el motivo, "No se liquidó la comisión: no hay plan vigente"). La auditoría tampoco lleva montos.
+- **P2.12 Nombres del contrato.** `CommissionSettlementStatusEnum`, `CommissionShareStatusEnum` y `BeneficiaryRoleEnum` quedan fijos. La referencia a la solicitud es `CommissionApplicationRef`.
+
+### Parte 3
+- **P3.1 Pago.** `paid_at` y `payment_reference` (hasta 100) son obligatorios; `paid_at` no puede ser futura (fecha de Bogotá). Solo se paga una parte `PENDING`: una ya pagada, o una de una liquidación anulada (`VOIDED`), responde `409 COMMISSION_SHARE_NOT_PAYABLE`. La respuesta es la liquidación completa, con todas sus partes. La fila de la parte se bloquea; con la misma `Idempotency-Key`, `@idempotent` devuelve la respuesta original.
+- **P3.2 Filtros de liquidaciones.** `advisor_id` y `broker_id` son los beneficiarios de las partes; `bank_id` es el banco del producto del plan; `date_from` y `date_to`, la fecha de desembolso (días de Bogotá completos, `date_to` incluido). Un valor inválido responde `400`. Orden: de la más reciente a la más antigua.
+- **P3.3 `disbursed_on`.** Las liquidaciones y "mis comisiones" traen la fecha de desembolso (Bogotá), además de lo de la spec.
+- **P3.4 "Mis comisiones".** Igual para el asesor y el broker: `{id, application_code, client_display_name, disbursed_on, share_pct, amount_cop, status, status_label, paid_at}`. Incluye las partes anuladas (con su `status`); se filtran con `status`. El administrador no tiene `commissions.read_own` y recibe `403`.
+- **P3.5 Matriz.** Probados los 10 endpoints del administrador con asesor, broker y constructora (`403`) y sin sesión (`401`). `/me/commissions`: asesor y broker `200`, administrador y constructora `403`, sin sesión `401`. El comprador no tiene sesión interna, así que también recibe `401`.
+- **P3.6 Demo.** `seed_plans` crea un plan por cada producto (1 %, 70/30, desde el 1 de enero de 2026, "Plan de demo") **antes** de los casos, para que un desembolso de la demo se liquide solo. Al final, `settle_disbursed` liquida las solicitudes en `DISBURSED`. Hoy la demo no tiene ninguna (la radicada más avanzada queda en `APPROVED`, y esa demo es de `filings`), así que solo aparecen los planes. No se repite un plan ni una liquidación.
+
+### Cierre
+- **PC.1 Docs alineados con lo implementado.** API §23.6 (disparo por señal, `Idempotency-Key` opcional, filtros, forma de "mis comisiones", sin plan, corrección), modelo de datos §14 (`version`, unicidad parcial de la respuesta, textos vacíos), SQL (`version` y el índice parcial) y DER (la dependencia ya no es el evento outbox). REQ §5.9 y §8.6 ya estaban bien.
+- **PC.2 `:8000`.** Tiene las migraciones aplicadas, pero no planes: la demo ya existía y el comando no vuelve a sembrar. Para verlos sin borrar nada: `python manage.py shell -c "from apps.commissions.demo_data import seed_plans; from apps.identity.models import User; seed_plans(User.objects.get(email='admin@demo.local'))"`.

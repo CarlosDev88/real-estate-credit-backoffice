@@ -419,7 +419,7 @@ function IncomeSources({ profileId }: { profileId: string }) {
       <div className="flex flex-wrap items-center gap-2">
         <h3 className="m-0 text-lg font-semibold">Fuentes de ingreso</h3>
         {!readOnly && (
-          <Button className="ml-auto" onClick={() => setEditing(null)}>
+          <Button size="large" className="ml-auto" onClick={() => setEditing(null)}>
             Agregar ingreso
           </Button>
         )}
@@ -457,6 +457,7 @@ function IncomeSources({ profileId }: { profileId: string }) {
               {!readOnly && (
                 <span className="ml-auto flex gap-1">
                   <Button
+                    size="large"
                     type="text"
                     onClick={() => setEditing(source)}
                     aria-label={`Editar ${source.source_type.label}`}
@@ -464,6 +465,7 @@ function IncomeSources({ profileId }: { profileId: string }) {
                     Editar
                   </Button>
                   <Button
+                    size="large"
                     type="text"
                     danger
                     onClick={() => confirmRemove(source)}

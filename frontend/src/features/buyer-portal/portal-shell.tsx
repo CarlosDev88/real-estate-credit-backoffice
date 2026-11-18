@@ -198,7 +198,7 @@ export function PortalShell({
                       <CountBadge
                         count={item.count}
                         label={item.countLabel}
-                        className="px-1.5 leading-[18px]"
+                        className="px-1.5 leading-(--um-leading-sm)"
                       />
                     )}
                   </Link>
@@ -286,7 +286,7 @@ export function PortalShell({
                   <CountBadge
                     count={item.count}
                     label={item.countLabel}
-                    className="absolute top-1.5 left-[calc(50%+6px)] grid h-[18px] min-w-[18px] place-items-center px-[5px]"
+                    className="absolute top-1.5 left-[calc(50%+6px)] grid h-[18px] min-w-[18px] place-items-center px-1"
                   />
                 )}
               </Link>

@@ -24,18 +24,19 @@ from tests.applications.test_demo_data import seed
 pytestmark = pytest.mark.django_db
 
 
-def test_seed_files_three_applications_with_bank_responses() -> None:
+def test_seed_files_four_applications_with_bank_responses() -> None:
     seed()
 
     filings = list(
         Filing.objects.select_related("application", "package_job").order_by("created_at")
     )
-    assert len(filings) == len(FILED_DEMO_CASES) == 3
+    assert len(filings) == len(FILED_DEMO_CASES) == 4
     assert [filing.application.status for filing in filings] == list(FILED_DEMO_STATUSES)
     assert [filing.status for filing in filings] == [
         FilingStatus.IN_ANALYSIS,
         FilingStatus.RETURNED,
         FilingStatus.APPROVED,
+        FilingStatus.DISBURSED,
     ]
     now = timezone.now()
     for filing, filed in zip(filings, FILED_DEMO_CASES, strict=True):
@@ -67,6 +68,16 @@ def test_seed_files_three_applications_with_bank_responses() -> None:
     approved = filings[2].responses.get(response_type_item__code="APPROVED")
     assert approved.approved_amount_cop and approved.approved_term_months
     assert approved.public_message
+
+    # La desembolsada es de broker, pasó por la legalización y lleva el monto aprobado.
+    disbursed = filings[3]
+    assert disbursed.application.opportunity.origin_item.code == "BROKER"
+    statuses = disbursed.application.status_history.values_list("to_status", flat=True)
+    assert "LEGALIZATION" in statuses
+    disbursement = disbursed.responses.get(response_type_item__code="DISBURSED")
+    approval = disbursed.responses.get(response_type_item__code="APPROVED")
+    assert disbursement.disbursed_amount_cop == approval.approved_amount_cop
+    assert disbursement.corrects_response_id is None
 
     # Las demás solicitudes de la demo no se radican.
     assert Filing.objects.exclude(application__status__in=FILED_DEMO_STATUSES).count() == 0

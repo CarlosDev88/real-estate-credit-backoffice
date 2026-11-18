@@ -2,9 +2,10 @@
 
 import type { UseQueryResult } from "@tanstack/react-query";
 
+import { EmptyState } from "@/components/ui/empty-state";
 import { Card, DataList, Datum } from "@/components/ui/card";
 import { CardList, DataTable, dataColumns } from "@/components/ui/data-table";
-import { BlockState, EmptyNote } from "@/features/dashboard/block-state";
+import { BlockState } from "@/features/dashboard/block-state";
 import { FunnelTable } from "@/features/dashboard/funnel-table";
 import {
   isForbidden,
@@ -34,7 +35,7 @@ export function FunnelBlock({ query }: { query: UseQueryResult<DashboardFunnel> 
       >
         {(data) =>
           (data.stages[0]?.count ?? 0) === 0 ? (
-            <EmptyNote>No se crearon solicitudes en el periodo.</EmptyNote>
+            <EmptyState size="sm" title="No se crearon solicitudes en el periodo" />
           ) : (
             <FunnelTable stages={data.stages} caption="Embudo de solicitudes del periodo" />
           )
@@ -125,7 +126,7 @@ export function WorkloadBlock({
       >
         {(data) =>
           data.advisors.length === 0 ? (
-            <EmptyNote>No hay asesores con solicitudes abiertas.</EmptyNote>
+            <EmptyState size="sm" title="No hay asesores con solicitudes abiertas" />
           ) : mobile ? (
             <div className="-mx-5">
               <CardList
@@ -233,7 +234,7 @@ export function BankResultsBlock({
       >
         {(data) =>
           data.banks.length === 0 ? (
-            <EmptyNote>No hay radicaciones en el periodo.</EmptyNote>
+            <EmptyState size="sm" title="No hay radicaciones en el periodo" />
           ) : mobile ? (
             <div className="-mx-5">
               <CardList

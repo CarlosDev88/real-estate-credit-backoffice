@@ -61,6 +61,7 @@ const COVERAGE = "Cobertura";
 const CONTRACT = "Contrato API";
 const BUILD = "Build";
 const STORYBOOK = "Storybook";
+const STORYBOOK_A11Y = "Accesibilidad (Storybook)";
 
 const ANSI_ESCAPE = /\x1b\[[0-9;]*[A-Za-z]/g;
 const CONTROL_CHARS = /[\x00-\x08\x0b-\x1f\x7f]/g;
@@ -701,6 +702,43 @@ const checkBuild = compileCheck(BUILD, "build", "build.txt");
 // `pnpm build-storybook`: falla si Storybook no compila.
 const checkStorybook = compileCheck(STORYBOOK, "storybook", "storybook.txt");
 
+// --- Accesibilidad de los stories -----------------------------------------------------------
+
+/**
+ * `pnpm test:storybook`: cada story en Chromium con axe. Falla con violaciones serias o
+ * críticas (o si el story no se pinta). Lee el JUnit de Vitest.
+ */
+function checkStorybookA11y(ctx: Context): Verdict {
+  const succeeded = ctx.outcomes.storybook_a11y === SUCCESS;
+  const status = succeeded ? Status.PASSED : Status.FAILED;
+  const xml = readText(ctx, "storybook-a11y.xml");
+  if (xml === null) {
+    return {
+      status,
+      summary: succeeded ? "Pasaron (sin resultados JUnit)" : "Falló sin resultados (ver el log)",
+    };
+  }
+  const run = parseJUnit(xml);
+  if (!run.failures.length) {
+    return {
+      status,
+      summary: `${plural(run.passed, "story", "stories")} sin violaciones serias ni críticas`,
+    };
+  }
+  const shown = run.failures.slice(0, MAX_FAILED_TESTS);
+  return {
+    status,
+    summary: `${run.failing} de ${plural(run.total, "story", "stories")} con violaciones o errores`,
+    details: [
+      {
+        title: `Stories que fallan (${run.failing})`,
+        entries: shown.map((f) => (f.message ? `${f.name}\n    ${f.message}` : f.name)),
+        hidden: run.failures.length - shown.length,
+      },
+    ],
+  };
+}
+
 // --- Reporte -------------------------------------------------------------------------------
 
 interface CheckSpec {
@@ -724,6 +762,7 @@ const CHECKS: CheckSpec[] = [
   { name: CONTRACT, outcomeKey: "api_contract", build: checkContract },
   { name: BUILD, outcomeKey: "build", build: checkBuild },
   { name: STORYBOOK, outcomeKey: "storybook", build: checkStorybook },
+  { name: STORYBOOK_A11Y, outcomeKey: "storybook_a11y", build: checkStorybookA11y },
 ];
 const OUTCOME_KEYS = ["install", ...CHECKS.map((c) => c.outcomeKey)];
 

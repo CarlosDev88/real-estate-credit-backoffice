@@ -1,7 +1,7 @@
 """Casos de uso del módulo catalogs: catálogos, valores, metadatos y transiciones."""
 
 import uuid
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from datetime import date
 from typing import Any
 
@@ -163,7 +163,25 @@ def reorder_items(catalog: Catalog, item_ids: list[uuid.UUID]) -> QuerySet[Catal
 # --------------------------------------------------------------------------------------
 
 
-def serialize_metadata_item(item: CatalogItem) -> dict[str, Any]:
+# Metadatos que calcula el módulo dueño del catálogo a partir de su código (una sola
+# fuente) en lugar de guardarlos en `catalog_items.metadata`. Se registran en el
+# ``AppConfig.ready`` de ese módulo: código del catálogo → función(código del ítem).
+COMPUTED_METADATA: dict[str, Callable[[str], dict[str, Any]]] = {}
+
+
+def register_computed_metadata(
+    catalog_code: str, provider: Callable[[str], dict[str, Any]]
+) -> None:
+    COMPUTED_METADATA[catalog_code] = provider
+
+
+def serialize_metadata_item(item: CatalogItem, catalog_code: str | None = None) -> dict[str, Any]:
+    """Ítem para el frontend. Si el catálogo tiene metadatos calculados, se suman a los
+    guardados y ganan en las claves que coinciden."""
+    metadata = item.metadata
+    provider = COMPUTED_METADATA.get(catalog_code) if catalog_code else None
+    if provider is not None:
+        metadata = {**metadata, **provider(item.code)}
     return {
         "id": str(item.pk),
         "code": item.code,
@@ -173,7 +191,7 @@ def serialize_metadata_item(item: CatalogItem) -> dict[str, Any]:
         "active": item.is_active,
         "parent_id": str(item.parent_item_id) if item.parent_item_id else None,
         "parent_code": item.parent_item.code if item.parent_item else None,
-        "metadata": item.metadata,
+        "metadata": metadata,
     }
 
 
@@ -189,7 +207,7 @@ def catalog_metadata(
         "catalog": catalog.code,
         "name": catalog.name,
         "version": catalog.version,
-        "items": [serialize_metadata_item(item) for item in items],
+        "items": [serialize_metadata_item(item, catalog.code) for item in items],
     }
 
 
@@ -213,7 +231,8 @@ def bootstrap(user: User) -> dict[str, Any]:
         "permissions": profile.permissions,
         "catalogs": {
             catalog.code: [
-                serialize_metadata_item(item) for item in available_items(catalog, on=day)
+                serialize_metadata_item(item, catalog.code)
+                for item in available_items(catalog, on=day)
             ]
             for catalog in catalogs
         },

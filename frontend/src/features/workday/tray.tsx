@@ -9,7 +9,7 @@ import { CardList, DataTable, dataColumns, type TableSort } from "@/components/u
 import { EmptyState } from "@/components/ui/empty-state";
 import { ListPagination } from "@/components/ui/list-pagination";
 import { ErrorState, LoadingState } from "@/components/ui/state-views";
-import { StatusBadge, TONE_CLASS } from "@/components/ui/status-badge";
+import { StatusBadge, ToneBadge } from "@/components/ui/status-badge";
 import { PlusIcon } from "@/components/ui/icons";
 import type { WorkdayApplication, WorkdaySummary } from "@/features/workday/queries";
 import { PAGE_SIZES, SORTABLE_FIELDS } from "@/features/workday/workday-params";
@@ -105,11 +105,8 @@ function AttentionCell({ row }: { row: WorkdayApplication }) {
   return (
     <ul className="m-0 flex list-none flex-wrap gap-1 p-0">
       {row.attention.map((a) => (
-        <li
-          key={a.code}
-          className={`inline-flex min-h-[22px] items-center rounded-full border px-2 py-px text-xs font-medium ${TONE_CLASS.neutral}`}
-        >
-          {a.label}
+        <li key={a.code}>
+          <ToneBadge tone="neutral">{a.label}</ToneBadge>
         </li>
       ))}
       {row.pending_tasks_count > 0 && (

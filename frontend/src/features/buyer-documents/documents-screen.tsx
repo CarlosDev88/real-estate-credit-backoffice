@@ -32,6 +32,7 @@ type Viewer = ReturnType<typeof useBuyerViewer>;
 function ViewButton({ viewer, target }: { viewer: Viewer; target: ViewTarget }) {
   return (
     <Button
+      size="large"
       onClick={() => viewer.show(target)}
       loading={viewer.loadingFor(target.fileId)}
       aria-label={`Ver ${target.name}`}
@@ -177,6 +178,7 @@ function SlotCard({
       <div className="flex flex-wrap gap-2">
         {slot.can_upload && (
           <Button
+            size="large"
             type={slot.needs_action ? "primary" : "default"}
             onClick={() => onUpload(slot)}
             aria-label={`${file ? "Reemplazar" : "Subir"} ${slotName(slot)}`}
@@ -197,6 +199,7 @@ function SlotCard({
         )}
         {file && (
           <Button
+            size="large"
             type="text"
             aria-expanded={showVersions}
             aria-controls={versionsId}

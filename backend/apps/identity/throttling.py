@@ -16,8 +16,17 @@ from apps.identity.models import BuyerSession, UserManager
 _PERIODS = {"s": 1, "m": 60, "h": 3600, "d": 86400}
 
 
+def rate_multiplier() -> int:
+    """Cuánto se agrandan los cupos: ``AUTH_RATE_LIMIT_MULTIPLIER`` solo con ``DEBUG``
+    (los E2E locales hacen muchos logins). Con ``DEBUG=False`` siempre es 1."""
+    if not settings.DEBUG:
+        return 1
+    return max(1, int(settings.AUTH_RATE_LIMIT_MULTIPLIER))
+
+
 class AuthRateThrottle(SimpleRateThrottle):
-    """Throttle con tasas como ``"5/15m"`` y clave por IP más correo normalizado."""
+    """Throttle con tasas como ``"5/15m"`` y clave por IP más correo normalizado. Es la
+    base de todos los límites de la API (también el de reportes)."""
 
     scope: str
 
@@ -28,7 +37,7 @@ class AuthRateThrottle(SimpleRateThrottle):
         assert rate is not None
         num, period = rate.split("/")
         multiplier = int(period[:-1] or 1)
-        return int(num), multiplier * _PERIODS[period[-1]]
+        return int(num) * rate_multiplier(), multiplier * _PERIODS[period[-1]]
 
     def _hashed(self, value: str) -> str:
         # La clave de caché no guarda el correo en claro.

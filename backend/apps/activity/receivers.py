@@ -35,6 +35,15 @@ from apps.applications.signals import (
     participant_removed,
 )
 from apps.catalogs.workflow import ApplicationStatus
+from apps.commissions.models import BeneficiaryRole, CommissionSettlement, CommissionShare
+from apps.commissions.signals import (
+    commission_plan_missing,
+    commission_settled,
+    commission_settlement_voided,
+    commission_share_paid,
+)
+from apps.crm.models import Opportunity
+from apps.crm.signals import opportunity_created
 from apps.documents.models import (
     ApplicationDocumentSlot,
     DocumentFile,
@@ -173,6 +182,23 @@ def on_advisor_assigned(
         application=application,
         actor=actor,
         metadata={"advisor_id": str(advisor_id)},
+    )
+
+
+@receiver(opportunity_created, dispatch_uid="activity.opportunity_created")
+@never_raises
+def on_opportunity_created(
+    sender: Any, opportunity: Opportunity, actor: User, notes: str, **_: Any
+) -> None:
+    """El texto de ``POST /opportunities`` queda como la primera nota interna."""
+    if not notes:
+        return
+    record_activity(
+        event_type=E.NOTE_ADDED,
+        title=f"Nota de {actor.get_full_name()}",
+        message=notes,
+        opportunity=opportunity,
+        actor=actor,
     )
 
 
@@ -413,3 +439,67 @@ def on_bank_response_recorded(
             actor=actor,
             metadata=metadata,
         )
+
+
+# --- Comisiones -------------------------------------------------------------------------
+# Sin montos: el asesor también ve la actividad interna y no debe ver la parte del broker.
+
+
+@receiver(commission_settled, dispatch_uid="activity.commission_settled")
+@never_raises
+def on_commission_settled(
+    sender: Any, settlement: CommissionSettlement, actor: Any, **_: Any
+) -> None:
+    record_activity(
+        event_type=E.COMMISSION_SETTLED,
+        title="Comisión liquidada",
+        application=settlement.application,
+        actor=actor,
+        metadata={"settlement_id": str(settlement.pk)},
+    )
+
+
+@receiver(commission_settlement_voided, dispatch_uid="activity.commission_settlement_voided")
+@never_raises
+def on_commission_settlement_voided(
+    sender: Any, settlement: CommissionSettlement, reason: str, actor: Any, **_: Any
+) -> None:
+    record_activity(
+        event_type=E.COMMISSION_SETTLEMENT_VOIDED,
+        title="Liquidación de comisión anulada",
+        message=reason,
+        application=settlement.application,
+        actor=actor,
+        metadata={"settlement_id": str(settlement.pk)},
+    )
+
+
+@receiver(commission_share_paid, dispatch_uid="activity.commission_share_paid")
+@never_raises
+def on_commission_share_paid(sender: Any, share: CommissionShare, actor: Any, **_: Any) -> None:
+    role = BeneficiaryRole(share.beneficiary_role).label.lower()
+    record_activity(
+        event_type=E.COMMISSION_SHARE_PAID,
+        title=f"Pago de comisión registrado: parte del {role}",
+        application=share.settlement.application,
+        actor=actor,
+        metadata={"settlement_id": str(share.settlement_id), "share_id": str(share.pk)},
+    )
+
+
+@receiver(commission_plan_missing, dispatch_uid="activity.commission_plan_missing")
+@never_raises
+def on_commission_plan_missing(
+    sender: Any, application: CreditApplication, response: FilingResponse, actor: Any, **_: Any
+) -> None:
+    record_activity(
+        event_type=E.COMMISSION_PLAN_MISSING,
+        title="No se liquidó la comisión: no hay plan vigente",
+        message="Crea el plan del producto para la fecha de desembolso y liquida a mano.",
+        application=application,
+        actor=actor,
+        metadata={
+            "filing_response_id": str(response.pk),
+            "bank_product_id": str(response.filing.bank_product_id),
+        },
+    )

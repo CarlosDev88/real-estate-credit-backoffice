@@ -248,7 +248,7 @@ describe("DashboardScreen", { timeout: 30_000 }, () => {
     await within(tiles).findByText("Clientes creados");
     expect(within(tiles).queryByText(/Monto/)).not.toBeInTheDocument();
     expect(within(tiles).queryByText(/Tareas/)).not.toBeInTheDocument();
-    expect(await screen.findByText("No se crearon solicitudes en el periodo.")).toBeInTheDocument();
+    expect(await screen.findByText("No se crearon solicitudes en el periodo")).toBeInTheDocument();
     await waitFor(() =>
       expect(screen.queryByRole("heading", { name: "Carga por asesor" })).not.toBeInTheDocument(),
     );
@@ -297,11 +297,9 @@ describe("DashboardScreen", { timeout: 30_000 }, () => {
     });
     renderWithProviders(<DashboardScreen />);
 
-    expect(await screen.findByText("No hay solicitudes en ningún estado.")).toBeInTheDocument();
-    expect(
-      await screen.findByText("No hay asesores con solicitudes abiertas."),
-    ).toBeInTheDocument();
-    expect(await screen.findByText("No hay radicaciones en el periodo.")).toBeInTheDocument();
+    expect(await screen.findByText("No hay solicitudes en ningún estado")).toBeInTheDocument();
+    expect(await screen.findByText("No hay asesores con solicitudes abiertas")).toBeInTheDocument();
+    expect(await screen.findByText("No hay radicaciones en el periodo")).toBeInTheDocument();
   });
 });
 

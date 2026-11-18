@@ -6,11 +6,12 @@ import Link from "next/link";
 import { useState } from "react";
 import type { ReactNode } from "react";
 
+import { EmptyState } from "@/components/ui/empty-state";
 import { Card } from "@/components/ui/card";
 import { TONE_CLASS } from "@/components/ui/status-badge";
 import { toneFor } from "@design/status-tones";
 import { BarList } from "@/features/dashboard/bar-list";
-import { BlockState, EmptyNote } from "@/features/dashboard/block-state";
+import { BlockState } from "@/features/dashboard/block-state";
 import type { DashboardSummary } from "@/features/dashboard/queries";
 import { formatCOP, formatInteger } from "@/lib/format";
 
@@ -173,7 +174,7 @@ export function StatusSnapshot({ query }: { query: UseQueryResult<DashboardSumma
         {(data) => {
           const rows = showAll ? data.snapshot : data.snapshot.filter((s) => s.count > 0);
           if (rows.length === 0) {
-            return <EmptyNote>No hay solicitudes en ningún estado.</EmptyNote>;
+            return <EmptyState size="sm" title="No hay solicitudes en ningún estado" />;
           }
           return (
             <BarList

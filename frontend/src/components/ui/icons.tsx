@@ -83,11 +83,11 @@ export function EyeIcon(props: IconProps) {
 export function LogoMark({ size = 26 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 32 32" aria-hidden="true" focusable="false">
-      <rect width="32" height="32" rx="7" fill="#ffffff1f" />
+      <rect width="32" height="32" rx="7" fill="var(--um-sidebar-item-active)" />
       <path
         d="M10 25V15a6 6 0 0 1 12 0v10"
         fill="none"
-        stroke="#fff"
+        stroke="var(--um-text-on-sidebar-strong)"
         strokeWidth="2.6"
         strokeLinecap="round"
       />

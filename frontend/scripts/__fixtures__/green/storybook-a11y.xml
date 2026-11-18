@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<testsuites name="vitest tests" tests="3" failures="0" errors="0" time="21.7">
+    <testsuite name="src/components/ui/status-badge.stories.tsx" tests="3" failures="0" errors="0" skipped="0" time="1.2">
+        <testcase classname="src/components/ui/status-badge.stories.tsx" name="Básico" time="0.3">
+        </testcase>
+        <testcase classname="src/components/ui/status-badge.stories.tsx" name="Tonos" time="0.2">
+        </testcase>
+        <testcase classname="src/components/ui/status-badge.stories.tsx" name="Oscuro" time="0.2">
+        </testcase>
+    </testsuite>
+</testsuites>

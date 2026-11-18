@@ -114,6 +114,14 @@ describe("EmptyState", () => {
     expect(screen.getByText("Prueba con otro estado o limpia los filtros.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Limpiar filtros" })).toBeInTheDocument();
   });
+
+  it("por defecto tiene 48 px arriba y abajo; compacto, 24 px", () => {
+    const { rerender } = render(<EmptyState title="Vacío" />);
+    expect(screen.getByText("Vacío").parentElement).toHaveClass("py-12");
+    rerender(<EmptyState title="Vacío" size="sm" />);
+    expect(screen.getByText("Vacío").parentElement).toHaveClass("py-6");
+    expect(screen.getByText("Vacío").parentElement).not.toHaveClass("py-12");
+  });
 });
 
 describe("FilterChips", () => {

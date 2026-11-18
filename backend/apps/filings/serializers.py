@@ -9,7 +9,8 @@ from apps.catalogs.models import CatalogItem
 from apps.catalogs.serializers import CatalogItemRefSerializer
 from apps.catalogs.workflow import ApplicationStatus
 from apps.crm.serializers import UserRefSerializer
-from apps.documents.models import FileObject
+from apps.documents.dossier_serializers import slot_label
+from apps.documents.models import FileObject, ScanStatus
 from apps.filings import responses
 from apps.filings.models import (
     Filing,
@@ -18,7 +19,7 @@ from apps.filings.models import (
     FilingResponseObservation,
     FilingStatus,
 )
-from config.serializers import StrictSerializer
+from config.serializers import ChoiceLabelField, StrictSerializer
 
 REFERENCE_MAX_LENGTH = 100
 COMMENT_MAX_LENGTH = 2000
@@ -124,6 +125,9 @@ class FilingSerializer(serializers.ModelSerializer):
     responses_count = serializers.IntegerField(
         read_only=True, help_text="Respuestas del banco registradas, incluidas las correcciones."
     )
+    is_response_overdue = serializers.SerializerMethodField(
+        help_text="Pasó `target_response_at` y el banco todavía no responde."
+    )
     application_status = serializers.ChoiceField(
         source="application.status", choices=ApplicationStatus.choices, read_only=True
     )
@@ -148,6 +152,7 @@ class FilingSerializer(serializers.ModelSerializer):
             "target_response_at",
             "comment",
             "responses_count",
+            "is_response_overdue",
             "application_status",
             "application_status_label",
             "created_at",
@@ -160,6 +165,13 @@ class FilingSerializer(serializers.ModelSerializer):
         if self.context.get("restricted"):
             self.fields.pop("comment")
 
+    def get_is_response_overdue(self, obj: Filing) -> bool:
+        target = obj.target_response_at
+        responses_count = getattr(obj, "responses_count", None)
+        if responses_count is None:
+            responses_count = obj.responses.count()
+        return target is not None and target < timezone.now() and responses_count == 0
+
 
 class FilingDocumentSnapshotSerializer(serializers.ModelSerializer):
     """Versión exacta que se entregó al banco en la radicación."""
@@ -170,6 +182,15 @@ class FilingDocumentSnapshotSerializer(serializers.ModelSerializer):
     client_filename = serializers.CharField(source="document_file.client_filename", read_only=True)
     mime_type = serializers.CharField(source="file_object.detected_mime_type", read_only=True)
     size_bytes = serializers.IntegerField(source="file_object.size_bytes", read_only=True)
+    document_type_label = serializers.CharField(
+        source="document_file.slot.document_type.name",
+        read_only=True,
+        help_text="Nombre del tipo de documento, leído al consultar.",
+    )
+    slot_label = serializers.SerializerMethodField(
+        help_text='Etiqueta del slot: "Desprendible de nómina 2 de 3" o solo el nombre del '
+        "tipo. El total es el `minimum_files` del slot."
+    )
 
     class Meta:
         model = FilingDocumentSnapshot
@@ -179,6 +200,8 @@ class FilingDocumentSnapshotSerializer(serializers.ModelSerializer):
             "document_file_id",
             "version_number",
             "document_type_code",
+            "document_type_label",
+            "slot_label",
             "client_filename",
             "mime_type",
             "size_bytes",
@@ -186,6 +209,10 @@ class FilingDocumentSnapshotSerializer(serializers.ModelSerializer):
             "created_at",
         ]
         read_only_fields = fields
+
+    def get_slot_label(self, obj: FilingDocumentSnapshot) -> str:
+        slot = obj.document_file.slot
+        return slot_label(slot, set_size=slot.minimum_files)
 
 
 # --- Respuestas del banco ---------------------------------------------------------------
@@ -361,10 +388,19 @@ class EvidenceSerializer(serializers.ModelSerializer):
     filename = serializers.CharField(source="original_filename", read_only=True)
     mime_type = serializers.CharField(source="detected_mime_type", read_only=True)
     uploaded_at = serializers.DateTimeField(source="created_at", read_only=True)
+    scan_status_label = ChoiceLabelField(ScanStatus, source="scan_status")
 
     class Meta:
         model = FileObject
-        fields = ["filename", "mime_type", "size_bytes", "scan_status", "scanned_at", "uploaded_at"]
+        fields = [
+            "filename",
+            "mime_type",
+            "size_bytes",
+            "scan_status",
+            "scan_status_label",
+            "scanned_at",
+            "uploaded_at",
+        ]
         read_only_fields = fields
 
 

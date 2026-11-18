@@ -9,6 +9,7 @@ from apps.applications.actions import (
     BACKWARD_TRANSITION_CODES,
     ActionKind,
     action_kind,
+    reason_required,
 )
 from apps.applications.models import CreditApplication
 from apps.catalogs.models import WorkflowTransition
@@ -115,4 +116,31 @@ def test_admin_gets_the_same_order(admin_client: APIClient, application: CreditA
         ("REOPEN_REVIEW", "secondary"),
         ("CANCEL_READY_TO_FILE", "destructive"),
         ("WITHDRAW_READY_TO_FILE", "destructive"),
+    ]
+
+
+def test_reason_is_required_for_closures_with_reason_and_withdrawals() -> None:
+    manual = WorkflowTransition.objects.filter(flow_type=FlowType.APPLICATION, system_only=False)
+
+    required = {t.code for t in manual if reason_required(t)}
+
+    assert required == {
+        code
+        for code in EXPECTED_KINDS
+        if code.startswith(("CANCEL_", "WITHDRAW_", "MARK_OWN_FUNDS_", "MARK_EXTERNAL_CREDIT_"))
+    }
+
+
+def test_available_actions_carry_reason_required(
+    advisor_client: APIClient, application: CreditApplication
+) -> None:
+    response = advisor_client.get(application_url(application, "/available-actions"))
+
+    assert [(a["code"], a["reason_required"]) for a in response.json()] == [
+        ("REQUEST_BUYER_DATA", False),
+        ("REQUEST_DOCUMENTS_FROM_DRAFT", False),
+        ("MARK_EXTERNAL_CREDIT_DRAFT", True),
+        ("MARK_OWN_FUNDS_DRAFT", True),
+        ("CANCEL_DRAFT", True),
+        ("WITHDRAW_DRAFT", True),
     ]

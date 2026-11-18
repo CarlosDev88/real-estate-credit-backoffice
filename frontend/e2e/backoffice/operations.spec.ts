@@ -30,7 +30,7 @@ test("dashboard: carga los bloques y filtra por finalidad", async ({ page }) => 
   await expect(
     page
       .getByRole("table", { name: /Embudo de solicitudes/ })
-      .or(page.getByText("No se crearon solicitudes en el periodo.")),
+      .or(page.getByText("No se crearon solicitudes en el periodo")),
   ).toBeVisible();
   await expect(page.getByText(/No pudimos cargar/)).toHaveCount(0);
 });

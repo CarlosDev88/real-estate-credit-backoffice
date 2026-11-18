@@ -4,7 +4,7 @@
 import type { Tone } from "@design/status-tones";
 import type { ReactNode } from "react";
 
-import { StatusBadge, TONE_CLASS } from "@/components/ui/status-badge";
+import { StatusBadge, TONE_CLASS, ToneBadge } from "@/components/ui/status-badge";
 
 import {
   palettes,
@@ -399,18 +399,6 @@ export function ShadowRule() {
 
 // --- Tonos de estado -------------------------------------------------------------------------
 
-function ToneSample({ tone, label }: { tone: Tone; label: string }) {
-  return (
-    <span
-      data-tone={tone}
-      className={`inline-flex h-[22px] items-center gap-1.5 rounded-full border px-2 text-xs font-medium whitespace-nowrap ${TONE_CLASS[tone]}`}
-    >
-      <span aria-hidden="true" className="size-1.5 flex-none rounded-full bg-current" />
-      {label}
-    </span>
-  );
-}
-
 /** Los seis tonos, con su uso según el README, en los dos temas. */
 export function ToneLegend() {
   return (
@@ -419,7 +407,7 @@ export function ToneLegend() {
         <ul className="m-0 flex list-none flex-col gap-3 p-0">
           {TONE_ORDER.map((tone) => (
             <li key={tone} className="grid grid-cols-[96px_1fr] items-start gap-3">
-              <ToneSample tone={tone} label={tone} />
+              <ToneBadge tone={tone}>{tone}</ToneBadge>
               <span className="text-text-secondary text-sm">{toneUses[tone]}</span>
             </li>
           ))}

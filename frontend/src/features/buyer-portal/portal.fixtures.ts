@@ -31,6 +31,12 @@ export function sessionFixture(overrides: Partial<BuyerSession> = {}): BuyerSess
   };
 }
 
+const CONSENT_STATUS_LABELS: Record<BuyerConsent["status"], string> = {
+  PENDING: "Pendiente",
+  ACCEPTED: "Aceptado",
+  WITHDRAWN: "Retirado",
+};
+
 export function consentFixture(overrides: Partial<BuyerConsent> = {}): BuyerConsent {
   return {
     id: "c-data",
@@ -42,6 +48,7 @@ export function consentFixture(overrides: Partial<BuyerConsent> = {}): BuyerCons
     effective_from: "2026-01-01T00:00:00Z",
     required: true,
     status: "PENDING",
+    status_label: CONSENT_STATUS_LABELS[overrides.status ?? "PENDING"],
     accepted_at: null,
     ...overrides,
   };

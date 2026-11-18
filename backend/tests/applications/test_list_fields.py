@@ -122,7 +122,14 @@ def test_row_has_type_amount_participants_and_status_label(
         "label": "Crédito hipotecario",
     }
     assert row["requested_amount_cop"] == 294_000_000
-    assert row["participants_summary"] == {"co_applicants": 1, "solidary_debtors": 1}
+    assert row["participants_summary"] == {
+        "co_applicants": 1,
+        "solidary_debtors": 1,
+        "roles": [
+            {"code": "CO_APPLICANT", "label": "Co-solicitante", "count": 1},
+            {"code": "SOLIDARY_DEBTOR", "label": "Deudor solidario", "count": 1},
+        ],
+    }
 
 
 def test_bank_short_name_in_the_row(
@@ -148,7 +155,7 @@ def test_fields_without_product_or_financing(
 
     assert row["bank_product"] is None
     assert row["requested_amount_cop"] is None
-    assert row["participants_summary"] == {"co_applicants": 0, "solidary_debtors": 0}
+    assert row["participants_summary"] == {"co_applicants": 0, "solidary_debtors": 0, "roles": []}
 
 
 def test_detail_and_client_list_carry_the_same_fields(
@@ -164,7 +171,11 @@ def test_detail_and_client_list_carry_the_same_fields(
     for body in (detail, client_list[0]):
         assert body["status_label"] == "Borrador"
         assert body["requested_amount_cop"] == 150_000_000
-        assert body["participants_summary"] == {"co_applicants": 0, "solidary_debtors": 0}
+        assert body["participants_summary"] == {
+            "co_applicants": 0,
+            "solidary_debtors": 0,
+            "roles": [],
+        }
 
 
 def test_participants_summary_without_annotations(
@@ -176,7 +187,11 @@ def test_participants_summary_without_annotations(
 
     data = ApplicationSerializer(plain).data
 
-    assert data["participants_summary"] == {"co_applicants": 0, "solidary_debtors": 1}
+    assert data["participants_summary"] == {
+        "co_applicants": 0,
+        "solidary_debtors": 1,
+        "roles": [{"code": "SOLIDARY_DEBTOR", "label": "Deudor solidario", "count": 1}],
+    }
 
 
 def test_broker_summary_does_not_change(

@@ -5,7 +5,7 @@ import { useId, useState } from "react";
 
 import { PageHeader } from "@/components/ui/page-header";
 import { ErrorState, LoadingState } from "@/components/ui/state-views";
-import { TONE_CLASS } from "@/components/ui/status-badge";
+import { ToneBadge } from "@/components/ui/status-badge";
 import { PortalPage } from "@/features/buyer-portal/portal-shell";
 import {
   sortNotifications,
@@ -60,14 +60,7 @@ function NotificationItem({
         >
           <span className="grid min-w-0 flex-1 gap-1">
             <span className="flex flex-wrap items-center gap-2">
-              {unread && (
-                <span
-                  className={`inline-flex h-[22px] items-center gap-1.5 rounded-full border px-2 text-xs font-medium ${TONE_CLASS.info}`}
-                >
-                  <span aria-hidden="true" className="size-1.5 rounded-full bg-current" />
-                  Nuevo
-                </span>
-              )}
+              {unread && <ToneBadge tone="info">Nuevo</ToneBadge>}
               <span className="text-text-tertiary text-sm">
                 {notification.notification_type_label}
               </span>

@@ -18,6 +18,11 @@ const meta = {
   },
   argTypes: {
     title: { control: "text", description: "Qué pasa, en una frase." },
+    size: {
+      control: "inline-radio",
+      options: ["md", "sm"],
+      description: "`sm`: dentro de una tarjeta o un tablero, con menos alto.",
+    },
     description: { control: "text", description: "Por qué o qué hacer." },
     icon: { control: false, description: "Ícono decorativo (se oculta al lector)." },
     action: { control: false, description: "Botón que destraba la vista." },
@@ -46,6 +51,16 @@ export const SinDatosTodavia: Story = {
     description: "Registra el primero para empezar una oportunidad.",
     icon: <UsersIcon />,
     action: <Button type="primary">Nuevo cliente</Button>,
+  },
+};
+/** Compacto (`size="sm"`): dentro de una tarjeta del tablero. */
+export const Compacto: Story = {
+  args: {
+    size: "sm",
+    title: "Sin datos en este periodo",
+    description: "Cambia el rango de fechas.",
+    icon: undefined,
+    action: undefined,
   },
 };
 export const SoloTitulo: Story = {

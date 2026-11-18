@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     "apps.activity",
     "apps.audit",
     "apps.reporting",
+    "apps.commissions",
 ]
 
 MIDDLEWARE = [
@@ -163,8 +164,8 @@ SPECTACULAR_SETTINGS = {
         # Mi día: segmentos de atención y siguiente acción.
         "AttentionSegmentEnum": "apps.workday.rules.AttentionSegment",
         "NextActionEnum": "apps.workday.rules.NextAction",
-        # Tipo de cada acción disponible de la solicitud.
-        "AvailableActionKindEnum": "apps.applications.actions.ActionKind",
+        # Tipo de cada acción disponible (solicitudes y oportunidades).
+        "AvailableActionKindEnum": "apps.catalogs.workflow.ActionKind",
         # Tareas: estado, origen y tipo de padre.
         "TaskStatusEnum": "apps.tasks.models.TaskStatus",
         "TaskSourceEnum": "apps.tasks.models.TaskSource",
@@ -182,6 +183,12 @@ SPECTACULAR_SETTINGS = {
         # Exportación asíncrona: mismos códigos que el paquete documental, otras etiquetas.
         "ReportExportJobStatusEnum": "apps.reporting.models.ExportJobStatus",
         "ReportTypeEnum": "apps.reporting.models.ReportType",
+        # Quién cargó una versión del expediente (`DocumentFile.uploaded_by.type`).
+        "DocumentUploaderTypeEnum": "apps.documents.dossier_serializers.UploaderType",
+        # Comisiones: estados de la liquidación y de la parte, y rol del beneficiario.
+        "CommissionSettlementStatusEnum": "apps.commissions.models.SettlementStatus",
+        "CommissionShareStatusEnum": "apps.commissions.models.ShareStatus",
+        "BeneficiaryRoleEnum": "apps.commissions.models.BeneficiaryRole",
     },
 }
 
@@ -242,6 +249,9 @@ AUTH_RATE_LIMITS = {
     # Dashboard y reportes, por usuario (REQUERIMIENTOS §9.3: endpoints costosos).
     "reports": env("REPORTS_RATE_LIMIT", default="20/1m"),
 }
+# Solo en local: con `DEBUG=True`, cada cupo de `AUTH_RATE_LIMITS` (también `reports`) se
+# multiplica por este número. Con `DEBUG=False` se ignora siempre.
+AUTH_RATE_LIMIT_MULTIPLIER = env.int("AUTH_RATE_LIMIT_MULTIPLIER", default=1)
 
 # Página del frontend que recibe `?token=` para definir la nueva contraseña.
 PASSWORD_RESET_URL = env(
