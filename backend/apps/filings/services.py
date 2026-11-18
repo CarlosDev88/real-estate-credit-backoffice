@@ -284,8 +284,9 @@ def update_filing(actor: User, filing: Filing, changes: dict[str, Any]) -> None:
 
 
 def snapshots_queryset(filing: Filing) -> QuerySet[FilingDocumentSnapshot]:
+    """Snapshots con el slot y su tipo, para las etiquetas: sin consultas por fila."""
     return (
         FilingDocumentSnapshot.objects.filter(filing=filing)
-        .select_related("document_file", "file_object")
+        .select_related("document_file__slot__document_type", "file_object")
         .order_by("created_at", "id")
     )

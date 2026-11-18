@@ -489,7 +489,14 @@ describe("listado de solicitudes", { timeout: 20_000 }, () => {
         bank_product: null,
         requested_amount_cop: null,
         completeness_pct: null,
-        participants_summary: { co_applicants: 1, solidary_debtors: 2 },
+        participants_summary: {
+          co_applicants: 1,
+          solidary_debtors: 2,
+          roles: [
+            { code: "CO_APPLICANT", label: "Co-solicitante", count: 1 },
+            { code: "SOLIDARY_DEBTOR", label: "Deudor solidario", count: 2 },
+          ],
+        },
       }),
     ]);
     await renderList();
@@ -506,7 +513,14 @@ describe("listado de solicitudes", { timeout: 20_000 }, () => {
     useApi([
       makeApp(1, {
         bank_product: { ...makeApp(1).bank_product!, bank: BOGOTA },
-        participants_summary: { co_applicants: 2, solidary_debtors: 1 },
+        participants_summary: {
+          co_applicants: 2,
+          solidary_debtors: 1,
+          roles: [
+            { code: "CO_APPLICANT", label: "Co-solicitante", count: 2 },
+            { code: "SOLIDARY_DEBTOR", label: "Deudor solidario", count: 1 },
+          ],
+        },
       }),
     ]);
     await renderList();

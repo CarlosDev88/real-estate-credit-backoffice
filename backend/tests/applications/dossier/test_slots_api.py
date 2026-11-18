@@ -260,6 +260,9 @@ def test_detail_shows_the_current_file(
         "expires_at": None,
         "scan_status": "PENDING",
         "scan_status_label": "Pendiente de análisis",
+        "size_bytes": current.file_object.size_bytes,
+        "detected_mime_type": current.file_object.detected_mime_type,
+        "last_buyer_comment": None,
         "created_at": body["current_file"]["created_at"],
     }
 

@@ -1,12 +1,15 @@
 """Solicitudes radicadas de los datos de demo (``seed_demo_data``, paso 11).
 
-Tres solicitudes que llegan a `READY_TO_FILE` igual que las demás de la demo
+Cuatro solicitudes que llegan a `READY_TO_FILE` igual que las demás de la demo
 (``applications.demo_data``) y después pasan por los servicios de la radicación:
 
 - una en `CREDIT_ANALYSIS` (recibida y en análisis);
 - una en `BANK_OBSERVATION`, devuelta con un documento observado, que el comprador puede
   reemplazar desde el portal;
-- una en `APPROVED`, con monto y plazo aprobados.
+- una en `APPROVED`, con monto y plazo aprobados;
+- una de broker en `DISBURSED`: aprobada, en legalización (transición manual del
+  asesor) y desembolsada por el monto aprobado. Si comisiones tiene un plan vigente para
+  el producto, su receptor la liquida (asesor y broker).
 
 Cada una pide su paquete, lo arma y lo radica. Las fechas son de los últimos días, en
 orden, y nunca futuras. La idempotencia es la del comando: si los datos de demo ya
@@ -38,6 +41,7 @@ from apps.applications.demo_data import (
     _Names,
 )
 from apps.applications.models import CreditApplication, FinancingPreference
+from apps.applications.services import transition_application
 from apps.catalogs.workflow import ApplicationStatus
 from apps.documents.models import ApplicationDocumentSlot, DocumentPackageJob, PackageJobStatus
 from apps.documents.packages import build_package, request_package
@@ -79,12 +83,32 @@ FILED_DEMO_CASES: tuple[FiledCase, ...] = (
         channel="IN_PERSON",
         responses=(responses.RECEIVED, responses.IN_ANALYSIS, responses.APPROVED),
     ),
+    FiledCase(
+        DemoCase(
+            RF,
+            NEW,
+            BANCOLOMBIA,
+            EMPLOYEE,
+            origin="BROKER",
+            documents=ALL_DOCUMENTS,
+            approve=MANY,
+        ),
+        channel="BANK_PORTAL",
+        # Entre la aprobación y el desembolso, el asesor inicia la legalización.
+        responses=(
+            responses.RECEIVED,
+            responses.IN_ANALYSIS,
+            responses.APPROVED,
+            responses.DISBURSED,
+        ),
+    ),
 )
 # El estado en que queda cada una, en el mismo orden.
 FILED_DEMO_STATUSES = (
     ApplicationStatus.CREDIT_ANALYSIS,
     ApplicationStatus.BANK_OBSERVATION,
     ApplicationStatus.APPROVED,
+    ApplicationStatus.DISBURSED,
 )
 
 
@@ -154,6 +178,16 @@ def _response_input(
             approved_term_months=financing.term_months,
             valid_until=(received_at + timedelta(days=90)).date(),
         )
+    if code == responses.DISBURSED:
+        financing = FinancingPreference.objects.get(application=application)
+        return responses.ResponseInput(
+            response_type=response_type,
+            received_at=received_at,
+            external_reference=f"DES-{application.code}",
+            public_message="¡Tu crédito fue desembolsado! Felicitaciones por tu nueva vivienda.",
+            internal_comment="Desembolso de demo.",
+            disbursed_amount_cop=financing.requested_amount_cop,
+        )
     public = "El banco recibió tu solicitud." if code == responses.RECEIVED else None
     return responses.ResponseInput(
         response_type=response_type, received_at=received_at, public_message=public
@@ -176,6 +210,13 @@ def _file_and_respond(
         comment="Radicación de demo.",
     )
     for day, code in enumerate(filed.responses, start=1):
+        if code == responses.DISBURSED:
+            transition_application(
+                advisor,
+                _fresh(application),
+                to_status=ApplicationStatus.LEGALIZATION,
+                expected_version=_fresh(application).version,
+            )
         responses.record_response(
             advisor,
             Filing.objects.get(pk=filing.pk),
@@ -193,7 +234,7 @@ def seed_filed_cases(
     names: _Names,
     first_index: int,
 ) -> list[CreditApplication]:
-    """Crea las tres solicitudes radicadas. ``assignments`` reparte los asesores como en
+    """Crea las cuatro solicitudes radicadas. ``assignments`` reparte los asesores como en
     el resto de la demo."""
     created = []
     filed_at = timezone.now() - timedelta(days=FILED_DAYS_AGO)

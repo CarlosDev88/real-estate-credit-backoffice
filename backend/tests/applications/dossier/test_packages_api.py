@@ -71,6 +71,7 @@ def test_post_creates_the_job_and_a_repeat_returns_it(
         "application_id",
         "application_version",
         "status",
+        "status_label",
         "error_code",
         "fingerprint",
         "requested_by",

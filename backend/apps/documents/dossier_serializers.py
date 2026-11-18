@@ -4,7 +4,9 @@
 from datetime import date
 from typing import Any
 
+from django.db import models
 from django.utils import timezone
+from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 from rest_framework.exceptions import ErrorDetail
 
@@ -22,6 +24,7 @@ from apps.documents.models import (
     ScanStatus,
     SlotStatus,
 )
+from apps.documents.models.review import FILE_DECISIONS
 from apps.documents.serializers import DocumentTypeRefSerializer
 from config.serializers import ChoiceLabelField, StrictSerializer
 
@@ -56,10 +59,40 @@ class SlotParticipantSerializer(serializers.Serializer):
     is_active = serializers.BooleanField()
 
 
+class UploaderType(models.TextChoices):
+    BUYER = "buyer", "Comprador"
+    USER = "user", "Usuario interno"
+
+
+class UploadedBySerializer(serializers.Serializer):
+    """Quién cargó la versión. Nunca el correo ni el documento."""
+
+    type = serializers.ChoiceField(choices=UploaderType.choices)
+    name = serializers.CharField(
+        help_text='"Comprador" para el comprador; el nombre del usuario interno.'
+    )
+
+
+def uploaded_by(version: DocumentFile) -> dict[str, str]:
+    """Hoy solo el comprador carga (``uploaded_by_buyer_session`` es obligatoria)."""
+    if version.uploaded_by_buyer_session_id is not None:
+        return {"type": UploaderType.BUYER.value, "name": str(UploaderType.BUYER.label)}
+    user = getattr(version, "uploaded_by_user", None)
+    return {"type": UploaderType.USER.value, "name": user.get_full_name() if user else ""}
+
+
 class CurrentFileSerializer(serializers.ModelSerializer):
+    """Versión vigente del slot. ``context["last_buyer_comment"]`` trae el comentario."""
+
     status_label = ChoiceLabelField(DocumentFileStatus, source="status")
     scan_status_label = ChoiceLabelField(ScanStatus, source="file_object.scan_status")
     scan_status = serializers.CharField(source="file_object.scan_status")
+    size_bytes = serializers.IntegerField(source="file_object.size_bytes")
+    detected_mime_type = serializers.CharField(source="file_object.detected_mime_type")
+    last_buyer_comment = serializers.SerializerMethodField(
+        help_text="Mensaje al comprador de la última aprobación o rechazo de esta versión; "
+        "nulo si no hay o va vacío."
+    )
 
     class Meta:
         model = DocumentFile
@@ -73,9 +106,33 @@ class CurrentFileSerializer(serializers.ModelSerializer):
             "expires_at",
             "scan_status",
             "scan_status_label",
+            "size_bytes",
+            "detected_mime_type",
+            "last_buyer_comment",
             "created_at",
         ]
         read_only_fields = fields
+
+    def get_last_buyer_comment(self, obj: DocumentFile) -> str | None:
+        return self.context.get("last_buyer_comment") or None
+
+
+_NOT_ANNOTATED = object()
+
+
+def _last_buyer_comment(slot: ApplicationDocumentSlot) -> str | None:
+    """La anotación de ``dossier.slots_queryset``; sin ella, se consulta."""
+    value = getattr(slot, "last_buyer_comment", _NOT_ANNOTATED)
+    if value is _NOT_ANNOTATED:
+        value = (
+            DocumentReview.objects.filter(
+                document_file_id=slot.current_file_id, decision__in=FILE_DECISIONS
+            )
+            .order_by("-created_at")
+            .values_list("buyer_comment", flat=True)
+            .first()
+        )
+    return value or None  # type: ignore[return-value]
 
 
 class DocumentSlotSerializer(serializers.ModelSerializer):
@@ -90,7 +147,7 @@ class DocumentSlotSerializer(serializers.ModelSerializer):
     waiver_reason = CatalogItemRefSerializer(
         source="waiver_reason_item", read_only=True, allow_null=True
     )
-    current_file = CurrentFileSerializer(read_only=True, allow_null=True)
+    current_file = serializers.SerializerMethodField()
     is_retired = serializers.BooleanField(read_only=True)
 
     class Meta:
@@ -124,6 +181,14 @@ class DocumentSlotSerializer(serializers.ModelSerializer):
 
     def get_label(self, obj: ApplicationDocumentSlot) -> str:
         return slot_label(obj)
+
+    @extend_schema_field(CurrentFileSerializer(allow_null=True))
+    def get_current_file(self, obj: ApplicationDocumentSlot) -> dict[str, Any] | None:
+        version = obj.current_file
+        if version is None:
+            return None
+        context = {"last_buyer_comment": _last_buyer_comment(obj)}
+        return dict(CurrentFileSerializer(version, context=context).data)
 
 
 class FileMetadataSerializer(serializers.ModelSerializer):
@@ -170,6 +235,7 @@ class DocumentFileSerializer(serializers.ModelSerializer):
     status_label = ChoiceLabelField(DocumentFileStatus, source="status")
     slot_id = serializers.UUIDField(read_only=True)
     uploaded_by_buyer_session_id = serializers.UUIDField(read_only=True)
+    uploaded_by = serializers.SerializerMethodField()
     is_current = serializers.SerializerMethodField()
     file = FileMetadataSerializer(source="file_object", read_only=True)
     reviews = DocumentReviewSerializer(many=True, read_only=True)
@@ -187,11 +253,16 @@ class DocumentFileSerializer(serializers.ModelSerializer):
             "document_date",
             "expires_at",
             "uploaded_by_buyer_session_id",
+            "uploaded_by",
             "file",
             "reviews",
             "created_at",
         ]
         read_only_fields = fields
+
+    @extend_schema_field(UploadedBySerializer)
+    def get_uploaded_by(self, obj: DocumentFile) -> dict[str, str]:
+        return uploaded_by(obj)
 
     def get_is_current(self, obj: DocumentFile) -> bool:
         return bool(obj.pk == self.context.get("current_file_id"))

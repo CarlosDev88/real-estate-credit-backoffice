@@ -49,6 +49,18 @@ def _set_size() -> Subquery:
     return Subquery(siblings)
 
 
+def _last_buyer_comment() -> Subquery:
+    """Mensaje al comprador de la última aprobación o rechazo de la versión vigente."""
+    latest = (
+        DocumentReview.objects.filter(
+            document_file_id=OuterRef("current_file_id"), decision__in=FILE_DECISIONS
+        )
+        .order_by("-created_at")
+        .values("buyer_comment")[:1]
+    )
+    return Subquery(latest)
+
+
 def slots_queryset() -> QuerySet[ApplicationDocumentSlot]:
     """Slots con lo que serializa la respuesta. Primero los documentos de la solicitud,
     después los de cada participante en el orden en que entraron."""
@@ -59,7 +71,7 @@ def slots_queryset() -> QuerySet[ApplicationDocumentSlot]:
             "waiver_reason_item",
             "current_file__file_object",
         )
-        .annotate(set_size=_set_size())
+        .annotate(set_size=_set_size(), last_buyer_comment=_last_buyer_comment())
         .order_by(
             F("participant__created_at").asc(nulls_first=True),
             "sort_order",

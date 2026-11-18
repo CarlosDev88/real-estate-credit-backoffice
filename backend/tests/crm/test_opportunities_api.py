@@ -56,6 +56,7 @@ def test_admin_creates_new_opportunity_with_project(
     assert response.status_code == 201, response.content
     body = response.json()
     assert body["status"] == "NEW"
+    assert body["status_label"] == "Nueva"
     assert body["client"] == {"id": str(client.id), "full_name": "Laura Gómez Vélez"}
     assert body["project"] == {
         "id": str(active_project.id),
@@ -66,7 +67,32 @@ def test_admin_creates_new_opportunity_with_project(
     assert body["origin_user"]["id"] == str(admin_user.id)
     assert body["assigned_advisor"] is None
     assert body["assignments"] == []
-    assert body["available_actions"] == ["ASSIGN", "CANCEL_NEW", "MARK_LOST_NEW"]
+    assert body["available_actions"] == [
+        {
+            "code": "ASSIGN",
+            "label": "Asignar asesor",
+            "kind": "secondary",
+            "target_status": "ASSIGNED",
+            "target_status_label": "Asignada",
+            "reason_required": False,
+        },
+        {
+            "code": "CANCEL_NEW",
+            "label": "Cancelar",
+            "kind": "destructive",
+            "target_status": "CANCELLED",
+            "target_status_label": "Cancelada",
+            "reason_required": False,
+        },
+        {
+            "code": "MARK_LOST_NEW",
+            "label": "Marcar como perdida",
+            "kind": "destructive",
+            "target_status": "LOST",
+            "target_status_label": "Perdida",
+            "reason_required": True,
+        },
+    ]
 
 
 def test_broker_creates_opportunity_for_own_contact(

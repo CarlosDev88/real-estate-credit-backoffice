@@ -297,7 +297,11 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /**
+         * Paquetes para radicar de la solicitud
+         * @description Todos los paquetes pedidos para la solicitud, del más nuevo al más antiguo, con el mismo permiso que pedirlos (`filings.prepare`).
+         */
+        get: operations["applications_document_package_jobs_list"];
         put?: never;
         /**
          * Pedir el paquete para radicar
@@ -1822,11 +1826,14 @@ export interface paths {
         };
         /**
          * Clientes dentro del alcance
-         * @description El broker recibe solo datos de contacto y el documento enmascarado.
+         * @description Página de `Client` con `applications_count`. El broker (`INDEPENDENT_BROKER` sin `ADMIN` ni `ADVISOR`) recibe `BrokerClient`: contacto y documento enmascarado, sin direcciones ni `applications_count`.
          */
         get: operations["clients_list"];
         put?: never;
-        /** Crear un cliente */
+        /**
+         * Crear un cliente
+         * @description Responde `Client`. El broker (`INDEPENDENT_BROKER` sin `ADMIN` ni `ADVISOR`) recibe `BrokerClient`: contacto y documento enmascarado, sin direcciones ni `applications_count`.
+         */
         post: operations["clients_create"];
         delete?: never;
         options?: never;
@@ -1841,7 +1848,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Detalle del cliente según el rol */
+        /**
+         * Detalle del cliente según el rol
+         * @description `ClientDetail` con direcciones y `applications_count`. El broker (`INDEPENDENT_BROKER` sin `ADMIN` ni `ADVISOR`) recibe `BrokerClient`: contacto y documento enmascarado, sin direcciones ni `applications_count`.
+         */
         get: operations["clients_retrieve"];
         put?: never;
         post?: never;
@@ -1850,7 +1860,7 @@ export interface paths {
         head?: never;
         /**
          * Actualizar un cliente
-         * @description El broker solo puede cambiar datos de contacto, no el documento.
+         * @description El broker solo puede cambiar datos de contacto, no el documento. Responde `ClientDetail`. El broker (`INDEPENDENT_BROKER` sin `ADMIN` ni `ADVISOR`) recibe `BrokerClient`: contacto y documento enmascarado, sin direcciones ni `applications_count`.
          */
         patch: operations["clients_partial_update"];
         trace?: never;
@@ -1903,7 +1913,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Oportunidades del cliente visibles para el usuario */
+        /**
+         * Oportunidades del cliente visibles para el usuario
+         * @description Página de `Opportunity`. El broker (`INDEPENDENT_BROKER` sin `ADMIN` ni `ADVISOR`) recibe `BrokerOpportunity`: el resumen de su prospecto, sin acciones ni historial de asesores.
+         */
         get: operations["clients_opportunities_list"];
         put?: never;
         post?: never;
@@ -2605,6 +2618,8 @@ export interface paths {
          *     | `DISBURSED` | `LEGALIZATION` | `disbursed_amount_cop` | → `DISBURSED` |
          *     | `OTHER` | cualquiera no terminal | `internal_comment` | no cambia |
          *
+         *     **Corrección** (`corrects_response_id`): solo de la última respuesta, del mismo tipo, y si es `RECEIVED`, `IN_ANALYSIS`, `OTHER` o `DISBURSED` (otra: `409 RESPONSE_CORRECTION_NOT_ALLOWED`). No cambia el estado de la solicitud ni de la radicación. La de `DISBURSED` solo la registra el administrador (`403`), con la solicitud ya `DISBURSED`: corrige `disbursed_amount_cop`, `received_at`, `external_reference` y los comentarios, y la liquidación de comisiones se rehace (o queda `needs_review` si ya tiene pagos). Al comprador no le llega otro aviso.
+         *
          *     Los campos de un tipo (`reason_code`, `observations`, montos, plazo y vigencia) no se admiten en otro (`400`). Cada observación de un `RETURNED` rechaza la versión vigente del documento con su motivo y mensaje: el comprador la ve como "Corrígelo" y, después de radicar, solo reemplaza esos documentos. Aprobar la versión nueva resuelve la observación.
          */
         post: operations["filings_responses_create"];
@@ -2804,12 +2819,15 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Oportunidades según el alcance */
+        /**
+         * Oportunidades según el alcance
+         * @description Página de `Opportunity`. El broker (`INDEPENDENT_BROKER` sin `ADMIN` ni `ADVISOR`) recibe `BrokerOpportunity`: el resumen de su prospecto, sin acciones ni historial de asesores.
+         */
         get: operations["opportunities_list"];
         put?: never;
         /**
-         * Crear una oportunidad NEW
-         * @description Si llega `project_id`, el proyecto debe estar `ACTIVE`.
+         * Crear una oportunidad
+         * @description Si llega `project_id`, el proyecto debe estar `ACTIVE`. Si quien la crea tiene rol `ADVISOR`, queda asignada a él y en `ASSIGNED` (con su fila en `assignments`); si la crea un broker o el administrador, queda `NEW` y sin asesor. `notes` queda como la primera nota interna de la oportunidad. Responde `OpportunityDetail`. El broker (`INDEPENDENT_BROKER` sin `ADMIN` ni `ADVISOR`) recibe `BrokerOpportunity`: el resumen de su prospecto, sin acciones ni historial de asesores.
          */
         post: operations["opportunities_create"];
         delete?: never;
@@ -2825,14 +2843,20 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Detalle de la oportunidad, acciones disponibles e historial de asesores */
+        /**
+         * Detalle de la oportunidad, acciones disponibles e historial de asesores
+         * @description `OpportunityDetail`. El broker (`INDEPENDENT_BROKER` sin `ADMIN` ni `ADVISOR`) recibe `BrokerOpportunity`: el resumen de su prospecto, sin acciones ni historial de asesores.
+         */
         get: operations["opportunities_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
         options?: never;
         head?: never;
-        /** Cambiar el origen o el proyecto de una oportunidad abierta */
+        /**
+         * Cambiar el origen o el proyecto de una oportunidad abierta
+         * @description Responde `OpportunityDetail`. El broker (`INDEPENDENT_BROKER` sin `ADMIN` ni `ADVISOR`) recibe `BrokerOpportunity`: el resumen de su prospecto, sin acciones ni historial de asesores.
+         */
         patch: operations["opportunities_partial_update"];
         trace?: never;
     };
@@ -3730,8 +3754,9 @@ export interface components {
             property?: components["schemas"]["PropertyInputRequest"] | null;
         };
         /**
-         * @description Expediente interno. ``context["include"]`` agrega `participants` y `financing`, y
-         *     ``context["available_actions"]`` trae las transiciones que el actor puede ejecutar.
+         * @description Expediente interno. ``context["include"]`` agrega `participants` y `financing`,
+         *     ``context["available_actions"]`` trae las transiciones que el actor puede ejecutar y
+         *     ``context["consents"]``, los conteos de consentimientos del titular.
          *
          *     Los bloques opcionales no se declaran de solo lectura para que OpenAPI no los marque
          *     como obligatorios: faltan en la respuesta si no se pidieron. `participants` lee los
@@ -3791,6 +3816,10 @@ export interface components {
             readonly progress_stages: components["schemas"]["ProgressStage"][];
             /** @description Transiciones que el actor puede ejecutar ahora (rol y permiso; la guarda se evalúa al ejecutarla). `WITHDRAW_*` se ejecuta por `/withdrawals`. */
             readonly available_actions: components["schemas"]["AvailableAction"][];
+            /** @description Quien originó la oportunidad (broker o usuario interno); nulo si no hay. */
+            readonly origin_user_name: string | null;
+            /** @description Consentimientos obligatorios del comprador titular y cuántos aceptó. */
+            readonly consents: components["schemas"]["ConsentsSummary"];
         };
         ApplicationNotification: {
             /** Format: uuid */
@@ -4001,6 +4030,8 @@ export interface components {
             readonly guard_code: string;
             /** @description primary: avanza en el camino principal; secondary: cierra por fuera del banco o retrocede; destructive: cancela o desiste. La lista sale en ese orden. */
             readonly kind: components["schemas"]["AvailableActionKindEnum"];
+            /** @description La acción exige `reason_code`: `CANCELLED`, `OWN_FUNDS`, `EXTERNAL_CREDIT_APPROVED` y `WITHDRAWN` (por `/withdrawals`). */
+            readonly reason_required: boolean;
         };
         /** @enum {string} */
         AvailableActionKindEnum: "primary" | "secondary" | "destructive";
@@ -4231,6 +4262,23 @@ export interface components {
                 [key: string]: boolean;
             };
         };
+        /** @description Vista del broker: contacto y resumen. El documento va enmascarado (RF-14). */
+        BrokerClient: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly document_type: string;
+            readonly document_number: string;
+            readonly first_names: string;
+            readonly last_names: string;
+            readonly full_name: string;
+            /** Format: email */
+            readonly email: string;
+            readonly phone: string;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly updated_at: string;
+        };
         /** @description Resumen para el broker: estado de su prospecto y quién lo atiende. */
         BrokerOpportunity: {
             /** Format: uuid */
@@ -4271,6 +4319,7 @@ export interface components {
             /** Format: uuid */
             client_id: string;
             status: components["schemas"]["BuyerAccessLinkStatusEnum"];
+            readonly status_label: string;
             delivery_channel: components["schemas"]["CatalogItemRef"] | null;
             created_by: components["schemas"]["UserRef"] | null;
             /** Format: date-time */
@@ -4303,6 +4352,7 @@ export interface components {
             /** Format: uuid */
             client_id: string;
             status: components["schemas"]["BuyerAccessLinkStatusEnum"];
+            readonly status_label: string;
             delivery_channel: components["schemas"]["CatalogItemRef"] | null;
             created_by: components["schemas"]["UserRef"] | null;
             /** Format: date-time */
@@ -4380,6 +4430,8 @@ export interface components {
             readonly financing: components["schemas"]["BuyerFinancing"] | null;
             /** @description Última respuesta del banco con mensaje público; nulo si no hay. Nunca trae el comentario interno. */
             readonly latest_bank_update: components["schemas"]["BuyerBankUpdate"] | null;
+            /** @description Ingresos que cargaron los participantes activos de esta solicitud. */
+            readonly income_summary: components["schemas"]["BuyerIncomeSummary"];
         };
         BuyerApplicationRef: {
             /** Format: uuid */
@@ -4411,6 +4463,7 @@ export interface components {
             effective_from: string;
             required: boolean;
             status: components["schemas"]["BuyerConsentStatusEnum"];
+            readonly status_label: string;
             /** Format: date-time */
             accepted_at: string | null;
         };
@@ -4455,6 +4508,7 @@ export interface components {
             readonly id: string;
             readonly version_number: number;
             readonly status: components["schemas"]["DocumentFileStatusEnum"];
+            readonly status_label: string;
             readonly client_filename: string;
             /** Format: date */
             readonly document_date: string | null;
@@ -4519,6 +4573,7 @@ export interface components {
             readonly id: string;
             readonly version_number: number;
             readonly status: components["schemas"]["DocumentFileStatusEnum"];
+            readonly status_label: string;
             readonly client_filename: string;
             /** Format: date */
             readonly document_date: string | null;
@@ -4635,6 +4690,12 @@ export interface components {
             start_date?: string | null;
             /** @default false */
             is_primary: boolean;
+        };
+        BuyerIncomeSummary: {
+            /** @description Participantes activos de la solicitud con ingreso mensual mayor a 0. */
+            participants_with_income: number;
+            /** @description Suma del `monthly_income_cop` de sus perfiles financieros. */
+            total_monthly_income_cop: number;
         };
         BuyerNotification: {
             /** Format: uuid */
@@ -4948,11 +5009,14 @@ export interface components {
             readonly phone: string;
             readonly origin: components["schemas"]["CatalogItemRef"] | null;
             readonly created_by: components["schemas"]["UserRef"] | null;
+            /** @description Solicitudes visibles para el usuario en las que el cliente participa con un papel vigente (las de `GET /clients/{id}/applications`). Viene en el listado, el detalle, la creación y la edición de `/clients`; no en el cliente de un participante. */
+            applications_count?: number;
             /** Format: date-time */
             readonly created_at: string;
             /** Format: date-time */
             readonly updated_at: string;
         };
+        ClientByRole: components["schemas"]["Client"] | components["schemas"]["BrokerClient"];
         /**
          * @description Serializer que rechaza campos no declarados (``additionalProperties: false``).
          *
@@ -4986,12 +5050,15 @@ export interface components {
             readonly phone: string;
             readonly origin: components["schemas"]["CatalogItemRef"] | null;
             readonly created_by: components["schemas"]["UserRef"] | null;
+            /** @description Solicitudes visibles para el usuario en las que el cliente participa con un papel vigente (las de `GET /clients/{id}/applications`). Viene en el listado, el detalle, la creación y la edición de `/clients`; no en el cliente de un participante. */
+            applications_count?: number;
             /** Format: date-time */
             readonly created_at: string;
             /** Format: date-time */
             readonly updated_at: string;
             readonly addresses: components["schemas"]["Address"][];
         };
+        ClientDetailByRole: components["schemas"]["ClientDetail"] | components["schemas"]["BrokerClient"];
         ClientRef: {
             /** Format: uuid */
             id: string;
@@ -5223,6 +5290,13 @@ export interface components {
             /** Format: date-time */
             readonly created_at: string;
         };
+        ConsentsSummary: {
+            /** @description Consentimientos vigentes obligatorios para el titular. */
+            required: number;
+            /** @description Cuántos de esos tiene aceptados hoy. */
+            accepted: number;
+        };
+        /** @description Versión vigente del slot. ``context["last_buyer_comment"]`` trae el comentario. */
         CurrentFile: {
             /** Format: uuid */
             readonly id: string;
@@ -5236,6 +5310,10 @@ export interface components {
             readonly expires_at: string | null;
             scan_status: string;
             readonly scan_status_label: string;
+            size_bytes: number;
+            detected_mime_type: string;
+            /** @description Mensaje al comprador de la última aprobación o rechazo de esta versión; nulo si no hay o va vacío. */
+            readonly last_buyer_comment: string | null;
             /** Format: date-time */
             readonly created_at: string;
         };
@@ -5296,6 +5374,7 @@ export interface components {
             readonly expires_at: string | null;
             /** Format: uuid */
             readonly uploaded_by_buyer_session_id: string;
+            readonly uploaded_by: components["schemas"]["UploadedBy"];
             readonly file: components["schemas"]["FileMetadata"];
             readonly reviews: components["schemas"]["DocumentReview"][];
             /** Format: date-time */
@@ -5339,6 +5418,7 @@ export interface components {
              *     * `EXPIRED` - Vencido
              */
             readonly status: components["schemas"]["DocumentPackageJobStatusEnum"];
+            readonly status_label: string;
             readonly error_code: string | null;
             /** @description Huella documental al pedir el paquete. */
             readonly fingerprint: string;
@@ -5593,6 +5673,12 @@ export interface components {
             is_active: boolean;
         };
         /**
+         * @description * `buyer` - Comprador
+         *     * `user` - Usuario interno
+         * @enum {string}
+         */
+        DocumentUploaderTypeEnum: "buyer" | "user";
+        /**
          * @description Producto disponible para la finalidad, con una evaluación no guardada.
          *
          *     ``context["evaluations"]`` trae el resumen de cada producto, por id.
@@ -5631,6 +5717,7 @@ export interface components {
             readonly mime_type: string;
             readonly size_bytes: number;
             readonly scan_status: components["schemas"]["ScanStatusEnum"];
+            readonly scan_status_label: string;
             /** Format: date-time */
             readonly scanned_at: string | null;
             /** Format: date-time */
@@ -5717,6 +5804,8 @@ export interface components {
             comment?: string | null;
             /** @description Respuestas del banco registradas, incluidas las correcciones. */
             readonly responses_count: number;
+            /** @description Pasó `target_response_at` y el banco todavía no responde. */
+            readonly is_response_overdue: boolean;
             readonly application_status: components["schemas"]["ApplicationStatusEnum"];
             readonly application_status_label: string;
             /** Format: date-time */
@@ -5763,6 +5852,10 @@ export interface components {
             readonly document_file_id: string;
             readonly version_number: number;
             readonly document_type_code: string;
+            /** @description Nombre del tipo de documento, leído al consultar. */
+            readonly document_type_label: string;
+            /** @description Etiqueta del slot: "Desprendible de nómina 2 de 3" o solo el nombre del tipo. El total es el `minimum_files` del slot. */
+            readonly slot_label: string;
             readonly client_filename: string;
             readonly mime_type: string;
             readonly size_bytes: number;
@@ -6306,6 +6399,7 @@ export interface components {
             readonly client: components["schemas"]["ClientRef"];
             readonly project: components["schemas"]["ProjectRef"] | null;
             readonly status: components["schemas"]["OpportunityStatusEnum"];
+            readonly status_label: string;
             readonly origin: components["schemas"]["CatalogItemRef"];
             readonly origin_user: components["schemas"]["UserRef"] | null;
             readonly assigned_advisor: components["schemas"]["UserRef"] | null;
@@ -6316,6 +6410,32 @@ export interface components {
             readonly created_at: string;
             /** Format: date-time */
             readonly updated_at: string;
+        };
+        /** @description Una fila del historial de asesores; `ended_at` es nulo en la vigente. */
+        OpportunityAssignment: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly advisor: components["schemas"]["UserRef"];
+            readonly assigned_by: components["schemas"]["UserRef"] | null;
+            readonly reason: string;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly ended_at: string | null;
+        };
+        /**
+         * @description Transición que el actor puede ejecutar ahora. Misma forma que `AvailableAction` de
+         *     la solicitud, sin `guard_code` (el flujo de la oportunidad no tiene guardas).
+         */
+        OpportunityAvailableAction: {
+            readonly code: string;
+            readonly label: string;
+            /** @description primary: la conversión (se ejecuta al crear la solicitud); destructive: perder o cancelar; secondary: el resto. La lista sale en ese orden. */
+            readonly kind: components["schemas"]["AvailableActionKindEnum"];
+            target_status: components["schemas"]["OpportunityStatusEnum"];
+            readonly target_status_label: string;
+            /** @description La acción exige `reason_code` (catálogo `opportunity_lost_reason`): solo `LOST`. */
+            readonly reason_required: boolean;
         };
         /**
          * @description Serializer que rechaza campos no declarados (``additionalProperties: false``).
@@ -6329,13 +6449,17 @@ export interface components {
             origin_type: string;
             /** Format: uuid */
             project_id?: string | null;
+            /** @description Queda como la primera nota interna de la oportunidad (actividad). */
+            notes?: string;
         };
+        /** @description Detalle de la oportunidad con sus acciones disponibles y el historial de asesores. */
         OpportunityDetail: {
             /** Format: uuid */
             readonly id: string;
             readonly client: components["schemas"]["ClientRef"];
             readonly project: components["schemas"]["ProjectRef"] | null;
             readonly status: components["schemas"]["OpportunityStatusEnum"];
+            readonly status_label: string;
             readonly origin: components["schemas"]["CatalogItemRef"];
             readonly origin_user: components["schemas"]["UserRef"] | null;
             readonly assigned_advisor: components["schemas"]["UserRef"] | null;
@@ -6346,11 +6470,12 @@ export interface components {
             readonly created_at: string;
             /** Format: date-time */
             readonly updated_at: string;
-            readonly available_actions: string[];
-            readonly assignments: {
-                [key: string]: unknown;
-            }[];
+            /** @description Transiciones que el actor puede ejecutar ahora (rol y permiso). `ASSIGN` va por `/assignments` y `CONVERT_*` al crear la solicitud. */
+            readonly available_actions: components["schemas"]["OpportunityAvailableAction"][];
+            /** @description Historial de asesores, del más reciente al más antiguo. */
+            readonly assignments: components["schemas"]["OpportunityAssignment"][];
         };
+        OpportunityDetailByRole: components["schemas"]["OpportunityDetail"] | components["schemas"]["BrokerOpportunity"];
         /**
          * @description * `NEW` - Nueva
          *     * `ASSIGNED` - Asignada
@@ -6562,17 +6687,20 @@ export interface components {
             /** @example null */
             previous: string | null;
         };
+        PaginatedBrokerClientList: {
+            items: components["schemas"]["BrokerClient"][];
+            page: number;
+            page_size: number;
+            total: number;
+            next: string | null;
+            previous: string | null;
+        };
         PaginatedBrokerOpportunityList: {
             items: components["schemas"]["BrokerOpportunity"][];
-            /** @example 1 */
             page: number;
-            /** @example 25 */
             page_size: number;
-            /** @example 128 */
             total: number;
-            /** @example /api/v1/x?page=2 */
             next: string | null;
-            /** @example null */
             previous: string | null;
         };
         PaginatedBuyerAccessLinkList: {
@@ -6707,17 +6835,13 @@ export interface components {
         };
         PaginatedClientList: {
             items: components["schemas"]["Client"][];
-            /** @example 1 */
             page: number;
-            /** @example 25 */
             page_size: number;
-            /** @example 128 */
             total: number;
-            /** @example /api/v1/x?page=2 */
             next: string | null;
-            /** @example null */
             previous: string | null;
         };
+        PaginatedClientListByRole: components["schemas"]["PaginatedClientList"] | components["schemas"]["PaginatedBrokerClientList"];
         PaginatedCommissionPlanList: {
             items: components["schemas"]["CommissionPlan"][];
             /** @example 1 */
@@ -6759,6 +6883,19 @@ export interface components {
         };
         PaginatedDocumentFileList: {
             items: components["schemas"]["DocumentFile"][];
+            /** @example 1 */
+            page: number;
+            /** @example 25 */
+            page_size: number;
+            /** @example 128 */
+            total: number;
+            /** @example /api/v1/x?page=2 */
+            next: string | null;
+            /** @example null */
+            previous: string | null;
+        };
+        PaginatedDocumentPackageJobList: {
+            items: components["schemas"]["DocumentPackageJob"][];
             /** @example 1 */
             page: number;
             /** @example 25 */
@@ -6928,17 +7065,13 @@ export interface components {
         };
         PaginatedOpportunityList: {
             items: components["schemas"]["Opportunity"][];
-            /** @example 1 */
             page: number;
-            /** @example 25 */
             page_size: number;
-            /** @example 128 */
             total: number;
-            /** @example /api/v1/x?page=2 */
             next: string | null;
-            /** @example null */
             previous: string | null;
         };
+        PaginatedOpportunityListByRole: components["schemas"]["PaginatedOpportunityList"] | components["schemas"]["PaginatedBrokerOpportunityList"];
         PaginatedPartnerList: {
             items: components["schemas"]["Partner"][];
             /** @example 1 */
@@ -7086,6 +7219,11 @@ export interface components {
             email?: string;
             phone?: string;
         };
+        ParticipantRoleCount: {
+            code: components["schemas"]["ParticipantRoleEnum"];
+            label: string;
+            count: number;
+        };
         /**
          * @description * `PRIMARY` - Titular
          *     * `CO_APPLICANT` - Co-solicitante
@@ -7097,6 +7235,8 @@ export interface components {
         ParticipantsSummary: {
             co_applicants: number;
             solidary_debtors: number;
+            /** @description Los mismos conteos con la etiqueta del rol (co-solicitantes y después deudores solidarios); solo los roles con al menos uno. */
+            roles: components["schemas"]["ParticipantRoleCount"][];
         };
         Partner: {
             /** Format: uuid */
@@ -8095,6 +8235,12 @@ export interface components {
          * @enum {string}
          */
         TaskStatusEnum: "PENDING" | "COMPLETED" | "CANCELLED";
+        /** @description Quién cargó la versión. Nunca el correo ni el documento. */
+        UploadedBy: {
+            type: components["schemas"]["DocumentUploaderTypeEnum"];
+            /** @description "Comprador" para el comprador; el nombre del usuario interno. */
+            name: string;
+        };
         /** @description Usuario interno. Nunca expone el hash de la contraseña ni tokens. */
         User: {
             /** Format: uuid */
@@ -9467,6 +9613,59 @@ export interface operations {
                 };
             };
             /** @description PERMISSION_DENIED */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description RESOURCE_NOT_FOUND (inexistente o fuera del alcance) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    applications_document_package_jobs_list: {
+        parameters: {
+            query?: {
+                /** @description Un número de página dentro del conjunto de resultados paginado. */
+                page?: number;
+                /** @description Número de resultados a devolver por página. */
+                page_size?: number;
+            };
+            header?: never;
+            path: {
+                application_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedDocumentPackageJobList"];
+                };
+            };
+            /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description PERMISSION_DENIED o CSRF_FAILED */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -15156,7 +15355,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["PaginatedClientList"];
+                    "application/json": components["schemas"]["PaginatedClientListByRole"];
                 };
             };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
@@ -15197,7 +15396,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Client"];
+                    "application/json": components["schemas"]["ClientByRole"];
                 };
             };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
@@ -15218,7 +15417,7 @@ export interface operations {
                     "application/json": components["schemas"]["Error"];
                 };
             };
-            /** @description DUPLICATE_CLIENT_DOCUMENT. Si el cliente es visible para el usuario, `details[0].resource_id` trae su id. */
+            /** @description DUPLICATE_CLIENT_DOCUMENT: ya hay un cliente con ese tipo y número de documento. Si el usuario puede ver ese cliente, `details[0]` trae `{field: "document_number", code: "EXISTING_CLIENT", resource_id: <id del cliente>}`; si no, `details` va vacío. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -15245,7 +15444,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ClientDetail"];
+                    "application/json": components["schemas"]["ClientDetailByRole"];
                 };
             };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
@@ -15297,7 +15496,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ClientDetail"];
+                    "application/json": components["schemas"]["ClientDetailByRole"];
                 };
             };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
@@ -15327,7 +15526,7 @@ export interface operations {
                     "application/json": components["schemas"]["Error"];
                 };
             };
-            /** @description DUPLICATE_CLIENT_DOCUMENT */
+            /** @description DUPLICATE_CLIENT_DOCUMENT: ya hay un cliente con ese tipo y número de documento. Si el usuario puede ver ese cliente, `details[0]` trae `{field: "document_number", code: "EXISTING_CLIENT", resource_id: <id del cliente>}`; si no, `details` va vacío. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -15520,7 +15719,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["PaginatedOpportunityList"];
+                    "application/json": components["schemas"]["PaginatedOpportunityListByRole"];
                 };
             };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
@@ -18070,7 +18269,7 @@ export interface operations {
                     "application/json": components["schemas"]["Error"];
                 };
             };
-            /** @description STALE_VERSION, APPLICATION_CLOSED, INVALID_STATE_TRANSITION (el tipo no se admite en el estado actual), FILING_NOT_LATEST o RESPONSE_CORRECTION_NOT_ALLOWED; IDEMPOTENCY_IN_PROGRESS */
+            /** @description STALE_VERSION, APPLICATION_CLOSED, INVALID_STATE_TRANSITION (el tipo no se admite en el estado actual), FILING_NOT_LATEST o RESPONSE_CORRECTION_NOT_ALLOWED. `403` si quien corrige un `DISBURSED` no es el administrador.; IDEMPOTENCY_IN_PROGRESS */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -18798,7 +18997,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["PaginatedOpportunityList"];
+                    "application/json": components["schemas"]["PaginatedOpportunityListByRole"];
                 };
             };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
@@ -18839,7 +19038,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["OpportunityDetail"];
+                    "application/json": components["schemas"]["OpportunityDetailByRole"];
                 };
             };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
@@ -18896,7 +19095,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["OpportunityDetail"];
+                    "application/json": components["schemas"]["OpportunityDetailByRole"];
                 };
             };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
@@ -18948,7 +19147,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["OpportunityDetail"];
+                    "application/json": components["schemas"]["OpportunityDetailByRole"];
                 };
             };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */

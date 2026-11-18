@@ -15,7 +15,7 @@ from dataclasses import dataclass
 from datetime import datetime, time, timedelta
 from typing import Any
 
-from django.db import transaction
+from django.db import models, transaction
 from django.db.models import F, Q, QuerySet
 from django.utils import timezone
 from rest_framework.exceptions import ValidationError
@@ -42,14 +42,13 @@ LIST_ORDERING = (F("due_at").asc(nulls_last=True), "created_at", "id")
 EDITABLE_FIELDS = ("title", "description", "assigned_to", "due_at", "priority_item")
 
 
-class DueWindow:
-    """Valores del filtro ``due``."""
+class DueWindow(models.TextChoices):
+    """Valores del filtro ``due``. Las etiquetas son las del catálogo `task_due`
+    (migración ``0004``; una prueba exige que coincidan)."""
 
-    OVERDUE = "overdue"
-    TODAY = "today"
-    UPCOMING = "upcoming"
-
-    values = (OVERDUE, TODAY, UPCOMING)
+    OVERDUE = "overdue", "Vencidas"
+    TODAY = "today", "Hoy"
+    UPCOMING = "upcoming", "Próximas"
 
 
 # --- Fechas -----------------------------------------------------------------------------
@@ -64,7 +63,7 @@ def due_condition(window: str) -> Q:
     """Tareas `PENDING` vencidas (antes de hoy), de hoy o próximas (después de hoy)."""
     start = start_of_today()
     end = start + timedelta(days=1)
-    by_window = {
+    by_window: dict[str, Q] = {
         DueWindow.OVERDUE: Q(due_at__lt=start),
         DueWindow.TODAY: Q(due_at__gte=start, due_at__lt=end),
         DueWindow.UPCOMING: Q(due_at__gte=end),
