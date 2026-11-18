@@ -1,0 +1,61 @@
+# TAREA — F6 del frontend: Administración (vistas 11, 12, 13 y 14)
+
+**Agente:** front (nuevo). **Worktree:** `wt-front-admin`, rama `feat/front-admin`, desde `origin/master`. **Puerto 3002** (`next dev --port 3002`; Playwright con `E2E_PORT=3002` y su propio archivo de sesión).
+**API:** toda existe en `master` (identity, partners, banking, documents, catalogs). No hay mockups: se diseña con `design/README.md`, el **Storybook** (`pnpm storybook`, puerto 6006: patrones "Lista con filtros", "Tabla", "Formulario", "Panel lateral", "Modal de confirmación", "Estados") y el lenguaje de `/solicitudes` y `/clientes`.
+
+## Reglas
+- Git solo lectura, buzón, no preguntes (decide, anota en "Precisiones acordadas", sigue), no leas `.env*`.
+- **Usa la librería de `components/ui`** (`PageHeader`, `DataTable`/`CardList`, `ListPagination`, `Card`/`DataList`, `SidePanel`, `ActionModal`, `BottomSheet`, `FilterChips`, `LoadingState`/`ErrorState`/`EmptyState`, `StatusBadge`/`ToneBadge`, `FormField`). **No cambies `components/ui` ni `design/`**: si te falta algo, lo haces local y lo anotas como candidato.
+- **Solo tocas:** `app/(backoffice)/admin/**`, `app/(public)/invitacion/**` (o la ruta pública que ya exista para aceptar invitaciones: revísalo), `features/admin-*/`, `e2e/backoffice/admin*` y `lib/navigation/nav-config.tsx` (cambio mínimo y anotado; el front 2 también agrega entradas: no reordenes las suyas).
+- No toques `features/applications`, `features/clients`, `features/filings`, `features/dashboard`, `features/workday`, `features/reports` (son del front 2).
+- Cero textos de negocio en el código: roles, estados, tipos y catálogos salen de la API/bootstrap. Tonos con `toneFor`; si un tipo no existe en `status-tones` (p. ej. proyectos o partners), usa `ToneBadge` con un tono neutro y anótalo.
+- Formularios: React Hook Form + Zod solo con formato; errores de la API a su campo; `If-Match`/`expected_version` donde la API lo pida.
+- Activar/desactivar, archivar, rechazar y revocar son **acciones con confirmación** (`ActionModal`; destructivas con su tono).
+- Todo listado: filtros, orden y paginación **en la URL**; tabla en escritorio, tarjetas en móvil; estados vacío/cargando/error.
+- Verificaciones al cerrar cada parte: lint, format, typecheck, `vitest --coverage` (≥ 70 %), build, `build-storybook`, `test:storybook`; capturas a 1440, 1280 y 390 en claro y oscuro; `axe` sin violaciones serias.
+- Menú: un grupo **"Administración"** con las entradas de esta tarea, cada una con su permiso (búscalo en el contrato / `/auth/me`). Solo el administrador las ve (y el asesor la de proyectos, si la API se lo permite).
+
+## Parte 1 — Usuarios e invitaciones (vista 11)
+- `/admin/usuarios`: `GET /users` (búsqueda, rol, estado), detalle en `SidePanel` (`GET /users/{id}`), editar (`PATCH`), roles (`PUT /users/{id}/roles` con `GET /roles`), activar/desactivar.
+- **Invitaciones**: pestaña o sección "Invitaciones" (`GET /invitations`, estado), invitar (`POST`: correo, rol y, si el rol es de constructora, la constructora — la API lo exige), reenviar (`POST .../resend`), revocar (`DELETE`).
+- **Aceptar invitación** (página pública, sin sesión): `?token=` → `POST /invitations/accept` con nombre y contraseña (Zod: formato; la API valida la política). El token se quita de la URL al cargar, como en `/acceso` del portal. Errores de token vencido/usado con su pantalla.
+- **Commit:** `feat(frontend): add user administration and invitations`
+
+## Parte 2 — Constructoras y proyectos (vistas 12 y 13)
+- `/admin/constructoras`: `GET/POST/PATCH /partners`, activar/desactivar, **miembros** (`GET/POST /partners/{id}/members`).
+- `/proyectos` (lo ven admin, asesor y constructora según sus permisos): listado (`GET /projects`, estado, constructora, ciudad), detalle (`GET /projects/{id}`), crear/editar (`POST`/`PATCH`). **Flujo de validación** con los botones que permita la API por rol: enviar a validación (`submit`, la constructora), aprobar/activar (`activate`), rechazar con motivo (`reject`) y archivar (`archive`), los tres de asesor y admin. La constructora solo ve y edita los de su constructora (lo decide la API).
+- **Commit:** `feat(frontend): add partners, members and project validation`
+
+## Parte 3 — Bancos, productos y reglas (vista 14, primera mitad)
+- `/admin/bancos`: bancos (`GET/POST/PATCH`, activar/desactivar) y, dentro de cada banco, sus **productos** (`/bank-products`: crear, editar, activar/desactivar, **finalidades** con `PUT .../purposes`).
+- **Reglas bancarias** (`/bank-policy-rules`): listado por producto, crear/editar, activar/desactivar, **versiones** (`GET .../versions`) y **probar una regla** (`POST .../test`) con un formulario que muestre el resultado de la evaluación.
+- **Commit:** `feat(frontend): add banks, products and bank policy rules administration`
+
+## Parte 4 — Documentos, catálogos, transiciones y cierre (vista 14, segunda mitad)
+- **Tipos documentales** (`/document-types`): CRUD, activar/desactivar, tipos de archivo y tamaño máximo.
+- **Requisitos documentales** (`/document-requirements`): por producto/finalidad/rol de participante; crear/editar/activar/desactivar y **vista previa** (`POST /document-requirements/preview`) que muestre qué checklist saldría.
+- **Catálogos** (`/catalogs`, `/catalog-items`): listado de catálogos (los de sistema en solo lectura, si la API lo marca), ítems con crear/editar/activar/desactivar y **reordenar** (`PUT /catalogs/{id}/items/order`; con botones subir/bajar accesibles, sin depender solo de arrastrar).
+- **Transiciones del flujo** (`/workflow-transitions`): listado por flujo, editar etiqueta/roles, activar/desactivar.
+- **E2E** (`:3002`): invitar un usuario y aceptar la invitación; crear un proyecto como constructora, enviarlo y aprobarlo como asesor; crear un producto y probar una regla; reordenar ítems de un catálogo; `axe` en cada pantalla.
+- **Brechas** ("Brechas que dejó la F6" en `specs/TAREA-frontend-base.md`), candidatos a la librería, merge de `master` (Carlos), `api:gen`, título y descripción del PR (en español).
+- **Commits:** `feat(frontend): add document types, requirements, catalogs and workflow transitions administration` y `test(frontend): add administration end-to-end and accessibility checks`.
+
+## Precisiones acordadas
+
+### Parte 1 (usuarios e invitaciones)
+- **Ruta pública:** el correo de invitación apunta a `INVITATION_ACCEPT_URL` = `/aceptar-invitacion` (backend, `config/settings/base.py`), así que la página es `app/(public)/aceptar-invitacion/page.tsx` y no `/invitacion`. Para que sea pública se agrega `aceptar-invitacion` al `matcher` de `src/proxy.ts` (cambio mínimo, fuera de la lista de archivos: sin él, el proxy manda al login y el token quedaría en el `next`). `proxy.test.ts` lo cubre.
+- **Pestañas:** usuarios e invitaciones van en `/admin/usuarios` con `?vista=invitaciones` (`ScrollTabs`, como el detalle de cliente). Cambiar de pestaña limpia los filtros. El panel del usuario también va en la URL (`?usuario=<id>`), así se puede enlazar y "atrás" lo cierra.
+- **Estados sin etiqueta en la API:** `User.status` e `Invitation.status` no traen `status_label` ni hay catálogo. Las etiquetas copian los `TextChoices` del backend (`UserStatus`, `InvitationStatus`) en `features/admin-users/status.ts`, con el tono directo en `ToneBadge` (no están en `status-tones`): activo `success`, pendiente `warning`, inactivo/vencida/revocada `neutral`, aceptada `success`. **Brecha** para el backend: exponer `status_label` en `User` e `Invitation`.
+- **Rol de constructora:** el código `CONSTRUCTION_PARTNER` sale del contrato (lo nombran `POST /invitations` y `PUT /users/{id}/roles`); es la única constante de rol en el front y solo decide si se pide la constructora. La regla (obligatoria, no combinable) la valida la API y su error va al campo.
+- **Constructoras para el selector:** `GET /partners?status=ACTIVE` con búsqueda en la API (`search`), 50 por página, orden `legal_name` (`trade_name` no es campo de orden). Se muestra el nombre comercial o, si no hay, la razón social.
+- **Roles:** `GET /roles?page_size=100` (el máximo de la API); se cachean 5 min. En "Cambiar roles" y "Invitar" solo se ofrecen los activos (en "Cambiar roles" se ve uno inactivo si el usuario ya lo tiene). Al menos un rol (formato).
+- **Sin "Nuevo usuario":** la spec pide invitar; `POST /users` (crear el usuario y mandarle la invitación) no se usa en esta parte: "Invitar usuario" cubre el alta.
+- **Activar/desactivar:** desactivar pide motivo (el contrato lo exige) y es destructivo; activar, motivo opcional. Un usuario `PENDING` (sin contraseña) se puede desactivar. En la cuenta propia no aparece "Desactivar" (la API responde `CANNOT_MODIFY_OWN_ACCOUNT`); los roles propios sí se pueden cambiar (la API solo impide quitarse el de administrador).
+- **Reenviar** no lleva confirmación (no es destructivo; el aviso dice que el enlace anterior deja de servir); se ofrece en pendientes y vencidas, como la API. **Revocar**, con `ActionModal` destructivo y solo en pendientes.
+- **Conflictos al invitar** (`USER_ALREADY_EXISTS`, `INVITATION_ALREADY_PENDING`, `USER_ALREADY_IN_PARTNER`) van debajo del correo; `PARTNER_NOT_ACTIVE`, debajo de la constructora. Al enviar, la vista pasa a la pestaña Invitaciones.
+- **Aceptar invitación:** el token se lee y se quita de la URL al montar (como `/acceso`), y la página va sin `Referer`. Nombre y apellido son obligatorios en el formulario (la API los exige si el usuario no existe; si existe, los actualiza). `INVITATION_INVALID` (vencida, usada o revocada: la API no las distingue), `USER_ALREADY_EXISTS` (con "Iniciar sesión"), `USER_ALREADY_IN_PARTNER` y `PARTNER_NOT_ACTIVE` tienen su pantalla; la política de contraseñas va al campo; `429` en un aviso con la espera. Al terminar no inicia sesión (la API no lo hace): lleva al login.
+- **Base común `features/admin-common/`:** parámetros en la URL (`useListParams`), barra de filtros (`AdminListFilters`), esqueleto del listado y el ícono del menú; la usarán las partes 2–4. No se importa nada de `features/applications` ni de `features/clients` (son del front 2).
+- **Menú:** grupo "Administración" con "Usuarios" (`/admin/usuarios`, permiso `users.read`, que hoy solo tiene `ADMIN`). Las pestañas y acciones piden cada una su permiso (`invitations.read/create/revoke`, `users.update`, `users.manage_status`, `roles.read` + `roles.assign`).
+- **Candidatos a la librería:** `UserShieldIcon` (ícono del menú), `AdminListFilters` (barra de filtros genérica: hoy cada listado tiene la suya) y `useListParams` (estado de un listado en la URL).
+- **Excepción en `components/ui` (solo una prueba):** `components/ui/app-shell.test.tsx` fijaba la lista exacta de `NAV_ITEMS` (`["applications.read", "clients.read"]`), así que cualquier entrada nueva del menú la rompía. Se cambió esa línea para revisar que el menú *empiece* por esas dos (`NAV_ITEMS.slice(0, 2)`); el componente no se toca. El front 2 se encontrará con la misma prueba al agregar sus entradas: si ya la cambió en `master`, en el merge se queda la de `master`.
+- **Capturas de admin:** el usuario de E2E de `.env.local` es asesor (sin `users.read`). Las capturas de `/admin/usuarios` se tomaron con el administrador de los datos de demo (`admin@demo.local`, contraseña de demo de `apps/applications/demo_data.py`) pasando `E2E_USER_EMAIL`/`E2E_USER_PASSWORD` por la línea de comandos; `.env.local` no se tocó. Sin admin, el spec se salta con un mensaje.
