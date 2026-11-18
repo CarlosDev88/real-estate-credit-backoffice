@@ -59,6 +59,11 @@ class AuditAction(models.TextChoices):
     # Reportes.
     REPORT_EXPORTED = "REPORT_EXPORTED", "Reporte exportado"
     REPORT_EXPORT_DOWNLOADED = "REPORT_EXPORT_DOWNLOADED", "Exportación descargada"
+    # Comisiones (paso 16).
+    COMMISSION_PLAN_CHANGED = "COMMISSION_PLAN_CHANGED", "Cambio de plan de comisión"
+    COMMISSION_SETTLED = "COMMISSION_SETTLED", "Comisión liquidada"
+    COMMISSION_SETTLEMENT_VOIDED = "COMMISSION_SETTLEMENT_VOIDED", "Liquidación de comisión anulada"
+    COMMISSION_SHARE_PAID = "COMMISSION_SHARE_PAID", "Pago de comisión registrado"
     # Acceso.
     ACCESS_DENIED = "ACCESS_DENIED", "Acceso denegado"
 

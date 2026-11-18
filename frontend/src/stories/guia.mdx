@@ -1,0 +1,90 @@
+import { Meta } from "@storybook/addon-docs/blocks";
+
+<Meta title="Guía de uso" />
+
+# Guía de uso
+
+Cómo armar una vista con la librería de `components/ui`, qué evitar y cómo sumar un componente nuevo. Las reglas visuales y de redacción están en "Fundamentos"; las combinaciones de componentes, en "Patrones".
+
+## Cuándo usar cada componente
+
+**Estructura de la vista**
+
+- **`AppShell`:** el layout del backoffice. Una pantalla interna no arma su propio menú ni su barra superior. Con `useShellTrail("SOL-000182")` suma la última miga.
+- **`PageHeader`:** el encabezado de toda vista, con el único `h1`, una línea de descripción, el enlace volver y las acciones. En el portal, `variant="portal"`.
+- **`BackLink`:** "Volver a …" fuera de un encabezado. Dentro de uno, se usa la prop `back` de `PageHeader`.
+- **`Card`:** cualquier bloque en el flujo de la página (borde y fondo, sin sombra). Con título, es una región con nombre. En el portal, `variant="portal"`.
+- **`DataList` y `Datum`:** los datos de una ficha. `layout="grid"` para fichas con varias columnas y `layout="inline"` para la lista de etiqueta y valor del expediente. Un dato vacío ya muestra "—".
+- **`ScrollTabs`:** las pestañas de una vista (estado del listado o secciones del expediente). Los textos vienen de la API. Para "6 pendientes", `countLabel` con `countTone="warning"`.
+- **`Stepper`:** las etapas de la solicitud (`progress_stages` o `stages`): horizontal en el expediente y vertical en la tarjeta del portal.
+
+**Listados**
+
+- **`DataTable`:** las tablas de listado. El orden va en la URL y lo aplica el servidor. La fila abre el detalle.
+- **`CardList`:** la misma lista en 860 px o menos.
+- **`ListPagination`:** el pie de un listado, con `itemsLabel`.
+- **`FilterChips`:** solo para los filtros activos que no se ven en la barra (en móvil, o los que llegan en la URL, como `status`).
+- **`BottomSheet`:** filtros y acciones cortas en móvil.
+
+**Datos y estados**
+
+- **`StatusBadge`:** todo estado que llega de la API, siempre con su `label`. `ToneBadge` solo para lo que no es un código de estado (el resultado de una evaluación).
+- **`Money` y `MoneyInput`:** todo monto en COP. Nunca se formatea a mano.
+- **`RelativeTime`:** las fechas "Hace 5 min", con la fecha completa en el `title`. El resto de fechas usa `formatDate` y `formatDateTime` de `lib/format`.
+- **`CompletenessBar`:** la completitud. Con `layout="split"` y `CompletenessTotal` en el encabezado de la tarjeta, como el mockup. `variant="mini"` en las filas.
+- **`LoadingState`, `ErrorState` y `EmptyState`:** los tres estados de toda vista que depende de la API (ver el patrón). Con `EmptyState size="sm"` dentro de una tarjeta o un tablero.
+
+**Acciones y documentos**
+
+- **`ActionModal`:** toda acción con confirmación o con campos. Con `danger` si destruye algo.
+- **`SidePanel`:** revisar o ver el detalle sin dejar la vista.
+- **`FormField`:** cada campo de un formulario. Enlaza la etiqueta, la ayuda y el error. Los errores de la API van con `useFormErrorHandler`.
+- **`DocumentUploader` y `DocumentViewer`:** subir y ver documentos. El envío y la URL prefirmada son de la feature.
+- **`useToast()`:** avisos de éxito o de error de una acción. Los errores de escritura de la API ya salen solos (MutationCache global).
+- **Íconos (`icons.tsx`):** decorativos. El nombre accesible va en el control.
+
+## Qué no hacer
+
+- **Colores, tamaños de letra o espacios escritos a mano.** Nada de colores en hexadecimal o con las funciones `rgb` y `hsl`, ni `text-[11px]` ni `bg-blue-600`. Van los tokens (`bg-bg-surface`, `text-sm`, `gap-4`). La prueba `src/test/no-hardcoded-colors.test.ts` falla con cualquier color escrito.
+- **Copiar un componente de la librería a una feature** para cambiarle un detalle. Se pide el cambio (ver abajo).
+- **Escribir listas de negocio:** estados, motivos, catálogos o transiciones. Vienen de la API; el frontend solo elige el tono con `toneFor`.
+- **Poner sombra a una tarjeta en el flujo,** ni atenuar filas con opacidad (baja el contraste del texto).
+- **Varios botones primarios por vista,** o un primario deshabilitado sin la razón visible.
+- **Un estado solo por color:** el badge siempre lleva el texto, y el ícono que comunica algo lleva texto oculto.
+- **Usar las APIs estáticas de Ant Design** (`Modal.confirm`, `message.success`, `notification.open`): no toman el tema ni los toasts del sistema. Se usan `useToast()` y `ActionModal`.
+- **Controles pequeños en el portal:** allí los botones van en `size="large"` (40 px). En el backoffice móvil, nada interactivo de menos de 24 px.
+- **Quitar el foco visible** (`outline-none`) en algo interactivo. Solo se permite en un destino de foco programático (`tabIndex={-1}`), como el `main` o el título de un panel.
+
+## Cómo crear un componente nuevo
+
+- **¿Va en la librería?** Va si se repite en dos o más features, o si es una pieza del sistema (un estado, una tarjeta, un control). Si solo lo usa una feature, se queda en ella: `features/<feature>/components/`.
+- **Dónde:** `frontend/src/components/ui/<nombre>.tsx`, en kebab-case, con una exportación con nombre por componente. Encima de Ant Design y de los tokens, nunca con colores propios.
+- **API:**
+  - props en inglés, como el resto del código, y textos visibles en español;
+  - cada prop con su comentario JSDoc, que es lo que muestra Storybook en la tabla de props;
+  - variantes con un nombre (`variant`, `size`, `layout`) en lugar de banderas sueltas;
+  - un cambio de API que rompe a otros se anota en el reporte, con el cambio exacto.
+- **Story:** `<nombre>.stories.tsx` al lado, con `title: "Componentes/<Nombre>"`, una descripción del componente y `argTypes` descritos. Lleva los estados que apliquen: básico, vacío, cargando, error, deshabilitado, texto largo, `globals: DARK` y `globals: MOBILE` (de `src/stories/globals.ts`).
+- **Pruebas:** comportamiento y accesibilidad en `components/ui/*.test.tsx` (Testing Library, por rol y nombre). Si reemplaza piezas en features, sus pruebas siguen en verde.
+- **Accesibilidad:**
+  - `pnpm test:storybook` corre cada story con axe y falla con violaciones serias o críticas;
+  - el foco se ve y no se pierde: un diálogo lo atrapa y lo devuelve al cerrar;
+  - todo control tiene nombre (texto o `aria-label`);
+  - un error de campo se enlaza con `aria-describedby`.
+- **Verificaciones:** `pnpm lint`, `pnpm format:check`, `pnpm typecheck`, `pnpm test --coverage`, `pnpm build-storybook` y `pnpm test:storybook`.
+
+## Cómo pedir un componente desde una feature
+
+- Se hace primero en la feature (`features/<feature>/components/`), con su prueba, sin bloquear la vista.
+- Se avisa al dueño de `components/ui` (hoy, el front 1). Por el buzón, va una línea con: qué es, dónde está, en qué otras features se repetiría y la API propuesta.
+- El dueño decide si pasa a la librería y cómo queda su API. Si pasa, lo mueve con su story y sus pruebas, y reemplaza los usos.
+- Mientras tanto, la feature no cambia archivos de `components/ui`. Si hace falta una variante de un componente existente, se pide igual.
+
+## Siguiente ronda (candidatos ya identificados)
+
+Del tablero (`features/dashboard`, front 2). Se quedan en su feature hasta que haya un segundo uso:
+
+- **`StatTile`:** cifra con etiqueta, para los indicadores de la cabecera.
+- **`BarList` / `Bar`:** barras horizontales con su etiqueta y valor (por estado, por banco). Cada barra enlaza a `/solicitudes?status=<código>`.
+- **`FunnelTable`:** la tabla del embudo por etapa.
+- **`EmptyNote`:** el vacío dentro de una tarjeta del tablero. Antes de sumarlo, se prueba `EmptyState size="sm"`.

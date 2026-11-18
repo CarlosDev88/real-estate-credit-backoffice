@@ -1,0 +1,5 @@
+# Solo ajustes de pnpm (el frontend no es un monorepo de paquetes).
+# esbuild llega con Storybook. Su script de instalación no hace falta: el binario viene en
+# el paquete opcional de cada plataforma (@esbuild/<plataforma>), así que no se ejecuta.
+allowBuilds:
+  esbuild: false

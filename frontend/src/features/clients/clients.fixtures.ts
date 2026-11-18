@@ -87,6 +87,7 @@ export function makeOpportunity(n: number, overrides: Partial<OpportunityDetail>
     client: { id: "cl-1", full_name: "Laura Gómez Vélez" },
     project: { id: "pr-1", name: "Torres del Parque", partner_name: "Constructora Andes" },
     status: "ASSIGNED",
+    status_label: "Asignada",
     origin: { code: "DIRECT", label: "Directo" },
     origin_user: { id: "u-1", name: "Asesora" },
     assigned_advisor: { id: "u-1", name: "Asesora" },

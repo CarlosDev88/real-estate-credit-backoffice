@@ -51,7 +51,7 @@ export function FilterChips({
               type="button"
               aria-label={`Quitar filtro ${chip.label}: ${chip.value}`}
               onClick={() => onRemove(chip.key)}
-              className="text-text-tertiary hover:bg-bg-muted hover:text-text-primary grid size-[18px] cursor-pointer place-items-center rounded-full border-0 bg-transparent p-0"
+              className="text-text-tertiary hover:bg-bg-muted hover:text-text-primary relative grid size-[18px] cursor-pointer place-items-center rounded-full border-0 bg-transparent p-0 before:absolute before:-inset-1"
             >
               <CloseIcon width={10} height={10} />
             </button>

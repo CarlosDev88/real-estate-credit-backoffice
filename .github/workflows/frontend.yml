@@ -16,7 +16,7 @@ jobs:
   quality:
     name: "Frontend: lint, types and tests"
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
 
     # Solo lo necesario: leer el repo y publicar el comentario del reporte en el PR.
     permissions:
@@ -67,7 +67,8 @@ jobs:
             echo "run=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          if grep -qE '^(frontend/|contracts/openapi\.json$|design/generated/|\.github/workflows/frontend\.yml$)' <<< "$files"; then
+          # design/README.md: los fundamentos de Storybook leen de ahí el uso de cada tono.
+          if grep -qE '^(frontend/|contracts/openapi\.json$|design/generated/|design/README\.md$|\.github/workflows/frontend\.yml$)' <<< "$files"; then
             echo "run=true" >> "$GITHUB_OUTPUT"
           else
             echo "El PR no toca el frontend: verificaciones omitidas."
@@ -164,6 +165,42 @@ jobs:
         continue-on-error: true
         run: pnpm build 2>&1 | tee "$CI_REPORT_DIR/build.txt"
 
+      # Storybook estático (la librería de componentes y los fundamentos). Falla si no compila.
+      - name: Storybook
+        id: storybook
+        if: steps.changes.outputs.run == 'true'
+        continue-on-error: true
+        run: pnpm build-storybook 2>&1 | tee "$CI_REPORT_DIR/storybook.txt"
+
+      # Chromium para correr los stories. La descarga se cachea por versión de Playwright;
+      # `--with-deps` instala las librerías del sistema en cada corrida (no se cachean).
+      - name: Locate Playwright version
+        id: playwright
+        if: steps.changes.outputs.run == 'true'
+        run: echo "version=$(node -p "require('playwright/package.json').version")" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        if: steps.changes.outputs.run == 'true'
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}
+
+      - name: Install Chromium
+        id: chromium
+        if: steps.changes.outputs.run == 'true'
+        continue-on-error: true
+        run: pnpm exec playwright install --with-deps chromium
+
+      # Cada story en Chromium con axe: falla con violaciones serias o críticas.
+      - name: Storybook (a11y)
+        id: storybook_a11y
+        if: steps.changes.outputs.run == 'true' && steps.chromium.outcome == 'success'
+        continue-on-error: true
+        run: >-
+          pnpm test:storybook --reporter=default --reporter=junit
+          --outputFile.junit="$CI_REPORT_DIR/storybook-a11y.xml"
+          2>&1 | tee "$CI_REPORT_DIR/storybook-a11y.txt"
+
       - name: Build CI report
         if: always()
         continue-on-error: true
@@ -178,6 +215,8 @@ jobs:
           OUTCOME_COVERAGE: ${{ steps.coverage.outcome }}
           OUTCOME_API_CONTRACT: ${{ steps.api_contract.outcome }}
           OUTCOME_BUILD: ${{ steps.build.outcome }}
+          OUTCOME_STORYBOOK: ${{ steps.storybook.outcome }}
+          OUTCOME_STORYBOOK_A11Y: ${{ steps.storybook_a11y.outcome }}
         run: node scripts/ci-report.ts
 
       - name: Upload CI report
@@ -237,6 +276,9 @@ jobs:
             coverage=${{ steps.coverage.outcome }}
             api_contract=${{ steps.api_contract.outcome }}
             build=${{ steps.build.outcome }}
+            storybook=${{ steps.storybook.outcome }}
+            chromium=${{ steps.chromium.outcome }}
+            storybook_a11y=${{ steps.storybook_a11y.outcome }}
         run: |
           if [ "$RUN" = false ]; then
             echo "Sin cambios en el frontend: verificaciones omitidas."

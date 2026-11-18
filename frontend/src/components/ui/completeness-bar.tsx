@@ -30,7 +30,26 @@ interface CompletenessBarProps {
   documentsRequired?: number;
   /** `mini`: barra corta con el porcentaje (filas del listado). */
   variant?: "full" | "mini";
+  /**
+   * `split`: datos y documentos lado a lado (una columna en móvil), como el mockup
+   * `solicitud.html`. `stacked`: uno debajo del otro.
+   */
+  layout?: "stacked" | "split";
+  /**
+   * `false`: sin la barra del total, porque el total va en el encabezado de la tarjeta
+   * (con `CompletenessTotal`).
+   */
+  showTotal?: boolean;
   className?: string;
+}
+
+/** "81 % en total", para el encabezado de la tarjeta de completitud. */
+export function CompletenessTotal({ percentage }: { percentage: number }) {
+  return (
+    <span className="text-text-secondary text-sm whitespace-nowrap tabular-nums">
+      {formatPercent(percentage)} en total
+    </span>
+  );
 }
 
 /** Completitud del expediente (mockups `solicitud.html` y `solicitudes.html`). */
@@ -41,6 +60,8 @@ export function CompletenessBar({
   documentsCompleted,
   documentsRequired,
   variant = "full",
+  layout = "stacked",
+  showTotal = true,
   className = "",
 }: CompletenessBarProps) {
   if (variant === "mini") {
@@ -59,14 +80,8 @@ export function CompletenessBar({
       ? `${documentsCompleted} de ${documentsRequired} · ${formatPercent(documentsPercentage ?? 0)}`
       : formatPercent(documentsPercentage ?? 0);
 
-  return (
-    <div className={`grid gap-3 ${className}`}>
-      <div className="flex items-center gap-3">
-        <Bar value={percentage} label="Completitud total" thick />
-        <span className="text-text-secondary text-sm whitespace-nowrap tabular-nums">
-          {formatPercent(percentage)} en total
-        </span>
-      </div>
+  const parts = (
+    <>
       {dataPercentage !== undefined && (
         <div className="grid gap-1.5">
           <div className="flex items-baseline justify-between gap-2 text-sm">
@@ -84,6 +99,22 @@ export function CompletenessBar({
           </div>
           <Bar value={documentsPercentage} label="Completitud de documentos" />
         </div>
+      )}
+    </>
+  );
+
+  return (
+    <div className={`grid gap-3 ${className}`}>
+      {showTotal && (
+        <div className="flex items-center gap-3">
+          <Bar value={percentage} label="Completitud total" thick />
+          <CompletenessTotal percentage={percentage} />
+        </div>
+      )}
+      {layout === "split" ? (
+        <div className="grid gap-3 min-[600px]:grid-cols-2 min-[600px]:gap-5">{parts}</div>
+      ) : (
+        parts
       )}
     </div>
   );

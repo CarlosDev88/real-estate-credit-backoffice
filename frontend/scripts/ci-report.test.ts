@@ -32,6 +32,8 @@ const ALL_SUCCESS = {
   OUTCOME_COVERAGE: "success",
   OUTCOME_API_CONTRACT: "success",
   OUTCOME_BUILD: "success",
+  OUTCOME_STORYBOOK: "success",
+  OUTCOME_STORYBOOK_A11Y: "success",
 };
 
 const RUN_ENV = {
@@ -64,9 +66,9 @@ afterEach(() => {
 });
 
 describe("todo en verde", () => {
-  it("encabezado, enlace al run, duración y 7 filas en ✅", () => {
+  it("encabezado, enlace al run, duración y 9 filas en ✅", () => {
     const md = report("green", ALL_SUCCESS);
-    expect(md.startsWith(`${MARKER}\n## Frontend CI · ✅ 7 de 7 pasaron\n`)).toBe(true);
+    expect(md.startsWith(`${MARKER}\n## Frontend CI · ✅ 9 de 9 pasaron\n`)).toBe(true);
     expect(md).toContain(
       "Commit `abcdef1` · [Ver run](https://github.com/acme/mvp-backoffice/actions/runs/123) · 2 min 14 s",
     );
@@ -77,6 +79,11 @@ describe("todo en verde", () => {
     expect(md).toContain("| Cobertura | ✅ | 81,20 % (mínimo 70 %) |");
     expect(md).toContain("| Contrato API | ✅ | Al día |");
     expect(md).toContain("| Build | ✅ | Compiló |");
+    expect(md).toContain("| Storybook | ✅ | Compiló |");
+    expect(md.indexOf("| Storybook |")).toBeGreaterThan(md.indexOf("| Build |"));
+    expect(md).toContain(
+      "| Accesibilidad (Storybook) | ✅ | 3 stories sin violaciones serias ni críticas |",
+    );
     expect(md).not.toContain("<details>");
   });
 });
@@ -91,11 +98,13 @@ describe("fallos y warnings juntos", () => {
     OUTCOME_COVERAGE: "failure",
     OUTCOME_API_CONTRACT: "failure",
     OUTCOME_BUILD: "failure",
+    OUTCOME_STORYBOOK: "failure",
+    OUTCOME_STORYBOOK_A11Y: "failure",
   };
   const md = report("failing", env);
 
   it("encabezado y filas", () => {
-    expect(md).toContain("## Frontend CI · ❌ 7 de 7 fallaron\n");
+    expect(md).toContain("## Frontend CI · ❌ 9 de 9 fallaron\n");
     expect(md).toContain("| ESLint | ❌ | 2 errores · 1 advertencia en 2 archivos |");
     expect(md).toContain("| Prettier (formato) | ❌ | 2 archivos sin formatear |");
     expect(md).toContain("| TypeScript | ❌ | 2 errores en 2 archivos |");
@@ -106,6 +115,17 @@ describe("fallos y warnings juntos", () => {
         "1 esquema nuevo · 1 esquema quitado · 2 esquemas cambiados |",
     );
     expect(md).toContain("| Build | ❌ | No compiló |");
+    expect(md).toContain("| Storybook | ❌ | No compiló |");
+    expect(md).toContain(
+      "| Accesibilidad (Storybook) | ❌ | 1 de 2 stories con violaciones o errores |",
+    );
+  });
+
+  it("Accesibilidad: los stories que fallan, con la regla de axe", () => {
+    expect(md).toContain("<summary>Stories que fallan (1)</summary>");
+    expect(md).toContain(
+      "src/components/ui/money.stories.tsx › Oscuro\n    Elements must meet minimum color contrast ratio thresholds (color-contrast)",
+    );
   });
 
   it("los tests que fallan van primero, con su primera línea", () => {
@@ -147,6 +167,15 @@ describe("fallos y warnings juntos", () => {
     expect(md).not.toContain("line 31 of the build log");
   });
 
+  it("Storybook: las últimas 50 líneas del log de build-storybook", () => {
+    expect(md).toContain("<summary>Storybook: últimas 50 líneas</summary>");
+    expect(md).toContain(
+      'Could not resolve "./missing" from "src/components/ui/money.stories.tsx"',
+    );
+    expect(md).toContain("line 12 of the storybook log");
+    expect(md).not.toContain("line 11 of the storybook log");
+  });
+
   it("ESLint solo con warnings es ⚠️ y no cuenta como fallo", () => {
     const dir = tempDir({
       "eslint.json": JSON.stringify([
@@ -163,7 +192,7 @@ describe("fallos y warnings juntos", () => {
     );
     expect(markdown).toContain("| ESLint | ⚠️ | 1 advertencia en 1 archivo |");
     expect(markdown).toContain(
-      "## Frontend CI · ✅ 5 de 7 pasaron · ⏭️ 2 no corrieron · ⚠️ 1 con advertencias",
+      "## Frontend CI · ✅ 7 de 9 pasaron · ⏭️ 2 no corrieron · ⚠️ 1 con advertencias",
     );
   });
 });
@@ -179,12 +208,15 @@ describe("pasos que no corrieron", () => {
       OUTCOME_COVERAGE: "",
       OUTCOME_API_CONTRACT: "skipped",
       OUTCOME_BUILD: "cancelled",
+      OUTCOME_STORYBOOK: "skipped",
+      OUTCOME_STORYBOOK_A11Y: "skipped",
     });
     expect(md).toContain(
-      "## Frontend CI · ❌ Falló la preparación del entorno · ⏭️ 7 no corrieron\n",
+      "## Frontend CI · ❌ Falló la preparación del entorno · ⏭️ 9 no corrieron\n",
     );
     expect(md).toContain("| Cobertura | ⏭️ | No corrió |");
     expect(md).toContain("| Build | ⏭️ | Cancelado |");
+    expect(md).toContain("| Storybook | ⏭️ | No corrió |");
   });
 
   it("cobertura sin datos cuando los tests sí corrieron", () => {

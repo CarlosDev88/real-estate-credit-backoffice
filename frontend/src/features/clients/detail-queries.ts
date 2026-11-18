@@ -13,6 +13,7 @@ export type Address = Schemas["Address"];
 export type AddressCreateRequest = Schemas["AddressCreateRequest"];
 export type Opportunity = Schemas["Opportunity"];
 export type OpportunityDetail = Schemas["OpportunityDetail"];
+export type OpportunityPage = Schemas["PaginatedOpportunityList"];
 export type OpportunityCreateRequest = Schemas["OpportunityCreateRequest"];
 export type AssignmentCreateRequest = Schemas["AssignmentCreateRequest"];
 export type ApplicationCreateRequest = Schemas["ApplicationCreateRequest"];
@@ -88,6 +89,9 @@ export function useCreateAddress(clientId: string) {
   });
 }
 
+// El backoffice es de asesor y administrador: `/opportunities` les responde la forma
+// interna (`Opportunity` / `OpportunityDetail`); `BrokerOpportunity` es del broker.
+
 /** `GET /clients/{id}/opportunities`, las más recientes primero (orden de la API). */
 export function useClientOpportunities(clientId: string) {
   return useQuery({
@@ -99,7 +103,7 @@ export function useClientOpportunities(clientId: string) {
             params: { path: { client_id: clientId }, query: { page_size: MAX_PAGE } },
           }),
         )
-      ).data,
+      ).data as OpportunityPage,
   });
 }
 
@@ -114,7 +118,7 @@ export function useOpportunity(id: string | null) {
             params: { path: { opportunity_id: id! } },
           }),
         )
-      ).data,
+      ).data as OpportunityDetail,
     enabled: id !== null,
   });
 }
@@ -124,7 +128,7 @@ export function useCreateOpportunity(clientId: string) {
   return useMutation({
     meta: { handlesErrors: true },
     mutationFn: async (body: OpportunityCreateRequest) =>
-      (await call(api.POST("/api/v1/opportunities", { body }))).data,
+      (await call(api.POST("/api/v1/opportunities", { body }))).data as OpportunityDetail,
     onSuccess: (opportunity) => {
       queryClient.setQueryData(detailKeys.opportunity(opportunity.id), opportunity);
       return queryClient.invalidateQueries({ queryKey: detailKeys.opportunities(clientId) });

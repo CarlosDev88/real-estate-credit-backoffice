@@ -55,8 +55,11 @@ The app runs at http://localhost:3000. `.env.local` is never committed:
 | `pnpm test` / `pnpm test:watch`     | Vitest, once or in watch mode.                                                  |
 | `pnpm test --coverage`              | Tests with coverage. CI requires 70 % of lines.                                 |
 | `pnpm api:gen`                      | Regenerates `src/lib/api/schema.d.ts` from `../contracts/openapi.json`.         |
+| `pnpm storybook`                    | Storybook, the Umbral design system (http://localhost:6006).                    |
+| `pnpm build-storybook`              | Static Storybook in `storybook-static/`.                                        |
+| `pnpm test:storybook`               | Every story in headless Chromium, with the accessibility check (axe).           |
 
-Before opening a pull request, the same checks as CI: `pnpm lint`, `pnpm format:check`, `pnpm typecheck`, `pnpm test --coverage`, `pnpm api:gen` (no changes), and `pnpm build`.
+Before opening a pull request, the same checks as CI: `pnpm lint`, `pnpm format:check`, `pnpm typecheck`, `pnpm test --coverage`, `pnpm api:gen` (no changes), `pnpm build`, `pnpm build-storybook`, and `pnpm test:storybook`.
 
 ## After an API Change
 
@@ -82,10 +85,9 @@ frontend/
 │   │   ├── (backoffice)/           # Layout with the session guard and the AppShell
 │   │   │   ├── solicitudes/        # Applications (built in F1)
 │   │   │   └── sin-modulos/        # Shown when no menu entry is allowed
-│   │   ├── (dev)/dev/ui/           # Component demos, only in development (404 in production)
 │   │   ├── globals.css             # CSS layers, Tailwind, and the design tokens
 │   │   └── layout.tsx              # Providers and the theme read from the um-theme cookie
-│   ├── components/ui/              # Shared components (AppShell, StatusBadge, DocumentViewer…)
+│   ├── components/ui/              # Component library, each one with its story (*.stories.tsx)
 │   ├── features/                   # One folder per feature (auth today; applications, buyer portal… next)
 │   ├── lib/
 │   │   ├── api/                    # Typed client, CSRF, session refresh, errors, ETag, uploads
@@ -93,8 +95,10 @@ frontend/
 │   │   ├── navigation/             # Menu configuration and permission-based access
 │   │   └── theme/                  # Light/dark theme storage
 │   ├── providers/                  # Theme, Ant Design, TanStack Query, toasts
+│   ├── stories/                    # Storybook docs: foundations, patterns, and the usage guide
 │   ├── test/                       # Vitest setup, MSW server, render helper
 │   └── proxy.ts                    # Redirects to /login when there is no session cookie (UX only)
+├── .storybook/                     # Storybook config: providers, theme switcher, a11y, viewports
 ├── scripts/ci-report.ts            # CI report for the pull request comment
 └── Dockerfile                      # Production image (built from the repository root)
 ```
@@ -105,7 +109,8 @@ frontend/
 - **Every API call goes through `lib/api`**: `call(api.GET(...))` returns `{ data, version }` or throws `ApiError`. Writes send `X-CSRFToken`, and a `401` refreshes the session once (serialized across tabs). Dossier writes pass `If-Match` explicitly with the version from the `ETag`.
 - **No business lists in the frontend.** Statuses, catalogs, and labels come from the API. `toneFor(kind, code)` only picks a color.
 - **Menu and buttons by permission** (from `/auth/me`), never by role name.
-- **Design tokens**, never hand-written colors: Tailwind classes such as `bg-bg-surface` and `text-text-secondary`, and the Ant Design theme from `../design/generated/antd-theme.ts`.
+- **Design tokens**, never hand-written colors: Tailwind classes such as `bg-bg-surface` and `text-text-secondary`, and the Ant Design theme from `../design/generated/antd-theme.ts`. A test (`src/test/no-hardcoded-colors.test.ts`) fails on any hex, `rgb()` or `hsl()` color in `src/` outside its allow list.
+- **Components come from `components/ui`.** Read the usage guide in Storybook ("Guía de uso") before building a screen, and ask for a new shared component instead of copying one into a feature.
 - **Write errors** show a toast by default (with the `request_id`). A form that handles its own errors sets `meta: { handlesErrors: true }` on the mutation and uses `applyFieldErrors`.
 
 ## Docker
@@ -114,4 +119,4 @@ The `frontend` service in `../backend/docker-compose.yml` builds `Dockerfile` fr
 
 ## CI
 
-[`../.github/workflows/frontend.yml`](../.github/workflows/frontend.yml) runs on every pull request. Its required check, `Frontend: lint, types and tests`, runs ESLint, Prettier, TypeScript, the tests, the coverage minimum (70 % of lines), the generated API types, and the build. It posts a single comment on the pull request (marker `<!-- ci-report:frontend -->`), built by `scripts/ci-report.ts`. When a pull request does not touch the frontend, the contract, or the design tokens, the job finishes green without checking anything and posts no comment.
+[`../.github/workflows/frontend.yml`](../.github/workflows/frontend.yml) runs on every pull request. Its required check, `Frontend: lint, types and tests`, runs ESLint, Prettier, TypeScript, the tests, the coverage minimum (70 % of lines), the generated API types, the build, and Storybook (it must build, and every story must pass the accessibility check in Chromium). It posts a single comment on the pull request (marker `<!-- ci-report:frontend -->`), built by `scripts/ci-report.ts`. When a pull request does not touch the frontend, the contract, or the design tokens, the job finishes green without checking anything and posts no comment.

@@ -1,0 +1,5 @@
+/* Solo para las páginas de documentación de Storybook. El preflight de Tailwind (globals.css)
+   quita la numeración de las listas `ol`, y los estilos de los documentos no la devuelven. */
+.sbdocs ol:not(.sb-unstyled ol) {
+  list-style-type: decimal;
+}

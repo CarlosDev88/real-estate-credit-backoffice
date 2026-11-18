@@ -366,11 +366,11 @@ class OpportunityCreateSerializer(StrictSerializer):
     client_id = serializers.UUIDField()
     origin_type = CatalogItemCodeField(catalog_code="lead_origin")
     project_id = serializers.UUIDField(required=False, allow_null=True, default=None)
+    # Sin `default`: openapi-typescript marcaría el campo como obligatorio.
     notes = serializers.CharField(
         max_length=2000,
         required=False,
         allow_blank=True,
-        default="",
         help_text="Queda como la primera nota interna de la oportunidad (actividad).",
     )
 

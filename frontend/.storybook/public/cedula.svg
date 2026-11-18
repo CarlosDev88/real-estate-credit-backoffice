@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="400" viewBox="0 0 640 400">
+  <!-- Imagen de muestra para el visor de documentos en Storybook. Sin datos reales. -->
+  <rect width="640" height="400" rx="24" fill="#EEF4FB"/>
+  <rect x="32" y="32" width="160" height="200" rx="12" fill="#ADC8EA"/>
+  <rect x="224" y="56" width="320" height="24" rx="6" fill="#4F82C8"/>
+  <rect x="224" y="104" width="260" height="16" rx="6" fill="#7FA7DB"/>
+  <rect x="224" y="136" width="220" height="16" rx="6" fill="#7FA7DB"/>
+  <rect x="32" y="296" width="576" height="16" rx="6" fill="#ADC8EA"/>
+  <text x="32" y="372" font-family="sans-serif" font-size="22" fill="#14325C">Documento de muestra</text>
+</svg>

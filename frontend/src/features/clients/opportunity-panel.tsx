@@ -1,16 +1,19 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Alert, Button, Drawer, Input, Modal, Select } from "antd";
+import { Alert, Button, Input, Select } from "antd";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useId, useState } from "react";
-import type { ReactNode } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 
 import { applicationHref } from "@/features/applications/applications-table";
+import { ActionModal } from "@/components/ui/action-modal";
+import { DataList, Datum } from "@/components/ui/card";
 import { FormField, useFormErrorHandler } from "@/components/ui/form-field";
+import { SidePanel } from "@/components/ui/side-panel";
+import { ErrorState, LoadingState } from "@/components/ui/state-views";
 import { useCatalog } from "@/features/applications/queries";
 import { useAdvisors } from "@/features/applications/workspace-queries";
 import { optionsOf } from "@/features/clients/catalog-options";
@@ -26,8 +29,6 @@ import {
 import { OpportunityStatus, projectText } from "@/features/clients/opportunities-tab";
 import { applyFieldErrors, isApiError } from "@/lib/api/errors";
 import { formatDate, formatDateTime } from "@/lib/format";
-import { useMediaQuery } from "@/lib/hooks/use-media-query";
-import { MOBILE_QUERY } from "@/features/applications/applications-list-screen";
 import { useApiErrorToast } from "@/providers/api-error-toast";
 import { useToast } from "@/providers/toast";
 
@@ -44,18 +45,6 @@ export interface PanelPermissions {
    */
   selfAssignId: string | null;
 }
-
-function Datum({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <div className="grid gap-0.5">
-      <dt className="text-text-tertiary text-xs font-medium">{label}</dt>
-      <dd className="m-0">{children}</dd>
-    </div>
-  );
-}
-
-const muted = (text: string | null | undefined) =>
-  text ? text : <span className="text-text-tertiary">—</span>;
 
 // ---------- asignar asesor ----------
 
@@ -111,58 +100,50 @@ function AssignModal({
   });
 
   return (
-    <Modal
+    <ActionModal
       open={open}
       title={current ? "Cambiar asesor" : "Asignar asesor"}
-      onCancel={close}
       okText="Asignar"
-      cancelText="Cancelar"
-      onOk={() => void submit()}
-      confirmLoading={assign.isPending}
-      destroyOnHidden
+      loading={assign.isPending}
+      onSubmit={submit}
+      onCancel={close}
     >
-      <form noValidate onSubmit={(e) => void submit(e)} className="grid gap-4 pt-2">
-        <FormField
-          id={`${ids}-advisor`}
-          label="Asesor"
-          error={formState.errors.advisor_id?.message}
-        >
-          {(ctl) => (
-            <Controller
-              control={control}
-              name="advisor_id"
-              render={({ field }) => (
-                <Select
-                  {...ctl}
-                  value={field.value || undefined}
-                  onChange={field.onChange}
-                  placeholder="Elige el asesor"
-                  showSearch={{ optionFilterProp: "label" }}
-                  loading={advisors.isPending}
-                  options={(advisors.data ?? [])
-                    .filter((user) => user.id !== current)
-                    .map((user) => ({ value: user.id, label: user.name || user.email }))}
-                />
-              )}
-            />
-          )}
-        </FormField>
-        <FormField
-          id={`${ids}-reason`}
-          label="Motivo"
-          optional="opcional"
-          error={formState.errors.reason?.message}
-        >
-          {(ctl) => (
-            <Controller
-              control={control}
-              name="reason"
-              render={({ field }) => <Input {...field} {...ctl} maxLength={REASON_MAX} />}
-            />
-          )}
-        </FormField>
-      </form>
-    </Modal>
+      <FormField id={`${ids}-advisor`} label="Asesor" error={formState.errors.advisor_id?.message}>
+        {(ctl) => (
+          <Controller
+            control={control}
+            name="advisor_id"
+            render={({ field }) => (
+              <Select
+                {...ctl}
+                value={field.value || undefined}
+                onChange={field.onChange}
+                placeholder="Elige el asesor"
+                showSearch={{ optionFilterProp: "label" }}
+                loading={advisors.isPending}
+                options={(advisors.data ?? [])
+                  .filter((user) => user.id !== current)
+                  .map((user) => ({ value: user.id, label: user.name || user.email }))}
+              />
+            )}
+          />
+        )}
+      </FormField>
+      <FormField
+        id={`${ids}-reason`}
+        label="Motivo"
+        optional="opcional"
+        error={formState.errors.reason?.message}
+      >
+        {(ctl) => (
+          <Controller
+            control={control}
+            name="reason"
+            render={({ field }) => <Input {...field} {...ctl} maxLength={REASON_MAX} />}
+          />
+        )}
+      </FormField>
+    </ActionModal>
   );
 }
 
@@ -252,95 +233,88 @@ function CreateApplicationModal({
   });
 
   return (
-    <Modal
+    <ActionModal
       open={open}
       title="Crear solicitud de crédito"
       width={560}
-      onCancel={close}
+      description="La solicitud empieza en borrador con este cliente como titular. El inmueble y los demás datos se completan en el expediente."
       okText="Crear solicitud"
-      cancelText="Cancelar"
-      onOk={() => void submit()}
-      confirmLoading={create.isPending}
-      destroyOnHidden
+      loading={create.isPending}
+      onSubmit={submit}
+      onCancel={close}
     >
-      <form noValidate onSubmit={(e) => void submit(e)} className="grid gap-4 pt-2">
-        <p className="text-text-secondary m-0 text-sm">
-          La solicitud empieza en borrador con este cliente como titular. El inmueble y los demás
-          datos se completan en el expediente.
-        </p>
-        {alreadyOpen && (
-          <Alert
-            type="warning"
-            showIcon
-            title={alreadyOpen.message}
-            description={
-              alreadyOpen.id ? (
-                <Link href={applicationHref(alreadyOpen.id)} className="text-text-link underline">
-                  Ir a la solicitud en curso
-                </Link>
-              ) : undefined
-            }
+      {alreadyOpen && (
+        <Alert
+          type="warning"
+          showIcon
+          title={alreadyOpen.message}
+          description={
+            alreadyOpen.id ? (
+              <Link href={applicationHref(alreadyOpen.id)} className="text-text-link underline">
+                Ir a la solicitud en curso
+              </Link>
+            ) : undefined
+          }
+        />
+      )}
+      <FormField
+        id={`${ids}-purpose`}
+        label="Finalidad del crédito"
+        error={errors.purpose_code?.message}
+      >
+        {(ctl) => (
+          <Controller
+            control={control}
+            name="purpose_code"
+            render={({ field }) => (
+              <Select
+                {...ctl}
+                value={field.value || undefined}
+                onChange={field.onChange}
+                placeholder="Elige la finalidad"
+                options={optionsOf(purposes.items)}
+                loading={purposes.isPending}
+                virtual={false}
+              />
+            )}
           />
         )}
-        <FormField
-          id={`${ids}-purpose`}
-          label="Finalidad del crédito"
-          error={errors.purpose_code?.message}
-        >
-          {(ctl) => (
-            <Controller
-              control={control}
-              name="purpose_code"
-              render={({ field }) => (
-                <Select
-                  {...ctl}
-                  value={field.value || undefined}
-                  onChange={field.onChange}
-                  placeholder="Elige la finalidad"
-                  options={optionsOf(purposes.items)}
-                  loading={purposes.isPending}
-                  virtual={false}
-                />
-              )}
-            />
-          )}
-        </FormField>
-        {needsAdvisor &&
-          (canListAdvisors ? (
-            <FormField
-              id={`${ids}-advisor`}
-              label="Asesor de la solicitud"
-              help="La oportunidad no tiene asesor asignado."
-              error={errors.assigned_advisor_id?.message}
-            >
-              {(ctl) => (
-                <Controller
-                  control={control}
-                  name="assigned_advisor_id"
-                  render={({ field }) => (
-                    <Select
-                      {...ctl}
-                      value={field.value || undefined}
-                      onChange={field.onChange}
-                      placeholder="Elige el asesor"
-                      showSearch={{ optionFilterProp: "label" }}
-                      loading={advisors.isPending}
-                      options={(advisors.data ?? []).map((user) => ({
-                        value: user.id,
-                        label: user.name || user.email,
-                      }))}
-                    />
-                  )}
-                />
-              )}
-            </FormField>
-          ) : (
-            <p className="text-text-secondary m-0 text-sm">
-              La oportunidad no tiene asesor asignado: la solicitud necesita uno.
-            </p>
-          ))}
-      </form>
-    </Modal>
+      </FormField>
+      {needsAdvisor &&
+        (canListAdvisors ? (
+          <FormField
+            id={`${ids}-advisor`}
+            label="Asesor de la solicitud"
+            help="La oportunidad no tiene asesor asignado."
+            error={errors.assigned_advisor_id?.message}
+          >
+            {(ctl) => (
+              <Controller
+                control={control}
+                name="assigned_advisor_id"
+                render={({ field }) => (
+                  <Select
+                    {...ctl}
+                    value={field.value || undefined}
+                    onChange={field.onChange}
+                    placeholder="Elige el asesor"
+                    showSearch={{ optionFilterProp: "label" }}
+                    loading={advisors.isPending}
+                    options={(advisors.data ?? []).map((user) => ({
+                      value: user.id,
+                      label: user.name || user.email,
+                    }))}
+                  />
+                )}
+              />
+            )}
+          </FormField>
+        ) : (
+          <p className="text-text-secondary m-0 text-sm">
+            La oportunidad no tiene asesor asignado: la solicitud necesita uno.
+          </p>
+        ))}
+    </ActionModal>
   );
 }
 
@@ -421,14 +395,14 @@ function PanelBody({
         )}
       </div>
 
-      <dl className="m-0 grid gap-4 min-[480px]:grid-cols-2">
+      <DataList>
         <Datum label="Estado">
           <OpportunityStatus status={opportunity.status} />
         </Datum>
         <Datum label="Origen">{opportunity.origin.label}</Datum>
-        <Datum label="Proyecto">{muted(projectText(opportunity))}</Datum>
-        <Datum label="Asesor">{muted(opportunity.assigned_advisor?.name)}</Datum>
-        <Datum label="Registrada por">{muted(opportunity.origin_user?.name)}</Datum>
+        <Datum label="Proyecto">{projectText(opportunity)}</Datum>
+        <Datum label="Asesor">{opportunity.assigned_advisor?.name}</Datum>
+        <Datum label="Registrada por">{opportunity.origin_user?.name}</Datum>
         <Datum label="Creada">{formatDateTime(opportunity.created_at)}</Datum>
         {opportunity.converted_at && (
           <Datum label="Convertida">{formatDateTime(opportunity.converted_at)}</Datum>
@@ -436,7 +410,7 @@ function PanelBody({
         {opportunity.lost_reason && (
           <Datum label="Motivo de pérdida">{opportunity.lost_reason.label}</Datum>
         )}
-      </dl>
+      </DataList>
 
       <AssignmentHistory assignments={assignments} />
 
@@ -473,37 +447,24 @@ export function OpportunityPanel({
   permissions: PanelPermissions;
   onClose: () => void;
 }) {
-  const mobile = useMediaQuery(MOBILE_QUERY);
   const query = useOpportunity(opportunityId);
   const notFound = isApiError(query.error) && query.error.status === 404;
 
   let body;
   if (query.isPending) {
+    body = <LoadingState label="Cargando la oportunidad" blocks={[96]} />;
+  } else if (notFound) {
+    // Sin "Reintentar": volver a pedir no cambia un 404.
     body = (
-      <div
-        role="status"
-        aria-label="Cargando la oportunidad"
-        className="bg-bg-muted h-24 animate-pulse rounded"
-      />
+      <Alert type="error" showIcon title="No encontramos esta oportunidad o no tienes acceso" />
     );
   } else if (query.isError) {
     body = (
-      <Alert
-        type="error"
-        showIcon
-        title={
-          notFound
-            ? "No encontramos esta oportunidad o no tienes acceso"
-            : "No pudimos cargar la oportunidad"
-        }
-        description={notFound ? undefined : query.error.message}
-        action={
-          notFound ? undefined : (
-            <Button size="small" onClick={() => void query.refetch()}>
-              Reintentar
-            </Button>
-          )
-        }
+      <ErrorState
+        title="No pudimos cargar la oportunidad"
+        message={query.error.message}
+        onRetry={() => void query.refetch()}
+        retrying={query.isFetching}
       />
     );
   } else {
@@ -511,23 +472,14 @@ export function OpportunityPanel({
   }
 
   return (
-    <Drawer
+    <SidePanel
       open={opportunityId !== null}
       onClose={onClose}
-      placement="right"
-      size={mobile ? "100%" : 480}
-      closable={{ "aria-label": "Cerrar" }}
-      destroyOnHidden
-      title={
-        <div>
-          <div className="text-text-tertiary text-sm font-normal">Oportunidad</div>
-          <h2 className="m-0 text-lg font-semibold">
-            {query.data ? (projectText(query.data) ?? "Sin proyecto") : "…"}
-          </h2>
-        </div>
-      }
+      width={480}
+      eyebrow="Oportunidad"
+      title={query.data ? (projectText(query.data) ?? "Sin proyecto") : "…"}
     >
       {body}
-    </Drawer>
+    </SidePanel>
   );
 }

@@ -22,6 +22,10 @@ class ActivityEventType(models.TextChoices):
     NOTE_ADDED = "NOTE_ADDED", "Nota interna"
     FILING_CREATED = "FILING_CREATED", "Radicación"
     BANK_RESPONSE_RECORDED = "BANK_RESPONSE_RECORDED", "Respuesta del banco"
+    COMMISSION_SETTLED = "COMMISSION_SETTLED", "Comisión liquidada"
+    COMMISSION_SETTLEMENT_VOIDED = "COMMISSION_SETTLEMENT_VOIDED", "Liquidación de comisión anulada"
+    COMMISSION_SHARE_PAID = "COMMISSION_SHARE_PAID", "Pago de comisión"
+    COMMISSION_PLAN_MISSING = "COMMISSION_PLAN_MISSING", "Comisión sin plan vigente"
 
 
 class ActivityVisibility(models.TextChoices):

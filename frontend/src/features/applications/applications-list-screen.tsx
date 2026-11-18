@@ -1,18 +1,21 @@
 "use client";
 
-import { Alert, Button } from "antd";
+import { Button } from "antd";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo } from "react";
 
 import { EmptyState } from "@/components/ui/empty-state";
+import { ListPagination } from "@/components/ui/list-pagination";
+import { PageHeader } from "@/components/ui/page-header";
 import { ScrollTabs } from "@/components/ui/scroll-tabs";
+import { ErrorState } from "@/components/ui/state-views";
 import { ApplicationCards } from "@/features/applications/application-cards";
 import { ApplicationsTable, applicationHref } from "@/features/applications/applications-table";
 import { ListFilters, type FilterDef } from "@/features/applications/list-filters";
-import { ListPagination } from "@/features/applications/list-pagination";
 import {
   filtersOf,
   formatOrdering,
+  PAGE_SIZES,
   parseOrdering,
   useListParams,
   type ListParams,
@@ -96,7 +99,13 @@ function useFilterDefs(canReadBanks: boolean): FilterDef[] {
   }, [canReadBanks, banks.data, banks.isPending, types, purposes]);
 }
 
-const CLEARED: Partial<ListParams> = { search: "", bank_id: "", product_type: "", purpose: "" };
+const CLEARED: Partial<ListParams> = {
+  search: "",
+  status: "",
+  bank_id: "",
+  product_type: "",
+  purpose: "",
+};
 
 /** Listado de solicitudes (`/solicitudes`, mockup `solicitudes.html`). */
 export function ApplicationsListScreen() {
@@ -129,6 +138,11 @@ export function ApplicationsListScreen() {
   const data = list.data;
   const rows = data?.items ?? [];
   const busy = list.isFetching && list.isPlaceholderData;
+  // Estado que llega en la URL (enlaces del tablero): su texto sale de las filas de la API.
+  const statusLabel = rows.find((row) => row.status === params.status)?.status_label;
+  const hiddenChips = params.status
+    ? [{ key: "status", label: "Estado", value: statusLabel ?? params.status }]
+    : [];
 
   let body;
   if (list.isPending) {
@@ -136,16 +150,11 @@ export function ApplicationsListScreen() {
   } else if (list.isError) {
     body = (
       <div className="p-3">
-        <Alert
-          type="error"
-          showIcon
+        <ErrorState
           title="No pudimos cargar las solicitudes"
-          description={list.error.message}
-          action={
-            <Button size="small" onClick={() => void list.refetch()}>
-              Reintentar
-            </Button>
-          }
+          message={list.error.message}
+          onRetry={() => void list.refetch()}
+          retrying={list.isFetching}
         />
       </div>
     );
@@ -179,20 +188,18 @@ export function ApplicationsListScreen() {
 
   return (
     <div className="grid content-start gap-4">
-      <div className="flex flex-wrap items-start gap-3">
-        <div className="min-w-0 flex-1">
-          <h1 className="m-0 text-3xl font-semibold tracking-tight">Solicitudes</h1>
-          <p className="text-text-secondary mt-0.5 mb-0">
-            Créditos de vivienda asignados a ti, desde el borrador hasta el desembolso.
-          </p>
-        </div>
-        {/* F4: una solicitud nace de una oportunidad; el botón lleva a elegir el cliente. */}
-        {canStartApplication && (
-          <Button type="primary" onClick={() => router.push(NEW_APPLICATION_HREF)}>
-            Nueva solicitud
-          </Button>
-        )}
-      </div>
+      <PageHeader
+        title="Solicitudes"
+        description="Créditos de vivienda asignados a ti, desde el borrador hasta el desembolso."
+        actions={
+          // F4: una solicitud nace de una oportunidad; el botón lleva a elegir el cliente.
+          canStartApplication && (
+            <Button type="primary" onClick={() => router.push(NEW_APPLICATION_HREF)}>
+              Nueva solicitud
+            </Button>
+          )
+        }
+      />
 
       {tabs.data ? (
         <ScrollTabs
@@ -202,12 +209,12 @@ export function ApplicationsListScreen() {
           onChange={(quick_filter) => update({ quick_filter })}
         />
       ) : tabs.isError ? (
-        <div className="text-text-secondary flex items-center gap-2 text-sm" role="alert">
-          No pudimos cargar las pestañas.
-          <Button type="link" size="small" onClick={() => void tabs.refetch()}>
-            Reintentar
-          </Button>
-        </div>
+        <ErrorState
+          variant="inline"
+          title="No pudimos cargar las pestañas."
+          onRetry={() => void tabs.refetch()}
+          retrying={tabs.isFetching}
+        />
       ) : (
         <div
           aria-hidden="true"
@@ -225,6 +232,7 @@ export function ApplicationsListScreen() {
           onChange={update}
           onClear={clear}
           mobile={mobile}
+          hiddenChips={hiddenChips}
         />
         {body}
         {data && rows.length > 0 && (
@@ -232,6 +240,8 @@ export function ApplicationsListScreen() {
             page={params.page}
             pageSize={params.page_size}
             total={data.total}
+            itemsLabel="Solicitudes"
+            pageSizes={PAGE_SIZES}
             onPage={(page) => update({ page })}
             onPageSize={(page_size) => update({ page_size })}
             compact={mobile}

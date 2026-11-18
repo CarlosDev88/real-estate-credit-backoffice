@@ -1,0 +1,48 @@
+import { Meta, Story } from "@storybook/addon-docs/blocks";
+
+import * as Bloques from "./fundamentos.stories";
+
+<Meta title="Fundamentos/Redacción" />
+
+# Redacción
+
+Reglas de texto de `design/README.md` y de los mockups aprobados, con ejemplos vivos. Los formatos de montos, porcentajes y fechas salen de `lib/format`: si cambian allí, cambian aquí.
+
+## Sentence case
+
+Títulos, botones, pestañas, opciones de menú y mensajes llevan mayúscula solo en la primera letra (y en los nombres propios).
+
+<Story of={Bloques.RedaccionMayusculas} />
+
+## Etiquetas en minúscula inicial
+
+<Story of={Bloques.RedaccionEtiquetas} />
+
+## Enlaces subrayados dentro del texto
+
+<Story of={Bloques.RedaccionEnlaces} />
+
+## Datos: códigos, montos, fechas y estados
+
+- Montos en COP enteros con `Intl.NumberFormat("es-CO")` y cifras tabulares (`Money`). Porcentajes enteros con espacio: "62 %".
+- Fechas en la zona `America/Bogota` y en 12 h: "24 ago 2026, 3:45 p. m.". La fecha relativa ("Hace 5 min", "Ayer") va con la fecha completa en el `title` (`RelativeTime`).
+- El texto de un estado, de un catálogo o de una lista siempre viene de la API.
+
+<Story of={Bloques.RedaccionFormatos} />
+
+## Una acción principal por vista
+
+<Story of={Bloques.RedaccionAccionPrincipal} />
+
+## Lo destructivo no se destaca
+
+<Story of={Bloques.RedaccionDestructivo} />
+
+## Otras reglas
+
+- **Se tutea,** como en los mockups: "Sube tus documentos", "Puedes reemplazarlo".
+- **El comprador ve una sola métrica de avance:** "10 de 16 documentos listos", igual en el inicio y en la pantalla de documentos. El porcentaje de completitud es del backoffice.
+- **Lo urgente va arriba,** en la tarjeta de estado (por ejemplo, el vencimiento del acceso).
+- **Errores de campo** debajo del campo, enlazados con `aria-describedby`. Los errores de la API que no caben en un campo van en un toast, con el código de la petición.
+- **Íconos que comunican algo** llevan texto oculto, no solo `title`.
+- **Toasts:** éxito e información se cierran a los 5 s; los errores se quedan hasta cerrarlos.

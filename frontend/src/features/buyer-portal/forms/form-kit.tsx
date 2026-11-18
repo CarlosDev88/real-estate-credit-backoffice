@@ -1,12 +1,13 @@
 "use client";
 
 import { Button, ConfigProvider, Input, Select } from "antd";
-import Link from "next/link";
 import { useState } from "react";
 import type { ReactNode } from "react";
 import type { FieldValues, Path, UseFormSetError } from "react-hook-form";
 
 import type { FieldControlProps } from "@/components/ui/form-field";
+import { PageHeader } from "@/components/ui/page-header";
+import { ErrorState, LoadingState } from "@/components/ui/state-views";
 import { usePortal } from "@/features/buyer-portal/portal-context";
 import { PORTAL_HOME, PortalPage } from "@/features/buyer-portal/portal-shell";
 import { useBuyerCatalog } from "@/features/buyer-portal/queries";
@@ -30,54 +31,14 @@ export function FormScreen({
   const { readOnly } = usePortal();
   return (
     <PortalPage>
-      <div className="grid justify-items-start gap-2">
-        <Link
-          href={PORTAL_HOME}
-          className="text-text-link text-md inline-flex min-h-11 items-center gap-1 font-medium"
-        >
-          <svg viewBox="0 0 20 20" fill="currentColor" width={16} height={16} aria-hidden="true">
-            <path d="m12.6 4-6 6 6 6 1.4-1.4L9.4 10 14 5.4 12.6 4Z" />
-          </svg>
-          Volver al inicio
-        </Link>
-        <h1 className="m-0 text-3xl font-semibold tracking-tight">{title}</h1>
-        {description && <p className="text-text-secondary text-md m-0">{description}</p>}
-      </div>
+      <PageHeader
+        variant="portal"
+        back={{ href: PORTAL_HOME, label: "Volver al inicio" }}
+        title={title}
+        description={description}
+      />
       <ConfigProvider componentDisabled={readOnly}>{children}</ConfigProvider>
     </PortalPage>
-  );
-}
-
-/** Tarjeta de sección de un formulario. */
-export function FormCard({
-  title,
-  id,
-  children,
-  aside,
-}: {
-  title?: ReactNode;
-  id?: string;
-  children: ReactNode;
-  aside?: ReactNode;
-}) {
-  return (
-    <section
-      id={id}
-      aria-labelledby={id && title ? `${id}-title` : undefined}
-      className="bg-bg-surface border-border-default grid scroll-mt-20 gap-4 rounded-xl border px-4 py-5"
-    >
-      {(title || aside) && (
-        <div className="flex flex-wrap items-baseline gap-2">
-          {title && (
-            <h2 id={id ? `${id}-title` : undefined} className="m-0 text-xl font-semibold">
-              {title}
-            </h2>
-          )}
-          {aside && <div className="ml-auto">{aside}</div>}
-        </div>
-      )}
-      {children}
-    </section>
   );
 }
 
@@ -273,25 +234,19 @@ export function DateInput({
   );
 }
 
-/** Pantalla de carga y de error de un formulario. */
+/** Carga de un formulario del portal: la forma de sus dos primeras tarjetas. */
 export function FormLoading() {
-  return (
-    <div aria-busy="true" className="grid gap-3">
-      <span className="sr-only" role="status">
-        Cargando…
-      </span>
-      <div className="bg-bg-muted h-48 animate-pulse rounded-xl motion-reduce:animate-none" />
-      <div className="bg-bg-muted h-32 animate-pulse rounded-xl motion-reduce:animate-none" />
-    </div>
-  );
+  return <LoadingState variant="portal" blocks={[192, 128]} />;
 }
 
+/** Error al cargar los datos de un formulario del portal (mismo texto en los cuatro). */
 export function FormLoadError({ message, onRetry }: { message: string; onRetry: () => void }) {
   return (
-    <div role="alert" className="grid justify-items-start gap-2">
-      <p className="m-0 font-semibold">No pudimos cargar tus datos</p>
-      <p className="text-text-secondary m-0">{message}</p>
-      <Button onClick={onRetry}>Reintentar</Button>
-    </div>
+    <ErrorState
+      variant="page"
+      title="No pudimos cargar tus datos"
+      message={message}
+      onRetry={onRetry}
+    />
   );
 }

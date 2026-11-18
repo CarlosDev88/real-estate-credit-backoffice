@@ -482,7 +482,7 @@ class OpportunityListView(CrmView):
             client=services.resolve_visible_client(self.actor, data["client_id"]),
             project=services.resolve_project_for_opportunity(self.actor, data["project_id"]),
             origin_item=data["origin_type"],
-            notes=data["notes"],
+            notes=data.get("notes", ""),
         )
         return Response(_opportunity_data(self, opportunity.pk), status=status.HTTP_201_CREATED)
 

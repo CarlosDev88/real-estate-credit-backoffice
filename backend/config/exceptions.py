@@ -6,6 +6,7 @@ Toda respuesta de error tiene la forma::
 """
 
 import logging
+import math
 from collections.abc import Mapping, Sequence
 from typing import Any
 
@@ -52,6 +53,24 @@ _DRF_ERROR_CODES: list[tuple[type[exceptions.APIException], str]] = [
 ]
 
 VALIDATION_MESSAGE = "Los datos enviados no son válidos."
+RATE_LIMITED_MESSAGE = "Hiciste demasiados intentos. Vuelve a intentarlo en {wait}."
+RATE_LIMITED_LATER_MESSAGE = "Hiciste demasiados intentos. Vuelve a intentarlo más tarde."
+
+
+def rate_limited_message(wait: float | None) -> str:
+    """Texto del ``429``: los minutos que faltan, redondeados hacia arriba, o los segundos
+    si es menos de un minuto. Sin espera conocida, "más tarde"."""
+    if wait is None:
+        return RATE_LIMITED_LATER_MESSAGE
+    seconds = max(1, math.ceil(wait))
+    if seconds < 60:
+        amount, unit = seconds, ("segundo" if seconds == 1 else "segundos")
+    else:
+        amount = math.ceil(seconds / 60)
+        unit = "minuto" if amount == 1 else "minutos"
+    return RATE_LIMITED_MESSAGE.format(wait=f"{amount} {unit}")
+
+
 INTERNAL_ERROR_MESSAGE = "Ocurrió un error interno. Intenta de nuevo más tarde."
 
 
@@ -131,6 +150,10 @@ def api_exception_handler(exc: Exception, context: dict[str, Any]) -> Response |
     if isinstance(exc, exceptions.ValidationError):
         message = VALIDATION_MESSAGE
         details = _flatten_validation_errors(exc.detail)
+    elif isinstance(exc, exceptions.Throttled):
+        # Un solo texto para todos los límites; `Retry-After` lo pone el manejador de DRF.
+        message = rate_limited_message(getattr(exc, "wait", None))
+        details = []
     else:
         message = str(exc.detail)
         details = getattr(exc, "details", None) or []

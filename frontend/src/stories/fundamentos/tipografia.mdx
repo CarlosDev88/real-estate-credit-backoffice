@@ -1,0 +1,26 @@
+import { Meta, Story } from "@storybook/addon-docs/blocks";
+
+import * as Bloques from "./fundamentos.stories";
+
+<Meta title="Fundamentos/Tipografía" />
+
+# Tipografía
+
+Dos familias: **Inter** para todo el texto y **JetBrains Mono** para códigos (`SOL-000184`). Las dos se sirven desde el propio frontend con `@fontsource`, solo con los pesos que usan los tokens, sin peticiones a Google.
+
+## Familias y pesos
+
+<Story of={Bloques.Familias} />
+
+## Escala
+
+Base de 14 px (`text.md`) en el backoffice. Cada tamaño tiene su interlineado; en Tailwind, `text-md` aplica los dos.
+
+<Story of={Bloques.EscalaTipografica} />
+
+## Reglas
+
+- **No hay tamaños fuera de la escala** (no hay 11 px). Lo más pequeño es `text.xs` (12 px).
+- **Etiquetas en minúscula inicial,** `text.xs`, peso medio y `text.secondary`: encabezados de tabla, etiquetas de KPI, grupos del menú y de listas. Nada de mayúsculas espaciadas.
+- **Cifras tabulares** (`tabular-nums`) en montos y porcentajes, para que las columnas se alineen.
+- **Códigos en mono** (`font-mono`): números de solicitud, de radicado y códigos de error.

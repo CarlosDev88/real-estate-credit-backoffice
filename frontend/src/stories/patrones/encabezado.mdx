@@ -1,0 +1,39 @@
+import { Canvas, Meta } from "@storybook/addon-docs/blocks";
+
+import * as Shell from "../../components/ui/app-shell.stories";
+import * as Header from "../../components/ui/page-header.stories";
+
+<Meta title="Patrones/Encabezado de página" />
+
+# Encabezado de página con migas y acciones
+
+En el backoffice, las migas van en la barra superior del `AppShell` ("Comercial / Solicitudes / SOL-000182"), y la página pone su `PageHeader`: volver, título, una línea de descripción y las acciones.
+
+<Canvas of={Shell.ConMiga} />
+
+## El encabezado
+
+<Canvas of={Header.ConVolver} />
+
+## Cómo se arma
+
+```tsx
+export function ClientDetail({ client }: { client: ClientDetail }) {
+  useShellTrail(client.full_name); // la última miga
+  return (
+    <PageHeader
+      back={{ href: "/clientes", label: "Volver a clientes" }}
+      title={client.full_name}
+      description={`Cliente desde ${formatDate(client.created_at)}`}
+      actions={<Button type="primary">Crear solicitud</Button>}
+    />
+  );
+}
+```
+
+## Reglas
+
+- **Un solo `h1` por vista:** el del `PageHeader`.
+- **Una acción principal,** y que se pueda ejecutar. Las demás van como botones normales o en "Más acciones".
+- **La descripción es una línea:** qué es la vista o su estado. Los códigos van en mono.
+- **En el portal,** `variant="portal"`: el enlace volver tiene 44 px de alto para el dedo, y no hay migas.

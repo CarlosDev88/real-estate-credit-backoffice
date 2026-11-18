@@ -160,7 +160,7 @@ Las cookies de sesión usan `HttpOnly`, `Secure`, `SameSite=Lax` y `Path=/`. La 
 | --- | --- |
 | `INVALID_CREDENTIALS` | Credenciales internas inválidas. |
 | `USER_INACTIVE` | Usuario interno desactivado. |
-| `RATE_LIMITED` | Límite de consumo superado. |
+| `RATE_LIMITED` | Límite de consumo superado. `message`: "Hiciste demasiados intentos. Vuelve a intentarlo en N minutos." (redondeado hacia arriba; en segundos si falta menos de un minuto). |
 | `SESSION_EXPIRED` | Sesión interna o del comprador vencida. |
 | `MAGIC_LINK_EXPIRED` | Enlace mágico vencido. |
 | `MAGIC_LINK_CONSUMED` | Enlace ya utilizado. |
@@ -730,6 +730,7 @@ Los cinco permisos son de `ADMIN` y `ADVISOR`; el broker y la constructora recib
 - **Crear:** exactamente uno de `application_id` u `opportunity_id`, visible para el actor (si no, `400 VALIDATION_ERROR` en ese campo). Una solicitud terminada responde `409 APPLICATION_CLOSED`. `assigned_to_id` es el actor por omisión y debe ser un usuario activo con rol `ADMIN` o `ADVISOR` (si no, `400`). `priority_code` es `MEDIUM` por omisión. Solo se crean tareas `MANUAL`.
 - **Estados:** una tarea `PENDING` se edita, se completa o se cancela; una `COMPLETED` o `CANCELLED` responde `409 TASK_NOT_PENDING`.
 - **`due`** (fecha de Bogotá, solo tareas `PENDING` con fecha): `overdue` (antes de hoy), `today` y `upcoming` (después de hoy).
+- **Etiquetas:** el estado de cada tarea trae `status_label`. Para los filtros, el bootstrap trae los catálogos de sistema `task_status` (`PENDING` "Pendiente", `COMPLETED` "Completada", `CANCELLED` "Cancelada") y `task_due` (`overdue` "Vencidas", `today` "Hoy", `upcoming` "Próximas"), con los mismos códigos del contrato. No se editan desde la administración.
 - **Orden:** `due_at`, con las que no tienen fecha al final; después, la fecha de creación.
 
 Respuesta:
@@ -1972,12 +1973,46 @@ Aunque las transiciones se consultan por API, los estados estructurales del domi
 | `POST` | `/commission-plans/{plan_id}/close` | `commission_plans.manage` | Fija el fin de vigencia. |
 | `GET` | `/commission-settlements` | `commissions.read` | Lista liquidaciones; filtros por estado, banco, asesor, broker, fechas y revisión pendiente. |
 | `GET` | `/commission-settlements/{settlement_id}` | `commissions.read` | Detalle con sus partes. |
-| `POST` | `/applications/{application_id}/commission-settlement` | `commissions.manage` | Liquida manualmente una solicitud `DISBURSED`; idempotente. |
+| `POST` | `/applications/{application_id}/commission-settlement` | `commissions.manage` | Liquida manualmente una solicitud `DISBURSED`; idempotente (`201` si crea, `200` si ya existía). |
 | `POST` | `/commission-settlements/{settlement_id}/void` | `commissions.manage` | Anula con motivo, si ninguna parte está pagada. |
 | `POST` | `/commission-shares/{share_id}/pay` | `commissions.manage` | Registra el pago de una parte con fecha y referencia. |
 | `GET` | `/me/commissions` | `commissions.read_own` | Partes propias del asesor o broker autenticado. |
 
-La liquidación se crea automáticamente al procesar el evento `APPLICATION_DISBURSED`, que se emite en la misma transacción que la respuesta bancaria de desembolso. Usa el monto desembolsado y el plan vigente del producto en la fecha de desembolso. Con origen broker, la comisión se reparte entre asesor y broker según el plan; con cualquier otro origen, el 100% es del asesor. Los `POST` de liquidación, anulación y pago requieren `Idempotency-Key`. En `/me/commissions` cada usuario ve solo su parte; el broker no ve monto base, tasa, total ni la parte del asesor. Detalle completo en `specs/TAREA-comisiones.md`.
+Los permisos `commission_plans.*` y `commissions.read`/`.manage` son del administrador; `commissions.read_own`, del asesor y del broker. Cualquier otro rol recibe `403`.
+
+**Planes.**
+- La vigencia es `[valid_from, valid_until)`: el fin es exclusivo.
+- `rate_pct` es mayor que 0 y como mucho 100. `advisor_share_pct` + `broker_share_pct` = 100, y el asesor lleva la porción mayor. Si no, responde `400` en el campo.
+- Dos planes del mismo producto no pueden compartir un día (`409 COMMISSION_PLAN_OVERLAP`).
+- La respuesta trae `ETag` con la versión. `PATCH` exige `If-Match` (`428` sin él, `409 STALE_VERSION` con otra versión).
+- Un plan que alguna liquidación usó no se edita (`409 COMMISSION_PLAN_IN_USE`): se cierra con `/close`, que solo adelanta el fin, y se crea uno nuevo.
+- `in_use` dice si ya se usó.
+
+**Liquidación.**
+- **Disparo automático:** se crea al registrar una respuesta `DISBURSED` (§20), por la señal `filing_response_recorded`, una vez confirmada la transacción.
+- **Base y plan:** la base es `disbursed_amount_cop`. El plan es el vigente del producto radicado en la fecha de Bogotá de `received_at`.
+- **Cálculo:** con `ROUND_HALF_UP` al peso, `total = base × rate_pct / 100`. Con origen `BROKER`, el broker (`opportunity.origin_user`) recibe `round(total × broker_share_pct / 100)` y el asesor asignado, el resto; las partes siempre suman el total. Con cualquier otro origen, el 100 % es del asesor. `BROKER` sin usuario de origen da el 100 % al asesor y `needs_review = true`.
+- **Sin plan vigente:** la liquidación automática no falla. Queda en la actividad de la solicitud ("No se liquidó la comisión: no hay plan vigente") y el administrador liquida a mano.
+- **Liquidar a mano:** `POST /applications/{id}/commission-settlement` responde `201` si crea, `200` si ya había una vigente, `409 APPLICATION_NOT_DISBURSED` o `422 COMMISSION_PLAN_NOT_FOUND`.
+- **Una sola vigente:** hay una sola liquidación `ACTIVE` por solicitud. La fila de la solicitud se bloquea, así que un evento repetido o dos peticiones simultáneas no duplican.
+- **Corrección del desembolso** (una respuesta con `corrects_response`): si no hay partes pagadas, se anula la anterior y se crea otra con el monto nuevo; con alguna pagada, solo se marca `needs_review`. Hoy `filings` no permite corregir un `DISBURSED`, así que la corrección se hace anulando y volviendo a liquidar.
+- **Anular:** `/void` exige `reason`. Con alguna parte pagada responde `409 COMMISSION_SETTLEMENT_HAS_PAYMENTS`. Anula también las partes; anular una ya anulada la devuelve igual. Después se puede volver a liquidar.
+
+**Pagos.** `/commission-shares/{id}/pay` recibe `paid_at` (no futura) y `payment_reference`, ambos obligatorios. Solo se paga una parte `PENDING` (`409 COMMISSION_SHARE_NOT_PAYABLE`).
+
+**Consultas.**
+- `GET /commission-settlements` filtra por `status`, `bank_id`, `advisor_id`, `broker_id`, `needs_review` y `date_from`/`date_to` (fecha de desembolso, días de Bogotá).
+- La liquidación trae `lead_origin_label`, `status_label`, `disbursed_on` y sus `shares` con `beneficiary_role_label` y `status_label`.
+
+**Mis comisiones.**
+- `/me/commissions` está paginado y filtra por `status` y `date_from`/`date_to`.
+- Cada fila trae solo la parte propia: `{id, application_code, client_display_name, disbursed_on, share_pct, amount_cop, status, status_label, paid_at}`.
+- Nunca trae la base, la tasa, el total ni la parte del otro beneficiario.
+
+**Idempotencia y trazabilidad.**
+- Los tres `POST` (liquidar, anular y pagar) aceptan `Idempotency-Key` (opcional, §6). Además, la lógica es idempotente por sí misma.
+- Crear, editar y cerrar planes, liquidar, anular y pagar quedan en la auditoría (§24.1, sin montos).
+- Liquidar, anular, pagar y "sin plan" quedan en la actividad de la solicitud (§21.1, sin montos).
 
 ## 24. Auditoría y operación técnica
 
@@ -2079,7 +2114,9 @@ En bancos y reglas, la configuración (`/banks`, `/bank-products`, `/bank-policy
 | Lecturas generales | 600 / min | Usuario |
 | Exportaciones | 5 trabajos / hora | Usuario |
 
-Al superar el límite se retorna `429 RATE_LIMITED` y `Retry-After`. Los números son configuración inicial y deben ajustarse con observabilidad; no sustituyen los límites de tamaño, cuotas de almacenamiento ni protección perimetral.
+Al superar el límite se retorna `429 RATE_LIMITED` y `Retry-After`, con el mismo texto para todos los límites: "Hiciste demasiados intentos. Vuelve a intentarlo en N minutos." (`N` redondeado hacia arriba; en segundos si falta menos de un minuto). Los números son configuración inicial y deben ajustarse con observabilidad; no sustituyen los límites de tamaño, cuotas de almacenamiento ni protección perimetral.
+
+**Solo en local:** con `DEBUG=True` y la variable `AUTH_RATE_LIMIT_MULTIPLIER` (por omisión 1), cada cupo de `AUTH_RATE_LIMITS` (también el de reportes) se multiplica por ese número, para los E2E locales. Con `DEBUG=False` se ignora siempre.
 
 ## 27. Flujos completos consumiendo la API
 

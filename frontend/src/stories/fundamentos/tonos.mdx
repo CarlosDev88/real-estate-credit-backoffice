@@ -1,0 +1,31 @@
+import { Meta, Story } from "@storybook/addon-docs/blocks";
+
+import * as Bloques from "./fundamentos.stories";
+
+<Meta title="Fundamentos/Tonos de estado" />
+
+# Tonos de estado
+
+Seis tonos cubren todos los estados de solicitud, documento, archivo, regla, radicación y oportunidad. `status-tones.ts` asigna un tono a cada código, y `StatusBadge` lo pinta.
+
+<Story of={Bloques.TonosLeyenda} />
+
+## Regla: el estado nunca solo por color
+
+El badge siempre lleva el texto. El color ayuda a ver el estado de un vistazo, pero quien no distingue colores o usa un lector de pantalla tiene que poder leerlo.
+
+<Story of={Bloques.TonosRegla} />
+
+## Es presentación, no lógica de negocio
+
+El mapa solo decide el color de una etiqueta que llega del backend. **El texto siempre viene de la API** (`label`), y un código desconocido cae en `neutral`, así que un estado nuevo nunca rompe la interfaz. El frontend no define estados, listas ni transiciones (REQUERIMIENTOS §8.5).
+
+```tsx
+<StatusBadge kind="application" code={application.status} label={application.status_label} />
+```
+
+## Tono por código
+
+En esta tabla el badge muestra el código para que se vea el mapa completo; en la app muestra la etiqueta de la API.
+
+<Story of={Bloques.TonosPorCodigo} />

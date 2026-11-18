@@ -1,0 +1,19 @@
+import { Canvas, Meta } from "@storybook/addon-docs/blocks";
+
+import * as Paneles from "../../components/ui/panels.stories";
+
+<Meta title="Patrones/Panel lateral de revisión" />
+
+# Panel lateral de revisión
+
+Para revisar o ver el detalle de una fila sin dejar la vista: el documento de un expediente, una oportunidad de un cliente. `SidePanel` se abre a la derecha (520 px) y en móvil ocupa toda la pantalla.
+
+<Canvas of={Paneles.PanelLateral} />
+
+## Reglas
+
+- **Arriba, de quién es** (`eyebrow`: "Daniel Mejía · Titular") **y qué es** (el título, un `h2`).
+- **El foco va al título** al abrir y al pasar al siguiente (`titleRef`, con un ref de callback): se anuncia y queda dentro del panel. Al cerrar, vuelve al botón que lo abrió.
+- **Pie con las acciones:** cancelar, "Siguiente" (si hay más por revisar) y la principal a la derecha. Si la decisión es rechazar, el botón principal pasa a `danger` y dice "Rechazar documento".
+- **La URL lleva el panel abierto** cuando tiene sentido compartirlo (`?oportunidad=<id>`).
+- Escape lo cierra, y el contenido se vacía al cerrarse.

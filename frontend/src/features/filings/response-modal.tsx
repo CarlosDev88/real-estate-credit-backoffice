@@ -1,11 +1,12 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Checkbox, Input, InputNumber, Modal, Select } from "antd";
+import { Checkbox, Input, InputNumber, Select } from "antd";
 import { useId, useMemo } from "react";
 import { Controller, useForm, useWatch, type FieldErrors } from "react-hook-form";
 import { z } from "zod";
 
+import { ActionModal } from "@/components/ui/action-modal";
 import { MoneyInput } from "@/components/ui/money";
 import { FormField, useFormErrorHandler } from "@/components/ui/form-field";
 import { useCatalog, type MetadataItem } from "@/features/applications/queries";
@@ -384,270 +385,266 @@ export function RecordResponseModal({
     : `Registrar respuesta de la radicación #${filing.sequence_number}`;
 
   return (
-    <Modal
+    <ActionModal
       open={open}
       title={title}
       width={640}
-      onCancel={close}
+      description={
+        correcting
+          ? "La corrección reemplaza los datos de la última respuesta y no cambia ningún estado."
+          : undefined
+      }
       okText={correcting ? "Guardar corrección" : "Registrar respuesta"}
-      cancelText="Cancelar"
-      onOk={() => void submit()}
-      confirmLoading={record.isPending}
-      destroyOnHidden
+      loading={record.isPending}
+      onSubmit={submit}
+      onCancel={close}
     >
-      <form noValidate onSubmit={(e) => void submit(e)} className="grid gap-4 pt-2">
-        {correcting && (
-          <p className="text-text-secondary m-0 text-sm">
-            La corrección reemplaza los datos de la última respuesta y no cambia ningún estado.
-          </p>
-        )}
-        <div className="grid gap-4 min-[600px]:grid-cols-2">
-          <FormField
-            id={`${ids}-type`}
-            label="Tipo de respuesta"
-            error={errors.response_type?.message}
-          >
-            {(ctl) => (
-              <Controller
-                control={control}
-                name="response_type"
-                render={({ field }) => (
-                  <Select
-                    {...ctl}
-                    value={field.value || undefined}
-                    onChange={field.onChange}
-                    disabled={!!correcting}
-                    placeholder="Elige el tipo"
-                    options={optionsOf(types.items)}
-                    loading={types.isPending}
-                    virtual={false}
-                  />
-                )}
-              />
-            )}
-          </FormField>
-          <FormField
-            id={`${ids}-received`}
-            label="Fecha y hora de la respuesta"
-            error={errors.received_at?.message}
-          >
-            {(ctl) => (
-              <Controller
-                control={control}
-                name="received_at"
-                render={({ field }) => (
-                  <Input {...field} {...ctl} type="datetime-local" max={toLocalInput(new Date())} />
-                )}
-              />
-            )}
-          </FormField>
-        </div>
+      <div className="grid gap-4 min-[600px]:grid-cols-2">
+        <FormField
+          id={`${ids}-type`}
+          label="Tipo de respuesta"
+          error={errors.response_type?.message}
+        >
+          {(ctl) => (
+            <Controller
+              control={control}
+              name="response_type"
+              render={({ field }) => (
+                <Select
+                  {...ctl}
+                  value={field.value || undefined}
+                  onChange={field.onChange}
+                  disabled={!!correcting}
+                  placeholder="Elige el tipo"
+                  options={optionsOf(types.items)}
+                  loading={types.isPending}
+                  virtual={false}
+                />
+              )}
+            />
+          )}
+        </FormField>
+        <FormField
+          id={`${ids}-received`}
+          label="Fecha y hora de la respuesta"
+          error={errors.received_at?.message}
+        >
+          {(ctl) => (
+            <Controller
+              control={control}
+              name="received_at"
+              render={({ field }) => (
+                <Input {...field} {...ctl} type="datetime-local" max={toLocalInput(new Date())} />
+              )}
+            />
+          )}
+        </FormField>
+      </div>
 
-        {type && (
-          <>
+      {type && (
+        <>
+          <FormField
+            id={`${ids}-reference`}
+            label="Referencia del banco"
+            optional="opcional"
+            error={errors.external_reference?.message}
+          >
+            {(ctl) => (
+              <Controller
+                control={control}
+                name="external_reference"
+                render={({ field }) => <Input {...field} {...ctl} maxLength={REFERENCE_MAX} />}
+              />
+            )}
+          </FormField>
+
+          {shows("reason_code") && (
+            <FormField id={`${ids}-reason`} label="Motivo" error={errors.reason_code?.message}>
+              {(ctl) => (
+                <Controller
+                  control={control}
+                  name="reason_code"
+                  render={({ field }) => (
+                    <Select
+                      {...ctl}
+                      value={field.value || undefined}
+                      onChange={field.onChange}
+                      placeholder="Elige el motivo"
+                      options={optionsOf(reasons.items)}
+                      loading={reasons.isPending}
+                      virtual={false}
+                    />
+                  )}
+                />
+              )}
+            </FormField>
+          )}
+
+          {(shows("approved_amount_cop") ||
+            shows("approved_term_months") ||
+            shows("valid_until")) && (
+            <div className="grid gap-4 min-[600px]:grid-cols-3">
+              {shows("approved_amount_cop") && (
+                <FormField
+                  id={`${ids}-approved`}
+                  label="Monto aprobado"
+                  optional={optional("approved_amount_cop")}
+                  error={errors.approved_amount_cop?.message}
+                >
+                  {(ctl) => (
+                    <Controller
+                      control={control}
+                      name="approved_amount_cop"
+                      render={({ field }) => (
+                        <MoneyInput
+                          {...ctl}
+                          value={field.value}
+                          onChange={field.onChange}
+                          className="w-full"
+                        />
+                      )}
+                    />
+                  )}
+                </FormField>
+              )}
+              {shows("approved_term_months") && (
+                <FormField
+                  id={`${ids}-term`}
+                  label="Plazo en meses"
+                  optional={optional("approved_term_months")}
+                  error={errors.approved_term_months?.message}
+                >
+                  {(ctl) => (
+                    <Controller
+                      control={control}
+                      name="approved_term_months"
+                      render={({ field }) => (
+                        <InputNumber<number>
+                          {...ctl}
+                          value={field.value}
+                          onChange={(v) => field.onChange(v ?? null)}
+                          min={1}
+                          precision={0}
+                          className="w-full"
+                        />
+                      )}
+                    />
+                  )}
+                </FormField>
+              )}
+              {shows("valid_until") && (
+                <FormField
+                  id={`${ids}-valid`}
+                  label="Vigencia"
+                  optional={optional("valid_until")}
+                  error={errors.valid_until?.message}
+                >
+                  {(ctl) => (
+                    <Controller
+                      control={control}
+                      name="valid_until"
+                      render={({ field }) => <Input {...field} {...ctl} type="date" />}
+                    />
+                  )}
+                </FormField>
+              )}
+            </div>
+          )}
+
+          {shows("disbursed_amount_cop") && (
             <FormField
-              id={`${ids}-reference`}
-              label="Referencia del banco"
-              optional="opcional"
-              error={errors.external_reference?.message}
+              id={`${ids}-disbursed`}
+              label="Monto desembolsado"
+              optional={optional("disbursed_amount_cop")}
+              error={errors.disbursed_amount_cop?.message}
             >
               {(ctl) => (
                 <Controller
                   control={control}
-                  name="external_reference"
-                  render={({ field }) => <Input {...field} {...ctl} maxLength={REFERENCE_MAX} />}
-                />
-              )}
-            </FormField>
-
-            {shows("reason_code") && (
-              <FormField id={`${ids}-reason`} label="Motivo" error={errors.reason_code?.message}>
-                {(ctl) => (
-                  <Controller
-                    control={control}
-                    name="reason_code"
-                    render={({ field }) => (
-                      <Select
-                        {...ctl}
-                        value={field.value || undefined}
-                        onChange={field.onChange}
-                        placeholder="Elige el motivo"
-                        options={optionsOf(reasons.items)}
-                        loading={reasons.isPending}
-                        virtual={false}
-                      />
-                    )}
-                  />
-                )}
-              </FormField>
-            )}
-
-            {(shows("approved_amount_cop") ||
-              shows("approved_term_months") ||
-              shows("valid_until")) && (
-              <div className="grid gap-4 min-[600px]:grid-cols-3">
-                {shows("approved_amount_cop") && (
-                  <FormField
-                    id={`${ids}-approved`}
-                    label="Monto aprobado"
-                    optional={optional("approved_amount_cop")}
-                    error={errors.approved_amount_cop?.message}
-                  >
-                    {(ctl) => (
-                      <Controller
-                        control={control}
-                        name="approved_amount_cop"
-                        render={({ field }) => (
-                          <MoneyInput
-                            {...ctl}
-                            value={field.value}
-                            onChange={field.onChange}
-                            className="w-full"
-                          />
-                        )}
-                      />
-                    )}
-                  </FormField>
-                )}
-                {shows("approved_term_months") && (
-                  <FormField
-                    id={`${ids}-term`}
-                    label="Plazo en meses"
-                    optional={optional("approved_term_months")}
-                    error={errors.approved_term_months?.message}
-                  >
-                    {(ctl) => (
-                      <Controller
-                        control={control}
-                        name="approved_term_months"
-                        render={({ field }) => (
-                          <InputNumber<number>
-                            {...ctl}
-                            value={field.value}
-                            onChange={(v) => field.onChange(v ?? null)}
-                            min={1}
-                            precision={0}
-                            className="w-full"
-                          />
-                        )}
-                      />
-                    )}
-                  </FormField>
-                )}
-                {shows("valid_until") && (
-                  <FormField
-                    id={`${ids}-valid`}
-                    label="Vigencia"
-                    optional={optional("valid_until")}
-                    error={errors.valid_until?.message}
-                  >
-                    {(ctl) => (
-                      <Controller
-                        control={control}
-                        name="valid_until"
-                        render={({ field }) => <Input {...field} {...ctl} type="date" />}
-                      />
-                    )}
-                  </FormField>
-                )}
-              </div>
-            )}
-
-            {shows("disbursed_amount_cop") && (
-              <FormField
-                id={`${ids}-disbursed`}
-                label="Monto desembolsado"
-                optional={optional("disbursed_amount_cop")}
-                error={errors.disbursed_amount_cop?.message}
-              >
-                {(ctl) => (
-                  <Controller
-                    control={control}
-                    name="disbursed_amount_cop"
-                    render={({ field }) => (
-                      <MoneyInput
-                        {...ctl}
-                        value={field.value}
-                        onChange={field.onChange}
-                        className="w-full"
-                      />
-                    )}
-                  />
-                )}
-              </FormField>
-            )}
-
-            {shows("observations") && (
-              <div className="grid gap-2">
-                <span className="text-sm font-medium">Documentos observados</span>
-                <p className="text-text-tertiary m-0 text-xs">
-                  Cada documento elegido se rechaza con su motivo y el comprador lo ve para
-                  corregirlo.
-                </p>
-                <Controller
-                  control={control}
-                  name="observations"
+                  name="disbursed_amount_cop"
                   render={({ field }) => (
-                    <ObservationPicker
-                      applicationId={applicationId}
+                    <MoneyInput
+                      {...ctl}
                       value={field.value}
                       onChange={field.onChange}
-                      errors={errors.observations}
-                      reasons={observationReasons.items}
-                      idPrefix={ids}
+                      className="w-full"
                     />
                   )}
                 />
-                {(errors.observations?.message || errors.observations?.root?.message) && (
-                  <p role="alert" className="text-tone-danger-fg m-0 text-sm">
-                    {errors.observations?.message ?? errors.observations?.root?.message}
-                  </p>
-                )}
-              </div>
-            )}
+              )}
+            </FormField>
+          )}
 
-            {shows("public_message") && (
-              <FormField
-                id={`${ids}-public`}
-                label="Mensaje al comprador"
-                optional={optional("public_message")}
-                help="El comprador lo ve en su portal."
-                error={errors.public_message?.message}
-              >
-                {(ctl) => (
-                  <Controller
-                    control={control}
-                    name="public_message"
-                    render={({ field }) => (
-                      <Input.TextArea {...field} {...ctl} rows={2} maxLength={MESSAGE_MAX} />
-                    )}
+          {shows("observations") && (
+            <div className="grid gap-2">
+              <span className="text-sm font-medium">Documentos observados</span>
+              <p className="text-text-tertiary m-0 text-xs">
+                Cada documento elegido se rechaza con su motivo y el comprador lo ve para
+                corregirlo.
+              </p>
+              <Controller
+                control={control}
+                name="observations"
+                render={({ field }) => (
+                  <ObservationPicker
+                    applicationId={applicationId}
+                    value={field.value}
+                    onChange={field.onChange}
+                    errors={errors.observations}
+                    reasons={observationReasons.items}
+                    idPrefix={ids}
                   />
                 )}
-              </FormField>
-            )}
+              />
+              {(errors.observations?.message || errors.observations?.root?.message) && (
+                <p role="alert" className="text-tone-danger-fg m-0 text-sm">
+                  {errors.observations?.message ?? errors.observations?.root?.message}
+                </p>
+              )}
+            </div>
+          )}
 
-            {shows("internal_comment") && (
-              <FormField
-                id={`${ids}-internal`}
-                label="Nota interna"
-                optional={optional("internal_comment")}
-                help="El texto del banco o tu nota. No la ven el comprador ni el broker."
-                error={errors.internal_comment?.message}
-              >
-                {(ctl) => (
-                  <Controller
-                    control={control}
-                    name="internal_comment"
-                    render={({ field }) => (
-                      <Input.TextArea {...field} {...ctl} rows={3} maxLength={INTERNAL_MAX} />
-                    )}
-                  />
-                )}
-              </FormField>
-            )}
-          </>
-        )}
-      </form>
-    </Modal>
+          {shows("public_message") && (
+            <FormField
+              id={`${ids}-public`}
+              label="Mensaje al comprador"
+              optional={optional("public_message")}
+              help="El comprador lo ve en su portal."
+              error={errors.public_message?.message}
+            >
+              {(ctl) => (
+                <Controller
+                  control={control}
+                  name="public_message"
+                  render={({ field }) => (
+                    <Input.TextArea {...field} {...ctl} rows={2} maxLength={MESSAGE_MAX} />
+                  )}
+                />
+              )}
+            </FormField>
+          )}
+
+          {shows("internal_comment") && (
+            <FormField
+              id={`${ids}-internal`}
+              label="Nota interna"
+              optional={optional("internal_comment")}
+              help="El texto del banco o tu nota. No la ven el comprador ni el broker."
+              error={errors.internal_comment?.message}
+            >
+              {(ctl) => (
+                <Controller
+                  control={control}
+                  name="internal_comment"
+                  render={({ field }) => (
+                    <Input.TextArea {...field} {...ctl} rows={3} maxLength={INTERNAL_MAX} />
+                  )}
+                />
+              )}
+            </FormField>
+          )}
+        </>
+      )}
+    </ActionModal>
   );
 }
