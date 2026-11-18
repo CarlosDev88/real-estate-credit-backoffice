@@ -13,6 +13,7 @@ from rest_framework import status
 from rest_framework.request import Request
 from rest_framework.response import Response
 
+from apps.audit.actions import AuditAction
 from apps.documents import packages
 from apps.documents.dossier_serializers import DocumentDownloadSerializer
 from apps.documents.dossier_views import (
@@ -99,6 +100,9 @@ class DocumentPackageJobDetailView(PackageView):
 
 
 class DocumentPackageJobDownloadView(PackageView):
+    # Auditoría (módulo 14, apps/audit/hooks.py).
+    audit_actions = {"GET": AuditAction.PACKAGE_DOWNLOADED}
+    audit_resource_type = "document_package_jobs"
     required_permissions = {"GET": PREPARE}
     throttle_classes = [DocumentDownloadRateThrottle]
 

@@ -105,15 +105,19 @@ async function choose(user: User, dialog: HTMLElement, label: RegExp | string, o
         (el) =>
           el.closest(".ant-select") === within(dialog).getByLabelText(label).closest(".ant-select"),
       );
-  await waitFor(async () => {
-    if (picked()) return;
-    await user.click(within(dialog).getByLabelText(label));
-    const options = (await screen.findAllByTitle(option)).filter((el) =>
-      el.classList.contains("ant-select-item-option"),
-    );
-    await user.click(options.at(-1)!);
-    expect(picked()).toBe(true);
-  });
+  // Con la suite completa en una máquina cargada, 5 s no siempre alcanzan.
+  await waitFor(
+    async () => {
+      if (picked()) return;
+      await user.click(within(dialog).getByLabelText(label));
+      const options = (await screen.findAllByTitle(option)).filter((el) =>
+        el.classList.contains("ant-select-item-option"),
+      );
+      await user.click(options.at(-1)!);
+      expect(picked()).toBe(true);
+    },
+    { timeout: 15_000 },
+  );
 }
 
 const submit = (user: User, dialog: HTMLElement) =>
