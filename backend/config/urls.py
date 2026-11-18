@@ -39,6 +39,7 @@ api_v1_patterns = [
     path("", include("apps.workday.urls")),
     path("", include("apps.tasks.urls")),
     path("", include("apps.activity.urls")),
+    path("", include("apps.audit.urls")),
     path("", include("apps.reporting.urls")),
 ]
 

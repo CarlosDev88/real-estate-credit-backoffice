@@ -17,6 +17,7 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 
 from apps.applications.services import get_application_scope
+from apps.audit.actions import AuditAction
 from apps.documents.dossier_serializers import DocumentDownloadSerializer
 from apps.documents.dossier_views import no_store
 from apps.idempotency.decorators import IDEMPOTENCY_PARAMETER, idempotency_responses, idempotent
@@ -188,6 +189,9 @@ class ReportExportJobDetailView(ExportJobView):
 
 class ReportExportJobDownloadView(ExportJobView):
     throttle_classes = [DocumentDownloadRateThrottle]
+    # Auditoría (módulo 14, apps/audit/hooks.py): como la descarga de paquetes.
+    audit_actions = {"GET": AuditAction.REPORT_EXPORT_DOWNLOADED}
+    audit_resource_type = "report_export_jobs"
 
     @extend_schema(
         tags=[REPORTS_TAG],

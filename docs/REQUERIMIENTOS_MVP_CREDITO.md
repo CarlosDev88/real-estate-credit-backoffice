@@ -541,7 +541,8 @@ Ejemplo reducido de metadato que consume el frontend:
 | Cargar documento | No | No | No | No | Propio |
 | Aprobar/rechazar/exonerar documento | Sí | Sí | No | No | No |
 | Crear/actualizar radicación | Sí | Sí | No | No | No |
-| Notas internas / auditoría | Sí | Alcance asignado | No | No | No |
+| Notas internas | Sí | Alcance asignado | No | No | No |
+| Auditoría técnica | Sí | No | No | No | No |
 | Comisiones | Planes, liquidación y pagos | Solo su parte | Solo su parte | No | No |
 
 El servidor calcula el alcance desde `request.user`, membresía partner, asignaciones y relaciones de expediente. Ningún `partner_id`, `client_id` o `user_id` que venga del frontend amplía privilegios.
@@ -677,7 +678,7 @@ Los límites se implementan en Redis o equivalente, no en memoria del proceso. L
 - **Validación de proxy:** solo el proxy/WAF de confianza puede suministrar IP de cliente; la aplicación no debe confiar ciegamente en `X-Forwarded-For` enviado desde internet.
 - **Autenticación reforzada:** se deja preparada la activación de MFA para `ADMIN` y `ADVISOR`. Si no entra a la primera entrega, el riesgo residual debe aprobarse explícitamente antes de producción.
 - **Dependencias y secretos:** análisis de vulnerabilidades y detección de secretos en CI; versiones corregidas por parche de seguridad; rotación de claves JWT, contraseñas de base de datos y secretos de proveedores mediante procedimiento documentado.
-- **Auditoría y privacidad:** se auditan inicios de sesión, fallos, descargas, cambios de permisos, acceso a expedientes y acciones sensibles. La bitácora no puede contener contraseñas, tokens, encabezados `Authorization`, números de documento completos ni URLs firmadas.
+- **Auditoría y privacidad:** se auditan inicios de sesión, fallos, descargas, cambios de permisos, los accesos denegados (todo `403`) y las acciones sensibles sobre el expediente. En el MVP, las lecturas permitidas del expediente no se auditan: su trazabilidad funcional es la actividad (API §21.1). La bitácora no puede contener contraseñas, tokens, encabezados `Authorization`, números de documento completos ni URLs firmadas (API §24.1).
 - **Respaldo y recuperación:** copias cifradas de PostgreSQL y objetos, con prueba periódica de restauración. Se definen RPO/RTO antes de producción; el backup sin prueba de restauración no se considera control suficiente.
 
 ## 10. Estrategia de pruebas

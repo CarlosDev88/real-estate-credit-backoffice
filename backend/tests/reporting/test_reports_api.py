@@ -405,6 +405,7 @@ def test_the_csv_emits_report_exported_once_with_the_validated_filters(
         },
         "row_count": 1,
         "format": "csv",
+        "job": None,
     }
 
 

@@ -18,6 +18,7 @@ from rest_framework.generics import GenericAPIView
 from rest_framework.request import Request
 from rest_framework.response import Response
 
+from apps.audit.actions import AuditAction
 from apps.documents import services
 from apps.documents.models import (
     DocumentRequirement,
@@ -90,6 +91,9 @@ def _get_type(document_type_id: Any) -> DocumentType:
 
 
 class DocumentTypeListView(PermissionCodeView):
+    # Auditoría (módulo 14, apps/audit/hooks.py).
+    audit_actions = {"POST": AuditAction.DOCUMENT_TYPE_CHANGED}
+    audit_resource_type = "document_types"
     required_permissions = {"GET": READ, "POST": CREATE}
     filter_backends = [SearchFilter, StrictOrderingFilter]
     search_fields = ["code", "name"]
@@ -135,6 +139,9 @@ class DocumentTypeListView(PermissionCodeView):
 
 
 class DocumentTypeDetailView(PermissionCodeView):
+    # Auditoría (módulo 14, apps/audit/hooks.py).
+    audit_actions = {"PATCH": AuditAction.DOCUMENT_TYPE_CHANGED}
+    audit_resource_type = "document_types"
     required_permissions = {"GET": READ, "PATCH": UPDATE}
 
     @extend_schema(
@@ -233,6 +240,9 @@ _CATALOG_FILTERS = (
 
 
 class DocumentRequirementListView(PermissionCodeView):
+    # Auditoría (módulo 14, apps/audit/hooks.py).
+    audit_actions = {"POST": AuditAction.DOCUMENT_REQUIREMENT_CHANGED}
+    audit_resource_type = "document_requirements"
     required_permissions = {"GET": READ, "POST": CREATE}
     filter_backends = [StrictOrderingFilter]
     ordering_fields = ["sort_order", "version", "valid_from", "created_at", "updated_at"]
@@ -326,6 +336,9 @@ class DocumentRequirementListView(PermissionCodeView):
 
 
 class DocumentRequirementDetailView(PermissionCodeView):
+    # Auditoría (módulo 14, apps/audit/hooks.py).
+    audit_actions = {"PATCH": AuditAction.DOCUMENT_REQUIREMENT_CHANGED}
+    audit_resource_type = "document_requirements"
     required_permissions = {"GET": READ, "PATCH": UPDATE}
 
     @extend_schema(

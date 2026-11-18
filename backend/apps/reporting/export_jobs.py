@@ -306,6 +306,7 @@ def build_export(job_id: uuid.UUID, *, last_attempt: bool = True) -> str | None:
         filters=job.filters,
         row_count=row_count,
         format=exports.FORMAT_CSV,
+        job=job,
     )
     logger.info("Exportación %s lista (%s filas)", job_id, row_count)
     return ExportJobStatus.COMPLETED

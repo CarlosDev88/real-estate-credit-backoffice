@@ -14,6 +14,7 @@ from rest_framework.response import Response
 
 from apps.applications.models import CreditApplication
 from apps.applications.services import applications_visible_to
+from apps.audit.actions import AuditAction
 from apps.documents import dossier, downloads, reviews
 from apps.documents.dossier_serializers import (
     DocumentDownloadSerializer,
@@ -319,6 +320,9 @@ def no_store(response: Response) -> Response:
 
 
 class DocumentFileDownloadView(DossierView):
+    # Auditoría (módulo 14, apps/audit/hooks.py).
+    audit_actions = {"GET": AuditAction.DOCUMENT_DOWNLOADED}
+    audit_resource_type = "document_files"
     required_permissions = {"GET": DOWNLOAD}
     throttle_classes = [DocumentDownloadRateThrottle]
 

@@ -195,6 +195,7 @@ class ReportApplicationsCsvView(ReportView):
             filters=filters.as_dict(),
             row_count=row_count,
             format=exports.FORMAT_CSV,
+            job=None,
         )
         response = StreamingHttpResponse(
             exports.csv_lines(applications.iterator(chunk_size=exports.ITERATOR_CHUNK_SIZE)),

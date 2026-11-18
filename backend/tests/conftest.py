@@ -4,6 +4,7 @@ from typing import Any
 
 import pytest
 from django.core.cache import cache
+from django.db import connections
 from rest_framework.test import APIClient
 
 from apps.documents.storage import MemoryStorage, get_storage
@@ -33,6 +34,24 @@ def _clear_cache() -> Iterator[None]:
     cache.clear()
     yield
     cache.clear()
+
+
+def _close_audit_connection(django_db_blocker: Any) -> None:
+    audit = connections["audit"]
+    if audit.connection is not None and not audit.in_atomic_block:
+        with django_db_blocker.unblock():
+            audit.close()
+
+
+@pytest.fixture(autouse=True)
+def _audit_connection_closed(django_db_blocker: Any) -> Iterator[None]:
+    """La conexión ``audit`` (apps.audit) queda abierta al crear la base de prueba y en las
+    pruebas que la usan. Abierta, una prueba sin base de datos falla al cerrar una
+    respuesta (``close_old_connections`` la revisa). Se cierra antes y después de cada
+    prueba; este fixture se arma primero, así que se desarma después de ``db``."""
+    _close_audit_connection(django_db_blocker)
+    yield
+    _close_audit_connection(django_db_blocker)
 
 
 @pytest.fixture(autouse=True)
