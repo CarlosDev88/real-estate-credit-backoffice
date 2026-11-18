@@ -182,6 +182,8 @@ SPECTACULAR_SETTINGS = {
         # Exportación asíncrona: mismos códigos que el paquete documental, otras etiquetas.
         "ReportExportJobStatusEnum": "apps.reporting.models.ExportJobStatus",
         "ReportTypeEnum": "apps.reporting.models.ReportType",
+        # Quién cargó una versión del expediente (`DocumentFile.uploaded_by.type`).
+        "DocumentUploaderTypeEnum": "apps.documents.dossier_serializers.UploaderType",
     },
 }
 

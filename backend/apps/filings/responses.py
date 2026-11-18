@@ -16,8 +16,13 @@ solicitud admitidos (otro: ``409 INVALID_STATE_TRANSITION``), datos obligatorios
 - `OTHER`: en cualquier estado no terminal, sin cambio de estado.
 
 **Corrección** (``corrects_response``): solo de la última respuesta de la radicación,
-del mismo tipo, y si es `RECEIVED`, `IN_ANALYSIS` u `OTHER` (``409
-RESPONSE_CORRECTION_NOT_ALLOWED``). No cambia ningún estado.
+del mismo tipo, y si es `RECEIVED`, `IN_ANALYSIS`, `OTHER` o `DISBURSED` (``409
+RESPONSE_CORRECTION_NOT_ALLOWED``). No cambia ningún estado. La de `DISBURSED` es solo
+del administrador (``403``) y se registra con la solicitud ya `DISBURSED` (terminal):
+corrige monto, fecha, referencia y comentarios, y comisiones reacciona a ella.
+
+``response_type_metadata`` publica en el catálogo `filing_response_type` los campos de
+cada tipo (``fields``, ``required`` y ``reason_catalog``), sacados de ``RULES``.
 
 La radicación toma el estado del tipo de la respuesta (salvo `OTHER` y las
 correcciones). Todo va en una transacción que bloquea la solicitud, la radicación y los
@@ -33,13 +38,16 @@ from typing import Any
 
 from django.db import transaction
 from django.db.models import Prefetch, QuerySet
-from rest_framework.exceptions import ValidationError
+from rest_framework.exceptions import PermissionDenied, ValidationError
 
+from apps.applications.concurrency import ensure_version
+from apps.applications.exceptions import ApplicationClosed
 from apps.applications.models import CreditApplication
 from apps.applications.services import (
     SystemStatusChange,
     applications_visible_to,
     apply_system_transition,
+    get_application_scope,
     lock_for_status_change,
     notify_system_transition,
 )
@@ -97,6 +105,8 @@ class ResponseRule:
     # Catálogo de `reason_code`, si el tipo lo lleva.
     reason_catalog: str | None = None
     correctable: bool = False
+    # Solo el administrador lo corrige (el desembolso).
+    correction_admin_only: bool = False
 
 
 RULES: dict[str, ResponseRule] = {
@@ -131,10 +141,30 @@ RULES: dict[str, ResponseRule] = {
         FilingStatus.DISBURSED,
         required=("disbursed_amount_cop",),
         allowed=("disbursed_amount_cop",),
+        correctable=True,
+        correction_admin_only=True,
     ),
     OTHER: ResponseRule(None, None, None, required=("internal_comment",), correctable=True),
 }
 RESPONSE_TYPES = tuple(RULES)
+
+# Campos comunes que el formulario muestra en todos los tipos, después de los propios.
+NOTE_FIELDS = ("public_message", "internal_comment")
+
+
+def response_type_metadata(code: str) -> dict[str, Any]:
+    """Campos del formulario de un tipo, en el orden en que se muestran: los propios
+    (``TYPED_FIELDS`` admitidos) y después ``NOTE_FIELDS``. `received_at` y
+    `external_reference` van siempre y no se listan. Un tipo sin regla no agrega nada."""
+    rule = RULES.get(code)
+    if rule is None:
+        return {}
+    own = [name for name in TYPED_FIELDS if name in rule.allowed]
+    return {
+        "fields": [*own, *NOTE_FIELDS],
+        "required": list(rule.required),
+        "reason_catalog": rule.reason_catalog,
+    }
 
 
 @dataclass(frozen=True)
@@ -225,7 +255,9 @@ def _ensure_latest_filing(locked: CreditApplication, filing: Filing) -> None:
         raise FilingNotLatest()
 
 
-def _ensure_correction(filing: Filing, code: str, corrected_id: uuid.UUID) -> FilingResponse:
+def _ensure_correction(
+    actor: User, filing: Filing, code: str, corrected_id: uuid.UUID
+) -> FilingResponse:
     corrected = FilingResponse.objects.filter(filing=filing, pk=corrected_id).first()
     if corrected is None:
         raise ValidationError(
@@ -235,7 +267,23 @@ def _ensure_correction(filing: Filing, code: str, corrected_id: uuid.UUID) -> Fi
     same_type = corrected.response_type_item.code == code
     if last != corrected or not same_type or not RULES[code].correctable:
         raise ResponseCorrectionNotAllowed()
+    if RULES[code].correction_admin_only and not get_application_scope(actor).sees_everything:
+        raise PermissionDenied(f"Solo el administrador corrige una respuesta {code}.")
     return corrected
+
+
+def _lock_application(
+    application: CreditApplication, expected_version: int, *, correcting_disbursement: bool
+) -> CreditApplication:
+    """Como ``lock_for_status_change``, pero la corrección del desembolso admite la
+    solicitud `DISBURSED`, que es terminal. Otra terminada: ``409 APPLICATION_CLOSED``."""
+    if not correcting_disbursement:
+        return lock_for_status_change(application, expected_version)
+    locked = CreditApplication.objects.select_for_update().get(pk=application.pk)
+    if locked.is_terminal and locked.status != S.DISBURSED:
+        raise ApplicationClosed()
+    ensure_version(locked.version, expected_version)
+    return locked
 
 
 def _ensure_status(locked: CreditApplication, code: str) -> None:
@@ -322,8 +370,13 @@ def record_response(
     code = data.response_type.code
     rule = RULES[code]
     status_change: SystemStatusChange | None = None
+    correcting_disbursement = data.corrects_response_id is not None and code == DISBURSED
     with transaction.atomic():
-        locked = lock_for_status_change(filing.application, expected_version)
+        locked = _lock_application(
+            filing.application,
+            expected_version,
+            correcting_disbursement=correcting_disbursement,
+        )
         locked_filing = Filing.objects.select_for_update().get(pk=filing.pk)
         _ensure_latest_filing(locked, locked_filing)
         if data.received_at < locked_filing.filed_at:
@@ -332,7 +385,7 @@ def record_response(
             )
         corrected = None
         if data.corrects_response_id is not None:
-            corrected = _ensure_correction(locked_filing, code, data.corrects_response_id)
+            corrected = _ensure_correction(actor, locked_filing, code, data.corrects_response_id)
         else:
             _ensure_status(locked, code)
         slots = _observed_slots(locked, data.observations) if data.observations else {}

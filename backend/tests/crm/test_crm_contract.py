@@ -97,3 +97,56 @@ def test_opportunity_detail_is_typed(schema: dict[str, Any]) -> None:
         assert "status_label" in components[name]["required"]
     assert "reason_required" in components["AvailableAction"]["required"]
     assert "notes" in components["OpportunityCreateRequest"]["properties"]
+
+
+OPPORTUNITIES = "/api/v1/opportunities"
+OPPORTUNITY = "/api/v1/opportunities/{opportunity_id}"
+
+
+def test_opportunity_responses_describe_both_shapes(schema: dict[str, Any]) -> None:
+    components = schema["components"]["schemas"]
+
+    for path in (OPPORTUNITIES, "/api/v1/clients/{client_id}/opportunities"):
+        assert body_schema(schema, path, "get", "200") == ref("PaginatedOpportunityListByRole")
+    assert components["PaginatedOpportunityListByRole"]["oneOf"] == [
+        ref("PaginatedOpportunityList"),
+        ref("PaginatedBrokerOpportunityList"),
+    ]
+    assert components["PaginatedOpportunityList"]["properties"]["items"]["items"] == ref(
+        "Opportunity"
+    )
+    assert body_schema(schema, "/api/v1/broker/opportunities", "get", "200") == ref(
+        "PaginatedBrokerOpportunityList"
+    )
+    assert body_schema(schema, OPPORTUNITIES, "post", "201") == ref("OpportunityDetailByRole")
+    for method in ("get", "patch"):
+        assert body_schema(schema, OPPORTUNITY, method, "200") == ref("OpportunityDetailByRole")
+    assert components["OpportunityDetailByRole"]["oneOf"] == [
+        ref("OpportunityDetail"),
+        ref("BrokerOpportunity"),
+    ]
+
+
+def test_opportunity_lists_keep_their_query_parameters(schema: dict[str, Any]) -> None:
+    def names(path: str) -> set[str]:
+        return {p["name"] for p in schema["paths"][path]["get"]["parameters"]}
+
+    assert names(OPPORTUNITIES) == {
+        "status",
+        "broker_id",
+        "advisor_id",
+        "project_id",
+        "client_id",
+        "ordering",
+        "search",
+        "page",
+        "page_size",
+    }
+    assert names("/api/v1/clients/{client_id}/opportunities") == {
+        "client_id",
+        "status",
+        "project_id",
+        "page",
+        "page_size",
+    }
+    assert names("/api/v1/broker/opportunities") == {"status", "ordering", "page", "page_size"}

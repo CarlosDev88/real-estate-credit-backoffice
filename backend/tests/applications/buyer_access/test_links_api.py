@@ -197,6 +197,7 @@ def test_broker_issues_links_for_the_applications_it_originated(
         "application_id",
         "client_id",
         "status",
+        "status_label",
         "delivery_channel",
         "created_by",
         "created_at",

@@ -5,6 +5,7 @@ from rest_framework import serializers
 
 from apps.crm.serializers import UserRefSerializer
 from apps.documents.models import DocumentPackageJob, PackageJobStatus
+from config.serializers import ChoiceLabelField
 
 
 class CodeNameSerializer(serializers.Serializer):
@@ -59,6 +60,7 @@ class DocumentPackageJobSerializer(serializers.ModelSerializer):
         read_only=True,
         help_text="`EXPIRED` en cuanto pasa `expires_at`, aunque el comando no haya corrido.",
     )
+    status_label = ChoiceLabelField(PackageJobStatus, source="effective_status")
     requested_by = UserRefSerializer(read_only=True)
     fingerprint = serializers.CharField(
         source="manifest.fingerprint",
@@ -80,6 +82,7 @@ class DocumentPackageJobSerializer(serializers.ModelSerializer):
             "application_id",
             "application_version",
             "status",
+            "status_label",
             "error_code",
             "fingerprint",
             "requested_by",

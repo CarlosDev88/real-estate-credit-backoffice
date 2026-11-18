@@ -659,6 +659,7 @@ Responde `409 DUPLICATE_CLIENT_DOCUMENT` si existe la combinación documento/tip
 
 Si existe `project_id`, debe estar `ACTIVE`. El partner no usa estos endpoints en el MVP.
 
+- **Forma por rol:** el broker recibe `BrokerOpportunity` (resumen de su prospecto) en `GET /opportunities`, `GET /clients/{client_id}/opportunities`, `POST`, `GET` y `PATCH /opportunities/{id}`; el resto, `Opportunity` (listados) u `OpportunityDetail`. El contrato lo describe con `oneOf` (`PaginatedOpportunityListByRole` y `OpportunityDetailByRole`), como en clientes. `/broker/opportunities` sigue respondiendo `PaginatedBrokerOpportunityList`.
 - **`notes`:** opcional, hasta 2000 caracteres. Queda como la primera nota interna de la oportunidad (una fila `NOTE_ADDED` de la actividad).
 - **Asignación automática:** si quien crea la oportunidad tiene rol `ADVISOR`, queda asignada a él y en `ASSIGNED` en la misma transacción, con su fila en `assignments` (`reason`: "Asignación automática: la creó el asesor.") y la transición `ASSIGN`. Si esa transición no está activa, responde `409 INVALID_STATE_TRANSITION` y no se crea nada. Si la crea un broker o el administrador, queda `NEW` y sin asesor.
 - **`status_label`:** en `Opportunity` y `OpportunityDetail`, la etiqueta del estado (catálogo `opportunity_status`).
@@ -859,7 +860,10 @@ Reglas de creación:
 
 Detalle (`GET /applications/{application_id}`):
 
-- `property`, `assignments`, `progress_stages` y `available_actions` salen siempre.
+- `property`, `assignments`, `progress_stages`, `available_actions`, `origin_user_name` y `consents` salen siempre.
+- `origin_user_name`: nombre de quien originó la oportunidad (broker o usuario interno); `null` si no hay.
+- `consents`: `{required, accepted}`, los consentimientos vigentes obligatorios del comprador titular y cuántos tiene aceptados hoy (la regla de obligatoriedad de §21).
+- `participants_summary` (listado y detalle) agrega `roles`: `[{code, label, count}]` con los co-solicitantes y deudores solidarios activos (solo los roles con al menos uno), sin quitar `co_applicants` ni `solidary_debtors`.
 - `progress_stages`: las 8 etapas del expediente, con la misma forma y la misma función que `stages` del portal (§8): `BUYER_DATA` (en curso con `DRAFT` y `WAITING_BUYER_DATA`), `DOCUMENT_UPLOAD` (`WAITING_DOCUMENTS`), `DOCUMENT_REVIEW` (`DOCUMENTS_REVIEW`), `READY_TO_FILE`, `FILED` (`FILED`, `FILING_VALIDATION`), `BANK_ANALYSIS` (`CREDIT_ANALYSIS`, `BANK_OBSERVATION`), `APPROVED` (`APPROVED`, `LEGALIZATION`) y `DISBURSED` (todas `done`). `REJECTED`: `done` hasta `BANK_ANALYSIS` y el resto `pending`. `WITHDRAWN`, `CANCELLED`, `OWN_FUNDS` y `EXTERNAL_CREDIT_APPROVED`: lista vacía.
 - Cada código de estado o de tipo que muestra el backoffice trae su `*_label` desde el backend: `status_label` de la solicitud; `role_label` de los participantes y del participante de cada slot; `from_status_label` y `to_status_label` del historial; `target_status_label` de las acciones; `previous_status_label` y `status_label` del cambio de estado; `outcome_label` de las reglas de una evaluación (Cumple, No cumple, Faltan datos); `product_type_label` de los productos elegibles; y las del expediente documental (§19.1).
 - `include` agrega bloques opcionales separados por comas (se toleran espacios): `participants` (solo vigentes) y `financing` (`null` si no existe). `property` se admite sin efecto. Un valor desconocido responde `400` en el campo `include`.
@@ -1287,7 +1291,10 @@ Filtros de la lista interna: `status`, `participant_id`, `document_type_code`, `
 
 Estados de un slot: `PENDING`, `UPLOADED`, `APPROVED`, `REJECTED`, `WAIVED`. Estados de una versión: `UPLOADED` (análisis en curso), `IN_REVIEW` (análisis limpio, espera al asesor), `APPROVED`, `REJECTED`. Estados técnicos del archivo: `PENDING`, `CLEAN`, `INFECTED`, `INVALID`.
 
-Etiquetas en las respuestas internas: `status_label` del slot, de la versión vigente (`current_file`), de cada versión y del `scan-status`; `scan_status_label` del archivo; `decision_label` de cada revisión y de `waiver_history`; `holder_scope_label` del tipo documental; y `status_label` de los documentos de la completitud. Salen de las `TextChoices` del modelo.
+Etiquetas en las respuestas internas: `status_label` del slot, de la versión vigente (`current_file`), de cada versión y del `scan-status`; `scan_status_label` del archivo; `decision_label` de cada revisión y de `waiver_history`; `holder_scope_label` del tipo documental; y `status_label` de los documentos de la completitud. Salen de las `TextChoices` del modelo. También llevan `status_label` las versiones que ve el comprador, los paquetes, los enlaces de acceso y los consentimientos del portal.
+
+- `current_file` de la lista de slots trae `size_bytes`, `detected_mime_type` y `last_buyer_comment` (el mensaje al comprador de la última aprobación o rechazo de esa versión; `null` si no hay o va vacío), sin consultas por fila: el front no necesita pedir `GET /document-files/{id}` por cada archivo.
+- `DocumentFile.uploaded_by`: `{type: "buyer" | "user", name}`. Hoy solo carga el comprador: `{type: "buyer", name: "Comprador"}`. Nunca el correo ni el documento.
 
 Estado público del slot (DTO del comprador, sin quitar `status`). Una sola tabla en `apps/documents/models/slot.py` (`PUBLIC_SLOT_STATUS`):
 
@@ -1361,6 +1368,7 @@ Reglas:
 
 | Método | Ruta | Permiso | Descripción |
 | --- | --- | --- | --- |
+| `GET` | `/applications/{application_id}/document-package-jobs` | `filings.prepare`, asesor asignado | Paquetes de la solicitud, paginados, del más nuevo al más antiguo. |
 | `POST` | `/applications/{application_id}/document-package-jobs` | `filings.prepare`, asesor asignado | Pide de forma asíncrona el ZIP para el banco. `201` si crea el trabajo; `200` si devuelve uno vivo con la misma huella. |
 | `GET` | `/document-package-jobs/{job_id}` | `filings.prepare`, asesor asignado | Estado, error, vencimiento y contenido fijado. |
 | `GET` | `/document-package-jobs/{job_id}/download` | `filings.prepare`, asesor asignado | URL firmada del ZIP terminado. |
@@ -1450,7 +1458,7 @@ Acceso:
 | `POST` | `/applications/{application_id}/filings` | `filings.create`, administrador o asesor asignado | Registra la entrega manual al banco. |
 | `GET` | `/filings/{filing_id}` | `filings.read` y alcance | Detalle y estado de la radicación. |
 | `PATCH` | `/filings/{filing_id}` | `filings.update`, administrador o asesor asignado | Corrige `external_reference` o `comment`, sin tocar snapshots ni respuestas. |
-| `GET` | `/filings/{filing_id}/document-snapshots` | Administrador o asesor asignado | Versiones exactas que se entregaron al banco (paginado). |
+| `GET` | `/filings/{filing_id}/document-snapshots` | Administrador o asesor asignado | Versiones exactas que se entregaron al banco (paginado), con `document_type_label` y `slot_label` (el total del juego es el `minimum_files` del slot). |
 
 `POST /applications/{application_id}/filings`:
 
@@ -1488,7 +1496,7 @@ Precondiciones, cada una con su error:
 
 Efectos, en una sola transacción:
 
-- crea la radicación con el `sequence_number` siguiente (1, 2…) y `target_response_at` = `filed_at` + `banks.filing_response_days`, o nulo si el banco no tiene el dato (el FNA: 7 días);
+- crea la radicación con el `sequence_number` siguiente (1, 2…) y `target_response_at` = `filed_at` + `banks.filing_response_days`, o nulo si el banco no tiene el dato (el FNA: 7 días). `is_response_overdue` es `true` si ya pasó `target_response_at` y la radicación no tiene respuestas;
 - guarda un snapshot por cada versión del manifiesto del paquete (los exonerados no tienen archivo) y bloquea esos documentos (`locked_at`);
 - pasa la solicitud a `FILED` con la transición de sistema `FILE`, con historial y `application_status_changed`;
 - emite `filing_created` al confirmar.
@@ -1603,7 +1611,10 @@ Ejemplo de aprobación:
 }
 ```
 
-**Corrección.** Cada respuesta es inmutable. `corrects_response_id` se acepta solo si la respuesta corregida es la última de esa radicación, del mismo tipo, y es `RECEIVED`, `IN_ANALYSIS` u `OTHER`. Corregir no cambia ningún estado. Las demás correcciones quedan fuera del MVP (`409 RESPONSE_CORRECTION_NOT_ALLOWED`).
+**Corrección.** Cada respuesta es inmutable. `corrects_response_id` se acepta solo si la respuesta corregida es la última de esa radicación, del mismo tipo, y es `RECEIVED`, `IN_ANALYSIS`, `OTHER` o `DISBURSED`. Corregir no cambia el estado de la solicitud ni de la radicación. Las demás correcciones quedan fuera del MVP (`409 RESPONSE_CORRECTION_NOT_ALLOWED`).
+
+- **Desembolso (`DISBURSED`):** solo el administrador (`403` para el asesor), con la solicitud ya `DISBURSED` (terminal: es la única corrección que lo admite). Cambia `disbursed_amount_cop` (obligatorio), `received_at`, `external_reference`, `public_message` e `internal_comment`. Comisiones anula la liquidación de la respuesta corregida y liquida otra con la corrección; si alguna parte ya está pagada, solo la marca `needs_review`. El comprador no recibe otro aviso. Un desembolso nuevo (sin `corrects_response_id`) sigue respondiendo `409 APPLICATION_CLOSED`.
+- **Campos por tipo:** los ítems del catálogo `filing_response_type` traen en `metadata` `{fields, required, reason_catalog}`, generados desde las reglas del backend: `fields` son los campos del formulario en orden (los propios del tipo y después `public_message` e `internal_comment`; `received_at` y `external_reference` van siempre).
 
 **Evidencia.** `POST /filing-responses/{response_id}/evidence` es `multipart/form-data` con `file`:
 
@@ -1614,9 +1625,9 @@ Ejemplo de aprobación:
 
 **Lo que ve cada actor de una respuesta:**
 
-- **Administrador y asesor:** todo. Respuesta: `id`, `filing_id`, `response_type`, `response_type_label`, `received_at`, `public_message`, `external_reference`, `reason` (`{code, label}`), `internal_comment`, `observations` (`id`, `document_slot_id`, `reason`, `message`, `resolved_at`, `resolved_by_file_id`, `created_at`), `approved_amount_cop`, `approved_term_months`, `valid_until`, `disbursed_amount_cop`, `evidence` (`filename`, `mime_type`, `size_bytes`, `scan_status`, `scanned_at`, `uploaded_at`), `recorded_by`, `corrects_response_id` y `created_at`.
+- **Administrador y asesor:** todo. Respuesta: `id`, `filing_id`, `response_type`, `response_type_label`, `received_at`, `public_message`, `external_reference`, `reason` (`{code, label}`), `internal_comment`, `observations` (`id`, `document_slot_id`, `reason`, `message`, `resolved_at`, `resolved_by_file_id`, `created_at`), `approved_amount_cop`, `approved_term_months`, `valid_until`, `disbursed_amount_cop`, `evidence` (`filename`, `mime_type`, `size_bytes`, `scan_status`, `scan_status_label`, `scanned_at`, `uploaded_at`), `recorded_by`, `corrects_response_id` y `created_at`.
 - **Broker:** `id`, `filing_id`, `response_type`, `response_type_label`, `received_at`, `public_message` y `created_at`. Nunca `internal_comment`, evidencia ni montos.
-- **Comprador:** `GET /buyer/applications/{id}` trae `latest_bank_update`: la última respuesta con `public_message`, como `{response_type, response_type_label, received_at, public_message}`, o `null` si no hay. Nunca `internal_comment` (REQUERIMIENTOS §4.5).
+- **Comprador:** `GET /buyer/applications/{id}` trae `latest_bank_update`: la última respuesta con `public_message`, como `{response_type, response_type_label, received_at, public_message}`, o `null` si no hay. Nunca `internal_comment` (REQUERIMIENTOS §4.5). También trae `income_summary`: `{participants_with_income, total_monthly_income_cop}` de los perfiles financieros de los participantes activos de esa solicitud.
 
 ## 21. Actividad, notas, consentimientos y notificaciones
 

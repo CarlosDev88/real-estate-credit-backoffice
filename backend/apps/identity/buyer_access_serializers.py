@@ -12,7 +12,7 @@ from apps.catalogs.serializers import CatalogItemRefSerializer
 from apps.crm.serializers import UserRefSerializer
 from apps.identity.buyer_access import CHANNEL_CATALOG
 from apps.identity.models import BuyerAccessLinkStatus, BuyerSession
-from config.serializers import StrictSerializer
+from config.serializers import ChoiceLabelField, StrictSerializer
 
 
 class BuyerAccessLinkCreateSerializer(StrictSerializer):
@@ -55,6 +55,7 @@ class BuyerAccessLinkSerializer(serializers.Serializer):
     application_id = serializers.UUIDField()
     client_id = serializers.UUIDField()
     status = serializers.ChoiceField(choices=BuyerAccessLinkStatus.choices)
+    status_label = ChoiceLabelField(BuyerAccessLinkStatus, source="status")
     delivery_channel = CatalogItemRefSerializer(source="delivery_channel_item", allow_null=True)
     created_by = UserRefSerializer(allow_null=True)
     created_at = serializers.DateTimeField()

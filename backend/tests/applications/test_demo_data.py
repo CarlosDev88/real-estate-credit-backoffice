@@ -35,7 +35,7 @@ from tests.helpers import login
 pytestmark = pytest.mark.django_db
 
 E2E_EMAIL = "asesor.e2e@example.com"
-# Las 30 de las pestañas, más las 3 radicadas (tests/applications/filings/test_demo_data.py).
+# Las 30 de las pestañas, más las 4 radicadas (tests/applications/filings/test_demo_data.py).
 TOTAL_APPLICATIONS = len(DEMO_CASES) + len(FILED_DEMO_CASES)
 
 
@@ -76,7 +76,7 @@ def test_seed_creates_the_demo_data(e2e_advisor: User) -> None:
     output = seed(advisor_email=E2E_EMAIL)
 
     assert len(DEMO_CASES) == 30
-    assert CreditApplication.objects.count() == TOTAL_APPLICATIONS == 33
+    assert CreditApplication.objects.count() == TOTAL_APPLICATIONS == 34
     assert "http://localhost:3000/acceso?token=" in output
     for spec in DEMO_USERS:
         assert spec.email in output

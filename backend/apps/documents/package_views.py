@@ -38,7 +38,23 @@ class PackageView(DossierView):
 
 
 class ApplicationDocumentPackageJobView(PackageView):
-    required_permissions = {"POST": PREPARE}
+    required_permissions = {"GET": PREPARE, "POST": PREPARE}
+
+    @extend_schema(
+        tags=[DOSSIER_TAG],
+        operation_id="applications_document_package_jobs_list",
+        summary="Paquetes para radicar de la solicitud",
+        description=(
+            "Todos los paquetes pedidos para la solicitud, del más nuevo al más antiguo, "
+            "con el mismo permiso que pedirlos (`filings.prepare`)."
+        ),
+        responses={200: DocumentPackageJobSerializer(many=True), **NOT_FOUND, **COMMON_ERRORS},
+    )
+    def get(self, request: Request, application_id: Any) -> Response:
+        application = self.get_application(application_id)
+        jobs = packages.jobs_visible_to(self.actor).filter(application=application)
+        page = self.paginate_queryset(jobs.order_by("-created_at", "-id"))
+        return self.get_paginated_response(DocumentPackageJobSerializer(page, many=True).data)
 
     @extend_schema(
         tags=[DOSSIER_TAG],

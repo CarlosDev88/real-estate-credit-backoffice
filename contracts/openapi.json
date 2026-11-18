@@ -1831,6 +1831,90 @@
             }
         },
         "/api/v1/applications/{application_id}/document-package-jobs": {
+            "get": {
+                "operationId": "applications_document_package_jobs_list",
+                "description": "Todos los paquetes pedidos para la solicitud, del más nuevo al más antiguo, con el mismo permiso que pedirlos (`filings.prepare`).",
+                "summary": "Paquetes para radicar de la solicitud",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "application_id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "required": true
+                    },
+                    {
+                        "name": "page",
+                        "required": false,
+                        "in": "query",
+                        "description": "Un número de página dentro del conjunto de resultados paginado.",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "page_size",
+                        "required": false,
+                        "in": "query",
+                        "description": "Número de resultados a devolver por página.",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "tags": [
+                    "Document dossier"
+                ],
+                "security": [
+                    {
+                        "internalSession": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PaginatedDocumentPackageJobList"
+                                }
+                            }
+                        },
+                        "description": ""
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "RESOURCE_NOT_FOUND (inexistente o fuera del alcance)"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "NOT_AUTHENTICATED o SESSION_EXPIRED"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    }
+                }
+            },
             "post": {
                 "operationId": "applications_document_package_jobs_create",
                 "description": "Arma en segundo plano un ZIP con la versión vigente aprobada de cada documento, en carpetas por titular (`00_SOLICITUD`, `01_TITULAR_...`), y un `manifest.json` para el banco. Exige solo los documentos: los obligatorios aprobados y no vencidos, o exonerados. No exige `If-Match` ni evalúa las reglas del banco. El contenido queda fijo al pedirlo: una carga posterior no entra en el ZIP.\n\nSi ya hay un paquete pendiente, en proceso o listo y sin vencer con la misma huella documental, responde ese con `200` en lugar de crear otro (`201`). Se consulta en `GET /document-package-jobs/{job_id}`.",
@@ -6188,22 +6272,20 @@
                         }
                     },
                     {
-                        "name": "page",
-                        "required": false,
                         "in": "query",
-                        "description": "Un número de página dentro del conjunto de resultados paginado.",
+                        "name": "page",
                         "schema": {
                             "type": "integer"
-                        }
+                        },
+                        "description": "Un número de página dentro del conjunto de resultados paginado."
                     },
                     {
-                        "name": "page_size",
-                        "required": false,
                         "in": "query",
-                        "description": "Número de resultados a devolver por página.",
+                        "name": "page_size",
                         "schema": {
                             "type": "integer"
-                        }
+                        },
+                        "description": "Número de resultados a devolver por página."
                     },
                     {
                         "in": "query",
@@ -11060,6 +11142,7 @@
         "/api/v1/clients/{client_id}/opportunities": {
             "get": {
                 "operationId": "clients_opportunities_list",
+                "description": "Página de `Opportunity`. El broker (`INDEPENDENT_BROKER` sin `ADMIN` ni `ADVISOR`) recibe `BrokerOpportunity`: el resumen de su prospecto, sin acciones ni historial de asesores.",
                 "summary": "Oportunidades del cliente visibles para el usuario",
                 "parameters": [
                     {
@@ -11072,22 +11155,20 @@
                         "required": true
                     },
                     {
-                        "name": "page",
-                        "required": false,
                         "in": "query",
-                        "description": "Un número de página dentro del conjunto de resultados paginado.",
+                        "name": "page",
                         "schema": {
                             "type": "integer"
-                        }
+                        },
+                        "description": "Un número de página dentro del conjunto de resultados paginado."
                     },
                     {
-                        "name": "page_size",
-                        "required": false,
                         "in": "query",
-                        "description": "Número de resultados a devolver por página.",
+                        "name": "page_size",
                         "schema": {
                             "type": "integer"
-                        }
+                        },
+                        "description": "Número de resultados a devolver por página."
                     },
                     {
                         "in": "query",
@@ -11127,7 +11208,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/PaginatedOpportunityList"
+                                    "$ref": "#/components/schemas/PaginatedOpportunityListByRole"
                                 }
                             }
                         },
@@ -14269,7 +14350,7 @@
             },
             "post": {
                 "operationId": "filings_responses_create",
-                "description": "Se registra a mano y solo contra la última radicación de la solicitud. Es inmutable: una corrección es otra respuesta con `corrects_response_id`. `expected_version` va en el cuerpo. Responde `ETag` con la versión de la solicitud. Solo el administrador o el asesor asignado a la solicitud (`403`).\n\n| `response_type` | Estados admitidos | Obligatorio | Efecto en la solicitud |\n| --- | --- | --- | --- |\n| `RECEIVED` | `FILED`, `FILING_VALIDATION` | — | → `FILING_VALIDATION` (si ya está, no cambia) |\n| `IN_ANALYSIS` | `FILED`, `FILING_VALIDATION` | — | → `CREDIT_ANALYSIS` |\n| `RETURNED` | `FILED`, `FILING_VALIDATION`, `CREDIT_ANALYSIS` | `reason_code`, `public_message`, `observations` | → `BANK_OBSERVATION` |\n| `APPROVED` | `FILED`, `FILING_VALIDATION`, `CREDIT_ANALYSIS` | `approved_amount_cop`, `approved_term_months`, `public_message` | → `APPROVED` |\n| `REJECTED` | `FILED`, `FILING_VALIDATION`, `CREDIT_ANALYSIS`, `BANK_OBSERVATION` | `reason_code`, `public_message` | → `REJECTED` |\n| `DISBURSED` | `LEGALIZATION` | `disbursed_amount_cop` | → `DISBURSED` |\n| `OTHER` | cualquiera no terminal | `internal_comment` | no cambia |\n\nLos campos de un tipo (`reason_code`, `observations`, montos, plazo y vigencia) no se admiten en otro (`400`). Cada observación de un `RETURNED` rechaza la versión vigente del documento con su motivo y mensaje: el comprador la ve como \"Corrígelo\" y, después de radicar, solo reemplaza esos documentos. Aprobar la versión nueva resuelve la observación.\n",
+                "description": "Se registra a mano y solo contra la última radicación de la solicitud. Es inmutable: una corrección es otra respuesta con `corrects_response_id`. `expected_version` va en el cuerpo. Responde `ETag` con la versión de la solicitud. Solo el administrador o el asesor asignado a la solicitud (`403`).\n\n| `response_type` | Estados admitidos | Obligatorio | Efecto en la solicitud |\n| --- | --- | --- | --- |\n| `RECEIVED` | `FILED`, `FILING_VALIDATION` | — | → `FILING_VALIDATION` (si ya está, no cambia) |\n| `IN_ANALYSIS` | `FILED`, `FILING_VALIDATION` | — | → `CREDIT_ANALYSIS` |\n| `RETURNED` | `FILED`, `FILING_VALIDATION`, `CREDIT_ANALYSIS` | `reason_code`, `public_message`, `observations` | → `BANK_OBSERVATION` |\n| `APPROVED` | `FILED`, `FILING_VALIDATION`, `CREDIT_ANALYSIS` | `approved_amount_cop`, `approved_term_months`, `public_message` | → `APPROVED` |\n| `REJECTED` | `FILED`, `FILING_VALIDATION`, `CREDIT_ANALYSIS`, `BANK_OBSERVATION` | `reason_code`, `public_message` | → `REJECTED` |\n| `DISBURSED` | `LEGALIZATION` | `disbursed_amount_cop` | → `DISBURSED` |\n| `OTHER` | cualquiera no terminal | `internal_comment` | no cambia |\n\n**Corrección** (`corrects_response_id`): solo de la última respuesta, del mismo tipo, y si es `RECEIVED`, `IN_ANALYSIS`, `OTHER` o `DISBURSED` (otra: `409 RESPONSE_CORRECTION_NOT_ALLOWED`). No cambia el estado de la solicitud ni de la radicación. La de `DISBURSED` solo la registra el administrador (`403`), con la solicitud ya `DISBURSED`: corrige `disbursed_amount_cop`, `received_at`, `external_reference` y los comentarios, y la liquidación de comisiones se rehace (o queda `needs_review` si ya tiene pagos). Al comprador no le llega otro aviso.\n\nLos campos de un tipo (`reason_code`, `observations`, montos, plazo y vigencia) no se admiten en otro (`400`). Cada observación de un `RETURNED` rechaza la versión vigente del documento con su motivo y mensaje: el comprador la ve como \"Corrígelo\" y, después de radicar, solo reemplaza esos documentos. Aprobar la versión nueva resuelve la observación.\n",
                 "summary": "Registrar una respuesta del banco",
                 "parameters": [
                     {
@@ -14336,7 +14417,7 @@
                                 }
                             }
                         },
-                        "description": "STALE_VERSION, APPLICATION_CLOSED, INVALID_STATE_TRANSITION (el tipo no se admite en el estado actual), FILING_NOT_LATEST o RESPONSE_CORRECTION_NOT_ALLOWED; IDEMPOTENCY_IN_PROGRESS"
+                        "description": "STALE_VERSION, APPLICATION_CLOSED, INVALID_STATE_TRANSITION (el tipo no se admite en el estado actual), FILING_NOT_LATEST o RESPONSE_CORRECTION_NOT_ALLOWED. `403` si quien corrige un `DISBURSED` no es el administrador.; IDEMPOTENCY_IN_PROGRESS"
                     },
                     "404": {
                         "content": {
@@ -15337,6 +15418,7 @@
         "/api/v1/opportunities": {
             "get": {
                 "operationId": "opportunities_list",
+                "description": "Página de `Opportunity`. El broker (`INDEPENDENT_BROKER` sin `ADMIN` ni `ADVISOR`) recibe `BrokerOpportunity`: el resumen de su prospecto, sin acciones ni historial de asesores.",
                 "summary": "Oportunidades según el alcance",
                 "parameters": [
                     {
@@ -15374,22 +15456,20 @@
                         }
                     },
                     {
-                        "name": "page",
-                        "required": false,
                         "in": "query",
-                        "description": "Un número de página dentro del conjunto de resultados paginado.",
+                        "name": "page",
                         "schema": {
                             "type": "integer"
-                        }
+                        },
+                        "description": "Un número de página dentro del conjunto de resultados paginado."
                     },
                     {
-                        "name": "page_size",
-                        "required": false,
                         "in": "query",
-                        "description": "Número de resultados a devolver por página.",
+                        "name": "page_size",
                         "schema": {
                             "type": "integer"
-                        }
+                        },
+                        "description": "Número de resultados a devolver por página."
                     },
                     {
                         "in": "query",
@@ -15438,7 +15518,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/PaginatedOpportunityList"
+                                    "$ref": "#/components/schemas/PaginatedOpportunityListByRole"
                                 }
                             }
                         },
@@ -15468,7 +15548,7 @@
             },
             "post": {
                 "operationId": "opportunities_create",
-                "description": "Si llega `project_id`, el proyecto debe estar `ACTIVE`. Si quien la crea tiene rol `ADVISOR`, queda asignada a él y en `ASSIGNED` (con su fila en `assignments`); si la crea un broker o el administrador, queda `NEW` y sin asesor. `notes` queda como la primera nota interna de la oportunidad.",
+                "description": "Si llega `project_id`, el proyecto debe estar `ACTIVE`. Si quien la crea tiene rol `ADVISOR`, queda asignada a él y en `ASSIGNED` (con su fila en `assignments`); si la crea un broker o el administrador, queda `NEW` y sin asesor. `notes` queda como la primera nota interna de la oportunidad. Responde `OpportunityDetail`. El broker (`INDEPENDENT_BROKER` sin `ADMIN` ni `ADVISOR`) recibe `BrokerOpportunity`: el resumen de su prospecto, sin acciones ni historial de asesores.",
                 "summary": "Crear una oportunidad",
                 "tags": [
                     "Opportunities"
@@ -15493,7 +15573,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/OpportunityDetail"
+                                    "$ref": "#/components/schemas/OpportunityDetailByRole"
                                 }
                             }
                         },
@@ -15545,6 +15625,7 @@
         "/api/v1/opportunities/{opportunity_id}": {
             "get": {
                 "operationId": "opportunities_retrieve",
+                "description": "`OpportunityDetail`. El broker (`INDEPENDENT_BROKER` sin `ADMIN` ni `ADVISOR`) recibe `BrokerOpportunity`: el resumen de su prospecto, sin acciones ni historial de asesores.",
                 "summary": "Detalle de la oportunidad, acciones disponibles e historial de asesores",
                 "parameters": [
                     {
@@ -15570,7 +15651,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/OpportunityDetail"
+                                    "$ref": "#/components/schemas/OpportunityDetailByRole"
                                 }
                             }
                         },
@@ -15610,6 +15691,7 @@
             },
             "patch": {
                 "operationId": "opportunities_partial_update",
+                "description": "Responde `OpportunityDetail`. El broker (`INDEPENDENT_BROKER` sin `ADMIN` ni `ADVISOR`) recibe `BrokerOpportunity`: el resumen de su prospecto, sin acciones ni historial de asesores.",
                 "summary": "Cambiar el origen o el proyecto de una oportunidad abierta",
                 "parameters": [
                     {
@@ -15644,7 +15726,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/OpportunityDetail"
+                                    "$ref": "#/components/schemas/OpportunityDetailByRole"
                                 }
                             }
                         },
@@ -21133,7 +21215,7 @@
             },
             "ApplicationDetail": {
                 "type": "object",
-                "description": "Expediente interno. ``context[\"include\"]`` agrega `participants` y `financing`, y\n``context[\"available_actions\"]`` trae las transiciones que el actor puede ejecutar.\n\nLos bloques opcionales no se declaran de solo lectura para que OpenAPI no los marque\ncomo obligatorios: faltan en la respuesta si no se pidieron. `participants` lee los\nvigentes precargados en ``active_participants`` (``services.application_detail``).",
+                "description": "Expediente interno. ``context[\"include\"]`` agrega `participants` y `financing`,\n``context[\"available_actions\"]`` trae las transiciones que el actor puede ejecutar y\n``context[\"consents\"]``, los conteos de consentimientos del titular.\n\nLos bloques opcionales no se declaran de solo lectura para que OpenAPI no los marque\ncomo obligatorios: faltan en la respuesta si no se pidieron. `participants` lee los\nvigentes precargados en ``active_participants`` (``services.application_detail``).",
                 "properties": {
                     "id": {
                         "type": "string",
@@ -21346,6 +21428,23 @@
                         },
                         "readOnly": true,
                         "description": "Transiciones que el actor puede ejecutar ahora (rol y permiso; la guarda se evalúa al ejecutarla). `WITHDRAW_*` se ejecuta por `/withdrawals`."
+                    },
+                    "origin_user_name": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "readOnly": true,
+                        "description": "Quien originó la oportunidad (broker o usuario interno); nulo si no hay."
+                    },
+                    "consents": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/ConsentsSummary"
+                            }
+                        ],
+                        "readOnly": true,
+                        "description": "Consentimientos obligatorios del comprador titular y cuántos aceptó."
                     }
                 },
                 "required": [
@@ -21358,12 +21457,14 @@
                     "closed_at",
                     "code",
                     "completeness_pct",
+                    "consents",
                     "created_at",
                     "current_stage_started_at",
                     "id",
                     "last_buyer_activity_at",
                     "opportunity_id",
                     "origin",
+                    "origin_user_name",
                     "participants_summary",
                     "progress_stages",
                     "project",
@@ -22947,6 +23048,10 @@
                     "status": {
                         "$ref": "#/components/schemas/BuyerAccessLinkStatusEnum"
                     },
+                    "status_label": {
+                        "type": "string",
+                        "readOnly": true
+                    },
                     "delivery_channel": {
                         "oneOf": [
                             {
@@ -23011,7 +23116,8 @@
                     "id",
                     "revoked_at",
                     "session",
-                    "status"
+                    "status",
+                    "status_label"
                 ]
             },
             "BuyerAccessLinkCreateRequest": {
@@ -23047,6 +23153,10 @@
                     },
                     "status": {
                         "$ref": "#/components/schemas/BuyerAccessLinkStatusEnum"
+                    },
+                    "status_label": {
+                        "type": "string",
+                        "readOnly": true
                     },
                     "delivery_channel": {
                         "oneOf": [
@@ -23118,6 +23228,7 @@
                     "revoked_at",
                     "session",
                     "status",
+                    "status_label",
                     "url"
                 ]
             },
@@ -23324,6 +23435,15 @@
                         ],
                         "readOnly": true,
                         "description": "Última respuesta del banco con mensaje público; nulo si no hay. Nunca trae el comentario interno."
+                    },
+                    "income_summary": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/BuyerIncomeSummary"
+                            }
+                        ],
+                        "readOnly": true,
+                        "description": "Ingresos que cargaron los participantes activos de esta solicitud."
                     }
                 },
                 "required": [
@@ -23332,6 +23452,7 @@
                     "created_at",
                     "financing",
                     "id",
+                    "income_summary",
                     "is_closed",
                     "is_editable",
                     "latest_bank_update",
@@ -23443,6 +23564,10 @@
                     "status": {
                         "$ref": "#/components/schemas/BuyerConsentStatusEnum"
                     },
+                    "status_label": {
+                        "type": "string",
+                        "readOnly": true
+                    },
                     "accepted_at": {
                         "type": [
                             "string",
@@ -23460,6 +23585,7 @@
                     "id",
                     "required",
                     "status",
+                    "status_label",
                     "title",
                     "version"
                 ]
@@ -23576,6 +23702,10 @@
                         ],
                         "readOnly": true
                     },
+                    "status_label": {
+                        "type": "string",
+                        "readOnly": true
+                    },
                     "client_filename": {
                         "type": "string",
                         "readOnly": true
@@ -23631,6 +23761,7 @@
                     "rejection",
                     "size_bytes",
                     "status",
+                    "status_label",
                     "version_number"
                 ]
             },
@@ -23826,6 +23957,10 @@
                         ],
                         "readOnly": true
                     },
+                    "status_label": {
+                        "type": "string",
+                        "readOnly": true
+                    },
                     "client_filename": {
                         "type": "string",
                         "readOnly": true
@@ -23886,6 +24021,7 @@
                     "rejection",
                     "size_bytes",
                     "status",
+                    "status_label",
                     "version_number"
                 ]
             },
@@ -24313,6 +24449,23 @@
                 "required": [
                     "monthly_amount_cop",
                     "source_type_code"
+                ]
+            },
+            "BuyerIncomeSummary": {
+                "type": "object",
+                "properties": {
+                    "participants_with_income": {
+                        "type": "integer",
+                        "description": "Participantes activos de la solicitud con ingreso mensual mayor a 0."
+                    },
+                    "total_monthly_income_cop": {
+                        "type": "integer",
+                        "description": "Suma del `monthly_income_cop` de sus perfiles financieros."
+                    }
+                },
+                "required": [
+                    "participants_with_income",
+                    "total_monthly_income_cop"
                 ]
             },
             "BuyerNotification": {
@@ -25995,8 +26148,26 @@
                     "user_agent_summary"
                 ]
             },
+            "ConsentsSummary": {
+                "type": "object",
+                "properties": {
+                    "required": {
+                        "type": "integer",
+                        "description": "Consentimientos vigentes obligatorios para el titular."
+                    },
+                    "accepted": {
+                        "type": "integer",
+                        "description": "Cuántos de esos tiene aceptados hoy."
+                    }
+                },
+                "required": [
+                    "accepted",
+                    "required"
+                ]
+            },
             "CurrentFile": {
                 "type": "object",
+                "description": "Versión vigente del slot. ``context[\"last_buyer_comment\"]`` trae el comentario.",
                 "properties": {
                     "id": {
                         "type": "string",
@@ -26046,6 +26217,20 @@
                         "type": "string",
                         "readOnly": true
                     },
+                    "size_bytes": {
+                        "type": "integer"
+                    },
+                    "detected_mime_type": {
+                        "type": "string"
+                    },
+                    "last_buyer_comment": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "readOnly": true,
+                        "description": "Mensaje al comprador de la última aprobación o rechazo de esta versión; nulo si no hay o va vacío."
+                    },
                     "created_at": {
                         "type": "string",
                         "format": "date-time",
@@ -26055,11 +26240,14 @@
                 "required": [
                     "client_filename",
                     "created_at",
+                    "detected_mime_type",
                     "document_date",
                     "expires_at",
                     "id",
+                    "last_buyer_comment",
                     "scan_status",
                     "scan_status_label",
+                    "size_bytes",
                     "status",
                     "status_label",
                     "version_number"
@@ -26242,6 +26430,14 @@
                         "format": "uuid",
                         "readOnly": true
                     },
+                    "uploaded_by": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/UploadedBy"
+                            }
+                        ],
+                        "readOnly": true
+                    },
                     "file": {
                         "allOf": [
                             {
@@ -26275,6 +26471,7 @@
                     "slot_id",
                     "status",
                     "status_label",
+                    "uploaded_by",
                     "uploaded_by_buyer_session_id",
                     "version_number"
                 ]
@@ -26377,6 +26574,10 @@
                         "readOnly": true,
                         "description": "`EXPIRED` en cuanto pasa `expires_at`, aunque el comando no haya corrido.\n\n* `PENDING` - Pendiente\n* `RUNNING` - En proceso\n* `COMPLETED` - Terminado\n* `FAILED` - Fallido\n* `EXPIRED` - Vencido"
                     },
+                    "status_label": {
+                        "type": "string",
+                        "readOnly": true
+                    },
                     "error_code": {
                         "type": [
                             "string",
@@ -26459,7 +26660,8 @@
                     "output",
                     "requested_by",
                     "started_at",
-                    "status"
+                    "status",
+                    "status_label"
                 ]
             },
             "DocumentPackageJobStatusEnum": {
@@ -27377,6 +27579,14 @@
                     "name"
                 ]
             },
+            "DocumentUploaderTypeEnum": {
+                "enum": [
+                    "buyer",
+                    "user"
+                ],
+                "type": "string",
+                "description": "* `buyer` - Comprador\n* `user` - Usuario interno"
+            },
             "EligibleBankProduct": {
                 "type": "object",
                 "description": "Producto disponible para la finalidad, con una evaluación no guardada.\n\n``context[\"evaluations\"]`` trae el resumen de cada producto, por id.",
@@ -27543,6 +27753,10 @@
                         ],
                         "readOnly": true
                     },
+                    "scan_status_label": {
+                        "type": "string",
+                        "readOnly": true
+                    },
                     "scanned_at": {
                         "type": [
                             "string",
@@ -27561,6 +27775,7 @@
                     "filename",
                     "mime_type",
                     "scan_status",
+                    "scan_status_label",
                     "scanned_at",
                     "size_bytes",
                     "uploaded_at"
@@ -27826,6 +28041,11 @@
                         "readOnly": true,
                         "description": "Respuestas del banco registradas, incluidas las correcciones."
                     },
+                    "is_response_overdue": {
+                        "type": "boolean",
+                        "readOnly": true,
+                        "description": "Pasó `target_response_at` y el banco todavía no responde."
+                    },
                     "application_status": {
                         "allOf": [
                             {
@@ -27860,6 +28080,7 @@
                     "filed_at",
                     "filed_by",
                     "id",
+                    "is_response_overdue",
                     "package_job_id",
                     "responses_count",
                     "sequence_number",
@@ -27949,6 +28170,16 @@
                         "type": "string",
                         "readOnly": true
                     },
+                    "document_type_label": {
+                        "type": "string",
+                        "readOnly": true,
+                        "description": "Nombre del tipo de documento, leído al consultar."
+                    },
+                    "slot_label": {
+                        "type": "string",
+                        "readOnly": true,
+                        "description": "Etiqueta del slot: \"Desprendible de nómina 2 de 3\" o solo el nombre del tipo. El total es el `minimum_files` del slot."
+                    },
                     "client_filename": {
                         "type": "string",
                         "readOnly": true
@@ -27976,11 +28207,13 @@
                     "created_at",
                     "document_file_id",
                     "document_type_code",
+                    "document_type_label",
                     "id",
                     "mime_type",
                     "sha256",
                     "size_bytes",
                     "slot_id",
+                    "slot_label",
                     "version_number"
                 ]
             },
@@ -29907,6 +30140,16 @@
                     "updated_at"
                 ]
             },
+            "OpportunityDetailByRole": {
+                "oneOf": [
+                    {
+                        "$ref": "#/components/schemas/OpportunityDetail"
+                    },
+                    {
+                        "$ref": "#/components/schemas/BrokerOpportunity"
+                    }
+                ]
+            },
             "OpportunityStatusEnum": {
                 "enum": [
                     "NEW",
@@ -30585,14 +30828,6 @@
             },
             "PaginatedBrokerOpportunityList": {
                 "type": "object",
-                "required": [
-                    "items",
-                    "page",
-                    "page_size",
-                    "total",
-                    "next",
-                    "previous"
-                ],
                 "properties": {
                     "items": {
                         "type": "array",
@@ -30601,28 +30836,35 @@
                         }
                     },
                     "page": {
-                        "type": "integer",
-                        "example": 1
+                        "type": "integer"
                     },
                     "page_size": {
-                        "type": "integer",
-                        "example": 25
+                        "type": "integer"
                     },
                     "total": {
-                        "type": "integer",
-                        "example": 128
+                        "type": "integer"
                     },
                     "next": {
-                        "type": "string",
-                        "nullable": true,
-                        "example": "/api/v1/x?page=2"
+                        "type": [
+                            "string",
+                            "null"
+                        ]
                     },
                     "previous": {
-                        "type": "string",
-                        "nullable": true,
-                        "example": null
+                        "type": [
+                            "string",
+                            "null"
+                        ]
                     }
-                }
+                },
+                "required": [
+                    "items",
+                    "next",
+                    "page",
+                    "page_size",
+                    "previous",
+                    "total"
+                ]
             },
             "PaginatedBuyerAccessLinkList": {
                 "type": "object",
@@ -31166,6 +31408,47 @@
                     }
                 }
             },
+            "PaginatedDocumentPackageJobList": {
+                "type": "object",
+                "required": [
+                    "items",
+                    "page",
+                    "page_size",
+                    "total",
+                    "next",
+                    "previous"
+                ],
+                "properties": {
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/DocumentPackageJob"
+                        }
+                    },
+                    "page": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "page_size": {
+                        "type": "integer",
+                        "example": 25
+                    },
+                    "total": {
+                        "type": "integer",
+                        "example": 128
+                    },
+                    "next": {
+                        "type": "string",
+                        "nullable": true,
+                        "example": "/api/v1/x?page=2"
+                    },
+                    "previous": {
+                        "type": "string",
+                        "nullable": true,
+                        "example": null
+                    }
+                }
+            },
             "PaginatedDocumentRequirementList": {
                 "type": "object",
                 "required": [
@@ -31619,14 +31902,6 @@
             },
             "PaginatedOpportunityList": {
                 "type": "object",
-                "required": [
-                    "items",
-                    "page",
-                    "page_size",
-                    "total",
-                    "next",
-                    "previous"
-                ],
                 "properties": {
                     "items": {
                         "type": "array",
@@ -31635,28 +31910,45 @@
                         }
                     },
                     "page": {
-                        "type": "integer",
-                        "example": 1
+                        "type": "integer"
                     },
                     "page_size": {
-                        "type": "integer",
-                        "example": 25
+                        "type": "integer"
                     },
                     "total": {
-                        "type": "integer",
-                        "example": 128
+                        "type": "integer"
                     },
                     "next": {
-                        "type": "string",
-                        "nullable": true,
-                        "example": "/api/v1/x?page=2"
+                        "type": [
+                            "string",
+                            "null"
+                        ]
                     },
                     "previous": {
-                        "type": "string",
-                        "nullable": true,
-                        "example": null
+                        "type": [
+                            "string",
+                            "null"
+                        ]
                     }
-                }
+                },
+                "required": [
+                    "items",
+                    "next",
+                    "page",
+                    "page_size",
+                    "previous",
+                    "total"
+                ]
+            },
+            "PaginatedOpportunityListByRole": {
+                "oneOf": [
+                    {
+                        "$ref": "#/components/schemas/PaginatedOpportunityList"
+                    },
+                    {
+                        "$ref": "#/components/schemas/PaginatedBrokerOpportunityList"
+                    }
+                ]
             },
             "PaginatedPartnerList": {
                 "type": "object",
@@ -32138,6 +32430,25 @@
                     "role_code"
                 ]
             },
+            "ParticipantRoleCount": {
+                "type": "object",
+                "properties": {
+                    "code": {
+                        "$ref": "#/components/schemas/ParticipantRoleEnum"
+                    },
+                    "label": {
+                        "type": "string"
+                    },
+                    "count": {
+                        "type": "integer"
+                    }
+                },
+                "required": [
+                    "code",
+                    "count",
+                    "label"
+                ]
+            },
             "ParticipantRoleEnum": {
                 "enum": [
                     "PRIMARY",
@@ -32156,10 +32467,18 @@
                     },
                     "solidary_debtors": {
                         "type": "integer"
+                    },
+                    "roles": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/ParticipantRoleCount"
+                        },
+                        "description": "Los mismos conteos con la etiqueta del rol (co-solicitantes y después deudores solidarios); solo los roles con al menos uno."
                     }
                 },
                 "required": [
                     "co_applicants",
+                    "roles",
                     "solidary_debtors"
                 ]
             },
@@ -35118,6 +35437,23 @@
                 ],
                 "type": "string",
                 "description": "* `PENDING` - Pendiente\n* `COMPLETED` - Completada\n* `CANCELLED` - Cancelada"
+            },
+            "UploadedBy": {
+                "type": "object",
+                "description": "Quién cargó la versión. Nunca el correo ni el documento.",
+                "properties": {
+                    "type": {
+                        "$ref": "#/components/schemas/DocumentUploaderTypeEnum"
+                    },
+                    "name": {
+                        "type": "string",
+                        "description": "\"Comprador\" para el comprador; el nombre del usuario interno."
+                    }
+                },
+                "required": [
+                    "name",
+                    "type"
+                ]
             },
             "User": {
                 "type": "object",

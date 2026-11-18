@@ -29,7 +29,7 @@ from apps.filings.responses import latest_public_update
 from apps.filings.serializers import BuyerBankUpdateSerializer
 from apps.identity import buyer_portal, consents
 from apps.identity.models import BuyerSession, ConsentAction, ConsentDefinition, ConsentRecord
-from config.serializers import StrictSerializer
+from config.serializers import ChoiceLabelField, StrictSerializer
 
 # --- Consumo y sesión -------------------------------------------------------------------
 
@@ -217,6 +217,15 @@ class BuyerAdvisorSerializer(serializers.Serializer):
         return data
 
 
+class BuyerIncomeSummarySerializer(serializers.Serializer):
+    participants_with_income = serializers.IntegerField(
+        help_text="Participantes activos de la solicitud con ingreso mensual mayor a 0."
+    )
+    total_monthly_income_cop = serializers.IntegerField(
+        help_text="Suma del `monthly_income_cop` de sus perfiles financieros."
+    )
+
+
 class BuyerApplicationDetailSerializer(BuyerProcessSerializer):
     """Solicitud vista por el comprador. La versión también viaja en ``ETag``."""
 
@@ -238,6 +247,9 @@ class BuyerApplicationDetailSerializer(BuyerProcessSerializer):
         help_text="Última respuesta del banco con mensaje público; nulo si no hay. Nunca "
         "trae el comentario interno."
     )
+    income_summary = serializers.SerializerMethodField(
+        help_text="Ingresos que cargaron los participantes activos de esta solicitud."
+    )
 
     class Meta(BuyerProcessSerializer.Meta):
         fields = [
@@ -250,8 +262,13 @@ class BuyerApplicationDetailSerializer(BuyerProcessSerializer):
             "property",
             "financing",
             "latest_bank_update",
+            "income_summary",
         ]
         read_only_fields = fields
+
+    @extend_schema_field(BuyerIncomeSummarySerializer)
+    def get_income_summary(self, application: CreditApplication) -> dict[str, int]:
+        return dict(BuyerIncomeSummarySerializer(buyer_portal.income_summary(application.pk)).data)
 
     @extend_schema_field(BuyerAdvisorSerializer(allow_null=True))
     def get_advisor(self, application: CreditApplication) -> dict[str, Any] | None:
@@ -289,6 +306,7 @@ class BuyerConsentSerializer(serializers.Serializer):
     # `Field.required` en tiempo de ejecución; mypy no lo sabe.
     required = serializers.BooleanField()  # type: ignore[assignment]
     status = serializers.ChoiceField(choices=consents.ConsentStatus.choices)
+    status_label = ChoiceLabelField(consents.ConsentStatus, source="status")
     accepted_at = serializers.DateTimeField(allow_null=True)
 
 

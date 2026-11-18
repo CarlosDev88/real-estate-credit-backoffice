@@ -103,6 +103,30 @@ CLIENT_PAGE_BY_ROLE = PolymorphicProxySerializer(
 )
 
 
+# Igual que en clientes: el broker recibe `BrokerOpportunity` (resumen de su prospecto).
+OPPORTUNITY_BY_ROLE = (
+    " El broker (`INDEPENDENT_BROKER` sin `ADMIN` ni `ADVISOR`) recibe `BrokerOpportunity`: "
+    "el resumen de su prospecto, sin acciones ni historial de asesores."
+)
+OPPORTUNITY_DETAIL_BY_ROLE = PolymorphicProxySerializer(
+    component_name="OpportunityDetailByRole",
+    serializers=[OpportunityDetailSerializer, BrokerOpportunitySerializer],
+    resource_type_field_name=None,
+)
+BROKER_OPPORTUNITY_PAGE = paginated_serializer(
+    "PaginatedBrokerOpportunityList", BrokerOpportunitySerializer
+)
+OPPORTUNITY_PAGE_BY_ROLE = PolymorphicProxySerializer(
+    component_name="PaginatedOpportunityListByRole",
+    serializers=[
+        paginated_serializer("PaginatedOpportunityList", OpportunitySerializer),
+        BROKER_OPPORTUNITY_PAGE,
+    ],
+    resource_type_field_name=None,
+    many=False,
+)
+
+
 class CrmView(GenericAPIView):
     permission_classes = [HasPermissionCode]
     required_permissions: dict[str, str] = {}
@@ -260,11 +284,13 @@ class ClientOpportunitiesView(CrmView):
         tags=[CLIENTS_TAG],
         operation_id="clients_opportunities_list",
         summary="Oportunidades del cliente visibles para el usuario",
+        description="Página de `Opportunity`." + OPPORTUNITY_BY_ROLE,
         parameters=[
             OpenApiParameter("status", OpenApiTypes.STR, enum=OpportunityStatus.values),
             OpenApiParameter("project_id", OpenApiTypes.UUID),
+            *PAGINATION_PARAMETERS,
         ],
-        responses={200: OpportunitySerializer(many=True), **NOT_FOUND, **COMMON_ERRORS},
+        responses={200: OPPORTUNITY_PAGE_BY_ROLE, **NOT_FOUND, **COMMON_ERRORS},
     )
     def get(self, request: Request, client_id: Any) -> Response:
         client = get_object_or_404(services.clients_visible_to(self.actor), pk=client_id)
@@ -409,14 +435,17 @@ class OpportunityListView(CrmView):
         tags=[OPPORTUNITIES_TAG],
         operation_id="opportunities_list",
         summary="Oportunidades según el alcance",
+        description="Página de `Opportunity`." + OPPORTUNITY_BY_ROLE,
+        filters=True,
         parameters=[
             OpenApiParameter("status", OpenApiTypes.STR, enum=OpportunityStatus.values),
             OpenApiParameter("broker_id", OpenApiTypes.UUID, description="Originador."),
             OpenApiParameter("advisor_id", OpenApiTypes.UUID),
             OpenApiParameter("project_id", OpenApiTypes.UUID),
             OpenApiParameter("client_id", OpenApiTypes.UUID),
+            *PAGINATION_PARAMETERS,
         ],
-        responses={200: OpportunitySerializer(many=True), **COMMON_ERRORS},
+        responses={200: OPPORTUNITY_PAGE_BY_ROLE, **COMMON_ERRORS},
     )
     def get(self, request: Request) -> Response:
         page = self.paginate_queryset(self.filter_queryset(self.get_queryset()))
@@ -433,11 +462,12 @@ class OpportunityListView(CrmView):
             "Si llega `project_id`, el proyecto debe estar `ACTIVE`. Si quien la crea tiene "
             "rol `ADVISOR`, queda asignada a él y en `ASSIGNED` (con su fila en "
             "`assignments`); si la crea un broker o el administrador, queda `NEW` y sin "
-            "asesor. `notes` queda como la primera nota interna de la oportunidad."
+            "asesor. `notes` queda como la primera nota interna de la oportunidad. Responde "
+            "`OpportunityDetail`." + OPPORTUNITY_BY_ROLE
         ),
         request=OpportunityCreateSerializer,
         responses={
-            201: OpportunityDetailSerializer,
+            201: OPPORTUNITY_DETAIL_BY_ROLE,
             409: _error("DUPLICATE_OPPORTUNITY"),
             422: _error("PROJECT_NOT_ACTIVE"),
             **COMMON_ERRORS,
@@ -464,7 +494,8 @@ class OpportunityDetailView(CrmView):
         tags=[OPPORTUNITIES_TAG],
         operation_id="opportunities_retrieve",
         summary="Detalle de la oportunidad, acciones disponibles e historial de asesores",
-        responses={200: OpportunityDetailSerializer, **NOT_FOUND, **COMMON_ERRORS},
+        description="`OpportunityDetail`." + OPPORTUNITY_BY_ROLE,
+        responses={200: OPPORTUNITY_DETAIL_BY_ROLE, **NOT_FOUND, **COMMON_ERRORS},
     )
     def get(self, request: Request, opportunity_id: Any) -> Response:
         return Response(_opportunity_data(self, opportunity_id))
@@ -473,9 +504,10 @@ class OpportunityDetailView(CrmView):
         tags=[OPPORTUNITIES_TAG],
         operation_id="opportunities_partial_update",
         summary="Cambiar el origen o el proyecto de una oportunidad abierta",
+        description="Responde `OpportunityDetail`." + OPPORTUNITY_BY_ROLE,
         request=OpportunityUpdateSerializer,
         responses={
-            200: OpportunityDetailSerializer,
+            200: OPPORTUNITY_DETAIL_BY_ROLE,
             409: _error("OPPORTUNITY_NOT_EDITABLE o DUPLICATE_OPPORTUNITY"),
             422: _error("PROJECT_NOT_ACTIVE"),
             **NOT_FOUND,
@@ -580,8 +612,14 @@ class BrokerOpportunityListView(CrmView):
         tags=[OPPORTUNITIES_TAG],
         operation_id="broker_opportunities_list",
         summary="Bandeja del broker: resumen de sus prospectos",
-        parameters=[OpenApiParameter("status", OpenApiTypes.STR, enum=OpportunityStatus.values)],
-        responses={200: BrokerOpportunitySerializer(many=True), **COMMON_ERRORS},
+        # La página es el mismo componente del `oneOf` de `/opportunities`: se declara a
+        # mano, con los filtros y la paginación explícitos.
+        filters=True,
+        parameters=[
+            OpenApiParameter("status", OpenApiTypes.STR, enum=OpportunityStatus.values),
+            *PAGINATION_PARAMETERS,
+        ],
+        responses={200: BROKER_OPPORTUNITY_PAGE, **COMMON_ERRORS},
     )
     def get(self, request: Request) -> Response:
         page = self.paginate_queryset(self.filter_queryset(self.get_queryset()))

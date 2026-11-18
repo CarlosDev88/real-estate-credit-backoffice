@@ -100,6 +100,7 @@ def test_lists_the_effective_consents_and_what_is_required(
         "effective_from": data_processing["effective_from"],
         "required": True,
         "status": "PENDING",
+        "status_label": "Pendiente",
         "accepted_at": None,
     }
     assert items["CO_APPLICANT_AUTHORIZATION"]["required"] is False

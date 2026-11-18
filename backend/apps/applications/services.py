@@ -182,6 +182,7 @@ def applications_queryset() -> QuerySet[CreditApplication]:
     return CreditApplication.objects.select_related(
         "opportunity__client__document_type_item",
         "opportunity__origin_item",
+        "opportunity__origin_user",
         "purpose_item",
         "bank_product__bank",
         "bank_product__product_type_item",

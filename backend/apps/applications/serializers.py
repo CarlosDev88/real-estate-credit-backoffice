@@ -100,11 +100,23 @@ class BankProductRefSerializer(serializers.Serializer):
     bank = BankRefSerializer()
 
 
+class ParticipantRoleCountSerializer(serializers.Serializer):
+    code = serializers.ChoiceField(choices=ParticipantRole.choices)
+    # `label` choca con el atributo `Field.label` de los stubs de DRF.
+    label = serializers.CharField()  # type: ignore[assignment]
+    count = serializers.IntegerField()
+
+
 class ParticipantsSummarySerializer(serializers.Serializer):
     """Participantes activos además del titular, para el texto "+ 1 co-solicitante"."""
 
     co_applicants = serializers.IntegerField()
     solidary_debtors = serializers.IntegerField()
+    roles = ParticipantRoleCountSerializer(
+        many=True,
+        help_text="Los mismos conteos con la etiqueta del rol (co-solicitantes y después "
+        "deudores solidarios); solo los roles con al menos uno.",
+    )
 
 
 class ApplicantRefSerializer(serializers.Serializer):
@@ -385,7 +397,7 @@ class ApplicationSerializer(serializers.ModelSerializer):
         return not obj.ready_to_file_ok
 
     @extend_schema_field(ParticipantsSummarySerializer)
-    def get_participants_summary(self, obj: CreditApplication) -> dict[str, int]:
+    def get_participants_summary(self, obj: CreditApplication) -> dict[str, Any]:
         """Lee los conteos de ``services.applications_queryset``; si la instancia no los
         trae (no salió de ese queryset), los consulta."""
         co_applicants = getattr(obj, "co_applicants_count", None)
@@ -394,7 +406,19 @@ class ApplicationSerializer(serializers.ModelSerializer):
             active = obj.participants.filter(is_active=True)
             co_applicants = active.filter(role=ParticipantRole.CO_APPLICANT).count()
             solidary_debtors = active.filter(role=ParticipantRole.SOLIDARY_DEBTOR).count()
-        return {"co_applicants": co_applicants, "solidary_debtors": solidary_debtors}
+        counts = (
+            (ParticipantRole.CO_APPLICANT, co_applicants),
+            (ParticipantRole.SOLIDARY_DEBTOR, solidary_debtors),
+        )
+        return {
+            "co_applicants": co_applicants,
+            "solidary_debtors": solidary_debtors,
+            "roles": [
+                {"code": role.value, "label": str(role.label), "count": count}
+                for role, count in counts
+                if count
+            ],
+        }
 
 
 class QuickFilterSerializer(serializers.Serializer):
@@ -764,9 +788,17 @@ class ProgressStageSerializer(serializers.Serializer):
     state_label = serializers.CharField(help_text="Listo, En curso o Pendiente.")
 
 
+class ConsentsSummarySerializer(serializers.Serializer):
+    required = serializers.IntegerField(  # type: ignore[assignment]
+        help_text="Consentimientos vigentes obligatorios para el titular."
+    )
+    accepted = serializers.IntegerField(help_text="Cuántos de esos tiene aceptados hoy.")
+
+
 class ApplicationDetailSerializer(ApplicationSerializer):
-    """Expediente interno. ``context["include"]`` agrega `participants` y `financing`, y
-    ``context["available_actions"]`` trae las transiciones que el actor puede ejecutar.
+    """Expediente interno. ``context["include"]`` agrega `participants` y `financing`,
+    ``context["available_actions"]`` trae las transiciones que el actor puede ejecutar y
+    ``context["consents"]``, los conteos de consentimientos del titular.
 
     Los bloques opcionales no se declaran de solo lectura para que OpenAPI no los marque
     como obligatorios: faltan en la respuesta si no se pidieron. `participants` lee los
@@ -795,6 +827,15 @@ class ApplicationDetailSerializer(ApplicationSerializer):
         allow_null=True,
         help_text="Preferencia de financiación. Solo con `include=financing`.",
     )
+    origin_user_name = serializers.CharField(
+        source="opportunity.origin_user.get_full_name",
+        read_only=True,
+        allow_null=True,
+        help_text="Quien originó la oportunidad (broker o usuario interno); nulo si no hay.",
+    )
+    consents = serializers.SerializerMethodField(
+        help_text="Consentimientos obligatorios del comprador titular y cuántos aceptó."
+    )
 
     class Meta(ApplicationSerializer.Meta):
         fields = [
@@ -803,6 +844,8 @@ class ApplicationDetailSerializer(ApplicationSerializer):
             "assignments",
             "progress_stages",
             "available_actions",
+            "origin_user_name",
+            "consents",
             "participants",
             "financing",
         ]
@@ -812,6 +855,8 @@ class ApplicationDetailSerializer(ApplicationSerializer):
             "assignments",
             "progress_stages",
             "available_actions",
+            "origin_user_name",
+            "consents",
         ]
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
@@ -839,6 +884,10 @@ class ApplicationDetailSerializer(ApplicationSerializer):
         return cast(
             list[dict[str, Any]], ApplicationAssignmentSerializer(assignments, many=True).data
         )
+
+    @extend_schema_field(ConsentsSummarySerializer)
+    def get_consents(self, obj: CreditApplication) -> dict[str, int]:
+        return dict(ConsentsSummarySerializer(self.context["consents"]).data)
 
 
 # --- Reglas bancarias (API §18.2) -------------------------------------------------------

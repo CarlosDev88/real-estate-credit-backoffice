@@ -148,8 +148,12 @@ def on_filing_created(
 def on_filing_response_recorded(
     sender: Any, response: FilingResponse, application: CreditApplication, **kwargs: Any
 ) -> None:
-    notification_type = BANK_RESPONSE_TYPES.get(response.response_type_item.code)
+    code = response.response_type_item.code
+    notification_type = BANK_RESPONSE_TYPES.get(code)
     if notification_type is None:
+        return
+    if code == "DISBURSED" and response.corrects_response_id is not None:
+        # Corregir el monto o la fecha del desembolso no es una novedad para el comprador.
         return
     approval = ""
     if response.approved_amount_cop is not None and response.approved_term_months is not None:

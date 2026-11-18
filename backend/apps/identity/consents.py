@@ -115,11 +115,10 @@ def _last_records(
     return latest
 
 
-def consent_states(session: BuyerSession) -> list[ConsentState]:
-    """Definiciones vigentes con su obligatoriedad y su estado para la sesión."""
+def _states(application_id: uuid.UUID, client_id: uuid.UUID) -> list[ConsentState]:
     definitions = effective_definitions()
-    required = required_codes(session.application_id)
-    last = _last_records(session.application_id, session.client_id, definitions)
+    required = required_codes(application_id)
+    last = _last_records(application_id, client_id, definitions)
     return [
         ConsentState(
             definition=definition,
@@ -128,6 +127,23 @@ def consent_states(session: BuyerSession) -> list[ConsentState]:
         )
         for definition in definitions
     ]
+
+
+def consent_states(session: BuyerSession) -> list[ConsentState]:
+    """Definiciones vigentes con su obligatoriedad y su estado para la sesión."""
+    return _states(session.application_id, session.client_id)
+
+
+def consent_summary(application: CreditApplication) -> dict[str, int]:
+    """Obligatorios vigentes del titular (el cliente de la oportunidad) y cuántos tiene
+    aceptados hoy. Lo muestra el expediente interno ("2 de 2")."""
+    states = [
+        state
+        for state in _states(application.pk, application.opportunity.client_id)
+        if state.required
+    ]
+    accepted = sum(state.status == ConsentStatus.ACCEPTED for state in states)
+    return {"required": len(states), "accepted": accepted}
 
 
 def missing_consents(session: BuyerSession) -> list[ConsentDefinition]:

@@ -1,4 +1,5 @@
 from collections import OrderedDict
+from functools import cache
 from typing import Any
 
 from drf_spectacular.utils import inline_serializer
@@ -67,11 +68,14 @@ class StandardResultsSetPagination(PageNumberPagination):
         }
 
 
+@cache
 def paginated_serializer(name: str, item_serializer: type[serializers.Serializer]) -> Any:
     """Esquema con nombre de una página de ``StandardResultsSetPagination``.
 
     Solo documenta (OpenAPI): sirve cuando una respuesta paginada tiene varias formas
-    (``oneOf``) y drf-spectacular no puede armar cada página por su cuenta.
+    (``oneOf``) y drf-spectacular no puede armar cada página por su cuenta. Devuelve
+    siempre el mismo objeto para el mismo nombre: todas las vistas que publican esa página
+    deben usarlo, o drf-spectacular vería dos componentes con el mismo nombre.
     """
     return inline_serializer(
         name=name,
