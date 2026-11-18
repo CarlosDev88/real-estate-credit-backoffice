@@ -32,6 +32,8 @@ from apps.filings.signals import filing_created, filing_response_recorded
 from apps.identity.models import BuyerAccessLink, BuyerSession, ConsentAction, ConsentRecord, User
 from apps.identity.signals import buyer_access_consumed, buyer_access_link_issued, consent_recorded
 from apps.identity.users import user_status_changed
+from apps.reporting.models import ReportExportJob
+from apps.reporting.signals import report_exported
 
 REVIEW_ACTIONS: dict[str, str] = {
     D.APPROVED: A.DOCUMENT_REVIEWED,
@@ -223,6 +225,40 @@ def on_response_recorded(
                 str(response.corrects_response_id) if response.corrects_response_id else None
             ),
             "status_changed": status_changed,
+        },
+    )
+
+
+# --- Reportes ---------------------------------------------------------------------------
+
+# Tipo de recurso de una descarga directa (no tiene registro propio).
+DIRECT_REPORT_RESOURCE = "reports"
+
+
+@receiver(report_exported, dispatch_uid="audit.report_exported")
+def on_report_exported(
+    sender: Any,
+    user: User,
+    report_type: str,
+    filters: dict[str, Any],
+    row_count: int,
+    format: str,
+    job: ReportExportJob | None = None,
+    **_: Any,
+) -> None:
+    """CSV directo (recurso ``reports``) o exportación asíncrona terminada (su
+    ``report_export_jobs``). De los filtros solo van los **nombres** de los usados: sus
+    valores llevan ids de personas."""
+    used = sorted(name for name, value in filters.items() if value not in (None, "", []))
+    record_audit(
+        A.REPORT_EXPORTED,
+        job if job is not None else DIRECT_REPORT_RESOURCE,
+        actor=user,
+        metadata={
+            "report_type": report_type,
+            "format": format,
+            "row_count": row_count,
+            "filters": used,
         },
     )
 

@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     "apps.workday",
     "apps.activity",
     "apps.audit",
+    "apps.reporting",
 ]
 
 MIDDLEWARE = [
@@ -176,6 +177,11 @@ SPECTACULAR_SETTINGS = {
         # Auditoría: acción y resultado.
         "AuditActionEnum": "apps.audit.actions.AuditAction",
         "AuditResultEnum": "apps.audit.actions.AuditResult",
+        # Dashboard: etapas del embudo (`code` choca con `CodeEnum`).
+        "FunnelStageEnum": "apps.reporting.services.FunnelStage",
+        # Exportación asíncrona: mismos códigos que el paquete documental, otras etiquetas.
+        "ReportExportJobStatusEnum": "apps.reporting.models.ExportJobStatus",
+        "ReportTypeEnum": "apps.reporting.models.ReportType",
     },
 }
 
@@ -233,6 +239,8 @@ AUTH_RATE_LIMITS = {
     "buyer_document_upload": "60/1h",
     # Descargas de documentos, por usuario interno o sesión del comprador (decisión 12).
     "document_download": "60/1h",
+    # Dashboard y reportes, por usuario (REQUERIMIENTOS §9.3: endpoints costosos).
+    "reports": env("REPORTS_RATE_LIMIT", default="20/1m"),
 }
 
 # Página del frontend que recibe `?token=` para definir la nueva contraseña.
@@ -256,6 +264,17 @@ BUYER_ACCESS_URL = env("BUYER_ACCESS_URL", default="http://localhost:3000/acceso
 # Aviso del listado: una solicitud que espera al comprador está inactiva si su última
 # actividad en el portal (o, si nunca entró, el inicio de la etapa) tiene más de estos días.
 BUYER_INACTIVITY_DAYS = 3
+
+# --- Dashboard y reportes (API §22) ---------------------------------------------------
+# Rango máximo de `date_from`/`date_to`, en días incluidos los dos extremos.
+REPORTS_MAX_RANGE_DAYS = 366
+# Filas máximas de `/reports/applications.csv`; más allá, la exportación asíncrona.
+REPORTS_CSV_MAX_ROWS = 5000
+# Exportación asíncrona: tope duro de filas y horas que el CSV queda disponible.
+REPORTS_EXPORT_MAX_ROWS = 100000
+REPORTS_EXPORT_TTL_HOURS = 24
+# Exportaciones `PENDING` o `RUNNING` a la vez por usuario.
+REPORTS_EXPORT_MAX_ACTIVE = 3
 
 # --- Metadatos para el frontend (sección 9) ------------------------------------------
 # Catálogos grandes que no viajan en /metadata/bootstrap; se piden con

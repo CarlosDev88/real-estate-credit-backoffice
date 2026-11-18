@@ -56,6 +56,9 @@ class AuditAction(models.TextChoices):
     USER_CHANGED = "USER_CHANGED", "Cambio de usuario"
     USER_ROLES_CHANGED = "USER_ROLES_CHANGED", "Cambio de roles"
     USER_STATUS_CHANGED = "USER_STATUS_CHANGED", "Cambio de estado de usuario"
+    # Reportes.
+    REPORT_EXPORTED = "REPORT_EXPORTED", "Reporte exportado"
+    REPORT_EXPORT_DOWNLOADED = "REPORT_EXPORT_DOWNLOADED", "Exportación descargada"
     # Acceso.
     ACCESS_DENIED = "ACCESS_DENIED", "Acceso denegado"
 

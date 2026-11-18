@@ -60,6 +60,16 @@ STABLE_ENUMS = {
         "FILING_CREATED",
         "BANK_RESPONSE_RECORDED",
     ],
+    "FunnelStageEnum": [
+        "CREATED",
+        "DOCUMENTS_COMPLETE",
+        "READY_TO_FILE",
+        "FILED",
+        "APPROVED",
+        "DISBURSED",
+    ],
+    "ReportExportJobStatusEnum": ["PENDING", "RUNNING", "COMPLETED", "FAILED", "EXPIRED"],
+    "ReportTypeEnum": ["applications"],
 }
 
 
