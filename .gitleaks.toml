@@ -42,16 +42,18 @@ condition = "AND"
 
 # `"password"` de la tabla `SENSITIVE` de la prueba de asignación masiva (Parte 4 de la
 # auditoría): un valor inventado que se manda para comprobar que la API lo rechaza.
+# Por ruta y no por commit: el merge con squash crea un commit nuevo con el mismo contenido,
+# así que una excepción por commit deja de servir en cuanto el PR entra a `master`.
 [[allowlists]]
 description = "Contraseña inventada de la prueba de asignación masiva"
-commits = ["4510270a3bbf90ef18a28ac9ce8c61b9c46191bd"]
 paths = ['''^backend/tests/security/test_mass_assignment\.py$''']
 condition = "AND"
 
 # Contraseña y token inventados de la prueba de aceptar invitación del frontend (vitest).
+# Por ruta y no por commit: el merge con squash crea un commit nuevo con el mismo contenido,
+# así que una excepción por commit deja de servir en cuanto el PR entra a `master`.
 [[allowlists]]
 description = "Valores inventados de la prueba de aceptar invitación (frontend)"
-commits = ["ccac3251b2bcddec29ab7800e98fecf7af90e09f"]
 paths = ['''^frontend/src/features/admin-users/accept-invitation\.test\.tsx$''']
 condition = "AND"
 
