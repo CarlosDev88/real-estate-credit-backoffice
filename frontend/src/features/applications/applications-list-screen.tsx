@@ -29,6 +29,9 @@ import { useMe } from "@/features/auth/queries";
 import { isApiError } from "@/lib/api/errors";
 import { useMediaQuery } from "@/lib/hooks/use-media-query";
 
+/** "Nueva solicitud": elegir el cliente y su oportunidad (F4, `/clientes`). */
+export const NEW_APPLICATION_HREF = "/clientes?nueva_solicitud=1";
+
 /** Mismo corte que el shell y el mockup: en 860 px o menos, filtros en hoja y tarjetas. */
 export const MOBILE_QUERY = "(max-width: 860px)";
 
@@ -102,6 +105,9 @@ export function ApplicationsListScreen() {
   const mobile = useMediaQuery(MOBILE_QUERY);
   const me = useMe();
   const canReadBanks = me.data?.permissions.includes("banks.read") ?? false;
+  const canStartApplication =
+    (me.data?.permissions.includes("applications.create") ?? false) &&
+    (me.data?.permissions.includes("clients.read") ?? false);
   const filterDefs = useFilterDefs(canReadBanks);
 
   const list = useApplicationsList(params);
@@ -173,11 +179,19 @@ export function ApplicationsListScreen() {
 
   return (
     <div className="grid content-start gap-4">
-      <div>
-        <h1 className="m-0 text-3xl font-semibold tracking-tight">Solicitudes</h1>
-        <p className="text-text-secondary mt-0.5 mb-0">
-          Créditos de vivienda asignados a ti, desde el borrador hasta el desembolso.
-        </p>
+      <div className="flex flex-wrap items-start gap-3">
+        <div className="min-w-0 flex-1">
+          <h1 className="m-0 text-3xl font-semibold tracking-tight">Solicitudes</h1>
+          <p className="text-text-secondary mt-0.5 mb-0">
+            Créditos de vivienda asignados a ti, desde el borrador hasta el desembolso.
+          </p>
+        </div>
+        {/* F4: una solicitud nace de una oportunidad; el botón lleva a elegir el cliente. */}
+        {canStartApplication && (
+          <Button type="primary" onClick={() => router.push(NEW_APPLICATION_HREF)}>
+            Nueva solicitud
+          </Button>
+        )}
       </div>
 
       {tabs.data ? (
