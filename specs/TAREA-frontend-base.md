@@ -259,6 +259,30 @@ Las cuatro primeras se resolvieron en `TAREA-applications-listado.md` (PR #16). 
 - **Pendiente del front:** enviar `Idempotency-Key` (un UUID nuevo por intento del usuario, que se reutiliza en los reintentos automáticos) en las cinco operaciones: radicación, respuesta del banco, transición de estado, paquete para radicar y enlace mágico (API §6). Hoy es opcional. Errores nuevos: `409 IDEMPOTENCY_IN_PROGRESS` (reintentar), `422 IDEMPOTENCY_CONFLICT` y, en el enlace mágico, `409 IDEMPOTENCY_REPLAY_UNAVAILABLE` (el enlace ya se creó: verlo en la lista y, si hace falta otro, pedirlo con otra clave).
 - **Pendiente del backend:** las notificaciones internas (la campana del backoffice). El modelo las admite (`user_id`), pero ningún evento las crea todavía.
 
+### Brechas que dejó la F5 (operación, `TAREA-front-operacion.md`)
+**Dashboard:**
+- **Barras de estado sin enlace:** `GET /applications` acepta `status`, pero el listado `/solicitudes` no lo lee de la URL (`features/applications/list-params.ts`, del front 1). Cuando lo lea, cada barra de "Solicitudes por estado" puede enlazar a `/solicitudes?status=<código>`.
+- **Carga y bancos para el broker:** `/dashboard/workload` y `/dashboard/bank-results` le responden `403 PERMISSION_DENIED`, y `/auth/me` no trae nada que lo anticipe (el permiso es el mismo `dashboard.read`). El front hace la petición y oculta el bloque con el `403`. Un permiso propio (por ejemplo, `dashboard.workload`) o una bandera en el bootstrap evitaría esas dos peticiones y sus `ACCESS_DENIED`.
+- **Cupo compartido de 20 consultas por minuto:** el dashboard hace 4 peticiones por carga y por cada cambio de filtro (`/dashboard/*` y `/reports/*` comparten el cupo). Quien cambia filtros seguido llega al `429`; cada bloque lo muestra con "Reintentar". Un endpoint que junte los cuatro bloques, o un cupo más alto para el dashboard, lo evitaría.
+
+**Mi día:**
+- **Textos de los filtros de tareas:** `GET /tasks` fija `due` (`overdue`, `today`, `upcoming`) y `status` (`PENDING`, `COMPLETED`, `CANCELLED`), pero no hay un catálogo con sus textos. Las opciones de los filtros van en el front; el estado de cada tarea sí sale de `status_label`. Un catálogo `task_status` (y los textos de `due`) en el bootstrap las sacaría del código.
+- **Segmentos de atención sin tono:** `status-tones.ts` no tiene un tipo para `AttentionSegmentEnum`. Las señales de atención van en tono neutro, con el texto de la API.
+- **Tareas de oportunidad sin enlace:** no hay ruta de oportunidad en el front (`TaskParent` trae su id, pero no el del cliente). En "Mis tareas" se ven con su tipo y el cliente, sin enlace. Crearlas desde la oportunidad le toca a `features/clients`.
+- **El resumen no filtra por búsqueda:** `GET /workday/summary` no acepta `search`. Con una búsqueda, los números de los segmentos son los de la bandeja sin buscar.
+
+**Reportes:**
+- **`ReportApplication` sin `id`:** el código de cada fila no puede enlazar al expediente.
+- **`/reports/applications` sin `period`:** solo el embudo devuelve el rango efectivo. Si se entra directo a la pestaña "Solicitudes" sin fechas en la URL, los campos de fecha quedan vacíos y el encabezado dice "Solicitudes creadas en el periodo", hasta que se abre el embudo.
+- **Consulta de las exportaciones:** el listado `GET /reports/applications/export-jobs` gasta del cupo de `/reports/*`, así que el panel consulta cada 3 s cada trabajo activo con `GET /report-export-jobs/{id}` (fuera de `/reports/`, sin `429` en el contrato). Si ese endpoint entra al mismo cupo, la consulta cada 3 s lo agota.
+- **`ReportExportJob.error_code` sin etiqueta:** un `FAILED` muestra "No se pudo generar: prepara otra" en lugar del motivo.
+
+**Portal del comprador:**
+- **Resuelta (F5):** "Avisos" (`/portal/avisos`), con el número sin leer en la navegación.
+- **"No leídos primero":** la API ordena solo por fecha (`unread=true` filtra). El front pide de a 50 y ordena lo que ya llegó: los no leídos de páginas que todavía no se cargaron aparecen al pedir "Ver avisos anteriores". Un orden `unread_first` en la API lo resolvería.
+
+**Idempotencia:** "Preparar exportación" ya manda `Idempotency-Key` (una por intento, la misma en los reintentos con los mismos filtros). Siguen pendientes las cinco operaciones de la sección anterior.
+
 ## Pruebas
 - **Unitarias** (Vitest + Testing Library): componentes de `ui`, formularios con validación, manejo de `ApiError` y formato de montos.
 - **Integración** con MSW: errores de la API, `409 STALE_VERSION`, `CONSENT_REQUIRED`, carga y reemplazo de documentos, filtros en la URL.

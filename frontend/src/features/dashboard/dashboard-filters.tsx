@@ -2,6 +2,7 @@
 
 import { Button, Input, Select } from "antd";
 import { useId, useState } from "react";
+import type { ReactNode } from "react";
 
 import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { FilterChips, type FilterChip } from "@/components/ui/filter-chips";
@@ -27,7 +28,28 @@ export interface SelectFilterDef {
   width: number;
 }
 
-type FilterErrors = Partial<Record<DashboardFilterKey, string>>;
+/** Mensaje de la API por campo (los filtros comunes y los extra de la vista). */
+type FilterErrors = Partial<Record<string, string>>;
+
+/**
+ * Filtros propios de otra vista (por ejemplo, el estado y "Agrupar por" de `/reportes`):
+ * se pintan después de los comunes, en la barra y en la hoja, y suman sus chips.
+ */
+export interface ExtraFilters {
+  render: (block: boolean, control: (key: string) => FilterControlProps) => ReactNode;
+  chips: FilterChip[];
+  onRemoveChip: (key: string) => void;
+  /** Hay algún filtro extra activo ("Limpiar" se muestra). */
+  active: boolean;
+  /** Nombre de cada filtro extra, para los mensajes de error. */
+  labels: Record<string, string>;
+}
+
+export interface FilterControlProps {
+  status: "error" | undefined;
+  "aria-invalid": true | undefined;
+  "aria-describedby": string | undefined;
+}
 
 interface DashboardFiltersBarProps {
   filters: DashboardFilters;
@@ -37,6 +59,9 @@ interface DashboardFiltersBarProps {
   /** Mensaje de la API por filtro (`400` o `403 FILTER_OUT_OF_SCOPE`). */
   errors: FilterErrors;
   onChange: (patch: Partial<DashboardFilters>) => void;
+  /** "Limpiar": por defecto, vacía los filtros comunes. */
+  onClear?: () => void;
+  extra?: ExtraFilters;
   /** ≤ 860 px: los filtros van en una hoja inferior y los activos se ven como chips. */
   mobile: boolean;
 }
@@ -54,7 +79,7 @@ export function periodLabel(period: Period | undefined): string | null {
   return from && to ? `${from} – ${to}` : null;
 }
 
-function errorId(base: string, key: DashboardFilterKey) {
+function errorId(base: string, key: string) {
   return `${base}-${key}-error`;
 }
 
@@ -65,20 +90,24 @@ export function DashboardFiltersBar({
   selects,
   errors,
   onChange,
+  onClear,
+  extra,
   mobile,
 }: DashboardFiltersBarProps) {
   const base = useId();
   const [sheetOpen, setSheetOpen] = useState(false);
-  const active = hasActiveFilters(filters);
-  const errorEntries = Object.entries(errors) as [DashboardFilterKey, string][];
-  const labelOf = (key: DashboardFilterKey) =>
+  const active = hasActiveFilters(filters) || !!extra?.active;
+  const errorEntries = Object.entries(errors).filter(
+    (entry): entry is [string, string] => !!entry[1],
+  );
+  const labelOf = (key: string) =>
     key === "date_from"
       ? "Desde"
       : key === "date_to"
         ? "Hasta"
-        : (selects.find((s) => s.key === key)?.label ?? key);
+        : (selects.find((s) => s.key === key)?.label ?? extra?.labels[key] ?? key);
 
-  const control = (key: DashboardFilterKey) => ({
+  const control = (key: string): FilterControlProps => ({
     status: errors[key] ? ("error" as const) : undefined,
     "aria-invalid": errors[key] ? true : undefined,
     "aria-describedby": errors[key] ? errorId(base, key) : undefined,
@@ -138,7 +167,7 @@ export function DashboardFiltersBar({
     </div>
   );
 
-  const clear = () => onChange(EMPTY_FILTERS);
+  const clear = onClear ?? (() => onChange(EMPTY_FILTERS));
 
   if (mobile) {
     const chips: FilterChip[] = [];
@@ -150,6 +179,7 @@ export function DashboardFiltersBar({
         chips.push({ key: def.key, label: def.label, value: optionLabel(def, filters[def.key]) });
       }
     }
+    chips.push(...(extra?.chips ?? []));
     return (
       <div className="bg-bg-surface border-border-default grid rounded-lg border">
         <div className="flex items-center gap-2 p-3">
@@ -169,6 +199,7 @@ export function DashboardFiltersBar({
           className="rounded-b-lg border-t border-b-0"
           onRemove={(key) => {
             if (key === "dates") onChange({ date_from: "", date_to: "" });
+            else if (extra?.chips.some((c) => c.key === key)) extra.onRemoveChip(key);
             else onChange({ [key]: "" });
           }}
           onClearAll={clear}
@@ -202,6 +233,7 @@ export function DashboardFiltersBar({
             {dateInput("date_from", "Desde", true)}
             {dateInput("date_to", "Hasta", true)}
             {selects.map((def) => select(def, true))}
+            {extra?.render(true, control)}
             {errorList}
           </div>
         </BottomSheet>
@@ -215,6 +247,7 @@ export function DashboardFiltersBar({
         {dateInput("date_from", "Desde", false)}
         {dateInput("date_to", "Hasta", false)}
         {selects.map((def) => select(def, false))}
+        {extra?.render(false, control)}
         {active && (
           <Button type="text" onClick={clear}>
             Limpiar

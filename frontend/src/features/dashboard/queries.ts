@@ -6,7 +6,6 @@ import { useMemo } from "react";
 import {
   apiFilters,
   DASHBOARD_FILTER_KEYS,
-  type DashboardFilterKey,
   type DashboardFilters,
 } from "@/features/dashboard/dashboard-params";
 import { api, call } from "@/lib/api/client";
@@ -153,22 +152,26 @@ export function useCatalog(code: string): { items: MetadataItem[]; isPending: bo
  * El error viene de un filtro: un `400` de validación o un `403 FILTER_OUT_OF_SCOPE` con
  * `details[].field` en uno de los filtros. Se muestra en el filtro, no como falla del bloque.
  */
-export function isFilterError(error: unknown): boolean {
+export function isFilterError(
+  error: unknown,
+  keys: readonly string[] = DASHBOARD_FILTER_KEYS,
+): boolean {
   if (!isApiError(error)) return false;
   if (error.status !== 400 && error.code !== "FILTER_OUT_OF_SCOPE") return false;
-  return error.fieldDetails.some((d) =>
-    (DASHBOARD_FILTER_KEYS as string[]).includes(d.field ?? ""),
-  );
+  return error.fieldDetails.some((d) => keys.includes(d.field ?? ""));
 }
 
 /** Mensaje de la API por filtro, del primer error de filtro entre los bloques. */
-export function filterErrorsOf(errors: unknown[]): Partial<Record<DashboardFilterKey, string>> {
-  const error = errors.find(isFilterError);
+export function filterErrorsOf(
+  errors: unknown[],
+  keys: readonly string[] = DASHBOARD_FILTER_KEYS,
+): Partial<Record<string, string>> {
+  const error = errors.find((e) => isFilterError(e, keys));
   if (!isApiError(error)) return {};
-  const out: Partial<Record<DashboardFilterKey, string>> = {};
+  const out: Partial<Record<string, string>> = {};
   for (const detail of error.fieldDetails) {
-    const key = detail.field as DashboardFilterKey;
-    if (DASHBOARD_FILTER_KEYS.includes(key) && !out[key]) out[key] = detail.message;
+    const key = detail.field ?? "";
+    if (keys.includes(key) && !out[key]) out[key] = detail.message;
   }
   return out;
 }

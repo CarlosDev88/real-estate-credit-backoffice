@@ -85,3 +85,28 @@
   - Las tareas de oportunidad no se crean desde Mi día: eso va en `features/clients`. Mi día sí las lista; no hay ruta de oportunidad, así que van sin enlace.
 - **Completar y cancelar:** completar es una confirmación; cancelar pide el motivo (obligatorio en la API). Un `409 TASK_NOT_PENDING` va al toast y refresca la lista.
 - **Piezas locales candidatas a la librería:** `FilterToolbar` (búsqueda, selects, hoja inferior y chips), los segmentos como botones con conteo, y `MyDayIcon`.
+
+**Parte 3 (front 2, 2026-11-18):**
+- **Reportes:**
+  - "Reportes" es la tercera entrada de "Operación", con `reports.read`.
+  - Pestañas en la URL (`tab=embudo|solicitudes`).
+  - Reusa la barra de filtros del dashboard: se le agregaron "filtros extra" para el estado multivalor (`status=…&status=…`, catálogo `application_status`) y "Agrupar por", que solo aparece en el embudo.
+  - Embudo sin agrupar: `FunnelTable`, la misma del dashboard. Agrupado: `DataTable` con la fila "Total" arriba, una fila por grupo y una columna por etapa (número y conversión). Las etapas y sus nombres salen de la respuesta.
+  - "Solicitudes": `DataTable` o `CardList`, paginado. El documento llega enmascarado y se muestra tal cual. Las filas no enlazan: `ReportApplication` no trae `id`.
+- **Exportar** (con `reports.export`):
+  - "Descargar CSV" baja el archivo de la respuesta (`parseAs: "blob"`) con el nombre de `Content-Disposition`.
+  - Un `422 EXPORT_TOO_LARGE` muestra un aviso con "Preparar exportación".
+  - "Mis exportaciones" es un `SidePanel` que se abre desde el encabezado y sola al preparar una. Muestra estado (`status_label`), periodo, filas, cuándo se pidió y vencimiento.
+  - **Consulta cada 3 s por trabajo:** las que están `PENDING`/`RUNNING` se consultan una por una (`GET /report-export-jobs/{id}`), no el listado, porque el listado gasta del cupo de 20 por minuto de `/reports/*`. Se consulta mientras el panel está abierto.
+  - "Descargar" pide la URL firmada cada vez; un `409` o un `410` van al toast y refrescan la lista.
+  - Un `429 TOO_MANY_EXPORTS` se muestra junto al botón (`role="alert"` + `aria-describedby`).
+  - `Idempotency-Key`: un UUID por intento (`lib/api/idempotency.ts`). Se reusa si se reintenta con los mismos filtros y se cambia al terminar bien o con otros filtros.
+- **Avisos del portal:**
+  - `/portal/avisos`, en `features/buyer-notifications/`. Los no leídos van primero (orden en el front) y se piden de a 50, con "Ver avisos anteriores".
+  - Cada aviso es un botón con `aria-expanded` que abre el mensaje; al abrir uno sin leer se marca (`PATCH .../read`) y no cambia de lugar mientras dura la visita.
+  - "Marcar todos como leídos" aparece si hay sin leer.
+  - En `features/buyer-portal` solo cambió lo permitido: la entrada "Avisos" con su ícono, el número sin leer (`unread-count`, leído "N sin leer") y la barra inferior de 3 columnas. También el handler de `unread-count` en `portal.fixtures.ts` y la prueba de la navegación, que antes comprobaba que "Avisos" no estuviera.
+- **E2E:**
+  - `e2e/backoffice/operations.spec.ts`: dashboard, Mi día y reportes, con axe en claro para no pasar el cupo de 20 por minuto.
+  - Los avisos van dentro del flujo existente de `e2e/portal/portal.spec.ts`, para no gastar otro enlace del comprador por proyecto.
+  - `e2e/auth.setup.ts` ahora espera `/dashboard` después del login (el inicio nuevo).

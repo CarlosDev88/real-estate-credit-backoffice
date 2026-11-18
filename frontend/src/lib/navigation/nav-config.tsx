@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 import { DashboardIcon } from "@/features/dashboard/dashboard-icon";
+import { ReportsIcon } from "@/features/reports/reports-icon";
 import { MyDayIcon } from "@/features/workday/my-day-icon";
 import { HouseIcon } from "@/components/ui/icons";
 import { UsersIcon } from "@/features/clients/components/icons";
@@ -37,6 +38,14 @@ export const NAV_ITEMS: NavItem[] = [
     icon: <MyDayIcon />,
     group: "Operación",
     permission: "workday.read",
+  },
+  // F5: embudo y listado de solicitudes, con exportación (`reports.export`).
+  {
+    href: "/reportes",
+    label: "Reportes",
+    icon: <ReportsIcon />,
+    group: "Operación",
+    permission: "reports.read",
   },
   {
     href: "/solicitudes",
