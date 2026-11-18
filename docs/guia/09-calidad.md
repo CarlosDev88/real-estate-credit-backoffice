@@ -145,12 +145,12 @@ Tres revisiones independientes, con su informe y su seguimiento hasta la correcc
 
 | Auditoría | Informe | Estado |
 | --- | --- | --- |
-| Seguridad | [`docs/SEGURIDAD.md`](../SEGURIDAD.md) | En curso (rama `chore/security-audit`) |
-| Performance del frontend | [`docs/PERFORMANCE.md`](../PERFORMANCE.md) | En preparación |
-| Carga y estrés del backend | [`docs/PERFORMANCE.md`](../PERFORMANCE.md) | En preparación |
+| Seguridad | `docs/SEGURIDAD.md` *(en curso)* | En curso (rama `chore/security-audit`) |
+| Performance del frontend | `docs/PERFORMANCE.md` *(en curso)* | En preparación |
+| Carga y estrés del backend | `docs/PERFORMANCE.md` *(en curso)* | En preparación |
 
 El resumen con cada hallazgo y cómo se solucionó está en [12 · Auditorías](12-auditorias.md).
 
 ---
 
-Siguiente: [10 · Operación local](10-operacion-local.md) *(en preparación)* — cómo correrlo.
+Siguiente: 10 · Operación local *(en preparación)* — cómo correrlo.

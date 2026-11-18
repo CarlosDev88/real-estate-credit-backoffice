@@ -21,11 +21,11 @@
 
 | Auditoría | Qué revisa | Informe | Hallazgos | Estado |
 | --- | --- | --- | --- | --- |
-| Seguridad | Autenticación, autorización por rol y objeto, archivos, datos personales, configuración | [`docs/SEGURIDAD.md`](../SEGURIDAD.md) y [`docs/seguridad/`](../seguridad/) | SEC-01 a SEC-13 (por severidad: pendiente del informe) | 🔄 En curso, rama `chore/security-audit` |
-| Rendimiento del frontend | Peso de las páginas, tiempos de carga y de interacción | [`docs/PERFORMANCE.md`](../PERFORMANCE.md) | Pendiente | 🔄 En preparación |
-| Carga y estrés del backend | Latencia bajo carga (el p95 < 800 ms de RNF-17), errores y límites | [`docs/PERFORMANCE.md`](../PERFORMANCE.md) | Pendiente | 🔄 En preparación |
+| Seguridad | Autenticación, autorización por rol y objeto, archivos, datos personales, configuración | `docs/SEGURIDAD.md` *(en curso)* y `docs/seguridad/` *(en curso)* | SEC-01 a SEC-13 (por severidad: pendiente del informe) | 🔄 En curso, rama `chore/security-audit` |
+| Rendimiento del frontend | Peso de las páginas, tiempos de carga y de interacción | `docs/PERFORMANCE.md` *(en curso)* | Pendiente | 🔄 En preparación |
+| Carga y estrés del backend | Latencia bajo carga (el p95 < 800 ms de RNF-17), errores y límites | `docs/PERFORMANCE.md` *(en curso)* | Pendiente | 🔄 En preparación |
 
-Los enlaces a los informes funcionarán cuando se fusionen sus ramas.
+Los informes se enlazarán aquí cuando se fusionen sus ramas.
 
 ---
 
@@ -33,7 +33,7 @@ Los enlaces a los informes funcionarán cuando se fusionen sus ramas.
 
 ### 2.1 Qué se revisó y con qué método
 
-El método completo se describe en el informe al cierre. Su pieza central es una **matriz de acceso**: cada una de las **235 operaciones** del contrato probada con cada uno de los **9 actores** que define la auditoría (su lista estará en el informe). **Lo que ya se sabe: la matriz no encontró brechas** de acceso (dato del orquestador, rama `chore/security-audit`). El informe completo y la lista de hallazgos estarán en [`docs/SEGURIDAD.md`](../SEGURIDAD.md) y [`docs/seguridad/hallazgos.md`](../seguridad/hallazgos.md).
+El método completo se describe en el informe al cierre. Su pieza central es una **matriz de acceso**: cada una de las **235 operaciones** del contrato probada con cada uno de los **9 actores** que define la auditoría (su lista estará en el informe). **Lo que ya se sabe: la matriz no encontró brechas** de acceso (dato del orquestador, rama `chore/security-audit`). El informe completo y la lista de hallazgos estarán en `docs/SEGURIDAD.md` *(en curso)* y `docs/seguridad/hallazgos.md` *(en curso)*.
 
 Puntos que [04 · System design §10](04-system-design.md#10-lo-que-queda-pendiente-dicho-claro) ya marcaba como pendientes frente a REQ y que la auditoría debería confirmar o descartar: cabeceras de seguridad (HSTS, CSP), límite general de la API, análisis de dependencias en el CI y MFA.
 

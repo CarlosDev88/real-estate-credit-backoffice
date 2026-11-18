@@ -38,7 +38,7 @@ Las piezas y su conexión están en [03 · Arquitectura](03-arquitectura.md). Lo
 | Límites de consumo (§9.3, RNF-13) | Límites en Redis o equivalente | 10 límites en `AUTH_RATE_LIMITS`, en caché compartida (Redis o PostgreSQL) | ✅ parcial (sin límite general) |
 | Privacidad (RNF-08, §9.2) | Respuestas por rol, sin PII de más | Serializers por rol, documento enmascarado, auditoría y logs saneados | ✅ |
 
-La auditoría de seguridad independiente está **en curso** en la rama `chore/security-audit` (aún sin fusionar): su matriz de acceso cubre las **235 operaciones × 9 actores sin brechas**. El informe será [`docs/SEGURIDAD.md`](../SEGURIDAD.md) *(en preparación)*; los hallazgos y su corrección se resumen en [12 · Auditorías](12-auditorias.md) *(en preparación)*.
+La auditoría de seguridad independiente está **en curso** en la rama `chore/security-audit` (aún sin fusionar): su matriz de acceso cubre las **235 operaciones × 9 actores sin brechas**. El informe será `docs/SEGURIDAD.md` *(en curso)*; los hallazgos y su corrección se resumen en [12 · Auditorías](12-auditorias.md) *(en preparación)*.
 
 ---
 
@@ -267,7 +267,7 @@ Reglas comunes:
 - **Lo pesado, fuera:** ZIP, antivirus, correo y CSV grande van al worker ([§4](#4-trabajo-asíncrono)); el CSV directo tiene un tope de 5.000 filas.
 - **Caché de catálogos con `ETag`:** `/metadata/bootstrap` y `/metadata/catalogs/*` responden `304` con `If-None-Match` (P3.3 de [`specs/TAREA-brechas.md`](../../specs/TAREA-brechas.md)).
 
-**La medición del p95** bajo carga es parte de la auditoría de carga y estrés del backend, en preparación; el informe será [`docs/PERFORMANCE.md`](../PERFORMANCE.md) *(en preparación)* y el resumen, [12 · Auditorías](12-auditorias.md).
+**La medición del p95** bajo carga es parte de la auditoría de carga y estrés del backend, en preparación; el informe será `docs/PERFORMANCE.md` *(en curso)* y el resumen, [12 · Auditorías](12-auditorias.md).
 
 ---
 

@@ -2,7 +2,7 @@
 
 > **En simple:** el frontend es **una sola aplicación Next.js** con dos caras: el backoffice para el equipo interno y el portal móvil del comprador. No tiene reglas de negocio propias: pinta lo que la API le da (catálogos, etiquetas, acciones disponibles, permisos), valida solo el formato de los formularios y traduce los errores de la API en mensajes claros. Los tipos de cada llamada salen del contrato OpenAPI, así que una llamada mal escrita no compila.
 
-La conexión con la API (mismo origen, cookies, CSRF) está en [03 · Arquitectura §7](03-arquitectura.md#7-front--api-mismo-origen-por-el-proxy-de-next); las pruebas del front, en [09 · Calidad](09-calidad.md). El design system tendrá su propio documento, [`docs/DESIGN-SYSTEM.md`](../DESIGN-SYSTEM.md) *(en preparación)*. Revisado en `master` el **18 de noviembre de 2026**.
+La conexión con la API (mismo origen, cookies, CSRF) está en [03 · Arquitectura §7](03-arquitectura.md#7-front--api-mismo-origen-por-el-proxy-de-next); las pruebas del front, en [09 · Calidad](09-calidad.md). El design system tendrá su propio documento, `docs/DESIGN-SYSTEM.md` *(en curso)*. Revisado en `master` el **18 de noviembre de 2026**.
 
 ---
 

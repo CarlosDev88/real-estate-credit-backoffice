@@ -22,4 +22,4 @@ Opción 3. Los tokens viven en `design/tokens/tokens.json` y un script genera `t
 
 - **A favor:** la consistencia se comprueba sola; la auditoría de consistencia (Parte 3 de la spec) pudo migrar las pantallas existentes y dejar la regla en el CI; un problema de contraste se ve en el PR, no en producción (pasó con un estado de carga al 60 % de opacidad).
 - **En contra:** el job del front tardó más (de 15 a 20 minutos de límite) por instalar Chromium y correr las stories; algunas excepciones se justifican a mano (por ejemplo, el papel blanco del visor de documentos).
-- **Pendiente:** publicar el Storybook en GitHub Pages (Anexo A); hoy se compila pero no se despliega. El documento del design system es [`docs/DESIGN-SYSTEM.md`](../DESIGN-SYSTEM.md) *(en preparación)*.
+- **Pendiente:** publicar el Storybook en GitHub Pages (Anexo A); hoy se compila pero no se despliega. El documento del design system es `docs/DESIGN-SYSTEM.md` *(en curso)*.

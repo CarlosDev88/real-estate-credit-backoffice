@@ -416,7 +416,7 @@ Reglas de seguridad de los modos:
 - Al arrancar, el backend escribe una línea con el modo de cada servicio (`describe_local_services`), y `check_document_services` comprueba que respondan.
 - Hay un solo almacenamiento activo por proceso: los archivos guardados en un modo no se ven desde el otro (Precisión 3).
 
-Cómo correr cada modo, los puertos y los problemas comunes van en [10 · Operación local](10-operacion-local.md) *(en preparación)*.
+Cómo correr cada modo, los puertos y los problemas comunes van en 10 · Operación local *(en preparación)*.
 
 ## 9. Cómo se pasaría a producción
 
