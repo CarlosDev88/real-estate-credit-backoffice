@@ -80,7 +80,7 @@ uno expone un valor, se describe y se corta.
 - **Impacto:** un atacante sin cuenta, con pocas peticiones, agota memoria o CPU de los workers (la API deja de responder). No expone datos.
 - **Corrección sugerida:** subir a `djangorestframework>=3.18.2,<3.19` (y `djangorestframework-stubs` compatible) y correr la suite completa en el CI. Mientras tanto: un `JSONParser` propio que rechace `charset` que no sea de texto (`codecs.lookup(enc)._is_text_encoding`) y un límite de tamaño de cabeceras en el proxy.
 - **Esfuerzo estimado:** pequeño (subir una versión menor; las regresiones las detecta la suite).
-- **Nota para la Parte 5:** hoy `pip-audit` haría fallar el CI por esto. Va en la configuración de `pip-audit` con `# SEC-04` hasta que la Fase B suba la versión.
+- **En el CI:** los dos CVE están en `backend/security/pip-audit-ignore.txt` con `# SEC-04` (si no, `pip-audit` haría fallar el CI); al subir la versión se borran esas líneas.
 
 ### SEC-05 — El compose publica PostgreSQL y el backend en todas las interfaces del equipo
 - **Severidad:** Baja (entorno local; endurecimiento).

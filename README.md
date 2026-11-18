@@ -44,3 +44,21 @@ Next.js 16, Ant Design 6, Tailwind 4, TanStack Query, React Hook Form + Zod, and
 | Backoffice | Applications list, application workspace (data, documents and review, history), manual filing and bank responses | ✅ Merged |
 | Buyer portal | Magic-link access, consents, home, personal and financial data, property and financing, documents with mobile upload | ✅ Merged |
 |
+
+## Quality
+
+Every pull request runs the backend and frontend CI. The backend job checks lint, types, migrations, the test suite with a 95 % coverage floor, and that the OpenAPI contract is up to date, plus four security checks: `pip-audit` (dependencies), `gitleaks` (secrets across the whole history), `bandit` (static analysis) and that the generated access-matrix document matches its test. The result is posted as a single comment on the PR.
+
+The backend went through a security audit (November 2026): automated scans, dynamic testing against a local copy of the API, a role access matrix that requests every one of the 234 API operations as each of 9 actors, and a manual review. It found 20 issues, none critical or high, and left about 2,400 security tests in `backend/tests/security/`. The report, in Spanish: [`docs/SEGURIDAD.md`](docs/SEGURIDAD.md).
+
+## Documentation
+
+| Document | Content |
+| --- | --- |
+| [`docs/REQUERIMIENTOS_MVP_CREDITO.md`](docs/REQUERIMIENTOS_MVP_CREDITO.md) | Functional and non-functional requirements (Spanish) |
+| [`docs/API_REST_MVP_CREDITO.md`](docs/API_REST_MVP_CREDITO.md) | REST API design, roles and access rules (Spanish) |
+| [`contracts/openapi.json`](contracts/openapi.json) | The API contract the frontend types are generated from |
+| [`docs/SEGURIDAD.md`](docs/SEGURIDAD.md) | Security audit report: method, threat model, controls, access matrix, findings (Spanish) |
+| [`docs/seguridad/`](docs/seguridad/) | Detailed results of each audit phase and every finding |
+| [`backend/security/README.md`](backend/security/README.md) | How to repeat the security audit locally |
+| [`backend/README.md`](backend/README.md) | Running the backend locally |
