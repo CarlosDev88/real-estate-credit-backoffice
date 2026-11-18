@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 import { HouseIcon, UsersIcon } from "@/components/ui/icons";
+import { CommissionsIcon, MyCommissionsIcon } from "@/features/commissions/commissions-icon";
 import { DashboardIcon } from "@/features/dashboard/dashboard-icon";
 import { ReportsIcon } from "@/features/reports/reports-icon";
 import { MyDayIcon } from "@/features/workday/my-day-icon";
@@ -59,6 +60,22 @@ export const NAV_ITEMS: NavItem[] = [
     icon: <UsersIcon />,
     group: "Comercial",
     permission: "clients.read",
+  },
+  // F7: liquidaciones y planes (administración de comisiones) y la parte propia del
+  // asesor y del broker. Grupo propio, aparte de "Administración".
+  {
+    href: "/comisiones",
+    label: "Comisiones",
+    icon: <CommissionsIcon />,
+    group: "Finanzas",
+    permission: "commissions.read",
+  },
+  {
+    href: "/mis-comisiones",
+    label: "Mis comisiones",
+    icon: <MyCommissionsIcon />,
+    group: "Finanzas",
+    permission: "commissions.read_own",
   },
 ];
 

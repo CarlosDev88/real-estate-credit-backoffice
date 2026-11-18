@@ -9,6 +9,8 @@ import { useShellTrail } from "@/components/ui/app-shell";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ScrollTabs } from "@/components/ui/scroll-tabs";
 import { useMe } from "@/features/auth/queries";
+import { CommissionCard } from "@/features/commissions/commission-card";
+import { DISBURSED } from "@/features/commissions/queries";
 import { DocumentsTab } from "@/features/document-review/documents-tab";
 import { FilingsTab } from "@/features/filings/filings-tab";
 import { useFilings } from "@/features/filings/queries";
@@ -264,6 +266,19 @@ function Workspace({ detail, version }: { detail: ApplicationDetail; version: nu
           <Section query={evaluation} title="Evaluación del banco">
             {(data) => <EvaluationCard evaluation={data} detail={detail} />}
           </Section>
+          {/* Parte 1 de la F7: estado de la liquidación de comisión del desembolso. */}
+          {detail.status === DISBURSED && permissions.has("commissions.read") && (
+            <CommissionCard
+              application={{
+                id,
+                bankId: detail.bank_product?.bank.id ?? null,
+                createdAt: detail.created_at,
+                stageStartedAt: detail.current_stage_started_at,
+              }}
+              code={detail.code}
+              canManage={permissions.has("commissions.manage")}
+            />
+          )}
           <Section
             query={{
               data: participants.participants,
