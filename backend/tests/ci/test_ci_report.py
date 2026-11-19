@@ -15,7 +15,19 @@ from scripts.ci_report import Context, Detail, WarningRecorder
 FIXTURES = Path(__file__).parent / "fixtures"
 NOW = 1_800_000_134.0
 RUN_URL = "https://github.com/acme/backoffice/actions/runs/123"
-CHECK_KEYS = ("ruff_lint", "ruff_format", "mypy", "migrations", "tests", "coverage", "openapi")
+CHECK_KEYS = (
+    "ruff_lint",
+    "ruff_format",
+    "mypy",
+    "migrations",
+    "tests",
+    "coverage",
+    "openapi",
+    "pip_audit",
+    "gitleaks",
+    "bandit",
+    "security_matrix",
+)
 ROW_NAMES = (
     "Ruff (lint)",
     "Ruff (formato)",
@@ -25,6 +37,12 @@ ROW_NAMES = (
     "Cobertura",
     "Advertencias",
     "Contrato OpenAPI",
+    "Dependencias (pip-audit)",
+    "Dependencias sin arreglo",
+    "Secretos (gitleaks)",
+    "Bandit",
+    "Bandit (severidad media)",
+    "Matriz de acceso",
 )
 
 
@@ -124,14 +142,22 @@ def test_all_green(report_dir: Path) -> None:
 
     lines = markdown.splitlines()
     assert lines[0] == ci_report.MARKER
-    assert lines[1] == "## Backend CI · ✅ 7 de 7 pasaron"
+    assert lines[1] == "## Backend CI · ✅ 11 de 11 pasaron"
     assert lines[2] == f"Commit `abc1234` · [Ver run]({RUN_URL}) · 2 min 14 s"
-    assert [row(markdown, name)[0] for name in ROW_NAMES] == ["✅"] * 8
+    assert [row(markdown, name)[0] for name in ROW_NAMES] == ["✅"] * 14
     assert row(markdown, "Ruff (lint)")[1] == "Sin errores"
     assert row(markdown, "Tests")[1] == "4 pasan · 0 fallan · 0 saltados (4 en 2 min 14 s)"
     assert row(markdown, "Cobertura")[1] == "98,31 % (mínimo 95 %)"
     assert row(markdown, "Advertencias")[1] == "Sin advertencias"
     assert row(markdown, "Contrato OpenAPI")[1] == "Al día"
+    assert row(markdown, "Dependencias (pip-audit)")[1] == (
+        "Sin vulnerabilidades con arreglo · 3 revisadas en security/pip-audit-ignore.txt"
+    )
+    assert row(markdown, "Dependencias sin arreglo")[1] == "Ninguna"
+    assert row(markdown, "Secretos (gitleaks)")[1] == "Sin secretos nuevos"
+    assert row(markdown, "Bandit")[1] == "Sin hallazgos de severidad alta"
+    assert row(markdown, "Bandit (severidad media)")[1] == "Ninguno"
+    assert row(markdown, "Matriz de acceso")[1] == "Al día"
     assert "<details>" not in markdown
     assert Path(env["GITHUB_STEP_SUMMARY"]).read_text(encoding="utf-8") == markdown
 
@@ -141,7 +167,7 @@ def test_failures_and_warnings_together(report_dir: Path) -> None:
 
     markdown = run_report(github_env(report_dir, outcome="failure"))
 
-    assert markdown.splitlines()[1] == "## Backend CI · ❌ 7 de 7 fallaron · ⚠️ 1 con advertencias"
+    assert markdown.splitlines()[1] == "## Backend CI · ❌ 11 de 11 fallaron · ⚠️ 3 con advertencias"
     assert row(markdown, "Ruff (lint)") == ("❌", "3 errores en 2 archivos")
     assert row(markdown, "Ruff (formato)") == ("❌", "2 archivos sin formatear")
     assert row(markdown, "Mypy") == ("❌", "2 errores en 2 archivos")
@@ -153,11 +179,17 @@ def test_failures_and_warnings_together(report_dir: Path) -> None:
         "4 (DeprecationWarning: 3, RuntimeWarning: 1)",
     )
     assert row(markdown, "Contrato OpenAPI") == ("❌", "3 advertencias del esquema")
+    assert row(markdown, "Dependencias (pip-audit)") == ("❌", "1 con arreglo: djangorestframework")
+    assert row(markdown, "Dependencias sin arreglo") == ("⚠️", "1 sin arreglo: djangorestframework")
+    assert row(markdown, "Secretos (gitleaks)") == ("❌", "2 posibles secretos en 2 archivos")
+    assert row(markdown, "Bandit") == ("❌", "1 hallazgo de severidad alta")
+    assert row(markdown, "Bandit (severidad media)") == ("⚠️", "2 hallazgos")
+    assert row(markdown, "Matriz de acceso")[0] == "❌"
     # Primero los tests que fallan y al final las advertencias.
     titles = re.findall(r"<summary>(.*?)</summary>", markdown)
     assert titles[0] == "Tests que fallan (3)"
     assert titles[-1] == "Advertencias (4)"
-    assert len(titles) == 8
+    assert len(titles) == 14
 
 
 def test_failure_details(report_dir: Path) -> None:
@@ -227,9 +259,9 @@ def test_setup_failure_marks_every_check_as_not_run(workspace: Path) -> None:
     markdown = run_report(env)
 
     assert markdown.splitlines()[1] == (
-        "## Backend CI · ❌ Falló la preparación del entorno · ⏭️ 7 no corrieron"
+        "## Backend CI · ❌ Falló la preparación del entorno · ⏭️ 11 no corrieron"
     )
-    assert [row(markdown, name) for name in ROW_NAMES] == [("⏭️", "No corrió")] * 8
+    assert [row(markdown, name) for name in ROW_NAMES] == [("⏭️", "No corrió")] * 14
 
 
 def test_step_that_did_not_run(report_dir: Path) -> None:
@@ -239,7 +271,7 @@ def test_step_that_did_not_run(report_dir: Path) -> None:
 
     markdown = run_report(env)
 
-    assert markdown.splitlines()[1] == ("## Backend CI · ❌ 1 de 7 fallaron · ⏭️ 2 no corrieron")
+    assert markdown.splitlines()[1] == ("## Backend CI · ❌ 1 de 11 fallaron · ⏭️ 2 no corrieron")
     assert row(markdown, "Mypy") == ("⏭️", "Cancelado")
     assert row(markdown, "Tests") == ("❌", "Falló sin resultados (ver el log)")
     assert row(markdown, "Cobertura") == ("⏭️", "Sin datos de cobertura")
@@ -336,7 +368,7 @@ def test_special_characters_are_escaped(report_dir: Path) -> None:
     assert row(markdown, "Migraciones")[1] == ("Faltan migraciones en: crm\\|&lt;b&gt;x&lt;/b&gt;")
     assert row(markdown, "Advertencias")[1] == "1 (Odd\\|Warning\\*: 1)"
     table = [line for line in markdown.splitlines() if line.startswith("| ")]
-    assert len(table) == 10  # Encabezado, separador y 8 filas: ninguna se partió.
+    assert len(table) == 16  # Encabezado, separador y 14 filas: ninguna se partió.
     assert all(len(re.findall(r"(?<!\\)\|", line)) == 4 for line in table)
     block = detail_block(markdown, "Ruff (lint): 1 error (X|&lt;i&gt;: 1)")
     assert code_lines(block) == [f"X|<i>  apps/a.py:1:1  {hostile}"]
@@ -560,7 +592,7 @@ def test_defaults_without_github_environment(
     assert ci_report.main() == 0
 
     markdown = (workspace / ".ci-report" / "report.md").read_text(encoding="utf-8")
-    assert markdown.splitlines()[1] == "## Backend CI · ✅ 0 de 7 pasaron · ⏭️ 7 no corrieron"
+    assert markdown.splitlines()[1] == "## Backend CI · ✅ 0 de 11 pasaron · ⏭️ 11 no corrieron"
     assert markdown.splitlines()[2] == ""
 
 

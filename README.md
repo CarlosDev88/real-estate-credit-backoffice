@@ -56,7 +56,8 @@ Next.js 16, Ant Design 6, Tailwind 4, TanStack Query, React Hook Form + Zod, and
 - Every pull request runs two required CI jobs (backend and frontend), each with a report comment on the PR.
 - Backend: Ruff, mypy, migrations check, pytest with a 95% coverage minimum, and the OpenAPI contract check.
 - Frontend: ESLint, Prettier, TypeScript, Vitest with coverage, generated API types, the build, Storybook, and an accessibility check of every story; Playwright end-to-end tests with axe run locally.
-- **Security audit (in progress):** OWASP API Security Top 10, automated and dynamic scans, and a role access matrix that tests every API operation against 9 actors. So far: 0 critical and 0 high findings. The public report will be in `docs/SEGURIDAD.md`.
+- Four security checks in the backend CI: `pip-audit` (dependencies), `gitleaks` (secrets across the whole history), `bandit` (static analysis), and that the generated access-matrix document matches its test.
+- **Security audit (phase A done, November 2026):** automated scans, dynamic testing against a local copy of the API, a role access matrix that requests every API operation as each of 9 actors (2,106 cases, no access gaps), and a manual review. It found 20 issues, **none critical or high** (5 medium, 10 low, 5 informational), and left about 2,400 security tests in `backend/tests/security/`. Report (Spanish): [`docs/SEGURIDAD.md`](docs/SEGURIDAD.md). The fixes (phase B) come next.
 - Next: a frontend performance audit (Lighthouse and Web Vitals) and backend load and stress tests, both with their results published.
 
 ## Repository Structure
@@ -130,6 +131,8 @@ The frontend has its own workflow, [`frontend.yml`](.github/workflows/frontend.y
 
 - [Guía completa del proyecto, en español](docs/guia/00-indice.md): product, business, architecture, system design, data model, modules, flows, frontend, quality, and how it was built.
 - [`docs/adr/`](docs/adr/README.md): 15 architecture decision records (context, options, decision, consequences).
+- [`docs/SEGURIDAD.md`](docs/SEGURIDAD.md): security audit report — scope, method, threat model, controls, access matrix, and every finding with its status (Spanish).
+- [`docs/seguridad/`](docs/seguridad/): detailed results of each audit phase; [`backend/security/README.md`](backend/security/README.md): how to repeat the audit locally.
 - [`backend/README.md`](backend/README.md): backend setup, services, commands, and conventions.
 - [`frontend/README.md`](frontend/README.md): frontend setup, commands, folders, Storybook, and conventions.
 - [`design/README.md`](design/README.md): Umbral design system, tokens, and mockups.

@@ -1,0 +1,67 @@
+# Configuración de gitleaks para el CI del backend (docs/seguridad/01-automatico.md, §5).
+#
+# Usa las reglas por defecto y solo deja pasar lo que ya se revisó a mano en la auditoría:
+# cada entrada dice qué es y por qué no es un secreto. Cualquier otro resultado hace fallar
+# el CI. Para agregar una excepción: revisar el hallazgo, explicarlo aquí y enlazar el
+# commit o la ruta exacta (nunca una carpeta entera).
+
+title = "mvp-backoffice"
+
+[extend]
+useDefault = true
+
+# UUID inventado del ejemplo del embudo en el contrato y en el `OpenApiExample` del
+# dashboard (`"key": "0c5b8d6e-..."`). No es una credencial: es el id de un grupo de ejemplo.
+[[allowlists]]
+description = "UUID de ejemplo del embudo (contrato y report_views.py)"
+regexTarget = "match"
+regexes = ['''0c5b8d6e-2b8f-4a0e-8f43-6a2d9f1e7b20''']
+paths = ['''^contracts/openapi\.json$''', '''^backend/apps/reporting/report_views\.py$''']
+condition = "AND"
+
+# `KEY` de la prueba de idempotencia: un `Idempotency-Key` (UUID) inventado.
+[[allowlists]]
+description = "Idempotency-Key de prueba (UUID inventado)"
+regexTarget = "match"
+regexes = ['''5f0c6a4e-7a51-4d3e-9a51-1f8a0c7b2d10''']
+paths = ['''^backend/tests/applications/idempotency/test_idempotency\.py$''']
+condition = "AND"
+
+# `NEW_PASSWORD` de las pruebas de identidad, en los tres commits de antes del monorepo
+# (ruta `tests/identity/`). Son contraseñas inventadas de fixtures, sin uso fuera de las
+# pruebas.
+[[allowlists]]
+description = "Contraseñas inventadas de las pruebas de identidad (historial anterior al monorepo)"
+commits = [
+  "176f0fe95598a41f23766648e09d196974d10b7d",
+  "2fefd5921d625d7ee33f1d238ced7414fef28c29",
+  "cbe88ea2472bfd4d794a35361f36517acd7ba788",
+]
+paths = ['''^tests/identity/test_(users|invitations|passwords)\.py$''']
+condition = "AND"
+
+# `"password"` de la tabla `SENSITIVE` de la prueba de asignación masiva (Parte 4 de la
+# auditoría): un valor inventado que se manda para comprobar que la API lo rechaza.
+# Por ruta y no por commit: el merge con squash crea un commit nuevo con el mismo contenido,
+# así que una excepción por commit deja de servir en cuanto el PR entra a `master`.
+[[allowlists]]
+description = "Contraseña inventada de la prueba de asignación masiva"
+paths = ['''^backend/tests/security/test_mass_assignment\.py$''']
+condition = "AND"
+
+# Contraseña y token inventados de la prueba de aceptar invitación del frontend (vitest).
+# Por ruta y no por commit: el merge con squash crea un commit nuevo con el mismo contenido,
+# así que una excepción por commit deja de servir en cuanto el PR entra a `master`.
+[[allowlists]]
+description = "Valores inventados de la prueba de aceptar invitación (frontend)"
+paths = ['''^frontend/src/features/admin-users/accept-invitation\.test\.tsx$''']
+condition = "AND"
+
+# `PASSWORD` de las pruebas end-to-end del backoffice (#34): la contraseña inventada con la
+# que se crean los usuarios de E2E en una base de usar y tirar. No sirve fuera de esas pruebas.
+[[allowlists]]
+description = "Contraseña inventada de los usuarios de E2E del backoffice"
+regexTarget = "match"
+regexes = ['''Umbral-Prueba-E2E-2026''']
+paths = ['''^frontend/e2e/backoffice/admin-flows\.spec\.ts$''']
+condition = "AND"
