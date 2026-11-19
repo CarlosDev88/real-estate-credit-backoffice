@@ -19,6 +19,7 @@ import type {
   ConsentRecord,
   DocumentSlot,
   FinancialProfile,
+  Financing,
   Participant,
   Property,
   StatusHistoryEntry,
@@ -280,16 +281,34 @@ function sum(values: number[]): number {
   return values.reduce((a, b) => a + b, 0);
 }
 
+/** Botón de texto a la derecha del título de una tarjeta ("Editar", "Agregar"). */
+function CardAction({ label, onClick }: { label: string; onClick: () => void }) {
+  return (
+    <Button type="link" size="small" onClick={onClick}>
+      {label}
+    </Button>
+  );
+}
+
 export function ParticipantsCard({
   participants,
   profiles,
+  onAdd,
+  onOpen,
 }: {
   participants: Participant[];
   profiles: Map<string, FinancialProfile>;
+  /** Con `applications.update`: agregar un participante. */
+  onAdd?: () => void;
+  /** Con `applications.update`: abrir el panel de edición del participante. */
+  onOpen?: (participant: Participant) => void;
 }) {
   const all = participants.map((p) => profiles.get(p.id)).filter((p): p is FinancialProfile => !!p);
   return (
-    <Card title="Participantes">
+    <Card
+      title="Participantes"
+      action={onAdd ? <CardAction label="Agregar participante" onClick={onAdd} /> : undefined}
+    >
       <ul className="m-0 grid list-none gap-3 p-0">
         {participants.map((participant) => {
           const profile = profiles.get(participant.id);
@@ -317,6 +336,16 @@ export function ParticipantsCard({
                   <span className="text-text-tertiary text-xs">ingreso mensual</span>
                 </div>
               )}
+              {onOpen && (
+                <Button
+                  size="small"
+                  className={profile ? "" : "ml-auto"}
+                  onClick={() => onOpen(participant)}
+                  aria-label={`Editar a ${participant.client.full_name}`}
+                >
+                  Editar
+                </Button>
+              )}
             </li>
           );
         })}
@@ -341,9 +370,23 @@ export function ParticipantsCard({
 
 // ---------- inmueble ----------
 
-export function PropertyCard({ property }: { property: Property | null }) {
+export function PropertyCard({
+  property,
+  onEdit,
+}: {
+  property: Property | null;
+  /** Con `applications.update`: editar (o registrar) el inmueble. */
+  onEdit?: () => void;
+}) {
   return (
-    <Card title="Inmueble">
+    <Card
+      title="Inmueble"
+      action={
+        onEdit ? (
+          <CardAction label={property ? "Editar" : "Registrar"} onClick={onEdit} />
+        ) : undefined
+      }
+    >
       {property ? (
         <DefinitionList
           rows={[
@@ -356,6 +399,64 @@ export function PropertyCard({ property }: { property: Property | null }) {
         />
       ) : (
         <Muted>Todavía no se registra el inmueble.</Muted>
+      )}
+    </Card>
+  );
+}
+
+// ---------- financiación ----------
+
+export function FinancingCard({
+  financing,
+  onEdit,
+}: {
+  financing: Financing | null;
+  /** Con `applications.update`: editar (o registrar) la financiación. */
+  onEdit?: () => void;
+}) {
+  const rows: [string, ReactNode][] = financing
+    ? [
+        ["Modalidad", financing.financing_mode.label],
+        [
+          "Producto",
+          financing.bank_product
+            ? `${bankLabel(financing.bank_product.bank)} · ${financing.bank_product.name}`
+            : DASH,
+        ],
+        ["Monto solicitado", <Money key="r" value={financing.requested_amount_cop} />],
+        ["Plazo", financing.term_months ? `${financing.term_months} meses` : DASH],
+        ["Recursos propios", <Money key="o" value={financing.own_resources_cop} />],
+        [
+          "Cesantías",
+          financing.uses_severance_funds ? (
+            <Money key="s" value={financing.severance_funds_cop} />
+          ) : (
+            "No usa"
+          ),
+        ],
+        ...(financing.external_approved_amount_cop !== null
+          ? ([
+              [
+                "Aprobado por otra entidad",
+                <Money key="e" value={financing.external_approved_amount_cop} />,
+              ],
+            ] as [string, ReactNode][])
+          : []),
+      ]
+    : [];
+  return (
+    <Card
+      title="Financiación"
+      action={
+        onEdit ? (
+          <CardAction label={financing ? "Editar" : "Registrar"} onClick={onEdit} />
+        ) : undefined
+      }
+    >
+      {financing ? (
+        <DefinitionList rows={rows} />
+      ) : (
+        <Muted>Todavía no se registra la financiación.</Muted>
       )}
     </Card>
   );

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { applicationKeys } from "@/features/applications/queries";
 import { workspaceKeys } from "@/features/applications/workspace-queries";
@@ -48,26 +48,9 @@ async function fetchFile(fileId: string) {
   ).data;
 }
 
-/**
- * Detalle de la versión vigente de cada slot: tamaño, tipo y la última revisión (el
- * mensaje al comprador de un rechazo). La lista de slots no los trae (ver "Brechas").
- */
-export function useCurrentFiles(slots: DocumentSlot[] | undefined) {
-  const ids = (slots ?? []).flatMap((s) => (s.current_file ? [s.current_file.id] : []));
-  const results = useQueries({
-    queries: ids.map((id) => ({
-      queryKey: documentKeys.file(id),
-      queryFn: () => fetchFile(id),
-      staleTime: 60_000,
-    })),
-  });
-  const files = new Map<string, DocumentFile>();
-  ids.forEach((id, i) => {
-    const data = results[i]?.data;
-    if (data) files.set(id, data);
-  });
-  return files;
-}
+// El tamaño, el tipo detectado y el último mensaje al comprador de la versión vigente
+// vienen en `slot.current_file` (`CurrentFile`): el listado ya no pide un
+// `GET /document-files/{id}` por archivo. El detalle completo es solo del panel de revisión.
 
 export function useDocumentFile(fileId: string | undefined) {
   return useQuery({

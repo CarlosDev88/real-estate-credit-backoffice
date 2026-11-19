@@ -19,6 +19,7 @@ import {
   type AvailableAction,
   type BuyerAccessLinkCreated,
 } from "@/features/applications/workspace-queries";
+import { useIdempotencyKey } from "@/lib/api/idempotency";
 import { formatDateTime } from "@/lib/format";
 import { useToast } from "@/providers/toast";
 
@@ -364,10 +365,19 @@ const linkSchema = z.object({
 type LinkValues = z.infer<typeof linkSchema>;
 const LINK_FIELDS = ["delivery_channel", "expires_in_hours"] as const;
 
-export function BuyerLinkModal({ applicationId, open, onClose }: BaseModalProps) {
+export function BuyerLinkModal({
+  applicationId,
+  open,
+  onClose,
+  context,
+}: BaseModalProps & {
+  /** Para qué solicitud es, cuando el modal se abre desde una lista ("SOL-000012 · Ana"). */
+  context?: string;
+}) {
   const ids = useId();
   const toast = useToast();
   const create = useCreateBuyerLink(applicationId);
+  const idempotency = useIdempotencyKey(applicationId);
   const channels = useCatalog("buyer_access_channel");
   const [created, setCreated] = useState<BuyerAccessLinkCreated | null>(null);
   const { control, handleSubmit, setError, reset, formState } = useForm<LinkValues>({
@@ -385,12 +395,21 @@ export function BuyerLinkModal({ applicationId, open, onClose }: BaseModalProps)
   const submit = handleSubmit((values) => {
     create.mutate(
       {
-        // El canal que se ve elegido: el primero del catálogo si no se cambió. Sin
-        // catálogo, la API usa el suyo por omisión.
-        ...optional("delivery_channel", values.delivery_channel || channels.items[0]?.code),
-        expires_in_hours: values.expires_in_hours,
+        body: {
+          // El canal que se ve elegido: el primero del catálogo si no se cambió. Sin
+          // catálogo, la API usa el suyo por omisión.
+          ...optional("delivery_channel", values.delivery_channel || channels.items[0]?.code),
+          expires_in_hours: values.expires_in_hours,
+        },
+        key: idempotency.current(),
       },
-      { onSuccess: setCreated, onError },
+      {
+        onSuccess: (link) => {
+          idempotency.reset();
+          setCreated(link);
+        },
+        onError,
+      },
     );
   });
 
@@ -428,6 +447,7 @@ export function BuyerLinkModal({ applicationId, open, onClose }: BaseModalProps)
         )
       }
     >
+      {context && <p className="text-text-secondary m-0 pt-1 text-sm">{context}</p>}
       {created ? (
         <div className="grid gap-3 pt-2">
           <FormField

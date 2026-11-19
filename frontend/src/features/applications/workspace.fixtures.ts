@@ -70,6 +70,11 @@ export const BOOTSTRAP = {
       item("OUTDATED", "Desactualizado", 2),
     ],
     document_waiver_reason: [item("NOT_APPLICABLE", "No aplica al inmueble", 1)],
+    participant_role: [
+      item("PRIMARY", "Titular", 10),
+      item("CO_APPLICANT", "Co-solicitante", 20),
+      item("SOLIDARY_DEBTOR", "Deudor solidario", 30),
+    ],
   },
 };
 

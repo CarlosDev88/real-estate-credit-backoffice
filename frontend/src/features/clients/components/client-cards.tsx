@@ -30,6 +30,13 @@ function ClientCard({ client, href }: { client: Client; href: string }) {
           {contact}
         </div>
       )}
+      {client.applications_count !== undefined && client.applications_count > 0 && (
+        <div className="text-text-secondary text-sm">
+          {client.applications_count === 1
+            ? "1 solicitud"
+            : `${client.applications_count} solicitudes`}
+        </div>
+      )}
     </>
   );
 }

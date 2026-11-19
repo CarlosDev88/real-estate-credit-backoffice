@@ -3,6 +3,8 @@
 import { Alert, Button } from "antd";
 import { useState } from "react";
 
+import { useIdempotencyKey } from "@/lib/api/idempotency";
+
 import type { ApplicationDetail } from "@/features/applications/workspace-queries";
 import { startDownload } from "@/features/filings/download";
 import { packageSummary, RegisterFilingModal } from "@/features/filings/filing-modals";
@@ -11,14 +13,15 @@ import {
   PACKAGE_COMPLETED,
   usePackageDownload,
   usePackageJob,
+  usePackageJobs,
   useRequestPackage,
   type PackageJob,
 } from "@/features/filings/queries";
 import { isApiError } from "@/lib/api/errors";
 import { formatDateTime } from "@/lib/format";
 
-const PACKAGE_FAILED = "FAILED";
-const PACKAGE_EXPIRED = "EXPIRED";
+export const PACKAGE_FAILED = "FAILED";
+export const PACKAGE_EXPIRED = "EXPIRED";
 /** Al descargar: el ZIP ya no está (API §19.2); se vuelve a leer el trabajo. */
 const EXPIRED_CODE = "PACKAGE_EXPIRED";
 
@@ -30,7 +33,7 @@ export interface DeliveryPermissions {
 }
 
 /** Mensaje de la API y sus detalles (por ejemplo, los documentos que faltan). */
-function ApiErrorAlert({ error, title }: { error: unknown; title: string }) {
+export function ApiErrorAlert({ error, title }: { error: unknown; title: string }) {
   const message = isApiError(error) ? error.message : "Ocurrió un error inesperado.";
   const details = isApiError(error) ? error.details.map((d) => d.message).filter(Boolean) : [];
   return (
@@ -111,12 +114,17 @@ export function DeliveryPanel({
   version: number;
   can: DeliveryPermissions;
 }) {
-  const [jobId, setJobId] = useState<string | null>(null);
+  const [chosenJobId, setJobId] = useState<string | null>(null);
   const [downloaded, setDownloaded] = useState(false);
   const [registering, setRegistering] = useState(false);
+  // Al volver a la pestaña se retoma el último paquete vivo (pedido antes), si lo hay.
+  const jobs = usePackageJobs(detail.id, can.prepare);
+  const live = jobs.data?.items.find((j) => isPackageRunning(j) || j.status === PACKAGE_COMPLETED);
+  const jobId = chosenJobId ?? live?.id ?? null;
   const job = usePackageJob(jobId);
   const request = useRequestPackage(detail.id);
   const download = usePackageDownload();
+  const idempotency = useIdempotencyKey(detail.id);
 
   const current = jobId ? job.data : undefined;
   const ready = current?.status === PACKAGE_COMPLETED;
@@ -126,8 +134,9 @@ export function DeliveryPanel({
 
   const prepare = () => {
     download.reset();
-    request.mutate(undefined, {
+    request.mutate(idempotency.current(), {
       onSuccess: (created) => {
+        idempotency.reset();
         setJobId(created.id);
         setDownloaded(false);
       },

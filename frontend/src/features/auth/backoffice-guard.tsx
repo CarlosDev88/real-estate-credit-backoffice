@@ -9,8 +9,13 @@ import { AppShell, AppShellSkeleton } from "@/components/ui/app-shell";
 import { useLogout, useMe } from "@/features/auth/queries";
 import { isApiError } from "@/lib/api/errors";
 import { redirectTo } from "@/lib/api/navigation";
-import { defaultDestination, isForbiddenPath, visibleNav } from "@/lib/navigation/access";
-import { groupNav } from "@/lib/navigation/nav-config";
+import {
+  audienceOf,
+  defaultDestination,
+  isForbiddenPath,
+  visibleNav,
+} from "@/lib/navigation/access";
+import { groupNav, NAV_ITEMS } from "@/lib/navigation/nav-config";
 import { useApiErrorToast } from "@/providers/api-error-toast";
 
 /**
@@ -26,11 +31,14 @@ export function BackofficeGuard({ children }: { children: ReactNode }) {
   const router = useRouter();
 
   const permissions = me.data?.permissions;
-  const forbidden = !!permissions && isForbiddenPath(pathname, permissions);
+  const audience = audienceOf(me.data?.roles ?? []);
+  const forbidden = !!permissions && isForbiddenPath(pathname, permissions, NAV_ITEMS, audience);
 
   useEffect(() => {
-    if (forbidden && permissions) router.replace(defaultDestination(permissions));
-  }, [forbidden, permissions, router]);
+    if (forbidden && permissions) {
+      router.replace(defaultDestination(permissions, NAV_ITEMS, audience));
+    }
+  }, [forbidden, permissions, audience, router]);
 
   const unauthenticated = isApiError(me.error) && me.error.status === 401;
   if (me.isPending || unauthenticated || forbidden) return <AppShellSkeleton />;
@@ -58,7 +66,7 @@ export function BackofficeGuard({ children }: { children: ReactNode }) {
 
   return (
     <AppShell
-      nav={groupNav(visibleNav(me.data.permissions))}
+      nav={groupNav(visibleNav(me.data.permissions, NAV_ITEMS, audience))}
       user={{
         name: me.data.name || me.data.email,
         email: me.data.email,

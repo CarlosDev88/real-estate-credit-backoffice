@@ -7,7 +7,8 @@ import { HouseIcon, LogoMark } from "@/components/ui/icons";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { LoginForm } from "@/features/auth/login-form";
 import { useMe } from "@/features/auth/queries";
-import { resolveDestination } from "@/lib/navigation/access";
+import { audienceOf, resolveDestination } from "@/lib/navigation/access";
+import { NAV_ITEMS } from "@/lib/navigation/nav-config";
 
 /** Arcos decorativos del panel de marca (mockup `login.html`). */
 function Arches() {
@@ -35,7 +36,11 @@ export function LoginScreen({ next }: { next: string | null }) {
   const me = useMe();
 
   useEffect(() => {
-    if (me.data) router.replace(resolveDestination(next, me.data.permissions));
+    if (me.data) {
+      router.replace(
+        resolveDestination(next, me.data.permissions, NAV_ITEMS, audienceOf(me.data.roles)),
+      );
+    }
   }, [me.data, next, router]);
 
   return (
@@ -71,7 +76,12 @@ export function LoginScreen({ next }: { next: string | null }) {
           </p>
 
           <LoginForm
-            onSuccess={(data) => router.replace(resolveDestination(next, data.permissions))}
+            // El login solo trae el rol principal; si no alcanza, la guarda corrige el destino.
+            onSuccess={(data) =>
+              router.replace(
+                resolveDestination(next, data.permissions, NAV_ITEMS, audienceOf([data.user.role])),
+              )
+            }
           />
 
           <div className="bg-border-default mt-8 mb-6 h-px" />

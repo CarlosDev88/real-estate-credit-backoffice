@@ -13,6 +13,11 @@ This repository is a monorepo: the Django API, the frontend, the API contract be
 
 > Last updated: November 18, 2026. The project runs locally and in CI; there is no deployment.
 
+[![Storybook](https://img.shields.io/badge/Storybook-Umbral-FF4785?logo=storybook&logoColor=white)](https://carlosdev88.github.io/real-estate-credit-backoffice/)
+[![API reference](https://img.shields.io/badge/API_reference-Redoc-6BA539?logo=openapiinitiative&logoColor=white)](https://carlosdev88.github.io/real-estate-credit-backoffice/api/)
+
+The Umbral design system (Storybook) and the API reference (Redoc, from the contract) are published to GitHub Pages on every push to `master`; see [`docs/DESIGN-SYSTEM.md`](docs/DESIGN-SYSTEM.md).
+
 ### Backend: all 16 modules merged
 
 Django 5.2 + DRF modular monolith on PostgreSQL 16, built in the dependency order of the data model.
@@ -135,6 +140,8 @@ The frontend has its own workflow, [`frontend.yml`](.github/workflows/frontend.y
 - [`docs/seguridad/`](docs/seguridad/): detailed results of each audit phase; [`backend/security/README.md`](backend/security/README.md): how to repeat the audit locally.
 - [`backend/README.md`](backend/README.md): backend setup, services, commands, and conventions.
 - [`frontend/README.md`](frontend/README.md): frontend setup, commands, folders, Storybook, and conventions.
+- [`docs/DESIGN-SYSTEM.md`](docs/DESIGN-SYSTEM.md): the Umbral design system guide (Spanish) — what it has, where the tokens come from, its rules, and how to add a component. [![Storybook](https://img.shields.io/badge/Storybook-Umbral-FF4785?logo=storybook&logoColor=white)](https://carlosdev88.github.io/real-estate-credit-backoffice/)
+- [![API reference](https://img.shields.io/badge/API_reference-Redoc-6BA539?logo=openapiinitiative&logoColor=white)](https://carlosdev88.github.io/real-estate-credit-backoffice/api/): the read-only API reference generated from `contracts/openapi.json`, with search, examples, errors, and permissions.
 - [`design/README.md`](design/README.md): Umbral design system, tokens, and mockups.
 - [`docs/`](docs/): requirements, data model, ERD, PostgreSQL schema, and REST API specification.
 - [`specs/`](specs/): implementation tasks with their decisions. Older specs keep the paths that were valid when they were written (before the monorepo, backend files lived at the root).
