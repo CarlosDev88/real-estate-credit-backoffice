@@ -35,12 +35,41 @@ def test_signed_storage_urls_are_redacted_from_the_access_log() -> None:
     assert "INVENTADO" not in line and "/storage/objects/***" in line
 
 
-@pytest.mark.xfail(strict=True, reason="SEC-15")
 def test_search_terms_are_not_written_to_the_access_log() -> None:
     """RNF-16: los logs no llevan PII completa. La búsqueda viaja en la URL
-    (`?search=<documento o nombre>`) y el log de peticiones la escribe entera."""
+    (`?search=<documento o nombre>`); el filtro la escribe como `***` (SEC-15)."""
     line = _access_log_line("/api/v1/clients?search=1234567890&page=1")
     assert "1234567890" not in line
+    assert "/api/v1/clients?search=***&page=1" in line
+
+
+@pytest.mark.parametrize(
+    "query",
+    [
+        "email=laura%40example.com",
+        "document_number=1234567890",
+        "q=laura+gomez",
+        "page=2&SEARCH=laura",
+    ],
+)
+def test_other_personal_query_values_are_redacted(query: str) -> None:
+    line = _access_log_line(f"/api/v1/applications?{query}")
+    for secret in ("laura", "1234567890"):
+        assert secret not in line.lower()
+    assert "=***" in line
+
+
+def test_other_query_values_are_kept() -> None:
+    line = _access_log_line("/api/v1/applications?status=FILED&page_size=25")
+    assert "status=FILED&page_size=25" in line
+
+
+def test_any_log_message_is_redacted() -> None:
+    record = logging.LogRecord(
+        "django.request", logging.WARNING, __file__, 1, "Not Found: %s", ("/x?search=ana",), None
+    )
+    RedactObjectTokensFilter().filter(record)
+    assert record.getMessage() == "Not Found: /x?search=***"
 
 
 def test_duplicate_document_never_reveals_the_other_client(world: World) -> None:

@@ -23296,7 +23296,8 @@
                     },
                     "operational_notes": {
                         "type": "string",
-                        "default": ""
+                        "default": "",
+                        "maxLength": 4000
                     }
                 },
                 "required": [
@@ -34612,7 +34613,8 @@
                         "maxLength": 30
                     },
                     "operational_notes": {
-                        "type": "string"
+                        "type": "string",
+                        "maxLength": 4000
                     }
                 }
             },

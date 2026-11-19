@@ -15,6 +15,13 @@ SECRET_KEY = env("DJANGO_SECRET_KEY")
 DEBUG = env.bool("DJANGO_DEBUG")
 ALLOWED_HOSTS = env.list("DJANGO_ALLOWED_HOSTS", default=[])
 
+# Superficie fuera de la API (SEC-18 y SEC-19). `/admin/` y la documentación interactiva
+# solo se publican con `DEBUG` o si se encienden a propósito. El contrato del frontend y la
+# referencia publicada salen de `contracts/openapi.json`, no de estas rutas.
+ADMIN_ENABLED = env.bool("ADMIN_ENABLED", default=False)
+ADMIN_URL_PATH = env("ADMIN_URL_PATH", default="admin/")
+API_DOCS_PUBLIC = env.bool("API_DOCS_PUBLIC", default=False)
+
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
@@ -45,6 +52,9 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "config.middleware.RequestIDMiddleware",
+    # `Cache-Control: no-store` y `Vary: Cookie` en `/api/v1/` (SEC-08); va arriba para
+    # cubrir también los errores que responden otros middlewares.
+    "config.middleware.ApiNoStoreMiddleware",
     "apps.audit.context.AuditContextMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
@@ -126,6 +136,10 @@ REST_FRAMEWORK = {
     "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
     "DEFAULT_PARSER_CLASSES": ["rest_framework.parsers.JSONParser"],
     "EXCEPTION_HANDLER": "config.exceptions.api_exception_handler",
+    # Sin metadata de `OPTIONS` (SEC-07): DRF responde 405 en vez de describir los campos
+    # (fallaba con 500 en las vistas sin `serializer_class`). El *preflight* de CORS lo
+    # responde `corsheaders` antes de llegar a la vista.
+    "DEFAULT_METADATA_CLASS": None,
     # Límites generales por usuario, sesión del comprador o IP (SEC-10, API §26). Es la
     # misma lista que `apps.identity.throttling.GENERAL_THROTTLES`; las tasas van en
     # `AUTH_RATE_LIMITS` (`general_read`, `general_write`, `state_changes`).
@@ -268,6 +282,8 @@ AUTH_RATE_LIMITS = {
     "general_write": "120/1m",
     # Cambios de estado, radicaciones y desistimientos (`throttle_scope`), un cupo común.
     "state_changes": "20/1m",
+    # Login de `/admin/`, por IP, cuando se publica (SEC-18).
+    "admin_login": "10/15m",
 }
 # Solo en local: con `DEBUG=True`, cada cupo de `AUTH_RATE_LIMITS` (también `reports`) se
 # multiplica por este número. Con `DEBUG=False` se ignora siempre.

@@ -15,11 +15,12 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 
+from django.conf import settings
 from django.contrib import admin
 from django.urls import include, path
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 
-from config.views import health, ready
+from config.views import admin_login, health, ready
 
 api_v1_patterns = [
     path("auth/", include("apps.identity.urls")),
@@ -45,14 +46,33 @@ api_v1_patterns = [
 ]
 
 urlpatterns = [
-    path("admin/", admin.site.urls),
     path("api/v1/", include(api_v1_patterns)),
     path("health", health, name="health"),
     path("ready", ready, name="ready"),
-    path("openapi.json", SpectacularAPIView.as_view(), name="openapi-schema"),
-    path(
-        "docs",
-        SpectacularSwaggerView.as_view(url_name="openapi-schema"),
-        name="swagger-ui",
-    ),
 ]
+
+# `/admin/` solo con `DEBUG` o `ADMIN_ENABLED` (SEC-18), en `ADMIN_URL_PATH`; su login pasa
+# por un límite de intentos por IP (va antes que `admin.site.urls` para reemplazarlo).
+if settings.DEBUG or settings.ADMIN_ENABLED:
+    admin_path = settings.ADMIN_URL_PATH.strip("/") + "/"
+    urlpatterns += [
+        path(f"{admin_path}login/", admin_login, name="admin-login"),
+        path(admin_path, admin.site.urls),
+    ]
+
+# El esquema y Swagger solo con `DEBUG` o `API_DOCS_PUBLIC` (SEC-19). El frontend y la
+# referencia publicada usan `contracts/openapi.json` del repo.
+if settings.DEBUG or settings.API_DOCS_PUBLIC:
+    urlpatterns += [
+        path("openapi.json", SpectacularAPIView.as_view(), name="openapi-schema"),
+        path(
+            "docs",
+            SpectacularSwaggerView.as_view(url_name="openapi-schema"),
+            name="swagger-ui",
+        ),
+    ]
+
+# Rutas inexistentes y errores fuera de DRF: el formato de error de la API en `/api/`
+# (SEC-12). Django solo los usa sin `DEBUG`.
+handler404 = "config.views.page_not_found"
+handler500 = "config.views.server_error"

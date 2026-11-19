@@ -1,6 +1,11 @@
+import importlib
+from collections.abc import Iterator
+from contextlib import contextmanager
 from typing import Any
 
 from django.conf import settings
+from django.test import override_settings
+from django.urls import clear_url_caches
 from rest_framework.test import APIClient
 
 from apps.identity.cookies import access_cookie_name, refresh_cookie_name
@@ -57,3 +62,21 @@ def role_permissions(role_code: str) -> list[str]:
 def cookie_was_cleared(response: Any, name: str) -> bool:
     cookie = response.cookies.get(name)
     return cookie is not None and cookie.value == "" and str(cookie["max-age"]) == "0"
+
+
+@contextmanager
+def urls_with(**overrides: Any) -> Iterator[None]:
+    """``config/urls.py`` decide al importarse qué publica (``/admin/``, ``/openapi.json``,
+    ``/docs``): con otros ajustes hay que recargarlo, y al salir se vuelve a cargar con los
+    de las pruebas."""
+    import config.urls
+
+    with override_settings(**overrides):
+        clear_url_caches()
+        importlib.reload(config.urls)
+        try:
+            yield
+        finally:
+            clear_url_caches()
+    importlib.reload(config.urls)
+    clear_url_caches()

@@ -112,6 +112,13 @@ class PasswordResetConfirmRateThrottle(_ByIPRateThrottle):
     scope = "password_reset_confirm"
 
 
+class AdminLoginRateThrottle(_ByIPRateThrottle):
+    """Login de ``/admin/`` por IP (SEC-18). Lo usa ``config.views.admin_login`` con la
+    petición de Django: ``get_ident`` solo lee ``META``."""
+
+    scope = "admin_login"
+
+
 class ChangePasswordRateThrottle(AuthRateThrottle):
     """Limita los intentos de adivinar la contraseña actual con una sesión robada."""
 

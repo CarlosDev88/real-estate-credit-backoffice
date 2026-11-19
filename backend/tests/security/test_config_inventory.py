@@ -10,6 +10,8 @@ import pytest
 from django.urls import URLPattern, URLResolver, get_resolver
 from rest_framework.test import APIClient
 
+from config.settings import base
+from tests.helpers import urls_with
 from tests.security.requests import CONTRACT, contract_operations
 
 pytestmark = pytest.mark.django_db
@@ -27,22 +29,53 @@ def test_health_and_ready_expose_nothing_internal(api_client: APIClient) -> None
     assert api_client.get("/ready").json() == {"status": "ready"}
 
 
-@pytest.mark.xfail(strict=True, reason="SEC-18")
+def test_django_admin_is_not_published_by_default(api_client: APIClient) -> None:
+    """Sin `DEBUG` ni `ADMIN_ENABLED`, `/admin/` no existe (SEC-18)."""
+    assert api_client.get("/admin/").status_code == 404
+    assert api_client.post("/admin/login/", {"username": "a", "password": "b"}).status_code == 404
+
+
 def test_django_admin_login_is_rate_limited(api_client: APIClient) -> None:
-    """`/admin/` vive en el mismo host que la API y su login no tiene límite de intentos."""
-    statuses = [
-        api_client.post(
-            "/admin/login/", {"username": "admin@example.com", "password": f"mala-{i}"}
-        ).status_code
-        for i in range(8)
-    ]
-    assert 429 in statuses
+    """Encendido (y en otra ruta), su login tiene un límite por IP: 10 intentos en 15 min."""
+    with urls_with(ADMIN_ENABLED=True, ADMIN_URL_PATH="gestion-interna/"):
+        assert api_client.get("/admin/login/").status_code == 404
+        statuses = [
+            api_client.post(
+                "/gestion-interna/login/",
+                {"username": "admin@example.com", "password": f"mala-{i}"},
+            ).status_code
+            for i in range(11)
+        ]
+        assert statuses[:10] == [200] * 10  # El formulario con el error.
+        assert statuses[10] == 429
+        # Otra IP no está afectada.
+        other = api_client.post(
+            "/gestion-interna/login/",
+            {"username": "admin@example.com", "password": "mala"},
+            REMOTE_ADDR="10.0.9.1",
+        )
+        assert other.status_code == 200
 
 
-@pytest.mark.xfail(strict=True, reason="SEC-19")
+def test_the_admin_login_rate_is_the_agreed_one() -> None:
+    assert base.AUTH_RATE_LIMITS["admin_login"] == "10/15m"
+    assert (base.ADMIN_ENABLED, base.ADMIN_URL_PATH, base.API_DOCS_PUBLIC) == (
+        False,
+        "admin/",
+        False,
+    )
+
+
 @pytest.mark.parametrize("path", ["/openapi.json", "/docs"])
 def test_api_schema_and_docs_need_a_session(api_client: APIClient, path: str) -> None:
+    """Sin `DEBUG` ni `API_DOCS_PUBLIC`, no se publican (SEC-19)."""
     assert api_client.get(path).status_code in (401, 403, 404)
+
+
+@pytest.mark.parametrize("path", ["/openapi.json", "/docs"])
+def test_api_schema_and_docs_can_be_published_on_purpose(api_client: APIClient, path: str) -> None:
+    with urls_with(API_DOCS_PUBLIC=True):
+        assert api_client.get(path).status_code == 200
 
 
 def _routes(patterns: Sequence[URLPattern | URLResolver], prefix: str = "") -> set[str]:

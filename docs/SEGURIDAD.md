@@ -181,19 +181,19 @@ una línea. Ficha completa de cada uno (cómo reproducirlo, impacto, dónde): [`
 | [SEC-04](seguridad/hallazgos.md#sec-04--djangorestframework-3172-tiene-dos-cve-de-denegación-de-servicio-sin-sesión) | DRF 3.17.2 con dos CVE de denegación de servicio | **Media** | API4 | corregido |
 | [SEC-05](seguridad/hallazgos.md#sec-05--el-compose-publica-postgresql-y-el-backend-en-todas-las-interfaces-del-equipo) | El compose publica PostgreSQL y el backend en todas las interfaces | Baja | API8 | abierto |
 | [SEC-06](seguridad/hallazgos.md#sec-06--imagen-del-backend-base-sin-digest-pip-sin-versión-y-runserver-como-comando) | Imagen del backend sin digest y con `runserver` | Informativa | API8 | abierto |
-| [SEC-07](seguridad/hallazgos.md#sec-07--options-responde-500-en-27-rutas-una-de-ellas-pública) | `OPTIONS` responde 500 en 27 rutas | Baja | API8 | abierto |
-| [SEC-08](seguridad/hallazgos.md#sec-08--las-respuestas-con-datos-personales-no-llevan-cache-control-no-store-ni-vary-cookie) | Respuestas con datos personales sin `Cache-Control: no-store` | **Media** | API8 | abierto |
+| [SEC-07](seguridad/hallazgos.md#sec-07--options-responde-500-en-27-rutas-una-de-ellas-pública) | `OPTIONS` responde 500 en 27 rutas | Baja | API8 | corregido |
+| [SEC-08](seguridad/hallazgos.md#sec-08--las-respuestas-con-datos-personales-no-llevan-cache-control-no-store-ni-vary-cookie) | Respuestas con datos personales sin `Cache-Control: no-store` | **Media** | API8 | corregido |
 | [SEC-09](seguridad/hallazgos.md#sec-09--el-límite-de-login-y-de-recuperación-se-salta-con-otros-correos-o-con-otras-ip) | El límite de login y recuperación se salta con otros correos u otras IP | **Media** | API2 | corregido |
 | [SEC-10](seguridad/hallazgos.md#sec-10--no-existen-los-límites-generales-por-usuario-que-piden-req-93-y-api-26) | Faltan los límites generales por usuario | **Media** | API4 | corregido |
-| [SEC-11](seguridad/hallazgos.md#sec-11--un-json-de-más-de-25-mb-responde-500-sin-debug-o-la-página-de-depuración-con-debug-no-413) | Un JSON de más de 2,5 MB responde 500 y no 413 | Baja | API8 | abierto |
-| [SEC-12](seguridad/hallazgos.md#sec-12--las-rutas-inexistentes-y-los-ids-que-no-son-uuid-responden-html-de-django-no-el-formato-de-error-de-la-api) | Rutas inexistentes responden HTML de Django | Baja | API8 | abierto |
+| [SEC-11](seguridad/hallazgos.md#sec-11--un-json-de-más-de-25-mb-responde-500-sin-debug-o-la-página-de-depuración-con-debug-no-413) | Un JSON de más de 2,5 MB responde 500 y no 413 | Baja | API8 | corregido |
+| [SEC-12](seguridad/hallazgos.md#sec-12--las-rutas-inexistentes-y-los-ids-que-no-son-uuid-responden-html-de-django-no-el-formato-de-error-de-la-api) | Rutas inexistentes responden HTML de Django | Baja | API8 | corregido |
 | [SEC-13](seguridad/hallazgos.md#sec-13--el-contrato-no-coincide-con-la-api-en-2-respuestas-y-no-documenta-varios-estados) | El contrato no coincide con la API en 2 respuestas | Informativa | API9 | abierto |
 | [SEC-14](seguridad/hallazgos.md#sec-14--la-recuperación-de-contraseña-revela-si-el-correo-existe-cuando-falla-el-envío) | La recuperación revela si el correo existe cuando falla el envío | **Media** | API2 | corregido |
-| [SEC-15](seguridad/hallazgos.md#sec-15--el-log-de-peticiones-guarda-la-búsqueda-completa-documento-o-nombre) | El log de peticiones guarda la búsqueda completa | Baja | API8 | abierto |
+| [SEC-15](seguridad/hallazgos.md#sec-15--el-log-de-peticiones-guarda-la-búsqueda-completa-documento-o-nombre) | El log de peticiones guarda la búsqueda completa | Baja | API8 | corregido |
 | [SEC-16](seguridad/hallazgos.md#sec-16--un-409-al-crear-un-cliente-confirma-que-esa-cédula-ya-está-registrada) | El `409` de documento duplicado confirma que la cédula existe | Baja | API3 | abierto |
-| [SEC-17](seguridad/hallazgos.md#sec-17--textos-de-la-configuración-de-bancos-sin-longitud-máxima) | Textos de la configuración de bancos sin longitud máxima | Informativa | API4 | abierto |
-| [SEC-18](seguridad/hallazgos.md#sec-18--admin-de-django-está-publicado-con-la-api-y-su-login-no-tiene-límite-de-intentos) | `/admin/` publicado y sin límite de intentos | Baja | API8 | abierto |
-| [SEC-19](seguridad/hallazgos.md#sec-19--el-esquema-openapi-y-la-documentación-interactiva-son-públicos) | Esquema OpenAPI y documentación públicos | Informativa | API9 | abierto |
+| [SEC-17](seguridad/hallazgos.md#sec-17--textos-de-la-configuración-de-bancos-sin-longitud-máxima) | Textos de la configuración de bancos sin longitud máxima | Informativa | API4 | corregido |
+| [SEC-18](seguridad/hallazgos.md#sec-18--admin-de-django-está-publicado-con-la-api-y-su-login-no-tiene-límite-de-intentos) | `/admin/` publicado y sin límite de intentos | Baja | API8 | corregido |
+| [SEC-19](seguridad/hallazgos.md#sec-19--el-esquema-openapi-y-la-documentación-interactiva-son-públicos) | Esquema OpenAPI y documentación públicos | Informativa | API9 | corregido |
 | [SEC-20](seguridad/hallazgos.md#sec-20--la-documentación-de-la-api-promete-9-rutas-que-no-existen-y-omite-5-que-sí) | La documentación no coincide con las rutas | Informativa | API9 | abierto |
 
 ### Fichas
@@ -240,14 +240,20 @@ puerto publicado.
 fijado y `gunicorn` en la imagen de producción.
 
 **SEC-07 · Baja · API8 — `OPTIONS` con 500.** 27 vistas genéricas fallan al describir sus
-campos; una es pública. Estado: abierto.
-**Cómo se solucionó:** Pendiente (Fase B). Corrección sugerida:
-`REST_FRAMEWORK["DEFAULT_METADATA_CLASS"] = None` (el *preflight* de CORS no cambia).
+campos; una es pública. Estado: corregido.
+**Cómo se solucionó (Fase B, este PR) — corregido.** *Causa:* la metadata de DRF describía los
+campos con `get_serializer()`. *Cambio:* `REST_FRAMEWORK["DEFAULT_METADATA_CLASS"] = None`
+(`backend/config/settings/base.py`): `OPTIONS` responde `405` y el *preflight* sigue en
+`corsheaders`. *Verificación:* `tests/security/test_http_responses.py` (las 175 rutas con y sin
+sesión, sin 5xx; *preflight* desde `localhost:3000`); en el 8011, de 29 × `500` a ninguno.
 
 **SEC-08 · Media · API8 — Sin `Cache-Control: no-store`.** Las respuestas con datos personales
-(y el CSV de reportes) se pueden guardar en caché, y no varían por `Cookie`. Estado: abierto.
-**Cómo se solucionó:** Pendiente (Fase B). Corrección sugerida: un *middleware* que ponga
-`no-store` y `Vary: Cookie` en `/api/v1/` cuando la vista no fije su propio `Cache-Control`.
+(y el CSV de reportes) se pueden guardar en caché, y no varían por `Cookie`. Estado: corregido.
+**Cómo se solucionó (Fase B, este PR) — corregido.** *Causa:* DRF no pone `Cache-Control`.
+*Cambio:* `ApiNoStoreMiddleware` (`backend/config/middleware.py`, en `MIDDLEWARE`): `no-store` en
+`/api/v1/` cuando la vista no trae uno propio, y `Vary: Cookie` siempre. *Verificación:*
+`tests/security/test_http_responses.py` (listado, detalle, `/auth/me`, CSV y catálogo con ETag);
+en el 8011, `/auth/me`, clientes, solicitud y CSV pasaron de sin cabecera a `no-store`.
 
 **SEC-09 · Media · API2 — Límite de login saltable.** La clave del límite es "IP + correo":
 12 correos desde una IP pasan sin freno, y la misma cuenta suma 5 intentos por cada IP nueva.
@@ -273,14 +279,19 @@ con límites propios, que ahora los suman a los generales. *Verificación:*
 /clients` en el 601.º y los cambios de estado en el 21.º.
 
 **SEC-11 · Baja · API8 — 500 con un JSON grande.** El límite de 2,5 MB sí corta, pero responde
-500 en vez de 413. Estado: abierto.
-**Cómo se solucionó:** Pendiente (Fase B). Corrección sugerida: convertir `RequestDataTooBig` en
-`413 PAYLOAD_TOO_LARGE` en el manejador de errores.
+500 en vez de 413. Estado: corregido.
+**Cómo se solucionó (Fase B, este PR) — corregido.** *Causa:* `RequestDataTooBig` no es de
+DRF. *Cambio:* `backend/config/exceptions.py` la convierte en `413 PAYLOAD_TOO_LARGE`.
+*Verificación:* `tests/security/test_http_responses.py` (3 MB en el login y en `POST /clients`); en
+el 8011, de `500` a `413` con el formato de la API.
 
 **SEC-12 · Baja · API8 — 404 en HTML.** Las rutas inexistentes y los ids que no son UUID
-responden la página de Django. Estado: abierto.
-**Cómo se solucionó:** Pendiente (Fase B). Corrección sugerida: `handler404`/`handler500` con el
-formato de error de la API para `/api/`.
+responden la página de Django. Estado: corregido.
+**Cómo se solucionó (Fase B, este PR) — corregido.** *Causa:* sin `handler404`/`handler500`.
+*Cambio:* `backend/config/views.py` y `backend/config/urls.py`: JSON con `build_error_body` en
+`/api/`, la página de Django fuera. *Verificación:* `tests/security/test_http_responses.py`
+(`/api/v1/no-existe` y `/api/v1/applications/abc` → `404 RESOURCE_NOT_FOUND` con `request_id`); en
+el 8011, de `text/html` a JSON. Con `DEBUG` (solo local) sigue la página de depuración.
 
 **SEC-13 · Informativa · API9 — Contrato desalineado.** Dos respuestas no siguen el esquema y
 faltan códigos 400/404/428. Estado: abierto.
@@ -301,9 +312,12 @@ invitaciones, que también eran síncronas, van igual. *Verificación:*
 mismo proceso) el tiempo del envío se suma cuando el correo existe.
 
 **SEC-15 · Baja · API8 — Búsquedas en el log.** El log de peticiones guarda la URL con
-`?search=` (documento, nombre). Estado: abierto.
-**Cómo se solucionó:** Pendiente (Fase B). Corrección sugerida: ocultar los valores de `search`
-en el filtro de `config/log_redaction.py` y en el *access log* de producción.
+`?search=` (documento, nombre). Estado: corregido.
+**Cómo se solucionó (Fase B, este PR) — corregido.** *Causa:* el filtro solo ocultaba los
+tokens. *Cambio:* `backend/config/log_redaction.py` escribe `***` en el valor de `search`, `email`,
+`document_number` y `q` de cualquier mensaje. *Verificación:*
+`tests/security/test_exposure.py::test_search_terms_are_not_written_to_the_access_log` (sin `xfail`)
+y tres pruebas más; en el 8010, `"GET /api/v1/clients?search=*** HTTP/1.1"`.
 
 **SEC-16 · Baja · API3 — El 409 confirma la cédula.** Crear un cliente con un documento ya
 registrado responde 409 aunque el cliente sea de otro alcance (sin revelar sus datos). Estado:
@@ -312,18 +326,27 @@ abierto (documentado en API §13).
 flujo de "cliente ya existente" que revise un asesor, o aceptarlo con el límite de SEC-10.
 
 **SEC-17 · Informativa · API4 — Textos de bancos sin tope.** `operational_notes` acepta 1 MB
-(solo admin). Estado: abierto.
-**Cómo se solucionó:** Pendiente (Fase B). Corrección sugerida: `max_length=4000`.
+(solo admin). Estado: corregido.
+**Cómo se solucionó (Fase B, este PR) — corregido.** *Cambio:* `max_length=4000` en los dos
+campos (`backend/apps/banking/serializers.py`). *Verificación:*
+`tests/security/test_resources.py::test_bank_operational_notes_have_a_maximum_length` (sin `xfail`)
+y la de edición; en el 8011, 100 000 caracteres pasaron de `201` a `400`.
 
 **SEC-18 · Baja · API8 — Admin de Django expuesto.** `/admin/` en el mismo host, con 42 modelos
-y sin límite de intentos; hoy no hay usuarios que puedan entrar. Estado: abierto.
-**Cómo se solucionó:** Pendiente (Fase B). Corrección sugerida: montarlo solo con `DEBUG` o con
-una variable, y con límite de intentos si se publica.
+y sin límite de intentos; hoy no hay usuarios que puedan entrar. Estado: corregido.
+**Cómo se solucionó (Fase B, este PR) — corregido.** *Causa:* `admin/` montado siempre y sin
+límite. *Cambio:* `backend/config/urls.py`, `views.py` y `settings/base.py`: solo con `DEBUG` o
+`ADMIN_ENABLED` (por defecto `False`), en `ADMIN_URL_PATH`, y su login con un límite por IP de
+`10/15m`. *Verificación:* `tests/security/test_config_inventory.py` (apagado → `404`; encendido →
+`429` al 11.º intento); en el 8011, de 12 × `200` a `404`, y encendido 10 × `200` + `429`.
 
 **SEC-19 · Informativa · API9 — Esquema y docs públicos.** `/openapi.json` y `/docs` sin sesión,
-también sin `DEBUG`. Estado: abierto.
-**Cómo se solucionó:** Pendiente (Fase B). Corrección sugerida: publicarlos solo con `DEBUG` o
-para usuarios internos.
+también sin `DEBUG`. Estado: corregido.
+**Cómo se solucionó (Fase B, este PR) — corregido.** *Cambio:* `/openapi.json` y `/docs` solo
+con `DEBUG` o `API_DOCS_PUBLIC` (por defecto `False`) en `backend/config/urls.py`; el frontend usa
+`contracts/openapi.json`. *Verificación:*
+`tests/security/test_config_inventory.py::test_api_schema_and_docs_need_a_session` (sin `xfail`);
+en el 8011, de `200` a `404` (y `200` con la variable).
 
 **SEC-20 · Informativa · API9 — Documentación desalineada.** 9 rutas documentadas no existen y
 las 5 de direcciones del cliente no están documentadas. Estado: abierto.

@@ -17,7 +17,7 @@ from django.utils import timezone
 
 from tests.security import access_matrix as m
 from tests.security.conftest import ADMIN, ADVISOR_OWNER, BROKER_OWNER, BUYER_OWNER, World
-from tests.security.requests import CONTRACT, client_for, url_for
+from tests.security.requests import CONTRACT, client_for, send, url_for
 
 pytestmark = pytest.mark.django_db
 
@@ -187,16 +187,28 @@ def test_free_text_fields_have_a_maximum_length(world: World, index: int) -> Non
     ).items()
 
 
-@pytest.mark.xfail(strict=True, reason="SEC-17")
 def test_bank_operational_notes_have_a_maximum_length(world: World) -> None:
-    """Solo el administrador escribe la configuración de bancos, pero un texto de 1 MB se
-    guarda tal cual y viaja en cada lectura de `/banks`."""
+    """Solo el administrador escribe la configuración de bancos; aun así, un texto de 1 MB
+    no se guarda (SEC-17, ``max_length=4000`` al crear y al editar)."""
     response = client_for(world, ADMIN).post(
         "/api/v1/banks",
         {"code": "ZZ", "name": "Banco Z", "tax_id": "900123456-8", "operational_notes": MEGABYTE},
         format="json",
     )
     assert response.status_code == 400
+    assert any(d["field"] == "operational_notes" for d in response.json()["details"])
+
+
+def test_bank_operational_notes_are_capped_on_update_too(world: World) -> None:
+    operation = "PATCH /api/v1/banks/{bank_id}"
+    response = send(
+        client_for(world, ADMIN),
+        operation,
+        url_for(world, operation),
+        {"operational_notes": "x" * 4001},
+    )
+    assert response.status_code == 400, response.content[:200]
+    assert any(d["field"] == "operational_notes" for d in response.json()["details"])
 
 
 # --- SEC-04: DRF 3.18.2 o posterior -------------------------------------------------------
