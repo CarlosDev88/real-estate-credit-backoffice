@@ -37,6 +37,14 @@ function dialogWith(page: Page, title: string | RegExp): Locator {
   return page.getByRole("dialog").filter({ has: page.getByText(title, { exact: true }) });
 }
 
+/** `true` si el elemento aparece (espera a que cargue la vista); `false` si no llega. */
+async function appears(locator: Locator): Promise<boolean> {
+  return locator.waitFor({ state: "visible", timeout: 15_000 }).then(
+    () => true,
+    () => false,
+  );
+}
+
 /** Elige la primera opción de un `Select` (las opciones vienen de los catálogos de la API). */
 async function chooseFirst(page: Page, scope: Locator, label: string | RegExp) {
   await scope.getByLabel(label).click();
@@ -86,7 +94,8 @@ test("paga una parte de la comisión y el asesor la ve pagada en Mis comisiones"
   const panel = dialogWith(admin, settlement.application.code);
   const item = panel.getByRole("listitem").filter({ hasText: share.beneficiary.name });
   await item.getByRole("button", { name: "Registrar pago" }).click();
-  const pay = dialogWith(admin, "Registrar pago");
+  // Por nombre: el panel también tiene un botón "Registrar pago".
+  const pay = admin.getByRole("dialog", { name: "Registrar pago", exact: true });
   await pay.getByLabel("Referencia").fill(reference);
   await pay.getByRole("button", { name: "Registrar pago" }).click();
   await expect(admin.getByText("Pago registrado")).toBeVisible();
@@ -175,7 +184,7 @@ test("el broker ve su bandeja y genera el enlace del comprador", async ({ browse
 
   await broker.goto("/prospectos?tab=solicitudes");
   const send = broker.getByRole("button", { name: /^Enviar enlace de SOL-/ }).first();
-  test.skip(!(await send.isVisible().catch(() => false)), NO_DEMO_DATA);
+  test.skip(!(await appears(send)), NO_DEMO_DATA);
   const code = /SOL-\d+/.exec((await send.getAttribute("aria-label")) ?? "")![0];
   await send.click();
   const modal = dialogWith(broker, "Enviar enlace al comprador");
@@ -192,7 +201,7 @@ test("el asesor edita el inmueble antes de radicar", async ({ page }) => {
   test.setTimeout(120_000);
   const application = await firstItem<{ id: string; code: string }>(
     page,
-    "/api/v1/applications?status=DOCUMENT_REVIEW&page_size=1",
+    "/api/v1/applications?status=DOCUMENTS_REVIEW&page_size=1",
   );
   test.skip(!application, `${NO_DEMO_DATA} (sin solicitudes en revisión documental)`);
   const unit = `Apto E2E ${String(Date.now()).slice(-4)}`;
@@ -200,7 +209,7 @@ test("el asesor edita el inmueble antes de radicar", async ({ page }) => {
   await page.goto(`/solicitudes/${application!.id}`);
   const card = page.getByRole("region", { name: "Inmueble" });
   const edit = card.getByRole("button", { name: "Editar" });
-  test.skip(!(await edit.isVisible().catch(() => false)), "La solicitud no tiene inmueble.");
+  test.skip(!(await appears(edit)), "La solicitud no tiene inmueble.");
   await edit.click();
 
   const panel = dialogWith(page, "Editar inmueble");
