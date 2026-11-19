@@ -1,0 +1,118 @@
+name: Storybook and API reference
+
+# Publica en GitHub Pages (https://carlosdev88.github.io/real-estate-credit-backoffice/):
+# - Storybook de Umbral (la librería de componentes y su guía) en la raíz;
+# - la referencia de la API, generada desde contracts/openapi.json con Redoc, en /api/.
+# Las dos son estáticas y de solo lectura: ningún story llama a la API y la referencia no
+# tiene "probar". Pages se activa en Settings → Pages → Source: GitHub Actions.
+on:
+  push:
+    branches: [master]
+    # Solo lo que cambia alguna de las dos salidas.
+    paths:
+      - "frontend/**"
+      - "design/**"
+      - "contracts/openapi.json"
+      - ".github/workflows/storybook-pages.yml"
+  workflow_dispatch:
+
+# Una publicación a la vez; la que está en curso termina (no se corta un despliegue a medias).
+concurrency:
+  group: pages-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: "Pages: build Storybook and the API reference"
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    permissions:
+      contents: read
+
+    defaults:
+      run:
+        working-directory: frontend
+        shell: bash
+
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
+      COREPACK_ENABLE_DOWNLOAD_PROMPT: "0"
+      # Versión fijada de Redocly CLI (genera la referencia de la API).
+      REDOCLY_CLI_VERSION: "2.72.1"
+
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "24"
+
+      - name: Enable corepack
+        run: corepack enable
+
+      - name: Locate the pnpm store
+        id: pnpm_store
+        run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ steps.pnpm_store.outputs.path }}
+          key: pnpm-store-${{ runner.os }}-${{ hashFiles('frontend/pnpm-lock.yaml') }}
+          restore-keys: pnpm-store-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Storybook genera rutas relativas: funciona servido en /real-estate-credit-backoffice/.
+      - name: Build Storybook
+        run: pnpm build-storybook
+
+      # HTML estático con Redoc embebido (--inlineBundle): sin CDN ni servidor detrás.
+      - name: Build the API reference
+        working-directory: ${{ github.workspace }}
+        run: >-
+          npx --yes "@redocly/cli@${REDOCLY_CLI_VERSION}" build-docs contracts/openapi.json
+          --output _site-api/index.html
+          --title "API · Real Estate Credit Backoffice"
+          --inlineBundle
+
+      # Storybook en la raíz y la API en api/ (Storybook no usa esa carpeta).
+      - name: Assemble the site
+        working-directory: ${{ github.workspace }}
+        run: |
+          mkdir -p _site
+          cp -R frontend/storybook-static/. _site/
+          if [ -e _site/api ]; then
+            echo "::error title=Pages::storybook-static ya trae una carpeta api/"
+            exit 1
+          fi
+          mkdir -p _site/api
+          cp _site-api/index.html _site/api/index.html
+
+      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: _site
+
+  deploy:
+    name: "Pages: deploy"
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    # Lo mínimo para publicar en Pages.
+    permissions:
+      pages: write
+      id-token: write
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
