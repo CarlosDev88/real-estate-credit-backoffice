@@ -7,10 +7,12 @@
   ``tests/reporting/test_export_jobs.py::test_a_fourth_active_export_is_rejected``.
 """
 
+import bz2
 import json
 from typing import Any
 
 import pytest
+import rest_framework
 from django.utils import timezone
 
 from tests.security import access_matrix as m
@@ -195,3 +197,30 @@ def test_bank_operational_notes_have_a_maximum_length(world: World) -> None:
         format="json",
     )
     assert response.status_code == 400
+
+
+# --- SEC-04: DRF 3.18.2 o posterior -------------------------------------------------------
+
+
+def test_a_compressed_charset_is_not_expanded(api_client: Any) -> None:
+    """CVE-2026-114136 (SEC-04): ~100 bytes con ``charset=bz2_codec`` se expandían a un
+    correo de 5 MB que llegaba al serializer (``400 VALIDATION_ERROR``). Con DRF 3.18.2 el
+    parser rechaza el ``charset`` sin descomprimir."""
+    raw = json.dumps({"email": "a" * (5 * 1024 * 1024) + "@x.co", "password": "x"}).encode()
+    body = bz2.compress(raw)
+    assert len(body) < 200
+    response = api_client.generic(
+        "POST",
+        "/api/v1/auth/login",
+        body,
+        content_type="application/json; charset=bz2_codec",
+    )
+    assert response.status_code == 400, response.content[:200]
+    assert response.json()["code"] == "MALFORMED_REQUEST"
+
+
+def test_drf_has_the_fix_of_both_cves() -> None:
+    """CVE-2026-114138 (el `Accept` cuadrático) no se reproduce con el cliente de pruebas:
+    lo cubre la versión. La medición contra el servidor está en la ficha."""
+    major, minor, patch = (int(part) for part in rest_framework.VERSION.split(".")[:3])
+    assert (major, minor, patch) >= (3, 18, 2)

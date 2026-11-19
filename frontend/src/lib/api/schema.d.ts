@@ -5165,6 +5165,7 @@ export interface components {
             /** Format: decimal */
             readonly rate_pct: string;
             readonly total_amount_cop: number;
+            /** @default ACTIVE */
             readonly status: components["schemas"]["CommissionSettlementStatusEnum"];
             readonly status_label: string;
             readonly needs_review: boolean;
@@ -6232,6 +6233,7 @@ export interface components {
             readonly partner_name: string;
             readonly user: components["schemas"]["UserSummary"];
             readonly job_title: string;
+            /** @default ACTIVE */
             readonly status: components["schemas"]["PartnerStatusEnum"];
             /** Format: date */
             readonly started_at: string;

@@ -3,7 +3,7 @@
 from collections.abc import Callable
 from datetime import timedelta
 from io import StringIO
-from typing import Any
+from typing import Any, cast
 
 import pytest
 from django.core.management import call_command
@@ -347,7 +347,8 @@ class _EchoView(APIView):
 
     @idempotent()
     def post(self, request: Request) -> Response:
-        return Response(request.data.get("answer"), status=request.data["status"])
+        data = cast(dict[str, Any], request.data)
+        return Response(data.get("answer"), status=data["status"])
 
 
 def _call(actor: Any, body: dict[str, Any], *, session: BuyerSession | None = None) -> Response:

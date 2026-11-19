@@ -18,6 +18,16 @@ CACHES = {"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"
 
 EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"
 
+# Los límites generales (SEC-10) ×1000: muchas pruebas pegan a la misma vista con el mismo
+# usuario. Solo las pruebas de límites vuelven a las tasas reales (`base.AUTH_RATE_LIMITS`)
+# con `override_settings`.
+AUTH_RATE_LIMITS = {
+    **AUTH_RATE_LIMITS,  # noqa: F405
+    "general_read": "600000/1m",
+    "general_write": "120000/1m",
+    "state_changes": "20000/1m",
+}
+
 AUTH_JWT_SIGNING_KEY = "test-signing-key-only-for-automated-tests-0123456789"
 AUTH_JWT_ISSUER = "mvp-credito-api"
 AUTH_JWT_AUDIENCE = "mvp-credito-backoffice"

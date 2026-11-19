@@ -27,9 +27,14 @@ from apps.identity.serializers import (
     RefreshResponseSerializer,
 )
 from apps.identity.throttling import (
+    GENERAL_THROTTLES,
     ChangePasswordRateThrottle,
+    LoginAccountRateThrottle,
+    LoginIPRateThrottle,
     LoginRateThrottle,
     PasswordResetConfirmRateThrottle,
+    PasswordResetRequestAccountRateThrottle,
+    PasswordResetRequestIPRateThrottle,
     PasswordResetRequestRateThrottle,
 )
 from config.serializers import ErrorSerializer
@@ -66,7 +71,13 @@ class LoginView(PublicAuthView):
     # Auditoría (módulo 14, apps/audit/hooks.py).
     audit_failure_action = AuditAction.AUTH_LOGIN_FAILED
     audit_resource_type = "auth"
-    throttle_classes = [LoginRateThrottle]
+    # IP + correo, IP sobre todos los correos y correo sobre todas las IP (SEC-09).
+    throttle_classes = [
+        *GENERAL_THROTTLES,
+        LoginRateThrottle,
+        LoginIPRateThrottle,
+        LoginAccountRateThrottle,
+    ]
 
     @extend_schema(
         tags=[AUTH_TAG],
@@ -203,7 +214,12 @@ class PasswordResetRequestView(PublicAuthView):
     # Auditoría (módulo 14, apps/audit/hooks.py).
     audit_actions = {"POST": AuditAction.AUTH_PASSWORD_RESET_REQUESTED}
     audit_resource_type = "auth"
-    throttle_classes = [PasswordResetRequestRateThrottle]
+    throttle_classes = [
+        *GENERAL_THROTTLES,
+        PasswordResetRequestRateThrottle,
+        PasswordResetRequestIPRateThrottle,
+        PasswordResetRequestAccountRateThrottle,
+    ]
 
     @extend_schema(
         tags=[AUTH_TAG],
@@ -232,7 +248,7 @@ class PasswordResetConfirmView(PublicAuthView):
     # Auditoría (módulo 14, apps/audit/hooks.py).
     audit_actions = {"POST": AuditAction.AUTH_PASSWORD_RESET_COMPLETED}
     audit_resource_type = "auth"
-    throttle_classes = [PasswordResetConfirmRateThrottle]
+    throttle_classes = [*GENERAL_THROTTLES, PasswordResetConfirmRateThrottle]
 
     @extend_schema(
         tags=[AUTH_TAG],
@@ -257,7 +273,7 @@ class PasswordResetConfirmView(PublicAuthView):
 
 class ChangePasswordView(APIView):
     permission_classes = [IsAuthenticated]
-    throttle_classes = [ChangePasswordRateThrottle]
+    throttle_classes = [*GENERAL_THROTTLES, ChangePasswordRateThrottle]
 
     @extend_schema(
         tags=[AUTH_TAG],

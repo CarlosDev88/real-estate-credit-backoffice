@@ -126,6 +126,14 @@ REST_FRAMEWORK = {
     "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
     "DEFAULT_PARSER_CLASSES": ["rest_framework.parsers.JSONParser"],
     "EXCEPTION_HANDLER": "config.exceptions.api_exception_handler",
+    # Límites generales por usuario, sesión del comprador o IP (SEC-10, API §26). Es la
+    # misma lista que `apps.identity.throttling.GENERAL_THROTTLES`; las tasas van en
+    # `AUTH_RATE_LIMITS` (`general_read`, `general_write`, `state_changes`).
+    "DEFAULT_THROTTLE_CLASSES": [
+        "apps.identity.throttling.GeneralReadRateThrottle",
+        "apps.identity.throttling.GeneralWriteRateThrottle",
+        "apps.identity.throttling.ScopedUserRateThrottle",
+    ],
     # Proxies de confianza delante de la API. Con 0 se ignora X-Forwarded-For.
     "NUM_PROXIES": env.int("NUM_PROXIES", default=0),
     "TEST_REQUEST_DEFAULT_FORMAT": "json",
@@ -234,8 +242,14 @@ AUTH_COOKIE_SAMESITE = "Lax"
 
 # Límites de consumo (sección 26). Formato `<cantidad>/<n><s|m|h|d>`.
 AUTH_RATE_LIMITS = {
+    # Login y recuperación: por IP + correo, y además por IP sobre todos los correos
+    # (rociado) y por correo sobre todas las IP (fuerza bruta distribuida), SEC-09.
     "login": "5/15m",
+    "login_ip": "20/15m",
+    "login_account": "10/15m",
     "password_reset_request": "3/1h",
+    "password_reset_request_ip": "10/1h",
+    "password_reset_request_account": "5/1h",
     "password_reset_confirm": "10/15m",
     "change_password": "5/15m",
     "invitation_accept": "10/15m",
@@ -248,6 +262,12 @@ AUTH_RATE_LIMITS = {
     "document_download": "60/1h",
     # Dashboard y reportes, por usuario (REQUERIMIENTOS §9.3: endpoints costosos).
     "reports": env("REPORTS_RATE_LIMIT", default="20/1m"),
+    # Generales (SEC-10, REQUERIMIENTOS §9.3 y API §26), por usuario interno o sesión del
+    # comprador; sin sesión, por IP. Lecturas = GET, HEAD y OPTIONS; el resto, escrituras.
+    "general_read": "600/1m",
+    "general_write": "120/1m",
+    # Cambios de estado, radicaciones y desistimientos (`throttle_scope`), un cupo común.
+    "state_changes": "20/1m",
 }
 # Solo en local: con `DEBUG=True`, cada cupo de `AUTH_RATE_LIMITS` (también `reports`) se
 # multiplica por este número. Con `DEBUG=False` se ignora siempre.

@@ -40,6 +40,7 @@ from apps.identity.buyer_portal_views import (
     BuyerPortalView,
 )
 from apps.identity.throttling import (
+    GENERAL_THROTTLES,
     BuyerDocumentUploadRateThrottle,
     DocumentDownloadRateThrottle,
 )
@@ -132,7 +133,7 @@ def _ensure_request_size(request: Request) -> None:
 
 class BuyerDocumentUploadView(BuyerDossierView):
     parser_classes = [MultiPartParser]
-    throttle_classes = [BuyerDocumentUploadRateThrottle]
+    throttle_classes = [*GENERAL_THROTTLES, BuyerDocumentUploadRateThrottle]
 
     def initial(self, request: Request, *args: Any, **kwargs: Any) -> None:
         _ensure_request_size(request)
@@ -189,7 +190,7 @@ class BuyerDocumentFileDownloadView(BuyerDossierView):
     # Auditoría (módulo 14, apps/audit/hooks.py).
     audit_actions = {"GET": AuditAction.DOCUMENT_DOWNLOADED}
     audit_resource_type = "document_files"
-    throttle_classes = [DocumentDownloadRateThrottle]
+    throttle_classes = [*GENERAL_THROTTLES, DocumentDownloadRateThrottle]
 
     @extend_schema(
         tags=[BUYER_PORTAL_TAG],

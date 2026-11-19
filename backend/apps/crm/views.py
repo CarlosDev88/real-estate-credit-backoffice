@@ -565,6 +565,8 @@ class OpportunityAssignmentView(CrmView):
 
 class OpportunityTransitionView(CrmView):
     required_permissions = {"POST": "opportunities.transition"}
+    # Cupo común de cambios de estado, radicaciones y desistimientos (SEC-10).
+    throttle_scope = "state_changes"
 
     @extend_schema(
         tags=[OPPORTUNITIES_TAG],

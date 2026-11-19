@@ -448,7 +448,7 @@ Versiones fijadas en el repositorio (`backend/requirements.txt`, `frontend/packa
 | --- | --- | --- |
 | Backend | Python | 3.11 (`python:3.11-slim`) |
 | | Django | 5.2 |
-| | Django REST Framework | 3.17 |
+| | Django REST Framework | 3.18 |
 | | drf-spectacular | 0.30 |
 | | PyJWT, argon2-cffi | 2.x, 25.x |
 | | Celery | 5.6 |

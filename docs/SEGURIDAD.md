@@ -178,17 +178,17 @@ una línea. Ficha completa de cada uno (cómo reproducirlo, impacto, dónde): [`
 | [SEC-01](seguridad/hallazgos.md#sec-01--no-hay-configuración-de-producción-y-los-puntos-de-entrada-cargan-local-que-fuerza-debugtrue) | No hay configuración de producción y los puntos de entrada cargan `local` (`DEBUG=True`) | Baja | API8 | abierto |
 | [SEC-02](seguridad/hallazgos.md#sec-02--la-configuración-base-no-endurece-https) | La configuración base no endurece HTTPS | Baja | API8 | abierto |
 | [SEC-03](seguridad/hallazgos.md#sec-03--las-claves-no-se-validan-al-arrancar-la-clave-jwt-local-tiene-31-bytes) | Las claves no se validan al arrancar | Baja | API8 | abierto |
-| [SEC-04](seguridad/hallazgos.md#sec-04--djangorestframework-3172-tiene-dos-cve-de-denegación-de-servicio-sin-sesión) | DRF 3.17.2 con dos CVE de denegación de servicio | **Media** | API4 | abierto |
+| [SEC-04](seguridad/hallazgos.md#sec-04--djangorestframework-3172-tiene-dos-cve-de-denegación-de-servicio-sin-sesión) | DRF 3.17.2 con dos CVE de denegación de servicio | **Media** | API4 | corregido |
 | [SEC-05](seguridad/hallazgos.md#sec-05--el-compose-publica-postgresql-y-el-backend-en-todas-las-interfaces-del-equipo) | El compose publica PostgreSQL y el backend en todas las interfaces | Baja | API8 | abierto |
 | [SEC-06](seguridad/hallazgos.md#sec-06--imagen-del-backend-base-sin-digest-pip-sin-versión-y-runserver-como-comando) | Imagen del backend sin digest y con `runserver` | Informativa | API8 | abierto |
 | [SEC-07](seguridad/hallazgos.md#sec-07--options-responde-500-en-27-rutas-una-de-ellas-pública) | `OPTIONS` responde 500 en 27 rutas | Baja | API8 | abierto |
 | [SEC-08](seguridad/hallazgos.md#sec-08--las-respuestas-con-datos-personales-no-llevan-cache-control-no-store-ni-vary-cookie) | Respuestas con datos personales sin `Cache-Control: no-store` | **Media** | API8 | abierto |
-| [SEC-09](seguridad/hallazgos.md#sec-09--el-límite-de-login-y-de-recuperación-se-salta-con-otros-correos-o-con-otras-ip) | El límite de login y recuperación se salta con otros correos u otras IP | **Media** | API2 | abierto |
-| [SEC-10](seguridad/hallazgos.md#sec-10--no-existen-los-límites-generales-por-usuario-que-piden-req-93-y-api-26) | Faltan los límites generales por usuario | **Media** | API4 | abierto |
+| [SEC-09](seguridad/hallazgos.md#sec-09--el-límite-de-login-y-de-recuperación-se-salta-con-otros-correos-o-con-otras-ip) | El límite de login y recuperación se salta con otros correos u otras IP | **Media** | API2 | corregido |
+| [SEC-10](seguridad/hallazgos.md#sec-10--no-existen-los-límites-generales-por-usuario-que-piden-req-93-y-api-26) | Faltan los límites generales por usuario | **Media** | API4 | corregido |
 | [SEC-11](seguridad/hallazgos.md#sec-11--un-json-de-más-de-25-mb-responde-500-sin-debug-o-la-página-de-depuración-con-debug-no-413) | Un JSON de más de 2,5 MB responde 500 y no 413 | Baja | API8 | abierto |
 | [SEC-12](seguridad/hallazgos.md#sec-12--las-rutas-inexistentes-y-los-ids-que-no-son-uuid-responden-html-de-django-no-el-formato-de-error-de-la-api) | Rutas inexistentes responden HTML de Django | Baja | API8 | abierto |
 | [SEC-13](seguridad/hallazgos.md#sec-13--el-contrato-no-coincide-con-la-api-en-2-respuestas-y-no-documenta-varios-estados) | El contrato no coincide con la API en 2 respuestas | Informativa | API9 | abierto |
-| [SEC-14](seguridad/hallazgos.md#sec-14--la-recuperación-de-contraseña-revela-si-el-correo-existe-cuando-falla-el-envío) | La recuperación revela si el correo existe cuando falla el envío | **Media** | API2 | abierto |
+| [SEC-14](seguridad/hallazgos.md#sec-14--la-recuperación-de-contraseña-revela-si-el-correo-existe-cuando-falla-el-envío) | La recuperación revela si el correo existe cuando falla el envío | **Media** | API2 | corregido |
 | [SEC-15](seguridad/hallazgos.md#sec-15--el-log-de-peticiones-guarda-la-búsqueda-completa-documento-o-nombre) | El log de peticiones guarda la búsqueda completa | Baja | API8 | abierto |
 | [SEC-16](seguridad/hallazgos.md#sec-16--un-409-al-crear-un-cliente-confirma-que-esa-cédula-ya-está-registrada) | El `409` de documento duplicado confirma que la cédula existe | Baja | API3 | abierto |
 | [SEC-17](seguridad/hallazgos.md#sec-17--textos-de-la-configuración-de-bancos-sin-longitud-máxima) | Textos de la configuración de bancos sin longitud máxima | Informativa | API4 | abierto |
@@ -221,10 +221,13 @@ JWT local tiene 31 bytes (RFC 7518 pide 32). Estado: abierto.
 
 **SEC-04 · Media · API4 — DRF con dos CVE de DoS.** CVE-2026-114136 (el `charset` de
 compresión salta el límite del cuerpo: 101 bytes llegan como 5 MB) y CVE-2026-114138 (`Accept`
-en tiempo cuadrático). El arreglo, 3.18.2, queda fuera del rango `<3.18`. Estado: abierto
-(revisado en `backend/security/pip-audit-ignore.txt`).
-**Cómo se solucionó:** Pendiente (Fase B). Corrección sugerida: `djangorestframework>=3.18.2,<3.19`
-y quitar las dos líneas del archivo de excepciones.
+en tiempo cuadrático). El arreglo, 3.18.2, quedaba fuera del rango `<3.18`. Estado: corregido.
+**Cómo se solucionó (Fase B, este PR) — corregido.** *Causa:* el rango `<3.18` de
+`requirements.txt` dejaba fuera el arreglo. *Cambio:* `backend/requirements.txt` (DRF
+`>=3.18.2,<3.19`, stubs compatibles) y `backend/security/pip-audit-ignore.txt` sin las dos
+excepciones. *Verificación:* `tests/security/test_resources.py::test_a_compressed_charset_is_not_expanded`;
+en el 8010, el cuerpo bz2 de 96 bytes pasó de `400 VALIDATION_ERROR` (expandido a 5 MB, 586 ms)
+a `400 MALFORMED_REQUEST` (66 ms), y el `Accept` de 9 KB de 64 ms a 7 ms (`406`).
 
 **SEC-05 · Baja · API8 — Puertos en todas las interfaces.** El compose publica PostgreSQL y la
 API en `0.0.0.0`. Estado: abierto.
@@ -248,14 +251,26 @@ campos; una es pública. Estado: abierto.
 
 **SEC-09 · Media · API2 — Límite de login saltable.** La clave del límite es "IP + correo":
 12 correos desde una IP pasan sin freno, y la misma cuenta suma 5 intentos por cada IP nueva.
-Estado: abierto.
-**Cómo se solucionó:** Pendiente (Fase B). Corrección sugerida: dos límites más, por IP sobre
-todos los correos y por cuenta sobre todas las IP, y una demora progresiva.
+Estado: corregido.
+**Cómo se solucionó (Fase B, este PR) — corregido.** *Causa:* una sola clave "IP + correo".
+*Cambio:* `backend/apps/identity/throttling.py` y `views.py` suman, al límite de IP + correo, uno
+por IP (login `20/15m`, recuperación `10/1h`) y uno por cuenta (`10/15m`, `5/1h`), con tasas en
+`AUTH_RATE_LIMITS` (`backend/config/settings/base.py`). Decisión: sin demora con `sleep`; el
+límite por cuenta es el control progresivo. *Verificación:* `tests/security/test_rate_limits.py`
+(rociado, una cuenta desde varias IP y recuperación a muchos correos); en el 8010, el rociado
+corta en el 21.º correo y la cuenta en el 11.º fallo aunque cambie de IP. *Riesgo residual:*
+quien conozca un correo puede bloquear esa cuenta 15 minutos.
 
 **SEC-10 · Media · API4 — Sin límites generales.** No existen los 120/min de escrituras, 600/min
-de lecturas ni 20/min de cambios de estado que pide REQ §9.3. Estado: abierto.
-**Cómo se solucionó:** Pendiente (Fase B). Corrección sugerida: `DEFAULT_THROTTLE_CLASSES` por
-usuario o sesión y uno con alcance propio para estados y radicaciones.
+de lecturas ni 20/min de cambios de estado que pide REQ §9.3. Estado: corregido.
+**Cómo se solucionó (Fase B, este PR) — corregido.** *Causa:* sin `DEFAULT_THROTTLE_CLASSES`.
+*Cambio:* `backend/apps/identity/throttling.py` (lecturas `600/1m`, escrituras `120/1m` por usuario,
+sesión del comprador o IP, y `20/1m` común a cambios de estado, desistimientos, radicaciones y
+transiciones de oportunidad con `throttle_scope`), `backend/config/settings/base.py` y las vistas
+con límites propios, que ahora los suman a los generales. *Verificación:*
+`tests/security/test_rate_limits.py` (lectura, escritura y cambio de estado con `429`,
+`Retry-After` y el texto en español); en el 8010, `POST /clients` corta en el 121.º, `GET
+/clients` en el 601.º y los cambios de estado en el 21.º.
 
 **SEC-11 · Baja · API8 — 500 con un JSON grande.** El límite de 2,5 MB sí corta, pero responde
 500 en vez de 413. Estado: abierto.
@@ -274,9 +289,16 @@ faltan códigos 400/404/428. Estado: abierto.
 
 **SEC-14 · Media · API2 — Enumeración por la recuperación.** El correo se envía dentro de la
 petición y solo si el usuario existe: con el correo caído, 500 para los que existen y 202 para
-los que no. Estado: abierto.
-**Cómo se solucionó:** Pendiente (Fase B). Corrección sugerida: mandar el correo por la cola de
-notificaciones (o capturar el error), para que la respuesta sea siempre la misma.
+los que no. Estado: corregido.
+**Cómo se solucionó (Fase B, este PR) — corregido.** *Causa:* `send_mail` síncrono en la
+petición, solo si el usuario existía. *Cambio:* `backend/apps/identity/tasks.py` (nuevo),
+`services.py` e `invitations.py`: la petición solo encola después del commit; el worker busca el
+usuario, genera el token (que no pasa por el broker) y envía; un fallo queda en el log. Las
+invitaciones, que también eran síncronas, van igual. *Verificación:*
+`tests/security/test_auth.py::test_reset_request_answers_the_same_when_the_mail_fails` (sin
+`xfail`) y tres pruebas más; en el 8010 con worker, `202` siempre y +4,1 ms de mediana (antes
++14 ms y `500` con el SMTP caído). *Riesgo residual:* en el modo local simple (tareas en el
+mismo proceso) el tiempo del envío se suma cuando el correo existe.
 
 **SEC-15 · Baja · API8 — Búsquedas en el log.** El log de peticiones guarda la URL con
 `?search=` (documento, nombre). Estado: abierto.

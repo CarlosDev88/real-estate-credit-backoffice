@@ -1154,6 +1154,8 @@ def _status_change_response(change: services.StatusChange) -> Response:
 
 class ApplicationStatusTransitionView(ExpedienteView):
     required_permissions = {"POST": "applications.transition"}
+    # Cupo común de cambios de estado, radicaciones y desistimientos (SEC-10).
+    throttle_scope = "state_changes"
 
     @extend_schema(
         tags=[APPLICATIONS_TAG],
@@ -1197,6 +1199,8 @@ class ApplicationStatusTransitionView(ExpedienteView):
 
 class ApplicationWithdrawalView(ExpedienteView):
     required_permissions = {"POST": "applications.withdraw"}
+    # Cupo común de cambios de estado, radicaciones y desistimientos (SEC-10).
+    throttle_scope = "state_changes"
 
     @extend_schema(
         tags=[APPLICATIONS_TAG],

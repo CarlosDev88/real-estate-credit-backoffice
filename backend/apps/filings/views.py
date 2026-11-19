@@ -34,7 +34,7 @@ from apps.filings.serializers import (
 from apps.idempotency.decorators import IDEMPOTENCY_PARAMETER, idempotency_responses, idempotent
 from apps.identity.models import User
 from apps.identity.permissions import HasPermissionCode
-from apps.identity.throttling import DocumentDownloadRateThrottle
+from apps.identity.throttling import GENERAL_THROTTLES, DocumentDownloadRateThrottle
 from config.openapi import etag_response_headers
 from config.serializers import ErrorSerializer
 
@@ -82,6 +82,8 @@ class FilingView(GenericAPIView):
 
 class ApplicationFilingListView(FilingView):
     required_permissions = {"GET": READ, "POST": CREATE}
+    # Cupo común de cambios de estado, radicaciones y desistimientos (SEC-10).
+    throttle_scope = "state_changes"
 
     @extend_schema(
         tags=[FILINGS_TAG],
@@ -413,7 +415,7 @@ class FilingResponseEvidenceDownloadView(ResponseView):
     audit_actions = {"GET": AuditAction.EVIDENCE_DOWNLOADED}
     audit_resource_type = "filing_responses"
     required_permissions = {"GET": READ}
-    throttle_classes = [DocumentDownloadRateThrottle]
+    throttle_classes = [*GENERAL_THROTTLES, DocumentDownloadRateThrottle]
 
     @extend_schema(
         tags=[RESPONSES_TAG],

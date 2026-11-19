@@ -27213,7 +27213,8 @@
                                 "$ref": "#/components/schemas/CommissionSettlementStatusEnum"
                             }
                         ],
-                        "readOnly": true
+                        "readOnly": true,
+                        "default": "ACTIVE"
                     },
                     "status_label": {
                         "type": "string",
@@ -30924,7 +30925,8 @@
                                 "$ref": "#/components/schemas/PartnerStatusEnum"
                             }
                         ],
-                        "readOnly": true
+                        "readOnly": true,
+                        "default": "ACTIVE"
                     },
                     "started_at": {
                         "type": "string",
