@@ -70,6 +70,7 @@ const OPPORTUNITY: BrokerOpportunity = {
   project_id: "pr-1",
   project_name: "Torres del Parque",
   status: "NEW",
+  status_label: "Nueva",
   advisor_name: null,
   created_at: "2026-11-12T15:00:00Z",
   updated_at: "2026-11-14T15:00:00Z",

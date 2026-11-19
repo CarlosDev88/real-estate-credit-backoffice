@@ -279,12 +279,7 @@ function Workspace({ detail, version }: { detail: ApplicationDetail; version: nu
           {/* Parte 1 de la F7: estado de la liquidación de comisión del desembolso. */}
           {detail.status === DISBURSED && permissions.has("commissions.read") && (
             <CommissionCard
-              application={{
-                id,
-                bankId: detail.bank_product?.bank.id ?? null,
-                createdAt: detail.created_at,
-                stageStartedAt: detail.current_stage_started_at,
-              }}
+              applicationId={id}
               code={detail.code}
               canManage={permissions.has("commissions.manage")}
             />

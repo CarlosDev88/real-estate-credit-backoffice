@@ -209,11 +209,27 @@ export function page<T>(items: T[], total = items.length) {
   return { items, page: 1, page_size: 20, total, next: null, previous: null };
 }
 
+const item = (code: string, label: string, order: number) => ({
+  id: `${code}-id`,
+  code,
+  label,
+  description: "",
+  order,
+  active: true,
+});
+
 export const BOOTSTRAP = {
   metadata_version: 1,
   actor: "internal",
   permissions: [],
-  catalogs: {},
+  catalogs: {
+    commission_settlement_status: [item("ACTIVE", "Vigente", 10), item("VOIDED", "Anulada", 20)],
+    commission_share_status: [
+      item("PENDING", "Pendiente de pago", 10),
+      item("PAID", "Pagada", 20),
+      item("VOIDED", "Anulada", 30),
+    ],
+  },
   on_demand_catalogs: [],
   features: {},
 };

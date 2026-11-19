@@ -15,19 +15,11 @@ const SHARE_TONES: Record<string, Tone> = {
 };
 
 /**
- * Nombres de los estados para los filtros. El contrato los trae en la descripción del
- * enum (`CommissionSettlementStatusEnum`, `CommissionShareStatusEnum`) y no hay catálogo
- * en `/metadata/bootstrap`; en las filas se usa siempre el `status_label` de la API.
+ * Catálogos del bootstrap con los nombres de los estados para los filtros. En las filas se
+ * usa siempre el `status_label` de la API.
  */
-export const SETTLEMENT_STATUS_OPTIONS = [
-  { value: "ACTIVE", label: "Vigente" },
-  { value: "VOIDED", label: "Anulada" },
-];
-export const SHARE_STATUS_OPTIONS = [
-  { value: "PENDING", label: "Pendiente de pago" },
-  { value: "PAID", label: "Pagada" },
-  { value: "VOIDED", label: "Anulada" },
-];
+export const SETTLEMENT_STATUS_CATALOG = "commission_settlement_status";
+export const SHARE_STATUS_CATALOG = "commission_share_status";
 
 export function SettlementStatusBadge({ code, label }: { code: string; label: string }) {
   return <ToneBadge tone={SETTLEMENT_TONES[code] ?? "neutral"}>{label}</ToneBadge>;

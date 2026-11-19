@@ -2,7 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Alert, Button, Checkbox, Input, Radio, Select } from "antd";
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
@@ -35,25 +35,29 @@ import {
   type IncomeSource,
   type ParticipantCreateRequest,
 } from "@/features/applications/dossier-queries";
+import { useCatalog } from "@/features/applications/queries";
 import type { FinancialProfile, Participant } from "@/features/applications/workspace-queries";
+import { optionsOf } from "@/features/clients/catalog-options";
 import { compactPhone, makeClientSchema } from "@/features/clients/client-form";
 import { DOCUMENT_TYPE_CATALOG } from "@/features/clients/queries";
 import { isApiError } from "@/lib/api/errors";
+import type { components } from "@/lib/api/schema";
 import { formatDateOnly } from "@/lib/format";
 import { useToast } from "@/providers/toast";
 
 /** Papel del titular (código de la API): no cambia de papel ni se retira. */
 export const PRIMARY = "PRIMARY";
-/**
- * Papeles que se agregan (`RoleCodeEnum`). No hay catálogo en `/metadata/bootstrap`: los
- * nombres son los de la descripción del enum en el contrato. En la lista y en el panel
- * se usa siempre el `role_label` de la API.
- */
-export const ADDABLE_ROLES = [
-  { value: "CO_APPLICANT", label: "Co-solicitante" },
-  { value: "SOLIDARY_DEBTOR", label: "Deudor solidario" },
-] as const;
-type AddableRole = (typeof ADDABLE_ROLES)[number]["value"];
+/** Catálogo de los papeles. En la lista y en el panel se usa siempre el `role_label` de la API. */
+const PARTICIPANT_ROLE_CATALOG = "participant_role";
+/** Papeles que se agregan o a los que se cambia (`RoleCodeEnum`): todos menos el titular. */
+type AddableRole = components["schemas"]["RoleCodeEnum"];
+
+/** Opciones de papel del catálogo, sin el titular. */
+function useAddableRoles() {
+  const { items, isPending } = useCatalog(PARTICIPANT_ROLE_CATALOG);
+  const options = useMemo(() => optionsOf(items.filter((item) => item.code !== PRIMARY)), [items]);
+  return { options, isPending };
+}
 
 const DUPLICATE_CLIENT_DOCUMENT = "DUPLICATE_CLIENT_DOCUMENT";
 
@@ -191,6 +195,7 @@ export function AddParticipantModal({
   const ids = useId();
   const toast = useToast();
   const add = useAddParticipant(applicationId);
+  const roles = useAddableRoles();
   const [existing, setExisting] = useState<{ id: string; message: string } | null>(null);
   const form = useForm<AddValues>({ resolver: zodResolver(addSchema), defaultValues: EMPTY_ADD });
   const { onError, locked, clearLocked } = useEditErrors<AddValues>(form.setError, ADD_FIELDS);
@@ -308,7 +313,8 @@ export function AddParticipantModal({
                 {...ctl}
                 value={field.value}
                 onChange={field.onChange}
-                options={[...ADDABLE_ROLES]}
+                options={roles.options}
+                loading={roles.isPending}
                 virtual={false}
               />
             )}
@@ -479,6 +485,7 @@ function ParticipationForm({
   const ids = useId();
   const toast = useToast();
   const update = useUpdateParticipant(applicationId, version);
+  const roles = useAddableRoles();
   const primary = participant.role === PRIMARY;
   const defaults: RoleValues = {
     role_code: participant.role,
@@ -525,7 +532,8 @@ function ParticipationForm({
                   {...ctl}
                   value={field.value}
                   onChange={field.onChange}
-                  options={[...ADDABLE_ROLES]}
+                  options={roles.options}
+                  loading={roles.isPending}
                   virtual={false}
                 />
               )}

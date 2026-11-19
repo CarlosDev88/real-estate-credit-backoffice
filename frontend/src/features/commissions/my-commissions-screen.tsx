@@ -7,9 +7,11 @@ import { ListPagination } from "@/components/ui/list-pagination";
 import { Money } from "@/components/ui/money";
 import { PageHeader } from "@/components/ui/page-header";
 import { ErrorState, LoadingState } from "@/components/ui/state-views";
+import { useCatalog } from "@/features/applications/queries";
+import { optionsOf } from "@/features/clients/catalog-options";
 import {
   formatPct,
-  SHARE_STATUS_OPTIONS,
+  SHARE_STATUS_CATALOG,
   ShareStatusBadge,
 } from "@/features/commissions/commission-badges";
 import {
@@ -93,6 +95,7 @@ function MyCommissionCard({ row }: { row: MyCommission }) {
 export function MyCommissionsScreen() {
   const { params, update } = useMyCommissionParams();
   const list = useMyCommissions(params);
+  const statuses = useCatalog(SHARE_STATUS_CATALOG);
   const mobile = useMediaQuery(MOBILE_QUERY);
   const errors = filterErrors(list.error, FILTER_KEYS);
   const hasErrors = Object.keys(errors).length > 0;
@@ -106,7 +109,8 @@ export function MyCommissionsScreen() {
       key: "status",
       label: "Estado",
       allLabel: "todos",
-      options: SHARE_STATUS_OPTIONS,
+      options: optionsOf(statuses.items),
+      loading: statuses.isPending,
       width: 220,
     },
   ];

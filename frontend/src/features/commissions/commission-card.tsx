@@ -13,7 +13,7 @@ import {
   SettlementStatusBadge,
   ShareStatusBadge,
 } from "@/features/commissions/commission-badges";
-import { useApplicationSettlement, type ApplicationRef } from "@/features/commissions/queries";
+import { useApplicationSettlement } from "@/features/commissions/queries";
 import { SettleModal } from "@/features/commissions/settle-modal";
 import { formatDateOnly } from "@/lib/format";
 
@@ -23,15 +23,15 @@ import { formatDateOnly } from "@/lib/format";
  * vigente, quien tiene `commissions.manage` puede liquidar a mano.
  */
 export function CommissionCard({
-  application,
+  applicationId,
   code,
   canManage,
 }: {
-  application: ApplicationRef;
+  applicationId: string;
   code: string;
   canManage: boolean;
 }) {
-  const query = useApplicationSettlement(application, true);
+  const query = useApplicationSettlement(applicationId, true);
   const [settleOpen, setSettleOpen] = useState(false);
   const settlement = query.data;
   const canSettle = canManage && query.isSuccess && settlement?.status !== "ACTIVE";
@@ -107,7 +107,7 @@ export function CommissionCard({
         <SettleModal
           open={settleOpen}
           onClose={() => setSettleOpen(false)}
-          target={{ id: application.id, code }}
+          target={{ id: applicationId, code }}
         />
       )}
     </Card>

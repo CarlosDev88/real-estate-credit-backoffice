@@ -45,3 +45,7 @@
 - **Parte 4 — `docs/DESIGN-SYSTEM.md` en español**, como la guía y `docs/SEGURIDAD.md`; las líneas del README siguen en inglés.
 - **Parte 4 — datos de los stories:** los nombres y el documento de ejemplo (`1032445908`) son fixtures inventados que ya están en el repo público (pruebas y Storybook); publicar Storybook no los expone más. Los archivos del visor son de muestra ("Sin datos reales").
 - **Parte 4 — E2E con usuarios `@demo.local`:** el pago de comisión (administrador de demo), "Mis comisiones" (el asesor de demo dueño de la parte) y el broker usan la contraseña de demo publicada en el backend (`E2E_DEMO_PASSWORD` la cambia). La oportunidad y el inmueble usan el asesor de `.env.local`.
+- **Cierre — liquidación de la tarjeta "Comisión":** con `application_id` llegan todas las de la solicitud; gana la vigente y, si no hay, la primera (la más reciente). Ya no se acota por banco ni fechas.
+- **Cierre — `oneOf` de `/applications`:** cada pantalla afirma la forma que le toca por su rol (`PaginatedApplicationSummaryList` el broker; `PaginatedApplicationList` la liquidación a mano, que es del administrador), igual que hizo el #36 en el listado y el expediente.
+- **Cierre — `status_label` de `BrokerOpportunity`:** la bandeja del broker usa el texto de la API; el catálogo `opportunity_status` queda solo para el filtro.
+- **Cierre — E2E de `clients.spec.ts`:** desde el #36 la oportunidad que crea un asesor nace asignada a él; la prueba pulsa "Asignarme" solo si aparece.

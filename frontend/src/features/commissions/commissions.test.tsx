@@ -505,26 +505,14 @@ describe("Mis comisiones", () => {
 });
 
 describe("Tarjeta Comisión del expediente", () => {
-  it("busca la liquidación de la solicitud por banco y fechas, y prefiere la vigente", async () => {
+  it("pide las liquidaciones de la solicitud y prefiere la vigente", async () => {
     const calls = mockApi({
       settlements: [
         { ...VOIDED_SETTLEMENT, application: { id: "app-8", code: "SOL-000008" } },
-        { ...SETTLEMENT, id: "st-other", application: { id: "app-99", code: "SOL-000099" } },
         SETTLEMENT,
       ],
     });
-    renderWithProviders(
-      <CommissionCard
-        application={{
-          id: "app-8",
-          bankId: "b-1",
-          createdAt: "2026-10-01T10:00:00-05:00",
-          stageStartedAt: "2026-11-05T16:00:00-05:00",
-        }}
-        code="SOL-000008"
-        canManage
-      />,
-    );
+    renderWithProviders(<CommissionCard applicationId="app-8" code="SOL-000008" canManage />);
 
     const card = await screen.findByRole("region", { name: "Comisión" });
     expect(await within(card).findByText("Vigente")).toBeInTheDocument();
@@ -534,25 +522,13 @@ describe("Tarjeta Comisión del expediente", () => {
     );
     // Vigente: no se ofrece liquidar otra vez.
     expect(within(card).queryByRole("button", { name: "Liquidar" })).toBeNull();
-    expect(calls.settlements[0]).toContain("bank_id=b-1");
-    expect(calls.settlements[0]).toContain("date_from=2026-10-01");
-    expect(calls.settlements[0]).toContain("date_to=2026-11-05");
+    expect(calls.settlements[0]).toContain("application_id=app-8");
+    expect(calls.settlements[0]).not.toContain("date_from");
   });
 
   it("sin liquidación ofrece liquidar a quien puede", async () => {
     mockApi({ settlements: [] });
-    renderWithProviders(
-      <CommissionCard
-        application={{
-          id: "app-8",
-          bankId: null,
-          createdAt: "2026-10-01T10:00:00-05:00",
-          stageStartedAt: null,
-        }}
-        code="SOL-000008"
-        canManage
-      />,
-    );
+    renderWithProviders(<CommissionCard applicationId="app-8" code="SOL-000008" canManage />);
     const card = await screen.findByRole("region", { name: "Comisión" });
     expect(
       await within(card).findByText("Esta solicitud todavía no tiene liquidación de comisión."),

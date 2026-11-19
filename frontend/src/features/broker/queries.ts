@@ -10,6 +10,7 @@ import type { components } from "@/lib/api/schema";
 type Schemas = components["schemas"];
 export type BrokerOpportunity = Schemas["BrokerOpportunity"];
 export type ApplicationSummary = Schemas["ApplicationSummary"];
+export type ApplicationSummaryPage = Schemas["PaginatedApplicationSummaryList"];
 export type ClientCreateRequest = Schemas["ClientCreateRequest"];
 export type StatusCount = Schemas["StatusCount"];
 
@@ -52,21 +53,21 @@ export function useBrokerOpportunities(params: BrokerParams, enabled: boolean) {
 }
 
 /**
- * Solicitudes de sus prospectos: `GET /applications`. Al broker la API le responde el
- * resumen (`ApplicationSummary`: sin finanzas, inmueble ni documentos), aunque el
- * contrato declare `Application` en esa ruta.
+ * Solicitudes de sus prospectos: `GET /applications`. La respuesta es un `oneOf` por rol:
+ * al broker le llega la página del resumen (`ApplicationSummary`: sin finanzas, inmueble
+ * ni documentos).
  */
 export function useBrokerApplications(params: BrokerParams, enabled: boolean) {
   return useQuery({
     queryKey: brokerKeys.applications(params.page, params.page_size),
-    queryFn: async () => {
-      const { data } = await call(
-        api.GET("/api/v1/applications", {
-          params: { query: { page: params.page, page_size: params.page_size } },
-        }),
-      );
-      return { ...data, items: data.items as unknown as ApplicationSummary[] };
-    },
+    queryFn: async () =>
+      (
+        await call(
+          api.GET("/api/v1/applications", {
+            params: { query: { page: params.page, page_size: params.page_size } },
+          }),
+        )
+      ).data as ApplicationSummaryPage,
     placeholderData: keepPreviousData,
     enabled,
   });

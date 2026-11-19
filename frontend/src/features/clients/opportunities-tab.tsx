@@ -33,7 +33,7 @@ export const DUPLICATE_OPPORTUNITY = "DUPLICATE_OPPORTUNITY";
 
 /**
  * Estado de la oportunidad con el tono de `toneFor`. El texto es el `status_label` de la
- * API; si la respuesta no lo trae (`BrokerOpportunity`), el del catálogo `opportunity_status`.
+ * API; si no llega, el del catálogo `opportunity_status`.
  */
 export function OpportunityStatus({ status, label }: { status: string; label?: string }) {
   const fromCatalog = useCatalogLabel(OPPORTUNITY_STATUS_CATALOG);

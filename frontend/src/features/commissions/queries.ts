@@ -164,20 +164,25 @@ export function useSettleApplication() {
   });
 }
 
-/** Solicitudes desembolsadas para "Liquidar a mano", con búsqueda (código, nombre, cédula). */
+/**
+ * Solicitudes desembolsadas para "Liquidar a mano", con búsqueda (código, nombre, cédula).
+ * Liquida el administrador: recibe la página de `Application`, no la del broker (`oneOf`).
+ */
 export function useDisbursedApplications(search: string, enabled: boolean) {
   return useQuery({
     queryKey: ["applications", "disbursed", search],
     queryFn: async () =>
       (
-        await call(
-          api.GET("/api/v1/applications", {
-            params: {
-              query: { status: DISBURSED, page_size: 20, ...(search ? { search } : {}) },
-            },
-          }),
-        )
-      ).data.items,
+        (
+          await call(
+            api.GET("/api/v1/applications", {
+              params: {
+                query: { status: DISBURSED, page_size: 20, ...(search ? { search } : {}) },
+              },
+            }),
+          )
+        ).data as Schemas["PaginatedApplicationList"]
+      ).items,
     placeholderData: keepPreviousData,
     enabled,
   });
@@ -213,38 +218,21 @@ export function bogotaDate(value: string | Date): string {
   }).format(date);
 }
 
-export interface ApplicationRef {
-  id: string;
-  bankId: string | null;
-  createdAt: string;
-  /** Desde cuándo está en el estado actual (el desembolso, si ya está `DISBURSED`). */
-  stageStartedAt: string | null;
-}
-
 /**
- * La liquidación de una solicitud, para la tarjeta "Comisión" del expediente. El listado
- * no filtra por solicitud: se acota por banco y por la fecha de desembolso posible (desde
- * que se creó la solicitud hasta que entró en `DISBURSED`) y se busca la de esta
- * solicitud; la vigente gana sobre una anulada. `null`: no tiene.
+ * La liquidación de una solicitud, para la tarjeta "Comisión" del expediente
+ * (`application_id`: su historial, la vigente y las anuladas). La vigente gana sobre una
+ * anulada; si no hay vigente, la más reciente. `null`: no tiene.
  */
-export function useApplicationSettlement(app: ApplicationRef, enabled: boolean) {
+export function useApplicationSettlement(applicationId: string, enabled: boolean) {
   return useQuery({
-    queryKey: commissionKeys.ofApplication(app.id),
+    queryKey: commissionKeys.ofApplication(applicationId),
     queryFn: async (): Promise<CommissionSettlement | null> => {
       const { data } = await call(
         api.GET("/api/v1/commission-settlements", {
-          params: {
-            query: {
-              ...(app.bankId ? { bank_id: app.bankId } : {}),
-              date_from: bogotaDate(app.createdAt),
-              date_to: bogotaDate(app.stageStartedAt ?? new Date()),
-              page_size: MAX_PAGE_SIZE,
-            },
-          },
+          params: { query: { application_id: applicationId, page_size: MAX_PAGE_SIZE } },
         }),
       );
-      const own = data.items.filter((s) => s.application.id === app.id);
-      return own.find((s) => s.status === "ACTIVE") ?? own[0] ?? null;
+      return data.items.find((s) => s.status === "ACTIVE") ?? data.items[0] ?? null;
     },
     enabled,
   });

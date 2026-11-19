@@ -9,10 +9,12 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { ListPagination } from "@/components/ui/list-pagination";
 import { Money } from "@/components/ui/money";
 import { ErrorState, LoadingState } from "@/components/ui/state-views";
+import { useCatalog } from "@/features/applications/queries";
+import { optionsOf } from "@/features/clients/catalog-options";
 import { bankLabel, useActiveBanks, useAdvisors } from "@/features/dashboard/queries";
 import {
   ReviewBadge,
-  SETTLEMENT_STATUS_OPTIONS,
+  SETTLEMENT_STATUS_CATALOG,
   SettlementStatusBadge,
   ShareStatusBadge,
 } from "@/features/commissions/commission-badges";
@@ -143,6 +145,7 @@ function useFilterDefs(params: SettlementParams, permissions: ReadonlySet<string
   const advisors = useAdvisors(canUsers);
   const brokers = useBrokers(canUsers);
   const banks = useActiveBanks(canBanks);
+  const statuses = useCatalog(SETTLEMENT_STATUS_CATALOG);
   return useMemo(() => {
     const defs: FilterDef[] = [
       { type: "date", key: "date_from", label: "Desde", max: params.date_to || undefined },
@@ -152,7 +155,8 @@ function useFilterDefs(params: SettlementParams, permissions: ReadonlySet<string
         key: "status",
         label: "Estado",
         allLabel: "todos",
-        options: SETTLEMENT_STATUS_OPTIONS,
+        options: optionsOf(statuses.items),
+        loading: statuses.isPending,
         width: 160,
       },
     ];
@@ -201,7 +205,7 @@ function useFilterDefs(params: SettlementParams, permissions: ReadonlySet<string
       width: 190,
     });
     return defs;
-  }, [params.date_from, params.date_to, canBanks, canUsers, banks, advisors, brokers]);
+  }, [params.date_from, params.date_to, canBanks, canUsers, banks, advisors, brokers, statuses]);
 }
 
 /** Pestaña "Liquidaciones" de `/comisiones`: filtros, listado y el detalle en el panel. */

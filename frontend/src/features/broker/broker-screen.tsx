@@ -92,8 +92,9 @@ const OPPORTUNITY_COLUMNS = opCol.columns([
   opCol.display({
     id: "status",
     header: "Estado",
-    // `BrokerOpportunity` no trae `status_label`: el texto sale del catálogo.
-    cell: ({ row }) => <OpportunityStatus status={row.original.status} />,
+    cell: ({ row }) => (
+      <OpportunityStatus status={row.original.status} label={row.original.status_label} />
+    ),
   }),
   opCol.accessor((r) => r.advisor_name, {
     id: "advisor",
@@ -118,7 +119,7 @@ function OpportunityCard({ row }: { row: BrokerOpportunity }) {
         <span className="text-text-tertiary ml-auto text-xs">{formatDate(row.updated_at)}</span>
       </div>
       <div>
-        <OpportunityStatus status={row.status} />
+        <OpportunityStatus status={row.status} label={row.status_label} />
       </div>
       <DataList layout="inline">
         <Datum label="Proyecto">{row.project_name ?? NO_PROJECT}</Datum>
