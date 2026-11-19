@@ -438,6 +438,8 @@ El proyecto no se despliega, pero se construyó para que pasar a producción sea
 | Observabilidad | Logs con `request_id` y auditoría en la base | Métricas (latencia, errores, colas), alertas y trazas (REQ §11.1) | ⏳ Fuera del alcance actual |
 | Secretos | `backend/.env` local | Un gestor de secretos; `DJANGO_SECRET_KEY` y `AUTH_JWT_SIGNING_KEY` distintas y de alta entropía | 🔧 A definir con la plataforma |
 
+La auditoría de seguridad (fase A, #32) dejó varios de estos puntos como hallazgos, con su corrección sugerida: la configuración de producción (SEC-01), el endurecimiento de HTTPS (SEC-02), la validación de las claves al arrancar (SEC-03), los puertos publicados en todas las interfaces (SEC-05) y la imagen del backend con `runserver` (SEC-06) ([12 · Auditorías §2](12-auditorias.md#2-seguridad)).
+
 Lo que **no** cambia: el código de dominio, el contrato, las migraciones y el frontend. El frontend ya se construye como build de producción en su contenedor (`frontend/Dockerfile`).
 
 ## 10. Stack y versiones

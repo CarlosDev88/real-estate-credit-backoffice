@@ -2,7 +2,7 @@
 
 > **En simple:** nada entra a `master` sin pasar dos revisiones automáticas, una del backend y otra del frontend. Cada una corre linters, tipos, pruebas, cobertura mínima y la verificación del contrato, y deja un **reporte en el PR** con lo que pasó. Debajo hay una pirámide de pruebas: muchas pruebas rápidas de reglas y de API, pruebas de pantallas con la API simulada, y pruebas de punta a punta en el navegador con revisión de accesibilidad.
 
-La estrategia de pruebas viene de REQ §10 ([`docs/REQUERIMIENTOS_MVP_CREDITO.md`](../REQUERIMIENTOS_MVP_CREDITO.md)). Números contados en `master` el **18 de noviembre de 2026**, sin correr ninguna suite (las cuentan las funciones de prueba, no las ejecuciones).
+La estrategia de pruebas viene de REQ §10 ([`docs/REQUERIMIENTOS_MVP_CREDITO.md`](../REQUERIMIENTOS_MVP_CREDITO.md)). Números contados en `master` el **19 de noviembre de 2026** (con la F6 y la fase A de la auditoría de seguridad ya fusionadas), sin correr ninguna suite (las cuentan las funciones de prueba, no las ejecuciones).
 
 ---
 
@@ -23,10 +23,10 @@ La estrategia de pruebas viene de REQ §10 ([`docs/REQUERIMIENTOS_MVP_CREDITO.md
 
 ```mermaid
 flowchart TB
-    e2e["<b>Punta a punta</b> · Playwright + axe<br/>8 specs, contra el backend local<br/>login, portal en celular y escritorio, radicación, clientes, operación"]
+    e2e["<b>Punta a punta</b> · Playwright + axe<br/>13 specs, contra el backend local<br/>login, portal en celular y escritorio, radicación, clientes, operación, administración"]
     sb["<b>Componentes</b> · Storybook + axe<br/>23 archivos de stories, axe en cada una, en el CI"]
-    fe["<b>Pantallas e integración del front</b> · Vitest + Testing Library + MSW<br/>45 archivos, ~496 casos, API simulada"]
-    be["<b>Backend</b> · pytest + pytest-django<br/>118 archivos, 1.794 funciones de prueba<br/>reglas, API con base real, permisos, consultas, concurrencia"]
+    fe["<b>Pantallas e integración del front</b> · Vitest + Testing Library + MSW<br/>57 archivos, ~596 casos, API simulada"]
+    be["<b>Backend</b> · pytest + pytest-django<br/>129 archivos, 1.860 funciones de prueba<br/>reglas, API con base real, permisos, consultas, concurrencia<br/>y la matriz de acceso: 235 operaciones × 9 actores"]
     e2e --- sb --- fe --- be
 ```
 
@@ -49,12 +49,13 @@ Reglas que se repiten en todas las specs:
 
 | Qué | Cuánto | Cómo se contó |
 | --- | ---: | --- |
-| Pruebas del backend | **1.794** funciones en **118** archivos | `def test_` en `backend/tests/` (sin las combinaciones de `@pytest.mark.parametrize`, que se usa 198 veces) |
+| Pruebas del backend | **1.860** funciones en **129** archivos | `def test_` en `backend/tests/` (sin las combinaciones de `@pytest.mark.parametrize`, que se usa 217 veces); 57 de ellas en `backend/tests/security/` |
+| Matriz de acceso | **2.115** casos: cada operación como cada uno de 9 actores | `backend/tests/security/access_matrix.py` y `test_access_matrix.py`; el resultado, en [`docs/seguridad/03-matriz-acceso.md`](../seguridad/03-matriz-acceso.md) |
 | Cobertura mínima del backend | **95 %** | `CI_COVERAGE_MIN: "95"` en `.github/workflows/backend.yml` |
-| Pruebas del front | **45** archivos, **~496** casos | `*.test.ts(x)` y `it(`/`test(` en `frontend/` |
+| Pruebas del front | **57** archivos, **~596** casos | `*.test.ts(x)` y `it(`/`test(` en `frontend/` |
 | Cobertura mínima del front | **70 %** de líneas | `CI_COVERAGE_MIN: "70"` en `.github/workflows/frontend.yml`, aplicado por `frontend/scripts/ci-report.ts --check-coverage` (REQ §10.5) |
 | Stories | **23** archivos `*.stories.tsx` y **17** páginas MDX | `frontend/src/` |
-| Punta a punta | **8** specs (~33 pruebas, algunas en bucle por tema o tamaño) | `frontend/e2e/backoffice/*.spec.ts` y `frontend/e2e/portal/portal.spec.ts` |
+| Punta a punta | **13** specs (algunas pruebas en bucle por tema o tamaño) | `frontend/e2e/backoffice/*.spec.ts` (incluidos los de administración de la F6) y `frontend/e2e/portal/portal.spec.ts` |
 | Aserciones de número de consultas | **48** en 20 archivos | `CaptureQueriesContext` y `django_assert_*num_queries` |
 
 Las pruebas del backend por módulo están en [06 · Módulos](06-modulos.md#índice).
@@ -68,7 +69,8 @@ Dos workflows en `.github/workflows/`, uno por lado del monorepo, que corren en 
 | Job obligatorio | **"Lint, types and tests"** | **"Frontend: lint, types and tests"** |
 | Grupo de concurrencia | `ci-${{ github.ref }}` | `ci-frontend-${{ github.ref }}` |
 | Servicios | PostgreSQL 16 | — |
-| Verificaciones | Ruff (lint), Ruff (formato), Mypy, migraciones al día (`makemigrations --check`), pytest, cobertura ≥ 95 %, contrato OpenAPI al día | ESLint, Prettier, TypeScript, Vitest, cobertura ≥ 70 %, tipos de la API al día, `next build`, Storybook compila, accesibilidad de Storybook |
+| Tiempo máximo | 25 minutos (era 15; la auditoría sumó unos 5) | 20 minutos |
+| Verificaciones | Ruff (lint), Ruff (formato), Mypy, migraciones al día (`makemigrations --check`), pytest, cobertura ≥ 95 %, contrato OpenAPI al día y, desde la auditoría de seguridad: dependencias (`pip-audit`), secretos en todo el historial (`gitleaks`), análisis estático (`bandit`) y la matriz de acceso al día | ESLint, Prettier, TypeScript, Vitest, cobertura ≥ 70 %, tipos de la API al día, `next build`, Storybook compila, accesibilidad de Storybook |
 | Si el PR no toca su zona | Corre igual | Pasa en verde sin correr las verificaciones ("El PR no toca el frontend: verificaciones omitidas") si ningún archivo cambiado está en `frontend/`, `contracts/openapi.json`, `design/generated/`, `design/README.md` o su propio workflow |
 
 Los dos jobs son los **checks obligatorios** del ruleset `protect-master` de GitHub ([`specs/TAREA-ci-reporte.md`](../../specs/TAREA-ci-reporte.md); [`specs/TAREA-frontend-base.md`](../../specs/TAREA-frontend-base.md), F0): sin los dos en verde, el PR no se fusiona.
@@ -77,7 +79,7 @@ Los dos jobs son los **checks obligatorios** del ruleset `protect-master` de Git
 flowchart LR
     pr["PR"] --> be["Backend CI"]
     pr --> fe["Frontend CI"]
-    be --> c1["7 verificaciones<br/>(cada una sigue aunque otra falle)"]
+    be --> c1["11 verificaciones<br/>(cada una sigue aunque otra falle)"]
     c1 --> r1["reporte"] --> a1["artefacto 7 días"] --> m1["comentario en el PR"] --> g1{{"CI gate"}}
     fe --> d{"¿toca el frontend?"}
     d -->|"no"| ok["verde sin correr"]
@@ -105,11 +107,11 @@ Cada workflow arma un reporte en Markdown y lo deja como **un solo comentario** 
 
 *Una corrida real del reporte en un PR (`docs/images/ci-report.png`).*
 
-- **Backend:** `backend/scripts/ci_report.py`, solo con la biblioteca estándar de Python. Filas: Ruff (lint), Ruff (formato), Mypy, Migraciones, Tests, Cobertura, Advertencias (no bloquea) y Contrato OpenAPI. Incluye las pruebas que fallaron, los 5 módulos con menos cobertura y las rutas y esquemas que cambiaron en el contrato. Si el reporte supera 60.000 caracteres, recorta el detalle.
+- **Backend:** `backend/scripts/ci_report.py`, solo con la biblioteca estándar de Python. Filas: Ruff (lint), Ruff (formato), Mypy, Migraciones, Tests, Cobertura, Advertencias (no bloquea), Contrato OpenAPI, Dependencias (pip-audit), Dependencias sin arreglo (no bloquea), Secretos (gitleaks), Bandit, Bandit de severidad media (no bloquea) y Matriz de acceso. Incluye las pruebas que fallaron, los 5 módulos con menos cobertura y las rutas y esquemas que cambiaron en el contrato. Si el reporte supera 60.000 caracteres, recorta el detalle.
 - **Frontend:** `frontend/scripts/ci-report.ts`, "mismo formato que `backend/scripts/ci_report.py`", en Node sin dependencias. Filas: ESLint, Prettier (formato), TypeScript, Tests, Cobertura, Contrato API, Build, Storybook y Accesibilidad (Storybook).
 - **Estados:** ✅ pasó, ⚠️ pasó con advertencias, ❌ falló, ⏭️ no corrió. El título resume ("❌ N de M fallaron…").
 - **El reporte nunca hace fallar el job:** si algo sale mal al armarlo, escribe "No se pudo generar el reporte" y sigue. Quien decide es el CI gate.
-- **Probado:** `backend/tests/ci/test_ci_report.py` (30 pruebas) y `frontend/scripts/ci-report.test.ts`.
+- **Probado:** `backend/tests/ci/test_ci_report.py`, `backend/tests/ci/test_ci_report_security.py` y `frontend/scripts/ci-report.test.ts`.
 
 ## 5. El contrato verificado
 
@@ -136,7 +138,7 @@ La auditoría de consistencia del design system (Parte 3 de [`specs/TAREA-design
 Dicho claro, para no sobrevender:
 
 - **Las pruebas de punta a punta no corren en el CI:** necesitan el backend con los datos de demo y se corren en local (`pnpm e2e`). Cada corrida hace login, y el límite de 5 intentos en 15 minutos obliga a juntar los specs en una sola corrida (en local se puede aflojar con `AUTH_RATE_LIMIT_MULTIPLIER`, solo con `DEBUG`).
-- **No hay análisis de dependencias ni detección de secretos** en los workflows (REQ §9.5); Dependabot quedó pendiente ([`specs/TAREA-ci-reporte.md`](../../specs/TAREA-ci-reporte.md), al final).
+- **El análisis de dependencias y de secretos es solo del backend.** Desde la auditoría de seguridad (#32), el CI del backend corre `pip-audit` (bloquea solo si una vulnerabilidad tiene versión con arreglo; las revisadas están en `backend/security/pip-audit-ignore.txt`, cada una con su `SEC-NN`), `gitleaks` sobre todo el historial (con `.gitleaks.toml`) y `bandit` (bloquea solo la severidad alta). Las dependencias del frontend se revisaron una vez con `pnpm audit` en la auditoría, pero no tienen un paso en el CI; Dependabot sigue pendiente ([`specs/TAREA-ci-reporte.md`](../../specs/TAREA-ci-reporte.md), al final).
 - **No hay pruebas de carga** en el CI: son parte de la auditoría de carga del backend ([§8](#8-las-auditorías)).
 
 ## 8. Las auditorías
@@ -145,7 +147,7 @@ Tres revisiones independientes, con su informe y su seguimiento hasta la correcc
 
 | Auditoría | Informe | Estado |
 | --- | --- | --- |
-| Seguridad | `docs/SEGURIDAD.md` *(en curso)* | En curso (rama `chore/security-audit`) |
+| Seguridad | [`docs/SEGURIDAD.md`](../SEGURIDAD.md) y [`docs/seguridad/`](../seguridad/hallazgos.md) | Fase A (encontrar y documentar) en `master` (#32): 20 hallazgos, ninguno crítico ni alto. Fase B (corregir) en curso |
 | Performance del frontend | `docs/PERFORMANCE.md` *(en curso)* | En preparación |
 | Carga y estrés del backend | `docs/PERFORMANCE.md` *(en curso)* | En preparación |
 

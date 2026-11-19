@@ -4,7 +4,7 @@
 
 Este documento cuenta **qué es el producto y para quién es**. El *cómo está hecho* está en [03 · Arquitectura](03-arquitectura.md) y las reglas del dominio, en [02 · Negocio](02-negocio.md).
 
-Cifras y estados de este documento: contados en `master` el **18 de noviembre de 2026**.
+Cifras y estados de este documento: contados en `master` el **18 de noviembre de 2026**; las vistas, actualizadas el **19 de noviembre** (entró la F6, administración).
 
 ---
 
@@ -149,7 +149,7 @@ A lo largo de todo el camino, cada cambio de estado deja historial y actividad, 
 
 REQ §6 define **22 vistas: 14 de operación y 8 del portal**. Todas son una sola app Next.js; la navegación cambia según los permisos que devuelve `GET /auth/me`.
 
-Estado en `master` al 18 de noviembre de 2026 (rutas contadas en `frontend/src/app/**/page.tsx`).
+Estado en `master` al 19 de noviembre de 2026 (rutas contadas en `frontend/src/app/**/page.tsx`): **las 22 vistas están en `master`**.
 
 ### Operación, brokers y partners (14)
 
@@ -165,12 +165,12 @@ Estado en `master` al 18 de noviembre de 2026 (rutas contadas en `frontend/src/a
 | 8 | Espacio de trabajo de la solicitud | `/solicitudes/[id]` (pestañas resumen, documentos e historial) | Admin, asesor | ✅ En `master` |
 | 9 | Radicación manual | `/solicitudes/[id]?tab=radicacion` | Admin, asesor (con `filings.read`) | ✅ En `master` |
 | 10 | Reportes | `/reportes` | Admin, asesor | ✅ En `master` |
-| 11 | Administración de usuarios | — | Admin | 🚧 En construcción en otra rama |
-| 12 | Listado y detalle de proyectos | — | Admin, asesor, constructora | 🚧 En construcción en otra rama |
-| 13 | Administración de partners | — | Admin | 🚧 En construcción en otra rama |
-| 14 | Catálogos: bancos, productos y requisitos | — | Admin | 🚧 En construcción en otra rama |
+| 11 | Administración de usuarios | `/admin/usuarios` (usuarios e invitaciones) y `/aceptar-invitacion` (pública) | Admin | ✅ En `master` (F6, #34) |
+| 12 | Listado y detalle de proyectos | `/proyectos` | Admin, asesor, constructora | ✅ En `master` (F6, #34) |
+| 13 | Administración de partners | `/admin/constructoras` (con sus miembros) | Admin | ✅ En `master` (F6, #34) |
+| 14 | Catálogos: bancos, productos y requisitos | `/admin/bancos` (y `/admin/bancos/productos/[id]`), `/admin/documentos`, `/admin/catalogos` (y `/admin/catalogos/[id]`), `/admin/flujos` | Admin | ✅ En `master` (F6, #34) |
 
-La radicación (vista 9) no tiene ruta propia: es una pestaña del expediente que solo aparece con el permiso `filings.read` (`frontend/src/features/applications/workspace-screen.tsx`, `TABS`). La API de las vistas 11 a 14 ya existe en el backend (módulos 1 a 7).
+La radicación (vista 9) no tiene ruta propia: es una pestaña del expediente que solo aparece con el permiso `filings.read` (`frontend/src/features/applications/workspace-screen.tsx`, `TABS`). Las vistas 11 a 14 viven en el grupo "Administración" del menú; la de aceptar una invitación es pública, en el grupo de rutas `(public)` ([`specs/TAREA-front-admin.md`](../../specs/TAREA-front-admin.md)). Las vistas propias del broker (su bandeja y sus comisiones) llegan con la F7, en curso en la rama `feat/front-f7`.
 
 ### Portal del comprador (8)
 

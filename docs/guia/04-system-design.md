@@ -38,7 +38,7 @@ Las piezas y su conexión están en [03 · Arquitectura](03-arquitectura.md). Lo
 | Límites de consumo (§9.3, RNF-13) | Límites en Redis o equivalente | 10 límites en `AUTH_RATE_LIMITS`, en caché compartida (Redis o PostgreSQL) | ✅ parcial (sin límite general) |
 | Privacidad (RNF-08, §9.2) | Respuestas por rol, sin PII de más | Serializers por rol, documento enmascarado, auditoría y logs saneados | ✅ |
 
-La auditoría de seguridad independiente está **en curso** en la rama `chore/security-audit` (aún sin fusionar): su matriz de acceso cubre las **235 operaciones × 9 actores sin brechas**. El informe será `docs/SEGURIDAD.md` *(en curso)*; los hallazgos y su corrección se resumen en [12 · Auditorías](12-auditorias.md) *(en preparación)*.
+**La auditoría de seguridad independiente** (fase A, en `master` desde el #32) confirmó el diseño: su matriz pidió **cada una de las 235 operaciones como cada uno de 9 actores (2.115 casos) sin ninguna brecha de acceso**, y encontró **20 hallazgos: ninguno crítico ni alto, 5 medios, 10 bajos y 5 informativos**. El informe es [`docs/SEGURIDAD.md`](../SEGURIDAD.md); las fichas, [`docs/seguridad/hallazgos.md`](../seguridad/hallazgos.md); el resumen con cómo se soluciona cada uno, [12 · Auditorías](12-auditorias.md). La fase B (las correcciones) está en curso. Donde un hallazgo toca una sección de este documento, se cita su `SEC-NN`.
 
 ---
 
@@ -94,7 +94,7 @@ La auditoría de seguridad independiente está **en curso** en la rama `chore/se
 - Si el recurso no está en ese conjunto, la respuesta es `404 RESOURCE_NOT_FOUND`, **no** `403`: no se confirma que existe (docstring de `backend/apps/crm/services.py`).
 - Ningún id que mande el front amplía privilegios: la constructora no puede usar un `partner_id` ajeno (se deriva de su membresía) y el enlace mágico ignora el `client_id` de la entrada (REQ §8.6).
 
-**Qué se probó:** 156 comprobaciones de `404` en `backend/tests/` y 22 pruebas cuyo nombre habla de "otro asesor", "no asignado" o "fuera de alcance". La auditoría en curso recorre la matriz completa (235 operaciones × 9 actores).
+**Qué se probó:** 156 comprobaciones de `404` en `backend/tests/` y 22 pruebas cuyo nombre habla de "otro asesor", "no asignado" o "fuera de alcance". Y la matriz de la auditoría de seguridad: 2.115 casos (235 operaciones × 9 actores), todos con el resultado esperado (`backend/tests/security/test_access_matrix.py`; [`docs/seguridad/03-matriz-acceso.md`](../seguridad/03-matriz-acceso.md)), que corre en cada PR.
 
 ### 2.5 Entrada validada
 
@@ -317,7 +317,7 @@ Reglas comunes:
 
 **Qué se probó:** `backend/tests/identity/test_rate_limits.py` (el mensaje, el redondeo, `Retry-After`, el multiplicador con y sin `DEBUG`) y `test_database_cache.py` (los límites funcionan con la caché en PostgreSQL).
 
-**Lo que no hay:** el límite general de 120 por minuto para toda la API autenticada ni el de 20 por minuto para transiciones y radicación (§9.3). Hoy solo tienen límite los flujos de la tabla.
+**Lo que no hay:** el límite general de 120 por minuto para toda la API autenticada ni el de 20 por minuto para transiciones y radicación (§9.3; hallazgo SEC-10). Hoy solo tienen límite los flujos de la tabla. Y la auditoría mostró que el límite del login y de la recuperación, al ser por correo + IP, se salta probando otros correos desde la misma IP o el mismo correo desde muchas IP (SEC-09, severidad media).
 
 ---
 
@@ -361,17 +361,20 @@ Requisitos de REQ que el código de `master` **no** cumple todavía, para que na
 
 | Requisito | Estado | Fuente |
 | --- | --- | --- |
-| Cabeceras de seguridad (HSTS, `Content-Security-Policy`, `Referrer-Policy`, `frame-ancestors`) | No configuradas en `backend/config/settings/` | REQ §9.2, §9.5 |
-| Límite general de la API (120/min) y de transiciones y radicación (20/min) | No implementados | REQ §9.3 |
+| Cabeceras de seguridad (HSTS, `Content-Security-Policy`, `Referrer-Policy`, `frame-ancestors`) | No configuradas en `backend/config/settings/` | REQ §9.2, §9.5; SEC-02 |
+| `Cache-Control: no-store` en las respuestas con datos personales | Solo en algunas vistas (las descargas, el portal del comprador y sus avisos); el resto de la API, no | SEC-08 |
+| Límite general de la API (120/min) y de transiciones y radicación (20/min) | No implementados | REQ §9.3; SEC-10 |
+| Límite de login y recuperación que no se pueda saltar con otros correos u otras IP | Hoy es por correo + IP | SEC-09 |
+| Configuración de producción y validación de claves al arrancar | No existe un `settings` de producción | SEC-01, SEC-03 |
 | `Idempotency-Key` obligatoria | Opcional por decisión | REQ §9.3; `TAREA-notificaciones.md` |
 | MFA para `ADMIN` y `ADVISOR` | No implementado | REQ §9.5 |
-| Análisis de dependencias y detección de secretos en el CI | No hay pasos en `.github/workflows/` | REQ §9.5 |
+| Análisis de dependencias y detección de secretos en el CI | ✅ En el CI del backend desde el #32 (`pip-audit`, `gitleaks`, `bandit`); el frontend no tiene un paso propio | REQ §9.5; [09 · Calidad §7](09-calidad.md#7-qué-no-cubre-el-ci) |
 | Métricas, trazas y alertas | No implementadas | REQ §11.1 |
 | `request_id` hasta el worker | No se propaga | REQ §11.1 |
 | Respaldo y restauración probados | Fuera del alcance (sin despliegue) | RNF-09 |
 | Medición del p95 | En la auditoría de carga, en preparación | RNF-17 |
 
-Varios de estos puntos son materia de la auditoría de seguridad en curso; su resultado y sus correcciones quedarán en [12 · Auditorías](12-auditorias.md).
+Los puntos con `SEC-NN` son hallazgos de la auditoría de seguridad y se corrigen (o se aceptan con su motivo) en la fase B; el estado de cada uno está en [12 · Auditorías](12-auditorias.md).
 
 ---
 

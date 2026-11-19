@@ -6,7 +6,7 @@ El proyecto es un MVP para gestionar **solicitudes de crédito de vivienda en Co
 
 ## En cifras
 
-Contado en `master` el **18 de noviembre de 2026**:
+Contado en `master` el **19 de noviembre de 2026**:
 
 | Qué | Cuánto | Dónde se explica |
 | --- | ---: | --- |
@@ -14,8 +14,10 @@ Contado en `master` el **18 de noviembre de 2026**:
 | Tablas propias en PostgreSQL | 57 | [05 · Modelo de datos](05-modelo-de-datos.md) |
 | Operaciones de la API (contrato OpenAPI 3.1) | 235 | [03 · Arquitectura §6](03-arquitectura.md#6-el-contrato-openapi-primero) |
 | Vistas del producto (14 de operación y 8 del portal) | 22 | [01 · El producto §5](01-el-producto.md#5-las-22-vistas) |
-| Funciones de prueba del backend · cobertura mínima | 1.794 · 95 % | [09 · Calidad](09-calidad.md#2-los-números) |
-| Archivos de prueba del frontend · cobertura mínima | 45 · 70 % | [09 · Calidad](09-calidad.md#2-los-números) |
+| Funciones de prueba del backend · cobertura mínima | 1.860 · 95 % | [09 · Calidad](09-calidad.md#2-los-números) |
+| Archivos de prueba del frontend · cobertura mínima | 57 · 70 % | [09 · Calidad](09-calidad.md#2-los-números) |
+| Casos de la matriz de acceso · brechas encontradas | 2.115 · 0 | [12 · Auditorías §2](12-auditorias.md#2-seguridad) |
+| Hallazgos de la auditoría de seguridad (fase A) | 20: 0 críticos, 0 altos, 5 medios | [12 · Auditorías §2](12-auditorias.md#2-seguridad) |
 | Revisiones obligatorias del CI por PR | 2 | [09 · Calidad §3](09-calidad.md#3-el-ci-dos-revisiones-obligatorias) |
 | Decisiones de arquitectura registradas | 15 | [ADR](../adr/README.md) |
 
@@ -44,7 +46,7 @@ Contado en `master` el **18 de noviembre de 2026**:
 | [09 · Calidad](09-calidad.md) | Estrategia de pruebas, números reales, CI con reporte en el PR, contrato verificado, la regla de colores y lo que el CI no cubre. | ✅ |
 | [10 · Operación local](10-operacion-local.md) | Cómo correrlo: la demo en un comando, el recorrido sugerido por rol, los dos modos, puertos, comandos útiles y problemas comunes. | ✅ |
 | [11 · Cómo se construyó](11-como-se-construyo.md) | El método: specs cerradas, agentes en paralelo, revisión, el CI como filtro y los errores reales que se atraparon. | ✅ |
-| [12 · Auditorías](12-auditorias.md) | Las auditorías de seguridad, performance del front y carga del backend: qué se encontró y cómo se solucionó. | 🔄 Estructura lista; se llena al cierre de las auditorías |
+| [12 · Auditorías](12-auditorias.md) | Las auditorías de seguridad, performance del front y carga del backend: qué se encontró y cómo se solucionó. | 🔄 Seguridad con sus 20 hallazgos y su severidad; las soluciones, con la fase B. Performance y carga, en preparación |
 | [ADR](../adr/README.md) | 15 registros de decisiones de arquitectura, cada uno con contexto, opciones, decisión y consecuencias. | ✅ |
 
 ## Documentación de referencia
@@ -61,12 +63,13 @@ Estos documentos son la especificación original. La guía los resume y los enla
 | [Contrato OpenAPI](../../contracts/openapi.json) | Generado por el backend; es la frontera con el frontend. |
 | [Specs de construcción](../../specs/) | Cada tarea con sus decisiones ("Precisiones acordadas"). |
 | [`backend/README.md`](../../backend/README.md) | Módulos del backend, modos locales, comandos y convenciones (en inglés). |
-| `docs/SEGURIDAD.md`, `docs/PERFORMANCE.md`, `docs/DESIGN-SYSTEM.md` | *(en curso, por otros equipos de trabajo; se enlazarán aquí cuando estén en `master`)* |
+| [Seguridad](../SEGURIDAD.md) y [sus fases](../seguridad/hallazgos.md) | El informe de la auditoría de seguridad: alcance, método, modelo de amenazas, controles, matriz de acceso y cada hallazgo con su estado. |
+| `docs/PERFORMANCE.md`, `docs/DESIGN-SYSTEM.md` | *(en curso, por otros equipos de trabajo; se enlazarán aquí cuando estén en `master`)* |
 
 ## Convenciones de esta guía
 
 - **Cada afirmación técnica lleva su fuente**: una ruta del repositorio (`backend/apps/filings/responses.py`) o una sección de un documento (REQ §4.5 es la sección 4.5 de los requerimientos).
-- **Las cifras llevan fecha.** Se contaron en `master` el 18 de noviembre de 2026, sin correr las suites.
+- **Las cifras llevan fecha.** Se contaron en `master` el 18 de noviembre de 2026 (y las que cambiaron, el 19), sin correr las suites.
 - **Cada diagrama tiene una línea "Qué mirar"** que dice qué buscar en él. Los diagramas son Mermaid y GitHub los muestra directamente.
 - **Lo que no está hecho se dice.** Las secciones "Lo que queda pendiente" ([04 §10](04-system-design.md#10-lo-que-queda-pendiente-dicho-claro)) y "Qué no cubre el CI" ([09 §7](09-calidad.md#7-qué-no-cubre-el-ci)) existen para eso.
 - **Los términos del dominio** (radicar, legalización, deudor solidario…) están en el [glosario](01-el-producto.md#6-glosario).

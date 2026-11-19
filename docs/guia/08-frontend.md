@@ -2,7 +2,7 @@
 
 > **En simple:** el frontend es **una sola aplicación Next.js** con dos caras: el backoffice para el equipo interno y el portal móvil del comprador. No tiene reglas de negocio propias: pinta lo que la API le da (catálogos, etiquetas, acciones disponibles, permisos), valida solo el formato de los formularios y traduce los errores de la API en mensajes claros. Los tipos de cada llamada salen del contrato OpenAPI, así que una llamada mal escrita no compila.
 
-La conexión con la API (mismo origen, cookies, CSRF) está en [03 · Arquitectura §7](03-arquitectura.md#7-front--api-mismo-origen-por-el-proxy-de-next); las pruebas del front, en [09 · Calidad](09-calidad.md). El design system tendrá su propio documento, `docs/DESIGN-SYSTEM.md` *(en curso)*. Revisado en `master` el **18 de noviembre de 2026**.
+La conexión con la API (mismo origen, cookies, CSRF) está en [03 · Arquitectura §7](03-arquitectura.md#7-front--api-mismo-origen-por-el-proxy-de-next); las pruebas del front, en [09 · Calidad](09-calidad.md). El design system tendrá su propio documento, `docs/DESIGN-SYSTEM.md` *(en curso)*. Revisado en `master` el **18 de noviembre de 2026** y actualizado el **19** con la F6 (administración, #34).
 
 ---
 
@@ -31,6 +31,7 @@ frontend/src/
 │   ├── (auth)/login/            login interno
 │   ├── (backoffice)/            layout con BackofficeGuard y AppShell
 │   ├── (portal)/portal/         layout con PortalGuard y PortalShell
+│   ├── (public)/aceptar-invitacion/  aceptar una invitación interna, sin sesión
 │   └── acceso/                  consume el enlace mágico
 ├── features/            una carpeta por dominio (pantallas, consultas, formularios)
 ├── components/ui/       piezas compartidas del design system
@@ -49,9 +50,11 @@ flowchart TB
     root --> bo["(backoffice)/layout.tsx<br/>BackofficeGuard → AppShell"]
     root --> portal["(portal)/layout.tsx<br/>PortalGuard → PortalShell"]
     root --> acceso["acceso<br/>AccessScreen"]
+    root --> publica["(public)/aceptar-invitacion<br/>AcceptInvitationScreen"]
     bo --> bo1["/dashboard · /mi-dia · /reportes"]
     bo --> bo2["/clientes · /clientes/nuevo<br/>/clientes/[id] · /clientes/[id]/editar"]
     bo --> bo3["/solicitudes · /solicitudes/[id]"]
+    bo --> bo4["Administración: /admin/usuarios · /admin/constructoras · /proyectos<br/>/admin/bancos · /admin/documentos · /admin/catalogos · /admin/flujos"]
     portal --> p1["/portal · /portal/consentimientos · /portal/datos<br/>/portal/ingresos · /portal/inmueble · /portal/financiacion"]
     portal --> p2["/portal/documentos · /portal/avisos"]
 ```
@@ -61,6 +64,7 @@ flowchart TB
 - **`BackofficeGuard`** (`frontend/src/features/auth/backoffice-guard.tsx`): pide `/auth/me`; mientras carga, muestra el esqueleto del shell; si la ruta no está permitida para los permisos del usuario, lo manda a su destino por defecto; si `/auth/me` falla, "No pudimos cargar tu sesión" con "Reintentar".
 - **`PortalGuard`** (`frontend/src/features/buyer-portal/portal-guard.tsx`): pide `/buyer/session`, programa el aviso de vencimiento con `expires_at`, manda a `/portal/consentimientos` si hay pendientes y muestra "Tu acceso venció" o "Saliste del portal" según el caso.
 - **`proxy.ts`** (el `middleware` de Next 16) solo redirige al login a quien no tiene ninguna cookie de sesión; no valida nada (su comentario dice "la seguridad la pone la API").
+- **`/aceptar-invitacion`** (F6) es pública: quita el token de la URL al cargar, no envía `Referer` y está fuera del `matcher` de `proxy.ts`, para que el token no termine en el `next` del login (`frontend/src/app/(public)/aceptar-invitacion/page.tsx`).
 - `/` redirige a `/login`; `/sin-modulos` es el destino de un usuario sin ningún permiso de navegación.
 
 ## 2. `features/`: una carpeta por dominio
@@ -80,6 +84,12 @@ Cada carpeta tiene sus pantallas, sus consultas (`queries.ts`) y sus pruebas, si
 | `buyer-portal/` | Acceso, guardia, shell, inicio, consentimientos, desistimiento y los formularios del comprador |
 | `buyer-documents/` | Documentos del portal, hoja de carga y visor |
 | `buyer-notifications/` | Avisos del comprador y su conteo de no leídos |
+| `admin-users/` | Usuarios, roles, invitaciones y la pantalla pública para aceptarlas (F6) |
+| `admin-partners/`, `admin-projects/` | Constructoras con sus miembros, y proyectos con su flujo de validación (F6) |
+| `admin-banks/` | Bancos, productos, finalidades y reglas con sus versiones y su prueba (F6) |
+| `admin-documents/` | Tipos documentales, requisitos y la vista previa de la lista documental (F6) |
+| `admin-catalogs/`, `admin-workflow/` | Catálogos con reordenamiento accesible, y transiciones de los flujos (F6) |
+| `admin-common/` | Piezas compartidas de la administración (selector de constructora, modal de motivo, estado activo) |
 
 ## 3. Design system y `components/ui`
 
@@ -175,11 +185,11 @@ Los toasts duran 5 segundos (los de error se quedan hasta cerrarlos) y se muestr
 
 El menú del backoffice se decide **por permiso, nunca por nombre de rol** (comentario de `frontend/src/lib/navigation/access.ts`):
 
-- `NAV_ITEMS` (`frontend/src/lib/navigation/nav-config.tsx`) declara cada entrada con el permiso que la abre: `/dashboard` (`dashboard.read`), `/mi-dia` (`workday.read`) y `/reportes` (`reports.read`) en "Operación"; `/solicitudes` (`applications.read`) y `/clientes` (`clients.read`) en "Comercial".
+- `NAV_ITEMS` (`frontend/src/lib/navigation/nav-config.tsx`) declara cada entrada con el permiso que la abre: `/dashboard` (`dashboard.read`), `/mi-dia` (`workday.read`) y `/reportes` (`reports.read`) en "Operación"; `/solicitudes` (`applications.read`) y `/clientes` (`clients.read`) en "Comercial"; y en "Administración" (F6): `/admin/usuarios` (`users.read`), `/admin/constructoras` (`partners.create`, para que solo la vea el admin aunque asesor y constructora tengan `partners.read`), `/proyectos` (`projects.read`), `/admin/bancos` (`banks.create`), `/admin/documentos` (`document_requirements.create`), `/admin/catalogos` (`catalogs.read`) y `/admin/flujos` (`workflow.read`).
 - `visibleNav(permissions)` filtra con los permisos de `/auth/me`; `defaultDestination` lleva a la primera entrada visible (o a `/sin-modulos`); `isForbiddenPath` impide entrar por URL a una zona sin permiso.
 - Dentro de una pantalla, lo mismo: la pestaña Radicación solo existe con `filings.read`; una pestaña del detalle de cliente sin permiso vuelve al resumen.
 
-**En curso:** una navegación por **audiencia** para el broker (`NavItem.audience`, `audienceOf(roles)` en `lib/navigation/access.ts`) está en la rama `feat/front-f7`, aún sin fusionar; no está en `master`.
+**En curso:** una navegación por **audiencia** para el broker (`NavItem.audience`, `audienceOf(roles)` en `lib/navigation/access.ts`) está en la rama `feat/front-f7`, aún sin fusionar; no está en `master` (revisado el 19 de noviembre). Con ella, "Proyectos" llevará `audience: "internal"`: el broker tiene `projects.read`, pero la vista es para admin, asesor y constructora (Precisiones de la Parte 4 de [`specs/TAREA-front-admin.md`](../../specs/TAREA-front-admin.md)).
 
 Esto es solo experiencia de uso: aunque alguien fuerce una URL, la API responde `403` o `404` ([ADR 0005](../adr/0005-alcance-por-rol-con-404.md)).
 
@@ -220,10 +230,10 @@ REQ §6 define 14 vistas de operación y 8 del portal ([01 · El producto §5](0
 | 8 | Expediente | `/solicitudes/[id]` (resumen, documentos, historial) | Admin, asesor | `GET /applications/{id}`, `/completeness`, `/participants`, `/property`, `/financing`, `/bank-rule-evaluations/latest`, `/buyer-access-links`, `/consents`, `/status-history`; `POST /status-transitions`, `/withdrawals`, `/assignments`, `/buyer-access-links`; documentos: `GET /document-slots`, `/document-files/{id}/download`, `PATCH /document-slots/{id}/review` |
 | 9 | Radicación | `/solicitudes/[id]?tab=radicacion` | Admin, asesor (`filings.read`) | `POST /document-package-jobs`, `GET /document-package-jobs/{id}/download`, `GET`/`POST /applications/{id}/filings`, `GET`/`POST /filings/{id}/responses`, `POST /filing-responses/{id}/evidence` |
 | 10 | Reportes | `/reportes` | Admin, asesor | `GET /reports/funnel`, `/reports/applications`, `/reports/applications.csv`, `GET`/`POST /reports/applications/export-jobs`, `GET /report-export-jobs/{id}/download` |
-| 11 | Usuarios | — | Admin | 🚧 en construcción (API: `/users`, `/roles`, `/invitations`) |
-| 12 | Proyectos | — | Admin, asesor, constructora | 🚧 en construcción (API: `/projects`) |
-| 13 | Partners | — | Admin | 🚧 en construcción (API: `/partners`, `/partner-memberships`) |
-| 14 | Catálogos | — | Admin | 🚧 en construcción (API: `/catalogs`, `/banks`, `/bank-products`, `/document-requirements`) |
+| 11 | Usuarios | `/admin/usuarios`, `/aceptar-invitacion` | Admin (aceptar: sin sesión) | `GET`/`POST /users`, `GET`/`PATCH /users/{id}`, `PUT /users/{id}/roles`, `GET /roles`, `POST /users/{id}/activate`, `/deactivate`; `GET`/`POST /invitations`, `POST /invitations/{id}/resend`, `DELETE /invitations/{id}`, `POST /invitations/accept` |
+| 12 | Proyectos | `/proyectos` | Admin, asesor, constructora | `GET`/`POST /projects`, `GET`/`PATCH /projects/{id}`, `POST /projects/{id}/submit`, `/activate`, `/reject`, `/archive`; `/metadata/catalogs/municipality` |
+| 13 | Constructoras | `/admin/constructoras` | Admin | `GET`/`POST`/`PATCH /partners`, `POST /partners/{id}/activate`, `/deactivate`, `GET`/`POST /partners/{id}/members` |
+| 14 | Catálogos, bancos y requisitos | `/admin/bancos`, `/admin/bancos/productos/[id]`, `/admin/documentos`, `/admin/catalogos`, `/admin/catalogos/[id]`, `/admin/flujos` | Admin | `/banks`, `/bank-products` (con `PUT …/purposes`), `/bank-policy-rules` (con `/versions` y `POST …/test`), `/document-types`, `/document-requirements` (con `POST …/preview`), `/catalogs`, `/catalog-items`, `PUT /catalogs/{id}/items/order`, `/workflow-transitions` |
 
 ### Portal del comprador (8)
 

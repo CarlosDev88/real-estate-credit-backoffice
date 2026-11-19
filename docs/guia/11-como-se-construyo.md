@@ -138,8 +138,11 @@ El historial de `master` (`git log --oneline`) tiene 30 PR numerados, del #1 al 
 | #16 a #18 | Campos del listado, backoffice (F1) y brechas para el front |
 | #19 a #25 | Radicación (11), Mi día y actividad (12), portal (F2), pestaña de radicación (F3), notificaciones e idempotencia (13), auditoría (14) y reportes (15) |
 | #26 a #31 | Clientes (F4), comisiones (16), design system en Storybook, README, operación (F5) y segundas brechas del backend |
+| #32 | Auditoría de seguridad, fase A: informe, 20 hallazgos, la matriz de acceso y cuatro verificaciones nuevas en el CI |
+| #34 | Administración (F6): usuarios e invitaciones, constructoras, proyectos, bancos, documentos, catálogos y flujos |
+| #35 | Esta guía (Partes 1, 2, 3 y 5) |
 
-Esta documentación va en un PR propio (#35) y, aparte, la demo con un solo comando.
+La demo con un solo comando y la puesta al día de esta guía van en un segundo PR de documentación.
 
 ## 9. Lo que funcionó y lo que costó
 
@@ -155,4 +158,4 @@ Esta documentación va en un PR propio (#35) y, aparte, la demo con un solo coma
 - **El entorno compartido:** bases de pruebas, puertos, memoria y el reloj de Docker dieron fallas que no eran del código.
 - **Fusionar ramas paralelas** que tocan los mismos archivos de enganche (receptores de señales, `ENUM_NAME_OVERRIDES`, el README): se resolvió "quedándose con los dos lados" a mano y regenerando el contrato.
 - **Las brechas entre back y front:** cada fase del front encontró datos que la API no daba (etiquetas, conteos, formas por rol) y se juntaron en tareas de "brechas" ([`specs/TAREA-brechas.md`](../../specs/TAREA-brechas.md), [`specs/TAREA-brechas-2.md`](../../specs/TAREA-brechas-2.md)) con una regla: solo se agrega al contrato.
-- **Documentos que se quedan atrás:** el README raíz todavía decía "15 de 16 módulos" cuando comisiones ya estaba fusionado; por eso esta guía cuenta desde el código.
+- **Documentos que se quedan atrás:** el README raíz llegó a decir "15 de 16 módulos" cuando comisiones ya estaba fusionado (se corrigió después); por eso esta guía cuenta desde el código y pone fecha a cada cifra.

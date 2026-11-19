@@ -30,7 +30,7 @@ Las piezas comunes (capas, señales, contrato) están en [03 · Arquitectura](03
 | 16 | [Comisiones](#16-comisiones) | `commissions` | Planes, liquidación al desembolso, reparto y pagos | 3 | 6, 8, 11 | 11 | 65 |
 | | **Total** | 16 apps | | **57** | | **235** | **1.794** |
 
-El orden y las dependencias son los de [`docs/DER_COMPLETO_MVP_CREDITO.md`](../DER_COMPLETO_MVP_CREDITO.md) §15. Las 1.794 pruebas incluyen 21 transversales en la raíz de `backend/tests/` (contrato, etiquetas, `request_id`, servicios del modo local) y 30 del reporte del CI (`backend/tests/ci/`). Las cuatro tablas de `identity` del módulo 9 y la de invitaciones suman, con las 7 del núcleo, las 12 de `identity`.
+El orden y las dependencias son los de [`docs/DER_COMPLETO_MVP_CREDITO.md`](../DER_COMPLETO_MVP_CREDITO.md) §15. Las 1.794 pruebas (contadas el 18 de noviembre) incluyen 21 transversales en la raíz de `backend/tests/` (contrato, etiquetas, `request_id`, servicios del modo local) y 30 del reporte del CI (`backend/tests/ci/`). Desde el 19 de noviembre se suman 57 en `backend/tests/security/` (la matriz de acceso y la revisión manual de la auditoría de seguridad, #32) y las pruebas de las verificaciones de seguridad del reporte del CI: el total es 1.860 en 129 archivos ([09 · Calidad §2](09-calidad.md#2-los-números)). Las cuatro tablas de `identity` del módulo 9 y la de invitaciones suman, con las 7 del núcleo, las 12 de `identity`.
 
 ```mermaid
 flowchart LR
@@ -160,7 +160,7 @@ flowchart LR
 
 **Cómo se prueba:** `backend/tests/partners/` — `test_partners_api.py`, `test_projects_api.py`, `test_validators.py`.
 
-**Qué quedó fuera:** `GET /projects/{id}/summary` con conteos (anotado en `backend/README.md`). La vista del frontend para proyectos y constructoras está en construcción (vistas 12 y 13).
+**Qué quedó fuera:** `GET /projects/{id}/summary` con conteos (anotado en `backend/README.md`). Las vistas del frontend, `/proyectos` y `/admin/constructoras` (vistas 12 y 13), entraron con la F6 (#34).
 
 ---
 
@@ -187,7 +187,7 @@ flowchart LR
 
 **Cómo se prueba:** `backend/tests/identity/test_invitations.py`.
 
-**Qué quedó fuera:** nada pendiente en el backend; la pantalla de administración de usuarios está en construcción (vista 11).
+**Qué quedó fuera:** nada pendiente en el backend. La pantalla `/admin/usuarios` (con la pestaña de invitaciones) y la pública `/aceptar-invitacion`, que quita el token de la URL al cargar, entraron con la F6 (#34).
 
 ---
 
@@ -263,7 +263,7 @@ flowchart LR
 
 **Cómo se prueba:** `backend/tests/banking/` — `test_rule_engine.py`, `test_rules_api.py`, `test_banks_api.py`, `test_products_api.py`, `test_bank_short_name.py`, `test_seed.py`.
 
-**Qué quedó fuera:** integración con los bancos y decisión automática de crédito. La pantalla de catálogos y bancos está en construcción (vista 14).
+**Qué quedó fuera:** integración con los bancos y decisión automática de crédito. Las pantallas `/admin/bancos` (productos, finalidades, reglas con sus versiones y su prueba), `/admin/documentos`, `/admin/catalogos` y `/admin/flujos` (vista 14) entraron con la F6 (#34).
 
 ---
 
