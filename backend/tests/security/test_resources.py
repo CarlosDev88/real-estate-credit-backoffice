@@ -7,15 +7,17 @@
   ``tests/reporting/test_export_jobs.py::test_a_fourth_active_export_is_rejected``.
 """
 
+import bz2
 import json
 from typing import Any
 
 import pytest
+import rest_framework
 from django.utils import timezone
 
 from tests.security import access_matrix as m
 from tests.security.conftest import ADMIN, ADVISOR_OWNER, BROKER_OWNER, BUYER_OWNER, World
-from tests.security.requests import CONTRACT, client_for, url_for
+from tests.security.requests import CONTRACT, client_for, send, url_for
 
 pytestmark = pytest.mark.django_db
 
@@ -185,13 +187,52 @@ def test_free_text_fields_have_a_maximum_length(world: World, index: int) -> Non
     ).items()
 
 
-@pytest.mark.xfail(strict=True, reason="SEC-17")
 def test_bank_operational_notes_have_a_maximum_length(world: World) -> None:
-    """Solo el administrador escribe la configuración de bancos, pero un texto de 1 MB se
-    guarda tal cual y viaja en cada lectura de `/banks`."""
+    """Solo el administrador escribe la configuración de bancos; aun así, un texto de 1 MB
+    no se guarda (SEC-17, ``max_length=4000`` al crear y al editar)."""
     response = client_for(world, ADMIN).post(
         "/api/v1/banks",
         {"code": "ZZ", "name": "Banco Z", "tax_id": "900123456-8", "operational_notes": MEGABYTE},
         format="json",
     )
     assert response.status_code == 400
+    assert any(d["field"] == "operational_notes" for d in response.json()["details"])
+
+
+def test_bank_operational_notes_are_capped_on_update_too(world: World) -> None:
+    operation = "PATCH /api/v1/banks/{bank_id}"
+    response = send(
+        client_for(world, ADMIN),
+        operation,
+        url_for(world, operation),
+        {"operational_notes": "x" * 4001},
+    )
+    assert response.status_code == 400, response.content[:200]
+    assert any(d["field"] == "operational_notes" for d in response.json()["details"])
+
+
+# --- SEC-04: DRF 3.18.2 o posterior -------------------------------------------------------
+
+
+def test_a_compressed_charset_is_not_expanded(api_client: Any) -> None:
+    """CVE-2026-114136 (SEC-04): ~100 bytes con ``charset=bz2_codec`` se expandían a un
+    correo de 5 MB que llegaba al serializer (``400 VALIDATION_ERROR``). Con DRF 3.18.2 el
+    parser rechaza el ``charset`` sin descomprimir."""
+    raw = json.dumps({"email": "a" * (5 * 1024 * 1024) + "@x.co", "password": "x"}).encode()
+    body = bz2.compress(raw)
+    assert len(body) < 200
+    response = api_client.generic(
+        "POST",
+        "/api/v1/auth/login",
+        body,
+        content_type="application/json; charset=bz2_codec",
+    )
+    assert response.status_code == 400, response.content[:200]
+    assert response.json()["code"] == "MALFORMED_REQUEST"
+
+
+def test_drf_has_the_fix_of_both_cves() -> None:
+    """CVE-2026-114138 (el `Accept` cuadrático) no se reproduce con el cliente de pruebas:
+    lo cubre la versión. La medición contra el servidor está en la ficha."""
+    major, minor, patch = (int(part) for part in rest_framework.VERSION.split(".")[:3])
+    assert (major, minor, patch) >= (3, 18, 2)

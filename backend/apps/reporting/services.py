@@ -22,6 +22,7 @@ el periodo:
   ``DISBURSED`` más reciente de cada solicitud.
 """
 
+from collections.abc import Mapping
 from dataclasses import dataclass, replace
 from datetime import timedelta
 from decimal import ROUND_HALF_UP, Decimal
@@ -329,7 +330,7 @@ def workload(user: User, filters: ReportFilters, scope: CrmScope) -> dict[str, A
     advisors = _workload_advisors(user, filters, scope, open_applications)
     advisor_ids = [advisor.pk for advisor in advisors]
 
-    application_counts = {
+    application_counts: dict[Any, Mapping[str, Any]] = {
         row["assigned_advisor_id"]: row
         for row in open_applications.filter(assigned_advisor_id__in=advisor_ids)
         .order_by()
@@ -340,7 +341,7 @@ def workload(user: User, filters: ReportFilters, scope: CrmScope) -> dict[str, A
             ready_to_file=Count("pk", filter=Q(status=ApplicationStatus.READY_TO_FILE)),
         )
     }
-    task_counts = {
+    task_counts: dict[Any, Mapping[str, Any]] = {
         row["assigned_to_id"]: row
         for row in Task.objects.filter(status=TaskStatus.PENDING, assigned_to_id__in=advisor_ids)
         .order_by()

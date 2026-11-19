@@ -778,6 +778,7 @@ class ApplicationParticipantDetailView(ExpedienteView):
         parameters=[etag_response_headers(204)],
         responses={
             204: OpenApiResponse(description="Retirado."),
+            400: _error("VALIDATION_ERROR: el titular no se retira"),
             409: _error("APPLICATION_NOT_EDITABLE"),
             **NOT_FOUND,
             **COMMON_ERRORS,
@@ -1186,6 +1187,8 @@ def _status_change_response(change: services.StatusChange) -> Response:
 
 class ApplicationStatusTransitionView(ExpedienteView):
     required_permissions = {"POST": "applications.transition"}
+    # Cupo común de cambios de estado, radicaciones y desistimientos (SEC-10).
+    throttle_scope = "state_changes"
 
     @extend_schema(
         tags=[APPLICATIONS_TAG],
@@ -1229,6 +1232,8 @@ class ApplicationStatusTransitionView(ExpedienteView):
 
 class ApplicationWithdrawalView(ExpedienteView):
     required_permissions = {"POST": "applications.withdraw"}
+    # Cupo común de cambios de estado, radicaciones y desistimientos (SEC-10).
+    throttle_scope = "state_changes"
 
     @extend_schema(
         tags=[APPLICATIONS_TAG],
@@ -1281,6 +1286,9 @@ class ApplicationStatusHistoryView(ExpedienteView):
 
 class ApplicationAvailableActionsView(ExpedienteView):
     required_permissions = {"GET": "applications.read"}
+    # Responde una lista sin paginar; sin esto el contrato la documentaba como página
+    # (`PaginatedAvailableActionList`, SEC-13).
+    pagination_class = None
 
     @extend_schema(
         tags=[APPLICATIONS_TAG],

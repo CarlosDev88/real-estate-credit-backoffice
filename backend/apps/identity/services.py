@@ -320,10 +320,20 @@ def validate_new_password(password: str, user: User, field_name: str) -> None:
 
 
 def request_password_reset(*, request: HttpRequest, email: str) -> None:
-    """Crea un token de recuperación y envía el correo, si el usuario existe.
+    """Encola la recuperación (SEC-14): la petición hace lo mismo exista o no el correo,
+    así que la respuesta y el tiempo son iguales, y un fallo del correo no llega a ella.
+    La búsqueda del usuario, el token y el envío corren en el worker
+    (``apps.identity.tasks.send_password_reset``)."""
+    from apps.identity.tasks import enqueue, send_password_reset
 
-    La respuesta HTTP es la misma exista o no el correo, para no revelar usuarios.
-    """
+    normalized_email = UserManager.normalize_email(email)
+    requested_ip = client_ip(request)
+    transaction.on_commit(lambda: enqueue(send_password_reset, normalized_email, requested_ip))
+
+
+def issue_password_reset(*, email: str, requested_ip: str | None) -> None:
+    """Crea un token de recuperación y envía el correo, si el usuario existe. Lo llama la
+    tarea; el correo sale después del commit."""
     normalized_email = UserManager.normalize_email(email)
     user = User.objects.filter(
         email=normalized_email, is_active=True, deleted_at__isnull=True
@@ -342,9 +352,9 @@ def request_password_reset(*, request: HttpRequest, email: str) -> None:
             user=user,
             token_hash=hash_token(raw_token),
             expires_at=now + settings.AUTH_PASSWORD_RESET_TOKEN_LIFETIME,
-            requested_ip=client_ip(request),
+            requested_ip=requested_ip,
         )
-        transaction.on_commit(lambda: send_password_reset_email(user=user, raw_token=raw_token))
+    send_password_reset_email(user=user, raw_token=raw_token)
 
 
 def confirm_password_reset(*, token: str, new_password: str) -> User:

@@ -460,7 +460,6 @@ DTO del detalle (`GET /buyer/applications/{application_id}`), además de lo ante
 | --- | --- | --- | --- |
 | `GET` | `/metadata/bootstrap` | Usuario interno o `BUYER` | Catálogos mínimos, permisos, configuración pública y versión. |
 | `GET` | `/metadata/catalogs/{catalog_code}` | Usuario interno (el comprador usa `/buyer/metadata/catalogs/{catalog_code}`, §8) | Ítems activos y vigentes; filtra por `parent_code` o `parent_id`. |
-| `GET` | `/metadata/form-schemas/{form_code}` | Usuario interno o `BUYER` | Campos, tipos, dependencias y validaciones de presentación. |
 | `GET` | `/applications/{application_id}/available-actions` | `applications.read` (no broker) | Transiciones que el actor puede ejecutar desde el estado actual, según rol y permiso: `[{code, label, target_status, target_status_label, guard_code, kind}]`, primero las principales, luego las secundarias y al final las destructivas. La guarda se evalúa al ejecutarla. Ver §16.3. |
 
 ### `GET /metadata/bootstrap`
@@ -585,7 +584,6 @@ El partner (listado y detalle) y cada membresía traen `status_label` ("Activo" 
 | `POST` | `/projects/{project_id}/activate` | `projects.approve` | Comentario opcional | Proyecto `ACTIVE`. |
 | `POST` | `/projects/{project_id}/reject` | `projects.approve` | Motivo obligatorio | Regresa a `DRAFT`. |
 | `POST` | `/projects/{project_id}/archive` | `projects.archive` | Motivo | Proyecto `ARCHIVED`. |
-| `GET` | `/projects/{project_id}/summary` | `projects.read` | — | Conteos de oportunidades y solicitudes, sin PII para partner. |
 
 `POST /projects`:
 
@@ -618,8 +616,12 @@ Reglas:
 | `PATCH` | `/clients/{client_id}` | `clients.update` | Campos permitidos | Cliente actualizado. |
 | `GET` | `/clients/{client_id}/opportunities` | `clients.read` | Estado, proyecto | Oportunidades del cliente. |
 | `GET` | `/clients/{client_id}/applications` | `applications.read` | Estado | Solicitudes visibles. |
-| `GET` | `/clients/{client_id}/activity` | `activity.read` | Visibilidad, paginación | Actividad permitida. |
-| `POST` | `/clients/{client_id}/notes` | `activity.create_internal` | Texto interno | Nota creada. |
+| `GET` | `/clients/{client_id}/addresses` | `clients.read` (no broker) | Paginación | Direcciones del cliente. |
+| `POST` | `/clients/{client_id}/addresses` | `clients.update` (no broker) | `address_type_code`, `city_code`, `line1`, `line2`, `postal_code`, `is_primary` | Dirección creada (`201`); la primera queda como principal. |
+| `PATCH` | `/client-addresses/{address_id}` | `clients.update` (no broker) | Los mismos campos, opcionales | Dirección actualizada. |
+| `DELETE` | `/client-addresses/{address_id}` | `clients.update` (no broker) | — | `204`. |
+
+**Direcciones (datos personales).** Alcance: el mismo del cliente (`ADMIN` todos; `ADVISOR` los de su alcance); fuera de él, `404`. El broker independiente recibe `403` en las cuatro: las direcciones no son parte de su resumen (`BrokerClient`). La actividad y las notas van en la solicitud (§21.1). Las rutas de esta sección que el MVP no implementa están en §31.1.
 
 `POST /clients`:
 
@@ -650,8 +652,6 @@ Responde `409 DUPLICATE_CLIENT_DOCUMENT` si existe la combinación documento/tip
 | `PATCH` | `/opportunities/{opportunity_id}` | `opportunities.update` | Campos comerciales | Oportunidad actualizada. |
 | `POST` | `/opportunities/{opportunity_id}/assignments` | `opportunities.assign` | Asesor responsable | Asignación auditada. |
 | `POST` | `/opportunities/{opportunity_id}/transitions` | `opportunities.transition` | Estado destino y motivo | Estado cambiado. |
-| `GET` | `/opportunities/{opportunity_id}/activity` | `activity.read` | — | Línea de tiempo permitida. |
-| `POST` | `/opportunities/{opportunity_id}/notes` | `activity.create_internal` | Nota | Nota interna. |
 | `GET` | `/broker/opportunities` | `INDEPENDENT_BROKER` | Estado, atención, paginación | Resumen de prospectos propios/asignados. |
 
 `POST /opportunities`:
@@ -1743,9 +1743,6 @@ Parámetros comunes: `date_from`, `date_to`, `advisor_id`, `partner_id`, `projec
 | `POST` | `/reports/applications/export-jobs` | `reports.export` | Genera CSV/XLSX asíncrono con los filtros actuales. |
 | `GET` | `/report-export-jobs/{job_id}` | Propietario o `reports.manage` | Consulta el estado de la exportación. |
 | `GET` | `/report-export-jobs/{job_id}/download` | Propietario o `reports.manage` | Descarga el archivo mediante URL firmada. |
-| `GET` | `/reports/advisors` | `reports.read` | Productividad y carga de asesores. |
-| `GET` | `/reports/banks` | `reports.read` | Resultado y tiempos por banco/producto. |
-| `GET` | `/reports/document-quality` | `reports.read` | Rechazos, recargas y tiempos de aprobación documental. |
 
 Las exportaciones contienen solo campos autorizados para el rol, registran auditoría y vencen. Los campos personales sensibles se enmascaran cuando el permiso no exige verlos completos.
 
@@ -2090,8 +2087,8 @@ Las tareas, las notas, las notificaciones y la actividad no se auditan aquí: ti
 | --- | --- | --- | --- |
 | `GET` | `/health` | Infraestructura | Comprueba que el proceso responde. |
 | `GET` | `/ready` | Infraestructura | Comprueba base de datos, caché y almacenamiento. |
-| `GET` | `/openapi.json` | Interno/autorizado | Contrato OpenAPI generado y versionado. |
-| `GET` | `/docs` | Solo desarrollo o red interna | Interfaz Swagger UI. |
+| `GET` | `/openapi.json` | Solo con `DEBUG` o `API_DOCS_PUBLIC=True` | Contrato OpenAPI generado. El versionado vive en `contracts/openapi.json` del repositorio. |
+| `GET` | `/docs` | Solo con `DEBUG` o `API_DOCS_PUBLIC=True` | Interfaz Swagger UI. |
 
 `/health` no consulta dependencias ni revela versiones. `/ready` responde únicamente `ready`/`not_ready`; los detalles técnicos van a logs internos. En producción, la documentación interactiva no debe ser pública.
 
@@ -2263,3 +2260,21 @@ Pruebas de flujo obligatorias:
 - Chat en tiempo real y aplicación móvil nativa.
 
 Estos límites no impiden que el diseño use adaptadores internos, IDs estables y reglas versionadas. La API v1 se concentra en captar, completar, revisar, radicar manualmente y hacer seguimiento trazable a solicitudes de crédito para vivienda nueva, vivienda usada y remodelación.
+
+### 31.1 Rutas fuera del MVP
+
+Estaban en versiones anteriores de esta especificación y el MVP no las implementa: el
+backend responde `404` y no están en `contracts/openapi.json`. Quedan aquí para no perder el
+diseño; si alguna se implementa, vuelve a su sección con su permiso y su alcance.
+
+| Ruta | Qué haría | En su lugar |
+| --- | --- | --- |
+| `GET /clients/{client_id}/activity` | Línea de tiempo del cliente. | La actividad de cada solicitud (`GET /applications/{application_id}/activity`, §21.1). |
+| `POST /clients/{client_id}/notes` | Nota interna en el cliente. | Notas de la solicitud (§21.1). |
+| `GET /opportunities/{opportunity_id}/activity` | Línea de tiempo de la oportunidad. | El detalle de la oportunidad: estado, asignaciones y acciones disponibles (§14). |
+| `POST /opportunities/{opportunity_id}/notes` | Nota interna en la oportunidad. | Notas de la solicitud cuando la oportunidad se convierte (§21.1). |
+| `GET /projects/{project_id}/summary` | Conteos de oportunidades y solicitudes del proyecto. | El dashboard y los reportes filtrados por proyecto (§22). |
+| `GET /metadata/form-schemas/{form_code}` | Campos y validaciones de presentación de cada formulario. | Los formularios viven en el frontend; los valores salen de `/metadata/bootstrap` y `/metadata/catalogs/{catalog_code}` (§9). |
+| `GET /reports/advisors` | Productividad y carga de asesores. | `GET /dashboard/workload` y `GET /reports/applications.csv` (§22). |
+| `GET /reports/banks` | Resultado y tiempos por banco y producto. | `GET /dashboard/summary` y el CSV de solicitudes (§22). |
+| `GET /reports/document-quality` | Rechazos, recargas y tiempos de aprobación documental. | La completitud de cada solicitud (§16.3) y el CSV de solicitudes (§22). |

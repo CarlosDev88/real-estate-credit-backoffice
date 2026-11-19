@@ -41,11 +41,12 @@ def test_login_rate_limit_lives_in_the_database(
 
     assert_error(response, 429, "RATE_LIMITED")
     assert int(response["Retry-After"]) > 0
-    # El contador está en la tabla compartida, no en la memoria de este proceso.
-    assert cached_rows() == 1
-    # Otro correo desde la misma IP tiene su propio contador.
+    # Los contadores están en la tabla compartida, no en la memoria de este proceso: IP +
+    # correo, IP sola, correo solo (SEC-09) y el general de escrituras por IP (SEC-10).
+    assert cached_rows() == 4
+    # Otro correo desde la misma IP tiene sus propios contadores de IP + correo y de correo.
     assert login(api_client, email="otro@example.com").status_code == 401
-    assert cached_rows() == 2
+    assert cached_rows() == 6
 
 
 def test_createcachetable_can_run_again(database_cache: None) -> None:

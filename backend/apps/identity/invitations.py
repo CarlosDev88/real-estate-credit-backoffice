@@ -12,6 +12,8 @@ Este módulo está separado de ``services.py`` porque depende de ``partners``, y
 ``partners`` depende de ``identity.services``.
 """
 
+import uuid
+
 from django.conf import settings
 from django.db import transaction
 from django.db.models import QuerySet
@@ -83,25 +85,42 @@ def _validate_role_and_partner(role: Role, partner: Partner | None) -> None:
 def create_invitation(
     *, email: str, role: Role, partner: Partner | None, invited_by: User
 ) -> InternalInvitation:
-    """Crea la invitación y envía el correo cuando se confirma la transacción."""
+    """Crea la invitación y, cuando se confirma la transacción, encola el correo (SEC-14):
+    el token real lo genera el worker (``issue_invitation_token``); el de la creación es
+    solo un relleno que nunca sale de aquí."""
     email = UserManager.normalize_email(email)
     _validate_role_and_partner(role, partner)
     _ensure_email_can_be_invited(email, partner)
 
-    raw_token = generate_opaque_token()
+    from apps.identity.tasks import enqueue, send_invitation
+
     with transaction.atomic():
         invitation = InternalInvitation.objects.create(
             email=email,
-            token_hash=hash_token(raw_token),
+            token_hash=hash_token(generate_opaque_token()),
             role=role,
             partner=partner,
             invited_by=invited_by,
             expires_at=timezone.now() + settings.AUTH_INVITATION_LIFETIME,
         )
-        transaction.on_commit(
-            lambda: send_invitation_email(invitation=invitation, raw_token=raw_token)
-        )
+        transaction.on_commit(lambda: enqueue(send_invitation, str(invitation.pk)))
     return invitation
+
+
+def issue_invitation_token(invitation_id: uuid.UUID) -> None:
+    """Genera el token de una invitación pendiente y envía el correo. Lo llama la tarea;
+    una invitación revocada, aceptada o vencida antes del envío no recibe correo."""
+    invitation = (
+        invitations_queryset()
+        .filter(invitation_status_filter(InvitationStatus.PENDING), pk=invitation_id)
+        .first()
+    )
+    if invitation is None:
+        return
+    raw_token = generate_opaque_token()
+    invitation.token_hash = hash_token(raw_token)
+    invitation.save(update_fields=["token_hash", "updated_at"])
+    send_invitation_email(invitation=invitation, raw_token=raw_token)
 
 
 def resend_invitation(invitation: InternalInvitation, *, actor: User) -> InternalInvitation:

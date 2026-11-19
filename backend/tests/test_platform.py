@@ -5,7 +5,7 @@ import uuid
 import pytest
 from rest_framework.test import APIClient
 
-from tests.helpers import ME_URL, assert_error
+from tests.helpers import ME_URL, assert_error, urls_with
 
 pytestmark = pytest.mark.django_db
 
@@ -35,8 +35,10 @@ def test_unknown_api_route_returns_404(api_client: APIClient) -> None:
     assert api_client.get("/api/v1/no-existe").status_code == 404
 
 
-def test_openapi_schema_is_public_and_documents_auth(api_client: APIClient) -> None:
-    response = api_client.get("/openapi.json", HTTP_ACCEPT="application/vnd.oai.openapi+json")
+def test_openapi_schema_documents_auth(api_client: APIClient) -> None:
+    """El esquema solo se publica con `DEBUG` o `API_DOCS_PUBLIC` (SEC-19)."""
+    with urls_with(API_DOCS_PUBLIC=True):
+        response = api_client.get("/openapi.json", HTTP_ACCEPT="application/vnd.oai.openapi+json")
     assert response.status_code == 200
     paths = response.json()["paths"]
     for path in (

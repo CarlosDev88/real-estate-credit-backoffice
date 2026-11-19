@@ -10,7 +10,7 @@ from apps.identity.models import User
 from apps.partners.actions import action_kind, reason_required
 from apps.partners.models import Partner, PartnerMembership, PartnerStatus, Project
 from apps.partners.validators import normalize_nit
-from config.serializers import ChoiceLabelField, StrictSerializer
+from config.serializers import BlankableEmailField, ChoiceLabelField, StrictSerializer
 from config.validators import validate_e164_phone
 
 REASON_MAX_LENGTH = 1000
@@ -32,6 +32,7 @@ class UserReferenceSerializer(serializers.Serializer):
 
 class PartnerSerializer(serializers.ModelSerializer):
     status_label = ChoiceLabelField(PartnerStatus, source="status")
+    contact_email = BlankableEmailField(read_only=True)
 
     class Meta:
         model = Partner

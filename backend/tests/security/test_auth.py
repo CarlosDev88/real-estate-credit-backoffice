@@ -7,6 +7,7 @@ reuso del refresh, logout, CSRF ausente, restablecimiento de un solo uso y venci
 no se repite aquí.
 """
 
+import logging
 from collections.abc import Callable, Iterator
 from datetime import timedelta
 from smtplib import SMTPException
@@ -19,7 +20,7 @@ from django.conf import settings
 from django.contrib.auth.hashers import Argon2PasswordHasher
 from django.core.mail.backends.base import BaseEmailBackend
 from django.db import transaction
-from django.test import override_settings
+from django.test import TestCase, override_settings
 from freezegun import freeze_time
 from rest_framework.test import APIClient
 
@@ -173,14 +174,13 @@ def commit_callbacks_run_now() -> Iterator[None]:
         yield
 
 
-@pytest.mark.xfail(strict=True, reason="SEC-14")
 @override_settings(EMAIL_BACKEND="tests.security.test_auth._FailingEmailBackend")
 def test_reset_request_answers_the_same_when_the_mail_fails(
     api_client: APIClient, user: User, commit_callbacks_run_now: None
 ) -> None:
-    """Con el correo caído, la respuesta para un usuario que existe debe ser la misma que
-    para uno que no existe (202). Hoy el correo se envía en la misma petición y la
-    excepción solo sale cuando el usuario existe."""
+    """Con el correo caído, la respuesta para un usuario que existe es la misma que para
+    uno que no existe (202): el correo sale por la cola y su fallo queda en el log (SEC-14,
+    corregido en la Fase B)."""
     unknown = api_client.post(PASSWORD_RESET_REQUEST_URL, {"email": "nadie@example.com"})
     assert unknown.status_code == 202
     try:
@@ -189,3 +189,48 @@ def test_reset_request_answers_the_same_when_the_mail_fails(
     except SMTPException:
         known_status = 500
     assert known_status == unknown.status_code
+
+
+@override_settings(EMAIL_BACKEND="tests.security.test_auth._FailingEmailBackend")
+def test_a_failed_reset_mail_is_logged_without_the_address(
+    api_client: APIClient, user: User, commit_callbacks_run_now: None, caplog: Any
+) -> None:
+    with caplog.at_level(logging.ERROR, logger="apps.identity.tasks"):
+        response = api_client.post(PASSWORD_RESET_REQUEST_URL, {"email": user.email})
+    assert response.status_code == 202
+    records = [r for r in caplog.records if r.name == "apps.identity.tasks"]
+    assert [r.getMessage() for r in records] == [
+        "No se pudo enviar el correo de recuperación de contraseña"
+    ]
+    assert user.email not in caplog.text
+
+
+def test_reset_request_does_the_same_work_whether_the_email_exists(
+    api_client: APIClient, user: User
+) -> None:
+    """La petición solo encola (la búsqueda del usuario corre en el worker): la misma
+    tarea con los mismos datos para un correo que existe y uno que no."""
+    with mock.patch("apps.identity.tasks.send_password_reset.delay") as delay:
+        with TestCase.captureOnCommitCallbacks(execute=True):
+            known = api_client.post(PASSWORD_RESET_REQUEST_URL, {"email": user.email})
+        with TestCase.captureOnCommitCallbacks(execute=True):
+            unknown = api_client.post(PASSWORD_RESET_REQUEST_URL, {"email": "nadie@example.com"})
+    assert known.status_code == unknown.status_code == 202
+    assert known.json() == unknown.json()
+    assert [c.args[0] for c in delay.call_args_list] == [user.email, "nadie@example.com"]
+    # El token en claro nunca viaja al broker: solo el correo y la IP.
+    assert all(len(c.args) == 2 for c in delay.call_args_list)
+
+
+@override_settings(EMAIL_BACKEND="tests.security.test_auth._FailingEmailBackend")
+def test_an_invitation_answers_the_same_when_the_mail_fails(
+    make_user: Callable[..., User], commit_callbacks_run_now: None
+) -> None:
+    """Las invitaciones también salen por la cola (Fase B): un SMTP caído no tumba la
+    respuesta del administrador; la invitación queda pendiente y se puede reenviar."""
+    make_user(email="admin@example.com", role_code="ADMIN")
+    client = APIClient()
+    assert login(client, email="admin@example.com").status_code == 200
+    response = client.post("/api/v1/invitations", {"email": "nuevo@example.com", "role": "ADVISOR"})
+    assert response.status_code == 201, response.content
+    assert response.json()["status"] == "PENDING"

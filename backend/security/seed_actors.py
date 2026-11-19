@@ -4,8 +4,9 @@ Completa los datos de ``seed_demo_data`` con los actores que faltan para la matr
 acceso, todos con la contraseña de demo:
 
 - ``broker.b@demo.local``: segundo broker, con una oportunidad propia.
-- ``constructora@demo.local``: ``CONSTRUCTION_PARTNER``, miembro de una constructora con
-  un proyecto activo.
+- ``constructora@demo.local`` ya no se crea aquí: desde las brechas 3 (#36) la trae
+  ``seed_demo_data`` con su constructora y proyectos activos (``apps/partners/demo_data.py``).
+  Crearla aquí hacía fallar ``seed_demo_data`` en una base donde este script corrió antes.
 - Un segundo comprador con su solicitud asignada a ``asesor.andres@demo.local`` (en
   ``WAITING_DOCUMENTS``, con un documento cargado), para probar comprador A contra B.
 
@@ -34,20 +35,16 @@ from apps.applications.demo_data import (
     _item,
     _Names,
 )
-from apps.catalogs.workflow import ProjectStatus
 from apps.crm.services import assign_advisor, create_client, create_opportunity
 from apps.identity.models import Role, RoleCode, User
 from apps.identity.users import create_user
-from apps.partners.models import Partner, Project
-from apps.partners.services import create_partner, create_project, transition_project
-from apps.partners.validators import nit_check_digit
+from apps.partners.demo_data import PARTNER_EMAIL, main_project
+from apps.partners.models import Partner
 
-# Marca de los clientes de los actores extra: distinta de la de la demo (``9900``).
-SECURITY_DOCUMENT_PREFIX = "9901"
+# Marca de los clientes de los actores extra: distinta de las de la demo (``9900`` a
+# ``9902``; ``9901`` es la del historial desde #36 y con ella este script no creaba nada).
+SECURITY_DOCUMENT_PREFIX = "9909"
 BROKER_B_EMAIL = f"broker.b@{DEMO_EMAIL_DOMAIN}"
-PARTNER_EMAIL = f"constructora@{DEMO_EMAIL_DOMAIN}"
-PARTNER_NIT_NUMBER = "990100001"
-PROJECT_NAME = "Torres de Auditoría"
 BUYER_B_CASE = DemoCase(
     WD, "PURCHASE_NEW", "BANCOLOMBIA_MORTGAGE", "EMPLOYEE", documents=SOME_DOCUMENTS
 )
@@ -89,41 +86,6 @@ def _ensure_internal_user(
     return user
 
 
-def _ensure_partner() -> Partner:
-    tax_id = f"{PARTNER_NIT_NUMBER}-{nit_check_digit(PARTNER_NIT_NUMBER)}"
-    existing = Partner.objects.filter(tax_id=tax_id).first()
-    if existing is not None:
-        return existing
-    return create_partner(
-        {
-            "legal_name": "Constructora Auditoría S.A.S.",
-            "trade_name": "Constructora Auditoría",
-            "tax_id": tax_id,
-            "contact_name": "Contacto de auditoría",
-            "contact_email": PARTNER_EMAIL,
-        }
-    )
-
-
-def _ensure_active_project(admin: User, partner: Partner) -> Project:
-    project = Project.objects.filter(partner=partner, name=PROJECT_NAME).first()
-    if project is None:
-        project = create_project(
-            admin,
-            {
-                "partner_id": partner.pk,
-                "name": PROJECT_NAME,
-                "city_item": _item("municipality", "11001"),
-                "address": "Calle 100 # 10-10",
-            },
-        )
-    if project.status == ProjectStatus.DRAFT:
-        project = transition_project(admin, project, to_status=ProjectStatus.PENDING_REVIEW)
-    if project.status == ProjectStatus.PENDING_REVIEW:
-        project = transition_project(admin, project, to_status=ProjectStatus.ACTIVE)
-    return project
-
-
 def seed_security_actors() -> list[str]:
     if not settings.DEBUG:
         raise RuntimeError("seed_actors solo corre con DEBUG=True (entorno local).")
@@ -133,16 +95,6 @@ def seed_security_actors() -> list[str]:
     lines: list[str] = []
 
     with transaction.atomic():
-        partner = _ensure_partner()
-        project = _ensure_active_project(admin, partner)
-        _ensure_internal_user(
-            admin=admin,
-            email=PARTNER_EMAIL,
-            first_name="Clara",
-            last_name="Constructora",
-            role=RoleCode.CONSTRUCTION_PARTNER,
-            partner=partner,
-        )
         broker_b = _ensure_internal_user(
             admin=admin,
             email=BROKER_B_EMAIL,
@@ -151,7 +103,13 @@ def seed_security_actors() -> list[str]:
             role=RoleCode.INDEPENDENT_BROKER,
             partner=None,
         )
-    lines.append(f"CONSTRUCTION_PARTNER {PARTNER_EMAIL} (proyecto activo: {project.name})")
+    project = main_project()
+    if project is None:
+        lines.append(f"CONSTRUCTION_PARTNER {PARTNER_EMAIL}: falta; corre antes seed_demo_data.")
+    else:
+        lines.append(
+            f"CONSTRUCTION_PARTNER {PARTNER_EMAIL} (de la demo; proyecto activo: {project.name})"
+        )
     lines.append(f"INDEPENDENT_BROKER   {BROKER_B_EMAIL}")
 
     from apps.crm.models import Client

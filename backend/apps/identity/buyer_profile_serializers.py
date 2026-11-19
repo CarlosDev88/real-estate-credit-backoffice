@@ -22,7 +22,7 @@ from apps.catalogs.serializers import CatalogItemRefSerializer
 from apps.crm.models import Client, ClientAddress
 from apps.crm.validators import mask_document_number
 from apps.documents.models import ParticipantRole
-from config.serializers import StrictSerializer
+from config.serializers import BlankableEmailField, StrictSerializer
 from config.validators import validate_e164_phone
 
 MAX_ADDRESSES = 10
@@ -47,6 +47,7 @@ class BuyerProfileSerializer(serializers.ModelSerializer):
     document_type = CatalogItemRefSerializer(source="document_type_item", read_only=True)
     document_number = serializers.SerializerMethodField()
     addresses = serializers.SerializerMethodField()
+    email = BlankableEmailField(read_only=True)
 
     class Meta:
         model = Client
