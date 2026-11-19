@@ -1,12 +1,16 @@
-from typing import Any
+from typing import Any, cast
 
+from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
 from apps.catalogs.fields import CatalogItemCodeField
+from apps.catalogs.models import WorkflowTransition
+from apps.catalogs.workflow import ActionKind, ProjectStatus
 from apps.identity.models import User
+from apps.partners.actions import action_kind, reason_required
 from apps.partners.models import Partner, PartnerMembership, PartnerStatus, Project
 from apps.partners.validators import normalize_nit
-from config.serializers import StrictSerializer
+from config.serializers import ChoiceLabelField, StrictSerializer
 from config.validators import validate_e164_phone
 
 REASON_MAX_LENGTH = 1000
@@ -27,6 +31,8 @@ class UserReferenceSerializer(serializers.Serializer):
 
 
 class PartnerSerializer(serializers.ModelSerializer):
+    status_label = ChoiceLabelField(PartnerStatus, source="status")
+
     class Meta:
         model = Partner
         fields = [
@@ -35,6 +41,7 @@ class PartnerSerializer(serializers.ModelSerializer):
             "trade_name",
             "tax_id",
             "status",
+            "status_label",
             "contact_name",
             "contact_email",
             "contact_phone",
@@ -99,6 +106,7 @@ class MembershipSerializer(serializers.ModelSerializer):
     partner_id = serializers.UUIDField(read_only=True)
     partner_name = serializers.CharField(source="partner.__str__", read_only=True)
     user = UserSummarySerializer(read_only=True)
+    status_label = ChoiceLabelField(PartnerStatus, source="status")
 
     class Meta:
         model = PartnerMembership
@@ -109,6 +117,7 @@ class MembershipSerializer(serializers.ModelSerializer):
             "user",
             "job_title",
             "status",
+            "status_label",
             "started_at",
             "ended_at",
             "created_at",
@@ -198,15 +207,62 @@ class ProjectSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
 
+class ProjectAvailableActionSerializer(serializers.ModelSerializer):
+    """Transición que el actor puede ejecutar ahora. Misma forma que `AvailableAction` de
+    la solicitud, sin `guard_code` (el flujo del proyecto no tiene guardas)."""
+
+    target_status = serializers.ChoiceField(source="to_status", choices=ProjectStatus.choices)
+    target_status_label = ChoiceLabelField(ProjectStatus, source="to_status")
+    kind = serializers.SerializerMethodField(
+        help_text="primary: enviar a validación o aprobar; secondary: devolver a borrador; "
+        "destructive: archivar. La lista sale en ese orden."
+    )
+    reason_required = serializers.SerializerMethodField(
+        help_text="La acción exige `reason` (texto libre): devolver a borrador (`/reject`) y "
+        "archivar (`/archive`)."
+    )
+
+    class Meta:
+        model = WorkflowTransition
+        fields = [
+            "code",
+            "label",
+            "kind",
+            "target_status",
+            "target_status_label",
+            "reason_required",
+        ]
+        read_only_fields = fields
+
+    @extend_schema_field(serializers.ChoiceField(choices=ActionKind.choices))
+    def get_kind(self, obj: WorkflowTransition) -> str:
+        return action_kind(obj).value
+
+    def get_reason_required(self, obj: WorkflowTransition) -> bool:
+        return reason_required(obj)
+
+
 class ProjectDetailSerializer(ProjectSerializer):
-    available_actions = serializers.SerializerMethodField()
+    available_actions = serializers.SerializerMethodField(
+        help_text="Códigos de las acciones disponibles (por código). Con etiqueta, tipo y "
+        "motivo: `available_action_details`."
+    )
+    available_action_details = serializers.SerializerMethodField(
+        help_text="Las mismas acciones de `available_actions` con su etiqueta, en orden "
+        "principal, secundaria y destructiva."
+    )
 
     class Meta(ProjectSerializer.Meta):
-        fields = [*ProjectSerializer.Meta.fields, "available_actions"]
+        fields = [*ProjectSerializer.Meta.fields, "available_actions", "available_action_details"]
         read_only_fields = fields
 
     def get_available_actions(self, obj: Project) -> list[str]:
         return self.context["available_actions"]
+
+    @extend_schema_field(ProjectAvailableActionSerializer(many=True))
+    def get_available_action_details(self, obj: Project) -> list[dict[str, Any]]:
+        actions: list[WorkflowTransition] = self.context["available_action_details"]
+        return cast(list[dict[str, Any]], ProjectAvailableActionSerializer(actions, many=True).data)
 
 
 class _ProjectFields(StrictSerializer):

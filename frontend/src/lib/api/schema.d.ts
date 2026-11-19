@@ -65,7 +65,7 @@ export interface paths {
         };
         /**
          * Solicitudes según el alcance
-         * @description El administrador ve todas, el asesor las asignadas y el broker el resumen de las solicitudes de las oportunidades que originó.
+         * @description El administrador ve todas, el asesor las asignadas y el broker el resumen de las solicitudes de las oportunidades que originó. El broker (`INDEPENDENT_BROKER` sin `ADMIN` ni `ADVISOR`) recibe `ApplicationSummary`: el resumen operativo, sin datos financieros, inmueble ni documento completo del titular.
          */
         get: operations["applications_list"];
         put?: never;
@@ -89,7 +89,7 @@ export interface paths {
         };
         /**
          * Expediente según el rol
-         * @description Responde `ETag` con la versión, que se reenvía en `If-Match` al editar. `property` y `assignments` salen siempre; `participants` y `financing`, solo con `include`. El broker recibe solo el resumen.
+         * @description Responde `ETag` con la versión, que se reenvía en `If-Match` al editar. `property` y `assignments` salen siempre; `participants` y `financing`, solo con `include`. El broker (`INDEPENDENT_BROKER` sin `ADMIN` ni `ADVISOR`) recibe `ApplicationSummary`: el resumen operativo, sin datos financieros, inmueble ni documento completo del titular.
          */
         get: operations["applications_retrieve"];
         put?: never;
@@ -894,6 +894,26 @@ export interface paths {
         };
         /** Historial de versiones de la regla */
         get: operations["bank_policy_rules_versions_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/bank-policy-rules/fields": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Campos que admite una condición de regla
+         * @description Lista blanca con la que se validan las condiciones al guardar y al publicar, con su tipo de valor y, en los de catálogo, sus opciones vigentes. Sin paginar: es una lista corta y fija.
+         */
+        get: operations["bank_policy_rules_fields_list"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1896,7 +1916,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Solicitudes visibles en las que participa el cliente */
+        /**
+         * Solicitudes visibles en las que participa el cliente
+         * @description Página de `Application`. El broker (`INDEPENDENT_BROKER` sin `ADMIN` ni `ADVISOR`) recibe `ApplicationSummary`: el resumen operativo, sin datos financieros, inmueble ni documento completo del titular.
+         */
         get: operations["clients_applications_list"];
         put?: never;
         post?: never;
@@ -3821,6 +3844,7 @@ export interface components {
             /** @description Consentimientos obligatorios del comprador titular y cuántos aceptó. */
             readonly consents: components["schemas"]["ConsentsSummary"];
         };
+        ApplicationDetailByRole: components["schemas"]["ApplicationDetail"] | components["schemas"]["ApplicationSummary"];
         ApplicationNotification: {
             /** Format: uuid */
             readonly id: string;
@@ -4087,10 +4111,12 @@ export interface components {
             readonly code: string;
             readonly version: number;
             readonly severity: components["schemas"]["SeverityEnum"];
+            readonly severity_label: string;
             readonly condition: unknown;
             readonly message: string;
             /** @default DRAFT */
             readonly status: components["schemas"]["BankPolicyRuleStatusEnum"];
+            readonly status_label: string;
             /** Format: date-time */
             readonly valid_from: string;
             /** Format: date-time */
@@ -4290,6 +4316,7 @@ export interface components {
             readonly project_id: string | null;
             readonly project_name: string | null;
             readonly status: components["schemas"]["OpportunityStatusEnum"];
+            readonly status_label: string;
             readonly advisor_name: string | null;
             /** Format: date-time */
             readonly created_at: string;
@@ -6150,6 +6177,7 @@ export interface components {
                 [key: string]: string;
             } | null;
             status: string;
+            readonly status_label: string;
             /** Format: date-time */
             expires_at: string;
             /** Format: date-time */
@@ -6233,6 +6261,7 @@ export interface components {
             readonly user: components["schemas"]["UserSummary"];
             readonly job_title: string;
             readonly status: components["schemas"]["PartnerStatusEnum"];
+            readonly status_label: string;
             /** Format: date */
             readonly started_at: string;
             /** Format: date */
@@ -6585,17 +6614,13 @@ export interface components {
         };
         PaginatedApplicationList: {
             items: components["schemas"]["Application"][];
-            /** @example 1 */
             page: number;
-            /** @example 25 */
             page_size: number;
-            /** @example 128 */
             total: number;
-            /** @example /api/v1/x?page=2 */
             next: string | null;
-            /** @example null */
             previous: string | null;
         };
+        PaginatedApplicationListByRole: components["schemas"]["PaginatedApplicationList"] | components["schemas"]["PaginatedApplicationSummaryList"];
         PaginatedApplicationNotificationList: {
             items: components["schemas"]["ApplicationNotification"][];
             /** @example 1 */
@@ -6620,6 +6645,14 @@ export interface components {
             /** @example /api/v1/x?page=2 */
             next: string | null;
             /** @example null */
+            previous: string | null;
+        };
+        PaginatedApplicationSummaryList: {
+            items: components["schemas"]["ApplicationSummary"][];
+            page: number;
+            page_size: number;
+            total: number;
+            next: string | null;
             previous: string | null;
         };
         PaginatedAuditEventList: {
@@ -7245,6 +7278,7 @@ export interface components {
             readonly trade_name: string;
             readonly tax_id: string;
             readonly status: components["schemas"]["PartnerStatusEnum"];
+            readonly status_label: string;
             readonly contact_name: string;
             /** Format: email */
             readonly contact_email: string;
@@ -7274,6 +7308,7 @@ export interface components {
             readonly trade_name: string;
             readonly tax_id: string;
             readonly status: components["schemas"]["PartnerStatusEnum"];
+            readonly status_label: string;
             readonly contact_name: string;
             /** Format: email */
             readonly contact_email: string;
@@ -7711,6 +7746,20 @@ export interface components {
             readonly updated_at: string;
         };
         /**
+         * @description Transición que el actor puede ejecutar ahora. Misma forma que `AvailableAction` de
+         *     la solicitud, sin `guard_code` (el flujo del proyecto no tiene guardas).
+         */
+        ProjectAvailableAction: {
+            readonly code: string;
+            readonly label: string;
+            /** @description primary: enviar a validación o aprobar; secondary: devolver a borrador; destructive: archivar. La lista sale en ese orden. */
+            readonly kind: components["schemas"]["AvailableActionKindEnum"];
+            target_status: components["schemas"]["ProjectStatusEnum"];
+            readonly target_status_label: string;
+            /** @description La acción exige `reason` (texto libre): devolver a borrador (`/reject`) y archivar (`/archive`). */
+            readonly reason_required: boolean;
+        };
+        /**
          * @description Serializer que rechaza campos no declarados (``additionalProperties: false``).
          *
          *     Evita la asignación masiva: el cliente solo puede enviar los campos permitidos.
@@ -7747,7 +7796,10 @@ export interface components {
             readonly created_at: string;
             /** Format: date-time */
             readonly updated_at: string;
+            /** @description Códigos de las acciones disponibles (por código). Con etiqueta, tipo y motivo: `available_action_details`. */
             readonly available_actions: string[];
+            /** @description Las mismas acciones de `available_actions` con su etiqueta, en orden principal, secundaria y destructiva. */
+            readonly available_action_details: components["schemas"]["ProjectAvailableAction"][];
         };
         ProjectRef: {
             /** Format: uuid */
@@ -7931,6 +7983,40 @@ export interface components {
          * @enum {string}
          */
         RoleCodeEnum: "CO_APPLICANT" | "SOLIDARY_DEBTOR";
+        /** @description Campo que admite una condición de regla (lista blanca de ``rule_fields.py``). */
+        RuleField: {
+            /** @description Ruta del campo en la condición, p. ej. `financing.term_months`. */
+            code: string;
+            label: string;
+            description: string;
+            /**
+             * @description `money` es un monto en COP; `choice`, un código del catálogo `catalog`.
+             *
+             *     * `number` - number
+             *     * `money` - money
+             *     * `percent` - percent
+             *     * `boolean` - boolean
+             *     * `choice` - choice
+             */
+            type: components["schemas"]["RuleFieldTypeEnum"];
+            /** @description Catálogo de los valores de un campo `choice`. */
+            catalog: string | null;
+            /** @description Valores vigentes de un campo `choice`. `null` en los demás y en un catálogo bajo demanda (`municipality`), que se pide en `/metadata/catalogs/{code}`. */
+            options: components["schemas"]["RuleFieldOption"][] | null;
+        };
+        RuleFieldOption: {
+            code: string;
+            label: string;
+        };
+        /**
+         * @description * `number` - number
+         *     * `money` - money
+         *     * `percent` - percent
+         *     * `boolean` - boolean
+         *     * `choice` - choice
+         * @enum {string}
+         */
+        RuleFieldTypeEnum: "number" | "money" | "percent" | "boolean" | "choice";
         /** @description Regla incumplida (`FAILED`) o sin datos para decidir (`MISSING_DATA`). */
         RuleIssue: {
             rule_code: string;
@@ -7990,6 +8076,7 @@ export interface components {
         RuleTestResult: {
             name: string;
             outcome: components["schemas"]["RuleOutcomeEnum"];
+            readonly outcome_label: string;
             unresolved_fields: string[];
             expected: string | null;
             matches_expected: boolean | null;
@@ -8252,6 +8339,7 @@ export interface components {
             name: string;
             phone: string;
             status: string;
+            readonly status_label: string;
             readonly roles: string[];
             readonly partner: {
                 [key: string]: string;
@@ -8292,6 +8380,7 @@ export interface components {
             name: string;
             phone: string;
             status: string;
+            readonly status_label: string;
             readonly roles: string[];
             readonly partner: {
                 [key: string]: string;
@@ -8779,7 +8868,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["PaginatedApplicationList"];
+                    "application/json": components["schemas"]["PaginatedApplicationListByRole"];
                 };
             };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
@@ -8884,7 +8973,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ApplicationDetail"];
+                    "application/json": components["schemas"]["ApplicationDetailByRole"];
                 };
             };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
@@ -11787,6 +11876,43 @@ export interface operations {
             };
             /** @description RESOURCE_NOT_FOUND */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    bank_policy_rules_fields_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RuleField"][];
+                };
+            };
+            /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description PERMISSION_DENIED o CSRF_FAILED */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -15664,7 +15790,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["PaginatedApplicationList"];
+                    "application/json": components["schemas"]["PaginatedApplicationListByRole"];
                 };
             };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
@@ -16064,6 +16190,8 @@ export interface operations {
             query?: {
                 /** @description Asesor beneficiario. */
                 advisor_id?: string;
+                /** @description Solicitud liquidada: su historial, la vigente y las anuladas. */
+                application_id?: string;
                 bank_id?: string;
                 /** @description Broker beneficiario. */
                 broker_id?: string;

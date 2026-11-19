@@ -342,6 +342,11 @@ class CommissionSettlementListView(PermissionCodeView):
         description="De la más reciente a la más antigua, con sus partes.",
         parameters=[
             OpenApiParameter("status", OpenApiTypes.STR, enum=SettlementStatus.values),
+            OpenApiParameter(
+                "application_id",
+                OpenApiTypes.UUID,
+                description="Solicitud liquidada: su historial, la vigente y las anuladas.",
+            ),
             OpenApiParameter("bank_id", OpenApiTypes.UUID),
             OpenApiParameter("advisor_id", OpenApiTypes.UUID, description="Asesor beneficiario."),
             OpenApiParameter("broker_id", OpenApiTypes.UUID, description="Broker beneficiario."),
@@ -354,6 +359,7 @@ class CommissionSettlementListView(PermissionCodeView):
         rows = payments.filter_settlements(
             settlement.settlements_queryset(),
             status=_choice(request, "status", SettlementStatus.values),
+            application_id=parse_uuid_param(request, "application_id"),
             bank_id=parse_uuid_param(request, "bank_id"),
             advisor_id=parse_uuid_param(request, "advisor_id"),
             broker_id=parse_uuid_param(request, "broker_id"),

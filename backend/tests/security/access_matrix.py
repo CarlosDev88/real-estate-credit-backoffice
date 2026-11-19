@@ -194,6 +194,7 @@ MATRIX: dict[str, str] = {
     # --- /bank-policy-rules ---
     "GET /api/v1/bank-policy-rules": ADMIN_ADVISOR,
     "POST /api/v1/bank-policy-rules": ADMIN_ONLY,
+    "GET /api/v1/bank-policy-rules/fields": ADMIN_ADVISOR,
     "GET /api/v1/bank-policy-rules/{rule_id}": ADMIN_ADVISOR,
     "PATCH /api/v1/bank-policy-rules/{rule_id}": ADMIN_ONLY,
     "POST /api/v1/bank-policy-rules/{rule_id}/activate": ADMIN_ONLY,

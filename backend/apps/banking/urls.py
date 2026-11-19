@@ -38,6 +38,11 @@ urlpatterns = [
     # Reglas operativas (sección 23.3)
     path("bank-policy-rules", views.BankPolicyRuleListView.as_view(), name="bank-policy-rule-list"),
     path(
+        "bank-policy-rules/fields",
+        views.BankPolicyRuleFieldsView.as_view(),
+        name="bank-policy-rule-fields",
+    ),
+    path(
         "bank-policy-rules/<uuid:rule_id>",
         views.BankPolicyRuleDetailView.as_view(),
         name="bank-policy-rule-detail",

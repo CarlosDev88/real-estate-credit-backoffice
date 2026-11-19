@@ -19,6 +19,7 @@ from dataclasses import dataclass, field
 from datetime import date, datetime
 from typing import Any
 
+from django.conf import settings
 from django.db import IntegrityError, transaction
 from django.db.models import Max, Prefetch, Q, QuerySet
 from django.utils import timezone
@@ -41,6 +42,7 @@ from apps.banking.rule_engine import (
     validate_condition,
     validate_context,
 )
+from apps.banking.rule_fields import RULE_FIELDS
 from apps.banking.signals import (
     bank_policy_rule_status_changed,
     bank_product_status_changed,
@@ -248,6 +250,40 @@ def available_products(
 # --------------------------------------------------------------------------------------
 # Reglas operativas
 # --------------------------------------------------------------------------------------
+
+
+def rule_field_definitions() -> list[dict[str, Any]]:
+    """Campos que admite una condición, con su tipo de valor y, si es de catálogo, sus
+    opciones vigentes (``GET /bank-policy-rules/fields``).
+
+    Salen de ``RULE_FIELDS``, la misma lista con la que se validan las condiciones. Un
+    catálogo bajo demanda (``municipality``) no trae ``options``: se pide en
+    ``/metadata/catalogs/{code}``. Las opciones se leen en una sola consulta.
+    """
+    on_demand = set(settings.METADATA_ON_DEMAND_CATALOGS)
+    catalogs = {field.catalog for field in RULE_FIELDS.values() if field.catalog} - on_demand
+    day = today()
+    items = (
+        CatalogItem.objects.filter(catalog__code__in=catalogs, is_active=True)
+        .filter(Q(valid_from__isnull=True) | Q(valid_from__lte=day))
+        .filter(Q(valid_to__isnull=True) | Q(valid_to__gte=day))
+        .order_by("sort_order", "label")
+        .values_list("catalog__code", "code", "label")
+    )
+    options: dict[str, list[dict[str, str]]] = {code: [] for code in catalogs}
+    for catalog_code, code, label in items:
+        options[catalog_code].append({"code": code, "label": label})
+    return [
+        {
+            "code": name,
+            "label": field.label,
+            "description": field.description,
+            "type": field.input_type(name),
+            "catalog": field.catalog,
+            "options": options.get(field.catalog) if field.catalog else None,
+        }
+        for name, field in RULE_FIELDS.items()
+    ]
 
 
 def rules_queryset() -> QuerySet[BankPolicyRule]:

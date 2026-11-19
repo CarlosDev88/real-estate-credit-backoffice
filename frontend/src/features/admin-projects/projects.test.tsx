@@ -85,6 +85,7 @@ function makeProject(n: number, overrides: Partial<ProjectDetail> = {}): Project
     created_at: "2026-11-10T15:00:00Z",
     updated_at: "2026-11-12T15:00:00Z",
     available_actions: [],
+    available_action_details: [],
     ...overrides,
   };
 }

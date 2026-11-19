@@ -2,7 +2,8 @@ from collections import OrderedDict
 from functools import cache
 from typing import Any
 
-from drf_spectacular.utils import inline_serializer
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import OpenApiParameter, inline_serializer
 from rest_framework import serializers
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
@@ -88,3 +89,19 @@ def paginated_serializer(name: str, item_serializer: type[serializers.Serializer
             "previous": serializers.CharField(allow_null=True),
         },
     )
+
+
+# Paginación declarada a mano: una respuesta `oneOf` no es una lista para drf-spectacular,
+# así que no agrega `page` ni `page_size` por su cuenta.
+PAGINATION_PARAMETERS = [
+    OpenApiParameter(
+        StandardResultsSetPagination.page_query_param,
+        OpenApiTypes.INT,
+        description=str(StandardResultsSetPagination.page_query_description),
+    ),
+    OpenApiParameter(
+        str(StandardResultsSetPagination.page_size_query_param),
+        OpenApiTypes.INT,
+        description=str(StandardResultsSetPagination.page_size_query_description),
+    ),
+]

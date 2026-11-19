@@ -199,6 +199,8 @@ def test_settlement_list_and_filters(
     assert ids(needs_review="false") == [str(with_broker.pk)]
     assert ids(bank_id=str(product.bank_id)) == [str(needs_review.pk), str(with_broker.pk)]
     assert ids(status="VOIDED") == []
+    assert ids(application_id=str(with_broker.application_id)) == [str(with_broker.pk)]
+    assert ids(application_id=str(needs_review.application_id)) == [str(needs_review.pk)]
     # Fechas de Bogotá: el desembolso de las 23:30 del 10 cuenta en el 10.
     assert ids(date_from="2026-11-10", date_to="2026-11-10") == [str(with_broker.pk)]
     assert ids(date_from="2026-11-11") == [str(needs_review.pk)]
@@ -210,6 +212,7 @@ def test_settlement_list_and_filters(
     ("params", "field"),
     [
         ({"status": "PAID"}, "status"),
+        ({"application_id": "x"}, "application_id"),
         ({"bank_id": "x"}, "bank_id"),
         ({"advisor_id": "x"}, "advisor_id"),
         ({"broker_id": "x"}, "broker_id"),
