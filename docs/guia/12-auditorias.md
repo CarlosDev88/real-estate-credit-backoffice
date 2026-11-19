@@ -42,7 +42,7 @@ En cuatro partes, todo en local, sobre datos de demo y con una base de datos de 
 
 **Lo más importante es lo que no apareció** (SEGURIDAD §1): la matriz dio **2.115 casos, todos con el resultado esperado, sin ninguna brecha de acceso**; nadie puede ver ni tocar expedientes, documentos, clientes o comisiones que no le corresponden; sin sesión no se llega a ningún dato; no hay inyecciones; los archivos se validan por su contenido real; y los enlaces del comprador, las radicaciones y los pagos no se duplican aunque lleguen diez peticiones a la vez.
 
-**Lo que quedó en el CI** para que no vuelva a pasar: la matriz corre en cada PR y exige una fila para cada operación nueva del contrato; `pip-audit`, `gitleaks` y `bandit` corren en cada PR ([09 · Calidad §3](09-calidad.md#3-el-ci-dos-revisiones-obligatorias)).
+**Lo que quedó en el CI** para que no vuelva a pasar: la matriz corre en cada PR y exige una fila para cada operación nueva del contrato (ya pasó una vez: el #36 sumó `GET /bank-policy-rules/fields` con su fila, y hoy son 236 operaciones y 2.124 casos, también sin brechas, en [`docs/seguridad/03-matriz-acceso.md`](../seguridad/03-matriz-acceso.md)); `pip-audit`, `gitleaks` y `bandit` corren en cada PR ([09 · Calidad §3](09-calidad.md#3-el-ci-dos-revisiones-obligatorias)).
 
 **Criterio de la fase B** (SEGURIDAD §6): los críticos y altos se corrigen todos; los medios, si el esfuerzo es pequeño (si no, se aceptan con su motivo); los bajos e informativos se documentan y se corrigen si son de una línea.
 

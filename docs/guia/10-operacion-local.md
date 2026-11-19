@@ -57,19 +57,19 @@ flowchart TD
     D --> E
     E --> F["4 · espera /health y /ready<br/>(hasta 5 min)"]
     F -->|"no responde"| X2["sale con código 4<br/>y el comando para ver los logs"]
-    F --> G["5 · seed_demo_data<br/>(se puede repetir)"]
+    F --> G["5 · seed_demo_data --new-portal-link<br/>(se puede repetir)"]
     G --> H["6 · imprime la salida del seed:<br/>resumen, usuarios por rol y enlace del portal"]
     H --> I["y las URL del backoffice, la API y su documentación"]
 ```
 
-*Qué mirar: el `.env` existente **nunca** se toca, y el seed se puede correr las veces que quieras: no borra ni duplica.*
+*Qué mirar: el `.env` existente **nunca** se toca, y el seed se puede correr las veces que quieras: agrega solo lo que falta y no borra ni duplica. Lo único que cambia en cada corrida es el enlace del portal: siempre sale uno nuevo.*
 
 1. **Docker.** Revisa que existan `docker` y `docker compose` y que Docker responda. Si no, sale con un mensaje en español y el código 3.
 2. **`backend/.env`.** Si **no existe**, lo crea copiando `backend/.env.example` y escribe `DJANGO_SECRET_KEY` y `AUTH_JWT_SIGNING_KEY` nuevas (48 bytes de un generador criptográfico, en base64 de URL: 64 caracteres) y `DJANGO_DEBUG=True`. Conserva el resto del archivo tal cual, incluido su fin de línea. **Si ya existe, no lo toca nunca.**
 3. **Contenedores.** `docker compose up -d --build` desde `backend/`: `postgres`, `backend` y `frontend`. La primera vez construye las imágenes y tarda varios minutos.
 4. **Salud.** Espera a que `http://localhost:8000/health` (el proceso responde) y `/ready` (la base responde) devuelvan `200`, con un máximo de 300 segundos (600 en el modo completo). Al arrancar, el backend aplica las migraciones solo.
-5. **Datos de demo.** Corre `python manage.py seed_demo_data` dentro del contenedor. El comando solo funciona con `DEBUG` y nunca borra nada.
-6. **Resumen.** El script **imprime la salida del seed tal cual**: un resumen por bloque (creados o ya existían), la **tabla de usuarios por rol** con la contraseña de demo y el **enlace del portal del comprador** (de un solo uso) con el código de su solicitud. Después agrega las URL:
+5. **Datos de demo.** Corre `python manage.py seed_demo_data --new-portal-link` dentro del contenedor. El comando solo funciona con `DEBUG` y nunca borra nada. Cada uno de sus 16 bloques tiene su marca y se salta si ya existe, así que en una base con una demo vieja agrega solo lo que falta. Sin `--new-portal-link`, si ya hay un enlace del portal sin usar, el comando no emite otro y no imprime ninguna URL (el token solo se ve al emitirlo); con la opción emite uno nuevo y revoca el anterior, así que **la demo siempre muestra un enlace que sirve**.
+6. **Resumen.** El script **imprime la salida del seed tal cual**: un resumen por bloque (`creados (N)` o `ya existían`), la **tabla de usuarios por rol** con la contraseña de demo y el **enlace del portal del comprador** (de un solo uso, 72 horas) con el código de su solicitud. Después agrega las URL:
 
 | Qué | Dónde |
 | --- | --- |
@@ -79,17 +79,34 @@ flowchart TD
 | Documentación interactiva de la API | http://localhost:8000/docs (solo con `DEBUG`) |
 | Salud | http://localhost:8000/health y /ready |
 
-Los usuarios de demo, todos con la contraseña de demo `DemoUmbral2026!` (está escrita en el código, `backend/apps/applications/demo_data.py`; **solo para local**):
+Los usuarios de demo, con la contraseña de demo `DemoUmbral2026!` (está escrita en el código, `backend/apps/applications/demo_data.py`; **solo para local**). Es la tabla que imprime el comando, con los textos de `backend/apps/applications/demo_seed.py` (`PURPOSES`) y de `backend/README.md`, "Demo Data":
 
-| Rol | Correo |
-| --- | --- |
-| Administrador | `admin@demo.local` |
-| Asesora | `asesora.lucia@demo.local` |
-| Asesor (sin teléfono, para probar la tarjeta del portal sin WhatsApp) | `asesor.andres@demo.local` |
-| Broker independiente | `broker@demo.local` |
-| Constructora | `constructora@demo.local` *(lo agrega el seed ampliado de `TAREA-brechas-3-demo.md`, en curso; hasta que se fusione, el seed de `master` crea los otros cuatro)* |
+| Rol | Correo | Para qué |
+| --- | --- | --- |
+| `ADMIN` | `admin@demo.local` | Ve todo: administración, reportes, comisiones y auditoría |
+| `ADVISOR` | `asesora.lucia@demo.local` | Asesora con cartera: Mi día, solicitudes, tareas y radicaciones |
+| `ADVISOR` | `asesor.andres@demo.local` | El otro asesor; sin teléfono (el portal no muestra WhatsApp) |
+| `INDEPENDENT_BROKER` | `broker@demo.local` | Sus prospectos, el resumen de sus solicitudes y sus comisiones |
+| `CONSTRUCTION_PARTNER` | `constructora@demo.local` | Su constructora y sus proyectos |
+| `ADVISOR` (inactivo) | `inactivo@demo.local` | No puede entrar: el login responde `403` |
 
 La tabla que imprime el seed manda sobre esta: si cambia, el script no hay que tocarlo.
+
+**Qué trae la demo** (`backend/README.md`, "Demo Data"; `backend/apps/applications/demo_seed.py`, 16 bloques en orden de dependencia):
+
+| Qué | Cuánto y en qué estados |
+| --- | --- |
+| Solicitudes | **64**, creadas en los últimos seis meses y repartidas entre Lucía y Andrés; el broker originó un tercio. La demo base: 30 en las pestañas borrador, esperando documentos, en revisión y lista (una lista pero bloqueada y una con el comprador inactivo por asesor) y 4 radicadas. La historia de seis meses: 30 más, cerradas antes de radicar (cancelada, recursos propios, crédito externo, desistida), radicadas con **cada respuesta del banco** (recibida, en análisis, devuelta, devuelta y corregida con segunda radicación, aprobada, legalización, rechazada, desembolsada), una desistida después de radicar y una radicada sin respuesta y ya **vencida** |
+| Comisiones | Un plan de 1 % con reparto 70/30 por producto. Liquidaciones pendientes, pagadas, una parte pagada con **revisión pendiente** (un desembolso corregido), una anulada y liquidada de nuevo; con broker (70/30) y directas (100 %) |
+| Tareas, notas y actividad | Tareas vencidas, de hoy, próximas, completadas y canceladas de los dos asesores; notas en clientes, oportunidades y solicitudes |
+| Avisos y correos | Avisos del comprador leídos y sin leer; un correo fallido con reintento programado y otro fallido del todo |
+| Oportunidades | En todos los estados: nueva, asignada, contactada, en gestión, convertida, perdida (con motivo) y cancelada |
+| Constructoras y proyectos | Constructora Andina de Demo (activa, de `constructora@demo.local`) con seis proyectos: dos activos, uno en validación, uno en borrador, uno devuelto a borrador con motivo y uno archivado. Inmobiliaria del Valle de Demo, inactiva y con una membresía inactiva (`backend/apps/partners/demo_data.py`) |
+| Usuarios e invitaciones | El usuario inactivo e invitaciones pendiente, aceptada, vencida y revocada (`backend/apps/identity/demo_data.py`) |
+| Bancos y reglas | Un producto inactivo (VIS del Banco de Bogotá); en el hipotecario de Bancolombia, "Plazo máximo" con tres versiones (v1 reemplazada, v2 activa y v3 en borrador) y "Relación monto / valor" como advertencia (`backend/apps/banking/demo_data.py`) |
+| Reportes y auditoría | Dos exportaciones (completada y vencida); eventos de auditoría: inicios de sesión correctos y fallidos, un `403`, descargas de documentos y una exportación |
+
+Las fechas están en el pasado de verdad: cada solicitud de la historia se crea con los servicios del dominio y después se mueve atrás en el tiempo, conservando el orden real (un desembolso nunca queda antes de su radicación). La primera corrida tarda unos dos minutos; las siguientes, unos segundos.
 
 ### Opciones
 
@@ -124,30 +141,33 @@ Variables opcionales del entorno: `DEMO_TIMEOUT_SECONDS` (espera máxima de la A
 
 ## 3. Recorrido sugerido por rol
 
-Un recorrido por cada rol, con las pantallas que existen hoy en `frontend/src/app/`. Entra a http://localhost:3000/login con cada usuario (la contraseña es la misma) y cierra la sesión entre uno y otro. Cada usuario ve en el menú solo lo que sus permisos abren ([08 · Frontend §7](08-frontend.md#7-navegación-por-permisos)).
+Un recorrido por cada rol, con las pantallas que existen hoy en `frontend/src/app/` y los datos que trae la demo ([§2](#2-la-demo-en-un-comando)). Entra a http://localhost:3000/login con cada usuario (la contraseña es la misma) y cierra la sesión entre uno y otro. Cada usuario ve en el menú solo lo que sus permisos y su audiencia abren ([08 · Frontend §7](08-frontend.md#7-navegación-por-permisos)).
 
 ### Administrador (`admin@demo.local`)
 
-1. **Dashboard** (`/dashboard`): cambia el rango de fechas y mira el resumen, el **embudo por cohorte**, la carga por asesor y los resultados por banco. Filtra por un asesor.
+1. **Dashboard** (`/dashboard`): con seis meses de historia, cambia el rango de fechas y mira el resumen, el **embudo por cohorte**, la carga por asesor y los resultados por banco. Filtra por un asesor.
 2. **Solicitudes** (`/solicitudes`): recorre las pestañas rápidas, busca por código y filtra por banco; copia la URL y ábrela en otra pestaña: abre la misma vista.
-3. Abre una solicitud **observada por el banco** y mira la pestaña **Radicación**: radicaciones, respuestas y la observación por documento.
-4. **Reportes** (`/reportes`): descarga el CSV directo y pide una **exportación asíncrona**; descárgala cuando termine.
-5. **Usuarios** (`/admin/usuarios`): mira los usuarios por rol y la pestaña de invitaciones; invita a alguien. *(El usuario inactivo y las invitaciones en cada estado llegan con el seed ampliado.)*
-6. **Constructoras** (`/admin/constructoras`) y **Proyectos** (`/proyectos`): abre una constructora, sus miembros y sus proyectos en cada estado. *(Con el seed de `master` no hay constructoras: créalas desde aquí; el seed ampliado las trae en cada estado.)*
-7. **Bancos** (`/admin/bancos`): abre un producto, sus reglas con versiones, y usa **"probar una regla"** con un caso.
-8. **Documentos** (`/admin/documentos`), **Catálogos** (`/admin/catalogos`) y **Flujos** (`/admin/flujos`): mira los requisitos por producto, reordena los ítems de un catálogo y revisa las transiciones con su permiso y su guarda.
+3. Abre una solicitud **devuelta por el banco** y mira la pestaña **Radicación**: radicaciones, respuestas y la observación por documento. Busca también la **devuelta y corregida** (dos radicaciones) y la radicada sin respuesta que ya está **vencida**.
+4. **Reportes** (`/reportes`): mira las dos exportaciones de la demo (una completada y una vencida), descarga el CSV directo y pide una **exportación asíncrona**; descárgala cuando termine.
+5. **Comisiones** (`/comisiones`), pestaña **Liquidaciones**: filtra por "revisión pendiente" y abre esa liquidación (una parte ya pagada sobre un desembolso corregido); **paga** una parte pendiente con fecha y referencia, y mira la liquidación **anulada** y la que la reemplazó. Pestaña **Planes**: el plan de 1 % con reparto 70/30 de cada producto.
+6. **Usuarios** (`/admin/usuarios`): mira los usuarios por rol (con `inactivo@demo.local` desactivado) y la pestaña de **invitaciones** en sus cuatro estados (pendiente, aceptada, vencida y revocada); invita a alguien.
+7. **Constructoras** (`/admin/constructoras`) y **Proyectos** (`/proyectos`): abre Constructora Andina de Demo, sus miembros y sus seis proyectos en cada estado; mira la Inmobiliaria del Valle de Demo, inactiva y con su membresía inactiva.
+8. **Bancos** (`/admin/bancos`): el producto inactivo del Banco de Bogotá; en el hipotecario de Bancolombia, la regla "Plazo máximo" con sus tres versiones (reemplazada, activa y en borrador). Usa **"probar una regla"** con un caso.
+9. **Documentos** (`/admin/documentos`), **Catálogos** (`/admin/catalogos`) y **Flujos** (`/admin/flujos`): mira los requisitos por producto, reordena los ítems de un catálogo y revisa las transiciones con su permiso y su guarda.
 
 ### Asesora (`asesora.lucia@demo.local`)
 
 1. **Mi día** (`/mi-dia`): mira los segmentos (documentos por revisar, listas para radicar, observadas, comprador sin actividad…) y las tareas vencidas y de hoy; completa una tarea.
 2. **Solicitudes**: confirma que solo ves **tus** solicitudes asignadas.
 3. Abre una solicitud en **documentos en revisión**: en la pestaña **Documentos**, abre un archivo en el visor, **aprueba** uno y **rechaza** otro con motivo y mensaje para el comprador.
-4. En una solicitud **lista para radicar**: pestaña **Radicación** → pide el **paquete**, descárgalo y **registra la radicación**.
-5. Registra una **respuesta del banco** (por ejemplo, "en análisis") y mira cómo cambia el estado y el historial.
-6. En una solicitud **aprobada**: inicia la **legalización** y registra el **desembolso** con su monto.
-7. Desde el encabezado de una solicitud, **genera un enlace** para el comprador.
-8. **Clientes** (`/clientes`): crea un cliente, ábrelo y crea una **oportunidad** (queda asignada a ti); desde ella, crea la solicitud.
-9. Intenta abrir por URL una solicitud de Andrés: la API responde que no existe (`404`), porque no es tuya.
+4. En una solicitud que todavía no está radicada, **edita el expediente** en el lugar: el inmueble, la financiación (solo productos elegibles) o un participante con sus ingresos. Después de radicar, la API ya no deja editar y la pantalla muestra su mensaje.
+5. En una solicitud **lista para radicar**: pestaña **Radicación** → pide el **paquete** (queda en la lista de paquetes), descárgalo y **registra la radicación**.
+6. Registra una **respuesta del banco** (por ejemplo, "en análisis"): el formulario pide los campos que el catálogo define para esa respuesta. Mira cómo cambia el estado y el historial.
+7. En una solicitud **aprobada**: inicia la **legalización** y registra el **desembolso** con su monto. La comisión se liquida sola: como admin, la ves en la tarjeta "Comisión" del expediente y en `/comisiones`.
+8. Desde el encabezado de una solicitud, **genera un enlace** para el comprador.
+9. **Clientes** (`/clientes`): crea un cliente, ábrelo y crea una **oportunidad** (queda asignada a ti); muévela con sus botones o márcala **perdida** con un motivo; desde una abierta, crea la solicitud.
+10. **Mis comisiones** (`/mis-comisiones`): tus partes con su estado, filtrables por fechas y estado.
+11. Intenta abrir por URL una solicitud de Andrés: la API responde que no existe (`404`), porque no es tuya.
 
 ### Asesor (`asesor.andres@demo.local`)
 
@@ -155,42 +175,47 @@ Un recorrido por cada rol, con las pantallas que existen hoy en `frontend/src/ap
 2. Abre una solicitud **devuelta por el banco** (`BANK_OBSERVATION`): mira qué documento observó el banco.
 3. Cuando el comprador lo reemplace (recorrido del comprador), **aprueba** la versión nueva: la observación queda resuelta.
 4. Marca la solicitud **lista para radicar de nuevo**, pide otro paquete y registra la **segunda radicación**.
-5. **Proyectos** (`/proyectos`): **aprueba** un proyecto que la constructora envió a validación, o devuélvelo con un motivo.
+5. **Proyectos** (`/proyectos`): **aprueba** "Altos de la Sabana", que la constructora envió a validación, o devuélvelo con un motivo.
 6. **Reportes**: confirma que solo aparecen tus solicitudes. Un filtro por otro asesor lo rechaza la API con `403 FILTER_OUT_OF_SCOPE`.
 7. Genera un enlace en una de tus solicitudes y ábrelo: en el portal, la tarjeta del asesor no muestra WhatsApp porque Andrés no tiene teléfono.
 
 ### Broker (`broker@demo.local`)
 
-1. **Dashboard**: ves **solo conteos** de lo que originaste, sin montos.
-2. **Clientes**: tus contactos, con el documento enmascarado (`••••••5908`).
-3. Mira el menú: no tienes "Mi día", ni "Reportes", ni la administración.
-4. Abre una solicitud que originaste: la API le entrega al broker solo el **resumen** (estado y siguiente paso); participantes, documentos y financiación responden `403`.
-5. Intenta abrir `/admin/usuarios`: la app te devuelve a tu pantalla de inicio.
-6. *(En curso)* La bandeja propia del broker, sus comisiones y la navegación por audiencia llegan con la F7 (rama `feat/front-f7`, sin fusionar). Hasta entonces, la vista de clientes y de solicitudes del broker es la del backoffice general.
+1. Entra a **Mis prospectos** (`/prospectos`), su inicio. El menú solo tiene "Mis prospectos" y "Mis comisiones": sin dashboard, solicitudes, clientes, proyectos ni administración.
+2. Pestaña **Prospectos**: sus oportunidades, filtradas por estado (las nuevas esperan asesor; las convertidas ya tienen solicitud).
+3. **"Nuevo prospecto"**: crea el cliente y su oportunidad (con un proyecto activo, por ejemplo "Torres del Parque"). Queda nueva y sin asesor hasta que la asignen.
+4. Pestaña **Solicitudes**: "Estado de tus solicitudes" con los conteos por estado, y la lista con estado, banco, asesor y días en la etapa. Es solo el **resumen**: sin documentos, participantes ni finanzas (la API se los niega con `403`).
+5. **"Enviar enlace"** en una solicitud: genera el enlace del portal para el comprador.
+6. **Mis comisiones** (`/mis-comisiones`): sus partes (el 30 % de la comisión de cada desembolso que originó) con su estado, sin la base, la tasa, el total ni la parte del asesor.
+7. Intenta abrir `/solicitudes` o `/admin/usuarios` por URL: la app lo devuelve a su bandeja.
 
-### Constructora (`constructora@demo.local`, con el seed ampliado)
+### Constructora (`constructora@demo.local`)
 
 1. Mira el menú: solo **Proyectos**.
-2. **Proyectos**: solo ves los de **tu** constructora, sin la columna ni el filtro de constructora.
+2. **Proyectos**: solo ves los seis de **tu** constructora (Andina), sin la columna ni el filtro de constructora: activos, en validación, en borrador, devuelto con motivo y archivado.
 3. **Crea un proyecto** en borrador (nombre, municipio, dirección): no eliges constructora, la API la toma de tu membresía.
-4. Edítalo y **envíalo a validación**.
+4. Edita "Mirador del Río" (en borrador) y **envíalo a validación**. Abre "Reserva Campestre" y lee el motivo con que se devolvió.
 5. Abre un proyecto activo: ya no se puede editar (solo en borrador).
 6. Intenta abrir `/solicitudes` por URL: no es tuyo, la app te devuelve a Proyectos.
 7. Después, como asesor, apruébalo (recorrido del asesor, paso 5).
 
+### Usuario inactivo (`inactivo@demo.local`)
+
+Intenta entrar: el login responde `403 USER_INACTIVE` y la pantalla muestra el mensaje de la API. Como admin, actívalo en **Usuarios** y vuelve a probar.
+
 ### Comprador (el enlace que imprimió el seed)
 
-1. Abre el enlace en el **celular** (o en el modo móvil del navegador, 390 px): la URL pierde el token apenas entra.
+1. Abre el enlace en el **celular** (o en el modo móvil del navegador, 390 px): la URL pierde el token apenas entra. Es una solicitud de la demo base que espera documentos y todavía no tiene ninguno cargado.
 2. **Consentimientos**: lee y acepta; sin aceptarlos, el portal no te deja guardar nada.
-3. **Inicio** (`/portal`): el avance por etapas, lo que falta, la última respuesta del banco y la tarjeta de tu asesor con correo y WhatsApp.
+3. **Inicio** (`/portal`): el avance por etapas, lo que falta y la tarjeta de tu asesor con correo y WhatsApp.
 4. **Tus datos** (`/portal/datos`): cambia tu teléfono; prueba un correo mal escrito y mira el error en el campo.
 5. **Ingresos** (`/portal/ingresos`): agrega una fuente de ingreso y **confirma tus datos**.
 6. **Financiación** (`/portal/financiacion`): elige un producto disponible; los no disponibles no se pueden elegir.
 7. **Documentos** (`/portal/documentos`): sube un PDF o **toma una foto**; queda "En revisión". Prueba un archivo que no sea PDF, JPG ni PNG.
 8. **Avisos** (`/portal/avisos`): mira los avisos y márcalos como leídos.
-9. Abre el mismo enlace otra vez: ya no sirve (es de un solo uso). Pide otro al asesor.
+9. Abre el mismo enlace otra vez: ya no sirve (es de un solo uso). Pide otro al asesor, o vuelve a correr la demo: cada corrida emite uno nuevo.
 
-> Este recorrido se escribió con las rutas y los permisos de `master`; la demo de punta a punta se corre cuando el orquestador lo indique (ver [§9](#9-cómo-se-probaron-los-scripts)).
+> Este recorrido se escribió con las rutas, los permisos y los datos de demo de `master` del 19 de noviembre (después del #33 y del #36); la demo de punta a punta se corre cuando el orquestador lo indique (ver [§9](#9-cómo-se-probaron-los-scripts)).
 
 ## 4. Los dos modos
 
@@ -238,8 +263,8 @@ docker compose logs -f frontend
 docker compose exec -T backend python manage.py migrate
 docker compose exec -T backend python manage.py showmigrations
 
-# Datos de demo (se puede repetir)
-docker compose exec -T backend python manage.py seed_demo_data
+# Datos de demo (se puede repetir; --new-portal-link emite otro enlace del portal)
+docker compose exec -T backend python manage.py seed_demo_data --new-portal-link
 
 # Limpiar los límites de intentos (por ejemplo, después de un 429 en el login)
 docker compose exec -T backend python manage.py shell -c "from django.core.cache import cache; cache.clear()"
@@ -281,8 +306,9 @@ Los datos viven en volúmenes con nombre fijo (`mvp_credit_postgres_data`, `mvp_
 | `pnpm` falla en Windows con un error del atajo | El atajo global de pnpm está roto en algunas instalaciones | Usa `corepack pnpm …` o `node <ruta>/pnpm/bin/pnpm.mjs …` |
 | Todo `/api/v1/*` responde `400` y el log dice `DisallowedHost` | `DJANGO_ALLOWED_HOSTS` en `backend/.env` no incluye `backend` | Agrégalo (`.env.example` ya lo trae) |
 | `429` en el login | 5 intentos por correo e IP cada 15 minutos | Espera, o limpia la caché ([§6](#6-comandos-útiles)) |
-| El seed dice que todo "ya existía" | Es idempotente: ya corrió antes | Nada; es lo esperado |
-| El enlace del portal dice que ya se usó o venció | Es de un solo uso y dura 72 h | Emite otro desde el encabezado de la solicitud (como asesor) |
+| El seed dice que todo "ya existía" menos el enlace del portal | Es idempotente: ya corrió antes. La demo pide siempre un enlace nuevo (`--new-portal-link`) | Nada; es lo esperado |
+| Corriendo el comando a mano, el seed no imprime el enlace y dice que ya hay uno sin usar | Sin `--new-portal-link` no emite otro: el token solo se ve al emitirlo | Agrega `--new-portal-link` (revoca el anterior) |
+| El enlace del portal dice que ya se usó o venció | Es de un solo uso y dura 72 h | Vuelve a correr la demo (imprime uno nuevo) o emítelo desde el encabezado de la solicitud (como asesor) |
 | Una descarga responde `503 DOWNLOAD_UNAVAILABLE` | El archivo se subió en el otro modo | Vuelve al modo en que se subió; los archivos no se mueven entre modos |
 | En el modo completo, las cargas quedan en "pendiente" | ClamAV todavía está bajando sus firmas | Espera a que `docker compose --profile full ps clamav` diga `healthy` |
 | La API no está en `0.0.0.0` o `/docs` responde `404` | La fase B de la auditoría de seguridad (en curso) publica los puertos solo en `127.0.0.1` y deja `/docs` y `/openapi.json` solo con `DEBUG` | La demo corre con `DEBUG` y desde la misma máquina: funciona igual. Para entrar desde otra máquina de la red, eso ya no es posible a propósito |

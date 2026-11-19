@@ -71,7 +71,7 @@ Fuera del MVP, por decisión (REQ §2 "Fuera de alcance" y el Anexo A de [`specs
 | Campana de notificaciones internas en el backoffice | Las notificaciones son para el comprador (ver [02 · Negocio §8](02-negocio.md#8-notificaciones)). |
 | "Deshacer" una aprobación de documento | Se decide otra vez sobre la versión vigente (se rechaza la aprobada). |
 | Aplicación móvil nativa | El portal es web y está diseñado **móvil primero**. |
-| Despliegue | El proyecto corre en local y en CI. La única publicación prevista es el Storybook del design system (Anexo A). |
+| Despliegue | El proyecto corre en local y en CI. Lo único publicado es estático y de solo lectura, en GitHub Pages: el [Storybook del design system](https://carlosdev88.github.io/real-estate-credit-backoffice/) y la [referencia de la API](https://carlosdev88.github.io/real-estate-credit-backoffice/api/) (Anexo A; `.github/workflows/storybook-pages.yml`). |
 
 ## 3. Los cinco roles
 
@@ -119,7 +119,7 @@ flowchart TD
 
 *Qué mirar: los dos ciclos. El primero (pasos 6-7) es el ida y vuelta normal de documentos antes de radicar. El segundo (devolución del banco) vuelve a abrir solo los documentos que el banco observó.*
 
-**1. El broker capta a Laura.** Juan, un broker independiente, conoce a Laura en una feria de vivienda. Desde el backoffice crea a Laura como **cliente** (el sistema valida que su tipo y número de documento no estén repetidos, RF-10) y abre una **oportunidad**: el registro de que Laura quiere comprar. Como la creó un broker, la oportunidad queda en `NEW` y **sin asesor**; si la hubiera creado un asesor, quedaría asignada a él en `ASSIGNED` (`backend/apps/crm/services.py`, `SELF_ASSIGNMENT_REASON`; decisión de [`specs/TAREA-brechas-2.md`](../../specs/TAREA-brechas-2.md), Parte 1, punto 6). El origen de la oportunidad queda como `BROKER`, y eso importará al final, en la comisión.
+**1. El broker capta a Laura.** Juan, un broker independiente, conoce a Laura en una feria de vivienda. Desde su bandeja en el backoffice ("Mis prospectos" → "Nuevo prospecto") crea a Laura como **cliente** (el sistema valida que su tipo y número de documento no estén repetidos, RF-10) y abre una **oportunidad**: el registro de que Laura quiere comprar. Como la creó un broker, la oportunidad queda en `NEW` y **sin asesor**; si la hubiera creado un asesor, quedaría asignada a él en `ASSIGNED` (`backend/apps/crm/services.py`, `SELF_ASSIGNMENT_REASON`; decisión de [`specs/TAREA-brechas-2.md`](../../specs/TAREA-brechas-2.md), Parte 1, punto 6). El origen de la oportunidad queda como `BROKER`, y eso importará al final, en la comisión.
 
 **2. Un asesor toma el caso.** Un administrador asigna a Marta, asesora de crédito. Marta contacta a Laura y crea la **solicitud de crédito** a partir de la oportunidad: el sistema le da un código legible (`SOL-000123`, de una secuencia de PostgreSQL en `backend/apps/applications/models/application.py`) y la deja en `DRAFT` (borrador). Crear la solicitud **convierte** la oportunidad (`CONVERTED`).
 
@@ -156,13 +156,13 @@ Estado en `master` al 19 de noviembre de 2026 (rutas contadas en `frontend/src/a
 | # | Vista (REQ §6) | Ruta | Quién la usa | Estado |
 | ---: | --- | --- | --- | --- |
 | 1 | Login interno | `/login` | Todo usuario interno | ✅ En `master` |
-| 2 | Dashboard | `/dashboard` | Admin, asesor, broker (solo conteos) | ✅ En `master` |
+| 2 | Dashboard | `/dashboard` | Admin, asesor (el broker ve sus conteos en su bandeja, abajo) | ✅ En `master` |
 | 3 | Mi día | `/mi-dia` | Asesor (y admin) | ✅ En `master` |
 | 4 | Listado de clientes | `/clientes` | Admin, asesor | ✅ En `master` |
 | 5 | Crear / editar cliente | `/clientes/nuevo`, `/clientes/[id]/editar` | Admin, asesor | ✅ En `master` |
 | 6 | Detalle de cliente | `/clientes/[id]` (pestañas resumen, oportunidades y solicitudes) | Admin, asesor | ✅ En `master` |
 | 7 | Listado de solicitudes | `/solicitudes` | Admin, asesor | ✅ En `master` |
-| 8 | Espacio de trabajo de la solicitud | `/solicitudes/[id]` (pestañas resumen, documentos e historial) | Admin, asesor | ✅ En `master` |
+| 8 | Espacio de trabajo de la solicitud | `/solicitudes/[id]` (pestañas resumen, documentos e historial; el asesor edita participantes, ingresos, inmueble y financiación en el lugar) | Admin, asesor | ✅ En `master` (edición: F7, #33) |
 | 9 | Radicación manual | `/solicitudes/[id]?tab=radicacion` | Admin, asesor (con `filings.read`) | ✅ En `master` |
 | 10 | Reportes | `/reportes` | Admin, asesor | ✅ En `master` |
 | 11 | Administración de usuarios | `/admin/usuarios` (usuarios e invitaciones) y `/aceptar-invitacion` (pública) | Admin | ✅ En `master` (F6, #34) |
@@ -170,7 +170,17 @@ Estado en `master` al 19 de noviembre de 2026 (rutas contadas en `frontend/src/a
 | 13 | Administración de partners | `/admin/constructoras` (con sus miembros) | Admin | ✅ En `master` (F6, #34) |
 | 14 | Catálogos: bancos, productos y requisitos | `/admin/bancos` (y `/admin/bancos/productos/[id]`), `/admin/documentos`, `/admin/catalogos` (y `/admin/catalogos/[id]`), `/admin/flujos` | Admin | ✅ En `master` (F6, #34) |
 
-La radicación (vista 9) no tiene ruta propia: es una pestaña del expediente que solo aparece con el permiso `filings.read` (`frontend/src/features/applications/workspace-screen.tsx`, `TABS`). Las vistas 11 a 14 viven en el grupo "Administración" del menú; la de aceptar una invitación es pública, en el grupo de rutas `(public)` ([`specs/TAREA-front-admin.md`](../../specs/TAREA-front-admin.md)). Las vistas propias del broker (su bandeja y sus comisiones) llegan con la F7, en curso en la rama `feat/front-f7`.
+La radicación (vista 9) no tiene ruta propia: es una pestaña del expediente que solo aparece con el permiso `filings.read` (`frontend/src/features/applications/workspace-screen.tsx`, `TABS`). Las vistas 11 a 14 viven en el grupo "Administración" del menú; la de aceptar una invitación es pública, en el grupo de rutas `(public)` ([`specs/TAREA-front-admin.md`](../../specs/TAREA-front-admin.md)).
+
+**Además de las 14**, REQ §6 pide que el broker reciba "su bandeja de prospectos, enlace de invitación y resumen de estados", y los requisitos de comisiones (RF-80 a RF-86) necesitan dónde verse. Las tres pantallas entraron con la **F7** (#33, [`specs/TAREA-front-cierre-vistas.md`](../../specs/TAREA-front-cierre-vistas.md)):
+
+| Pantalla | Ruta | Quién | Qué tiene |
+| --- | --- | --- | --- |
+| Mis prospectos | `/prospectos` (pestañas prospectos y solicitudes) | Broker (es su inicio) | Sus oportunidades por estado, "Nuevo prospecto" (cliente y oportunidad), "Enviar enlace" al comprador y el estado de sus solicitudes: solo el resumen, sin documentos ni finanzas |
+| Comisiones | `/comisiones` (pestañas liquidaciones y planes) | Admin | Liquidaciones con filtros y "revisión pendiente", pagar una parte, anular, liquidar a mano una solicitud desembolsada; planes por producto con su vigencia |
+| Mis comisiones | `/mis-comisiones` | Asesor y broker | Sus partes con su estado; el broker no ve base, tasa, total ni la parte del asesor (RF-86) |
+
+El broker ya no entra a las pantallas internas (dashboard, solicitudes, clientes, proyectos): el menú las marca como de la audiencia interna ([08 · Frontend §7](08-frontend.md#7-navegación-por-permisos)).
 
 ### Portal del comprador (8)
 

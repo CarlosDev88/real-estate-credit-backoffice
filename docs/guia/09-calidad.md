@@ -2,7 +2,7 @@
 
 > **En simple:** nada entra a `master` sin pasar dos revisiones automáticas, una del backend y otra del frontend. Cada una corre linters, tipos, pruebas, cobertura mínima y la verificación del contrato, y deja un **reporte en el PR** con lo que pasó. Debajo hay una pirámide de pruebas: muchas pruebas rápidas de reglas y de API, pruebas de pantallas con la API simulada, y pruebas de punta a punta en el navegador con revisión de accesibilidad.
 
-La estrategia de pruebas viene de REQ §10 ([`docs/REQUERIMIENTOS_MVP_CREDITO.md`](../REQUERIMIENTOS_MVP_CREDITO.md)). Números contados en `master` el **19 de noviembre de 2026** (con la F6 y la fase A de la auditoría de seguridad ya fusionadas), sin correr ninguna suite (las cuentan las funciones de prueba, no las ejecuciones).
+La estrategia de pruebas viene de REQ §10 ([`docs/REQUERIMIENTOS_MVP_CREDITO.md`](../REQUERIMIENTOS_MVP_CREDITO.md)). Números contados en `master` el **19 de noviembre de 2026** (con la F6, la fase A de la auditoría de seguridad, la F7 y la demo completa del #36 ya fusionadas), sin correr ninguna suite (las cuentan las funciones de prueba, no las ejecuciones).
 
 ---
 
@@ -23,10 +23,10 @@ La estrategia de pruebas viene de REQ §10 ([`docs/REQUERIMIENTOS_MVP_CREDITO.md
 
 ```mermaid
 flowchart TB
-    e2e["<b>Punta a punta</b> · Playwright + axe<br/>13 specs, contra el backend local<br/>login, portal en celular y escritorio, radicación, clientes, operación, administración"]
+    e2e["<b>Punta a punta</b> · Playwright + axe<br/>14 specs, contra el backend local<br/>login, portal en celular y escritorio, radicación, clientes, operación, administración, comisiones y broker"]
     sb["<b>Componentes</b> · Storybook + axe<br/>23 archivos de stories, axe en cada una, en el CI"]
-    fe["<b>Pantallas e integración del front</b> · Vitest + Testing Library + MSW<br/>57 archivos, ~596 casos, API simulada"]
-    be["<b>Backend</b> · pytest + pytest-django<br/>129 archivos, 1.860 funciones de prueba<br/>reglas, API con base real, permisos, consultas, concurrencia<br/>y la matriz de acceso: 235 operaciones × 9 actores"]
+    fe["<b>Pantallas e integración del front</b> · Vitest + Testing Library + MSW<br/>60 archivos, ~630 casos, API simulada"]
+    be["<b>Backend</b> · pytest + pytest-django<br/>133 archivos, 1.879 funciones de prueba<br/>reglas, API con base real, permisos, consultas, concurrencia<br/>y la matriz de acceso: 236 operaciones × 9 actores"]
     e2e --- sb --- fe --- be
 ```
 
@@ -49,13 +49,13 @@ Reglas que se repiten en todas las specs:
 
 | Qué | Cuánto | Cómo se contó |
 | --- | ---: | --- |
-| Pruebas del backend | **1.860** funciones en **129** archivos | `def test_` en `backend/tests/` (sin las combinaciones de `@pytest.mark.parametrize`, que se usa 217 veces); 57 de ellas en `backend/tests/security/` |
-| Matriz de acceso | **2.115** casos: cada operación como cada uno de 9 actores | `backend/tests/security/access_matrix.py` y `test_access_matrix.py`; el resultado, en [`docs/seguridad/03-matriz-acceso.md`](../seguridad/03-matriz-acceso.md) |
+| Pruebas del backend | **1.879** funciones en **133** archivos | `def test_` en `backend/tests/` (sin las combinaciones de `@pytest.mark.parametrize`, que se usa 218 veces); 57 de ellas en `backend/tests/security/` |
+| Matriz de acceso | **2.124** casos: cada una de las 236 operaciones como cada uno de 9 actores (2.115 en la fase A de la auditoría, antes de que el #36 sumara `GET /bank-policy-rules/fields`) | `backend/tests/security/access_matrix.py` y `test_access_matrix.py`; el resultado, en [`docs/seguridad/03-matriz-acceso.md`](../seguridad/03-matriz-acceso.md) |
 | Cobertura mínima del backend | **95 %** | `CI_COVERAGE_MIN: "95"` en `.github/workflows/backend.yml` |
-| Pruebas del front | **57** archivos, **~596** casos | `*.test.ts(x)` y `it(`/`test(` en `frontend/` |
+| Pruebas del front | **60** archivos, **~630** casos | `*.test.ts(x)` y `it(`/`test(` en `frontend/` |
 | Cobertura mínima del front | **70 %** de líneas | `CI_COVERAGE_MIN: "70"` en `.github/workflows/frontend.yml`, aplicado por `frontend/scripts/ci-report.ts --check-coverage` (REQ §10.5) |
 | Stories | **23** archivos `*.stories.tsx` y **17** páginas MDX | `frontend/src/` |
-| Punta a punta | **13** specs (algunas pruebas en bucle por tema o tamaño) | `frontend/e2e/backoffice/*.spec.ts` (incluidos los de administración de la F6) y `frontend/e2e/portal/portal.spec.ts` |
+| Punta a punta | **14** specs (algunas pruebas en bucle por tema o tamaño) | `frontend/e2e/backoffice/*.spec.ts` (incluidos los de administración de la F6 y `f7.spec.ts`: pagar una comisión y verla en "Mis comisiones", perder una oportunidad con motivo, la bandeja del broker con su enlace y la edición del inmueble) y `frontend/e2e/portal/portal.spec.ts` |
 | Aserciones de número de consultas | **48** en 20 archivos | `CaptureQueriesContext` y `django_assert_*num_queries` |
 
 Las pruebas del backend por módulo están en [06 · Módulos](06-modulos.md#índice).
@@ -74,6 +74,8 @@ Dos workflows en `.github/workflows/`, uno por lado del monorepo, que corren en 
 | Si el PR no toca su zona | Corre igual | Pasa en verde sin correr las verificaciones ("El PR no toca el frontend: verificaciones omitidas") si ningún archivo cambiado está en `frontend/`, `contracts/openapi.json`, `design/generated/`, `design/README.md` o su propio workflow |
 
 Los dos jobs son los **checks obligatorios** del ruleset `protect-master` de GitHub ([`specs/TAREA-ci-reporte.md`](../../specs/TAREA-ci-reporte.md); [`specs/TAREA-frontend-base.md`](../../specs/TAREA-frontend-base.md), F0): sin los dos en verde, el PR no se fusiona.
+
+Hay un tercer workflow que **no revisa PR**: `storybook-pages.yml` (F7, #33) corre en cada push a `master` que toque `frontend/`, `design/`, `contracts/openapi.json` o el propio workflow, compila Storybook y la referencia de la API (Redoc, `@redocly/cli` con versión fijada) y los publica en GitHub Pages: <https://carlosdev88.github.io/real-estate-credit-backoffice/> y <https://carlosdev88.github.io/real-estate-credit-backoffice/api/>. Son dos jobs: el que compila solo lee el repositorio y el que despliega tiene `pages: write` e `id-token: write`.
 
 ```mermaid
 flowchart LR

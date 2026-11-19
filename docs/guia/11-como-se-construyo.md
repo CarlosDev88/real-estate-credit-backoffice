@@ -125,7 +125,7 @@ Otros que quedaron escritos en las Precisiones:
 
 ## 8. La línea de tiempo
 
-El historial de `master` (`git log --oneline`) tiene 30 PR numerados, del #1 al #31 (el #13 no aparece en `master`). Antes del primer PR entraron, como commits directos, la base de Django y los módulos 1 a 4 (identidad, catálogos, constructoras, invitaciones y usuarios). En grandes bloques:
+El historial de `master` (`git log --oneline`) tiene 35 PR numerados, del #1 al #36 (el #13 no aparece en `master`; revisado el 19 de noviembre de 2026). Antes del primer PR entraron, como commits directos, la base de Django y los módulos 1 a 4 (identidad, catálogos, constructoras, invitaciones y usuarios). En grandes bloques:
 
 | PR | Qué entró |
 | --- | --- |
@@ -139,8 +139,10 @@ El historial de `master` (`git log --oneline`) tiene 30 PR numerados, del #1 al 
 | #19 a #25 | Radicación (11), Mi día y actividad (12), portal (F2), pestaña de radicación (F3), notificaciones e idempotencia (13), auditoría (14) y reportes (15) |
 | #26 a #31 | Clientes (F4), comisiones (16), design system en Storybook, README, operación (F5) y segundas brechas del backend |
 | #32 | Auditoría de seguridad, fase A: informe, 20 hallazgos, la matriz de acceso y cuatro verificaciones nuevas en el CI |
+| #33 | F7 del frontend: comisiones, bandeja del broker, edición del expediente, acciones de la oportunidad, y Storybook y la referencia de la API publicados en GitHub Pages |
 | #34 | Administración (F6): usuarios e invitaciones, constructoras, proyectos, bancos, documentos, catálogos y flujos |
 | #35 | Esta guía (Partes 1, 2, 3 y 5) |
+| #36 | Terceras brechas del backend (contrato para la administración y el broker) y la demo completa: 64 solicitudes en seis meses, un usuario por rol y 16 bloques idempotentes |
 
 La demo con un solo comando y la puesta al día de esta guía van en un segundo PR de documentación.
 

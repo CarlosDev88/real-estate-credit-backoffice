@@ -349,7 +349,7 @@ flowchart LR
 - **Nombres estables.** drf-spectacular nombra solo los enums y puede renombrarlos si otro campo coincide. Los nombres publicados se fijan en `ENUM_NAME_OVERRIDES` (`backend/config/settings/base.py`) y una prueba los protege: `backend/tests/test_contract_names.py`. Otra prueba exige que toda operación con `If-Match` declare su `ETag`: `backend/tests/test_etag_contract.py`.
 - **Solo se agrega.** Una vez que el front usa un campo, no se quita ni se renombra (regla de oro de [`specs/TAREA-brechas-2.md`](../../specs/TAREA-brechas-2.md)). La compatibilidad dentro de `/api/v1` es un requisito (RNF-20).
 
-Tamaño del contrato al 18 de noviembre de 2026 (contado sobre `contracts/openapi.json`): **175 rutas, 235 operaciones** (201 internas y 34 del comprador) y **374 esquemas**.
+Tamaño del contrato al 19 de noviembre de 2026, después del #36 (contado sobre `contracts/openapi.json`): **176 rutas, 236 operaciones** (202 internas y 34 del comprador) y **381 esquemas**. El 18 eran 175, 235 y 374: el #36 sumó `GET /bank-policy-rules/fields` y campos y esquemas para la administración y el broker, sin quitar nada.
 
 **Por qué "contrato primero":** el frontend nunca adivina la forma de una respuesta, y un cambio del backend que rompería al front se ve en el mismo PR, no en producción. También es la base de la regla de REQ §8.5: las listas, etiquetas y transiciones vienen de la API, así que el front no necesita copiarlas.
 

@@ -2,7 +2,7 @@
 
 > **En simple:** el frontend es **una sola aplicación Next.js** con dos caras: el backoffice para el equipo interno y el portal móvil del comprador. No tiene reglas de negocio propias: pinta lo que la API le da (catálogos, etiquetas, acciones disponibles, permisos), valida solo el formato de los formularios y traduce los errores de la API en mensajes claros. Los tipos de cada llamada salen del contrato OpenAPI, así que una llamada mal escrita no compila.
 
-La conexión con la API (mismo origen, cookies, CSRF) está en [03 · Arquitectura §7](03-arquitectura.md#7-front--api-mismo-origen-por-el-proxy-de-next); las pruebas del front, en [09 · Calidad](09-calidad.md). El design system tendrá su propio documento, `docs/DESIGN-SYSTEM.md` *(en curso)*. Revisado en `master` el **18 de noviembre de 2026** y actualizado el **19** con la F6 (administración, #34).
+La conexión con la API (mismo origen, cookies, CSRF) está en [03 · Arquitectura §7](03-arquitectura.md#7-front--api-mismo-origen-por-el-proxy-de-next); las pruebas del front, en [09 · Calidad](09-calidad.md). El design system tiene su propio documento, [`docs/DESIGN-SYSTEM.md`](../DESIGN-SYSTEM.md). Revisado en `master` el **18 de noviembre de 2026** y actualizado el **19** con la F6 (administración, #34) y la F7 (comisiones, bandeja del broker y edición del expediente, #33).
 
 ---
 
@@ -54,6 +54,7 @@ flowchart TB
     bo --> bo1["/dashboard · /mi-dia · /reportes"]
     bo --> bo2["/clientes · /clientes/nuevo<br/>/clientes/[id] · /clientes/[id]/editar"]
     bo --> bo3["/solicitudes · /solicitudes/[id]"]
+    bo --> bo5["/prospectos (broker)<br/>/comisiones · /mis-comisiones"]
     bo --> bo4["Administración: /admin/usuarios · /admin/constructoras · /proyectos<br/>/admin/bancos · /admin/documentos · /admin/catalogos · /admin/flujos"]
     portal --> p1["/portal · /portal/consentimientos · /portal/datos<br/>/portal/ingresos · /portal/inmueble · /portal/financiacion"]
     portal --> p2["/portal/documentos · /portal/avisos"]
@@ -74,10 +75,12 @@ Cada carpeta tiene sus pantallas, sus consultas (`queries.ts`) y sus pruebas, si
 | Carpeta | Qué tiene |
 | --- | --- |
 | `auth/` | Login, `BackofficeGuard`, `useMe`, `useLogin`, `useLogout` |
-| `applications/` | Listado de solicitudes (tabla, tarjetas, filtros en la URL) y el espacio de trabajo `/solicitudes/[id]` (encabezado, resumen, historial, modales de acciones) |
+| `applications/` | Listado de solicitudes (tabla, tarjetas, filtros en la URL) y el espacio de trabajo `/solicitudes/[id]` (encabezado, resumen, historial, modales de acciones). Desde la F7, la edición en el lugar del expediente: participantes, perfil financiero e ingresos, inmueble y financiación (`participant-edit.tsx`, `financing-edit.tsx`, `property-edit.tsx`, `dossier-queries.ts`) |
 | `document-review/` | La pestaña Documentos del expediente: revisión, visor, exonerar y reabrir |
-| `filings/` | La pestaña Radicación: paquete, radicaciones, respuestas del banco y evidencia |
-| `clients/` | Listado, formulario, detalle con pestañas y panel de oportunidad |
+| `filings/` | La pestaña Radicación: paquete y su lista de paquetes pedidos, radicaciones, respuestas del banco (los campos de cada tipo salen del `metadata` del catálogo, `response-fields.ts`) y evidencia |
+| `clients/` | Listado, formulario, detalle con pestañas y panel de oportunidad con sus transiciones (`available_actions`) |
+| `broker/` | La bandeja del broker `/prospectos`: prospectos por estado, "Nuevo prospecto", "Enviar enlace" y el estado de sus solicitudes (F7) |
+| `commissions/` | `/comisiones` (liquidaciones y planes, del admin), `/mis-comisiones` (asesor y broker) y la tarjeta "Comisión" del expediente desembolsado (F7) |
 | `dashboard/` | Resumen, embudo, carga por asesor y resultados por banco |
 | `workday/` | "Mi día": bandeja de atención y tareas |
 | `reports/` | Embudo, listado, CSV directo y exportaciones |
@@ -104,7 +107,7 @@ Cómo se usan los tokens: el front **no copia** valores, los importa. `frontend/
 
 **Tema claro y oscuro**, sin seguir al sistema operativo: la elección se guarda en `localStorage` con la clave `um-theme` y se copia a una cookie para que el servidor pinte el tema correcto sin parpadeo (`frontend/src/lib/theme/theme.ts`).
 
-**Storybook** (versión 10.6.7): 23 archivos de stories y 17 páginas MDX en `frontend/src/` (introducción, guía, fundamentos como colores, espaciado, tipografía y redacción, y patrones como formulario, tabla, lista con filtros, carga de archivo y panel lateral). Se compila en cada PR y cada story pasa por `axe` ([§9](#9-accesibilidad)). La publicación en GitHub Pages está prevista (Anexo A) pero no hay workflow que la haga en `master`.
+**Storybook** (versión 10.6.7): 23 archivos de stories y 17 páginas MDX en `frontend/src/` (introducción, guía, fundamentos como colores, espaciado, tipografía y redacción, y patrones como formulario, tabla, lista con filtros, carga de archivo y panel lateral). Se compila en cada PR y cada story pasa por `axe` ([§9](#9-accesibilidad)). Desde la F7 está **publicado en GitHub Pages**: <https://carlosdev88.github.io/real-estate-credit-backoffice/>, junto con la referencia de la API generada desde el contrato con Redoc en <https://carlosdev88.github.io/real-estate-credit-backoffice/api/> (las dos estáticas y de solo lectura; `.github/workflows/storybook-pages.yml`, en cada push a `master` que toque el frontend, el diseño o el contrato). Qué trae, de dónde salen los tokens y cómo agregar un componente: [`docs/DESIGN-SYSTEM.md`](../DESIGN-SYSTEM.md).
 
 **Una regla automática de colores:** `frontend/src/test/no-hardcoded-colors.test.ts` falla si encuentra un color escrito a mano (hex, `rgb()` o `hsl()`) en `src/`, también en CSS y MDX; todo color sale de los tokens. Es una prueba y no una regla de ESLint justamente para cubrir CSS y MDX (Parte 3 de [`specs/TAREA-design-system.md`](../../specs/TAREA-design-system.md)).
 
@@ -121,9 +124,9 @@ Cómo se usan los tokens: el front **no copia** valores, los importa. `frontend/
 
 **Lo que agrega cada petición** (`frontend/src/lib/api/fetch.ts`): un `X-Request-ID` nuevo y, en las escrituras, el `X-CSRFToken` leído de la cookie `app_csrf`.
 
-**Concurrencia** (`frontend/src/lib/api/version.ts`): `versionOf(response)` lee el `ETag`; los formularios del portal mandan `If-Match` con la última versión conocida (`frontend/src/features/buyer-portal/forms/form-queries.ts`); las acciones del expediente (transiciones, desistimiento) mandan `expected_version` en el cuerpo.
+**Concurrencia** (`frontend/src/lib/api/version.ts`): `versionOf(response)` lee el `ETag`; los formularios del portal y la edición del expediente por el asesor mandan `If-Match` con la última versión conocida (`frontend/src/features/buyer-portal/forms/form-queries.ts`, `frontend/src/features/applications/dossier-queries.ts`); las acciones del expediente (transiciones, desistimiento) mandan `expected_version` en el cuerpo.
 
-**Idempotencia** (`frontend/src/lib/api/idempotency.ts`, `useIdempotencyKey`): hoy la usa una sola llamada, la exportación asíncrona de reportes (`frontend/src/features/reports/queries.ts`); la clave se reinicia al terminar bien. Las demás operaciones con `@idempotent` en el backend funcionan sin la cabecera ([ADR 0008](../adr/0008-idempotencia-opcional.md)).
+**Idempotencia** (`frontend/src/lib/api/idempotency.ts`, `useIdempotencyKey`): la usan la exportación asíncrona de reportes (`features/reports/reports-screen.tsx`), el enlace para el comprador (`BuyerLinkModal` en `features/applications/action-modals.tsx`, que también usa la bandeja del broker), la radicación (`features/filings/delivery-panel.tsx`) y las de comisiones: liquidar, anular y pagar (`features/commissions/settle-modal.tsx`, `settlement-panel.tsx`). La clave se reinicia al terminar bien. Lo que no la manda funciona igual sin la cabecera ([ADR 0008](../adr/0008-idempotencia-opcional.md)).
 
 **Cargas con progreso** (`frontend/src/lib/api/upload.ts`, `uploadFile`): `XMLHttpRequest` multipart con progreso y botón de cancelar, con las mismas reglas de sesión que el resto. La usan la hoja de carga del portal y la evidencia de una respuesta del banco.
 
@@ -185,11 +188,38 @@ Los toasts duran 5 segundos (los de error se quedan hasta cerrarlos) y se muestr
 
 El menú del backoffice se decide **por permiso, nunca por nombre de rol** (comentario de `frontend/src/lib/navigation/access.ts`):
 
-- `NAV_ITEMS` (`frontend/src/lib/navigation/nav-config.tsx`) declara cada entrada con el permiso que la abre: `/dashboard` (`dashboard.read`), `/mi-dia` (`workday.read`) y `/reportes` (`reports.read`) en "Operación"; `/solicitudes` (`applications.read`) y `/clientes` (`clients.read`) en "Comercial"; y en "Administración" (F6): `/admin/usuarios` (`users.read`), `/admin/constructoras` (`partners.create`, para que solo la vea el admin aunque asesor y constructora tengan `partners.read`), `/proyectos` (`projects.read`), `/admin/bancos` (`banks.create`), `/admin/documentos` (`document_requirements.create`), `/admin/catalogos` (`catalogs.read`) y `/admin/flujos` (`workflow.read`).
-- `visibleNav(permissions)` filtra con los permisos de `/auth/me`; `defaultDestination` lleva a la primera entrada visible (o a `/sin-modulos`); `isForbiddenPath` impide entrar por URL a una zona sin permiso.
-- Dentro de una pantalla, lo mismo: la pestaña Radicación solo existe con `filings.read`; una pestaña del detalle de cliente sin permiso vuelve al resumen.
+- `NAV_ITEMS` (`frontend/src/lib/navigation/nav-config.tsx`) declara cada entrada con el permiso que la abre y, si hace falta, su **audiencia** (`audience`, abajo).
+- `visibleNav(permissions, items, audience)` filtra con los permisos de `/auth/me` y la audiencia; `defaultDestination` lleva a la primera entrada visible (o a `/sin-modulos`); `isForbiddenPath` impide entrar por URL a una zona sin permiso o de otra audiencia.
+- Dentro de una pantalla, lo mismo: la pestaña Radicación solo existe con `filings.read`; una pestaña del detalle de cliente sin permiso vuelve al resumen; la tarjeta "Comisión" del expediente, solo con `commissions.read`.
 
-**En curso:** una navegación por **audiencia** para el broker (`NavItem.audience`, `audienceOf(roles)` en `lib/navigation/access.ts`) está en la rama `feat/front-f7`, aún sin fusionar; no está en `master` (revisado el 19 de noviembre). Con ella, "Proyectos" llevará `audience: "internal"`: el broker tiene `projects.read`, pero la vista es para admin, asesor y constructora (Precisiones de la Parte 4 de [`specs/TAREA-front-admin.md`](../../specs/TAREA-front-admin.md)).
+| Grupo | Entrada | Permiso | Audiencia |
+| --- | --- | --- | --- |
+| Operación | Dashboard (`/dashboard`) | `dashboard.read` | interna |
+| Operación | Mi día (`/mi-dia`) | `workday.read` | — |
+| Operación | Reportes (`/reportes`) | `reports.read` | — |
+| Comercial | Mis prospectos (`/prospectos`) | `opportunities.read` | broker |
+| Comercial | Solicitudes (`/solicitudes`) | `applications.read` | interna |
+| Comercial | Clientes (`/clientes`) | `clients.read` | interna |
+| Finanzas | Comisiones (`/comisiones`) | `commissions.read` | — |
+| Finanzas | Mis comisiones (`/mis-comisiones`) | `commissions.read_own` | — |
+| Administración | Usuarios (`/admin/usuarios`) | `users.read` | — |
+| Administración | Constructoras (`/admin/constructoras`) | `partners.create` (asesor y constructora tienen `partners.read`; así solo la ve el admin) | — |
+| Administración | Proyectos (`/proyectos`) | `projects.read` | interna |
+| Administración | Bancos (`/admin/bancos`) | `banks.create` (el asesor tiene `banks.read`) | — |
+| Administración | Documentos (`/admin/documentos`) | `document_requirements.create` | — |
+| Administración | Catálogos (`/admin/catalogos`) | `catalogs.read` | — |
+| Administración | Flujos (`/admin/flujos`) | `workflow.read` | — |
+
+**La audiencia, la única excepción al "solo permisos"** (F7, #33). `audienceOf(roles)` (`frontend/src/lib/navigation/access.ts`) devuelve `broker` si el usuario tiene el rol de broker y ningún rol interno (admin o asesor): es la misma regla con la que la API le recorta los datos (`CrmScope.is_restricted`, `backend/apps/crm/services.py`). Al broker la API le responde **otras formas** (el resumen de la solicitud, `BrokerOpportunity`), así que las pantallas internas no son para él aunque tenga el permiso: una entrada `internal` no la ve y una `broker` solo la ve él. Sin `audience`, la ven los dos. Con los permisos de la demo, cada rol queda así:
+
+| Rol | Menú | Entra a |
+| --- | --- | --- |
+| Admin | Dashboard, Mi día, Reportes, Solicitudes, Clientes, Comisiones y toda la Administración | `/dashboard` |
+| Asesor | Dashboard, Mi día, Reportes, Solicitudes, Clientes, Mis comisiones y Proyectos | `/dashboard` |
+| Broker | Mis prospectos y Mis comisiones | `/prospectos` |
+| Constructora | Proyectos | `/proyectos` |
+
+*Permisos de las migraciones (por ejemplo, `backend/apps/reporting/migrations/0001_seed_reporting_permissions.py`: `dashboard.read` para admin, asesor y broker; `backend/apps/commissions/migrations/0002_seed_commission_permissions.py`: `commissions.read` solo admin y `commissions.read_own` asesor y broker). El broker tiene `dashboard.read`, pero el dashboard es interno: sus conteos los ve en su bandeja.*
 
 Esto es solo experiencia de uso: aunque alguien fuerce una URL, la API responde `403` o `404` ([ADR 0005](../adr/0005-alcance-por-rol-con-404.md)).
 
@@ -221,19 +251,27 @@ REQ §6 define 14 vistas de operación y 8 del portal ([01 · El producto §5](0
 | # | Vista | Ruta | Quién | Endpoints principales |
 | ---: | --- | --- | --- | --- |
 | 1 | Login | `/login` | Todo interno | `POST /auth/login`, `GET /auth/me` |
-| 2 | Dashboard | `/dashboard` | Admin, asesor, broker | `GET /dashboard/summary`, `/funnel`, `/workload`, `/bank-results`; `/users`, `/banks`, `/metadata/bootstrap` para los filtros |
+| 2 | Dashboard | `/dashboard` | Admin, asesor | `GET /dashboard/summary`, `/funnel`, `/workload`, `/bank-results`; `/users`, `/banks`, `/metadata/bootstrap` para los filtros |
 | 3 | Mi día | `/mi-dia` | Asesor, admin | `GET /workday/summary`, `/workday/applications`, `GET`/`POST /tasks`, `PATCH /tasks/{id}`, `POST /tasks/{id}/complete`, `/cancel` |
 | 4 | Clientes | `/clientes` | Admin, asesor | `GET /clients`, `/metadata/bootstrap` |
 | 5 | Crear / editar cliente | `/clientes/nuevo`, `/clientes/[id]/editar` | Admin, asesor | `POST /clients`, `GET`/`PATCH /clients/{id}` |
 | 6 | Detalle de cliente | `/clientes/[id]` | Admin, asesor | `GET /clients/{id}`, `/addresses`, `/opportunities`, `/applications`; `POST /opportunities`, `/opportunities/{id}/assignments`, `POST /applications`; `GET /projects`, `/users` |
 | 7 | Solicitudes | `/solicitudes` | Admin, asesor | `GET /applications`, `/applications/quick-filters`, `/banks`, `/metadata/bootstrap` |
-| 8 | Expediente | `/solicitudes/[id]` (resumen, documentos, historial) | Admin, asesor | `GET /applications/{id}`, `/completeness`, `/participants`, `/property`, `/financing`, `/bank-rule-evaluations/latest`, `/buyer-access-links`, `/consents`, `/status-history`; `POST /status-transitions`, `/withdrawals`, `/assignments`, `/buyer-access-links`; documentos: `GET /document-slots`, `/document-files/{id}/download`, `PATCH /document-slots/{id}/review` |
-| 9 | Radicación | `/solicitudes/[id]?tab=radicacion` | Admin, asesor (`filings.read`) | `POST /document-package-jobs`, `GET /document-package-jobs/{id}/download`, `GET`/`POST /applications/{id}/filings`, `GET`/`POST /filings/{id}/responses`, `POST /filing-responses/{id}/evidence` |
+| 8 | Expediente | `/solicitudes/[id]` (resumen, documentos, historial) | Admin, asesor | `GET /applications/{id}`, `/completeness`, `/participants`, `/property`, `/financing`, `/bank-rule-evaluations/latest`, `/buyer-access-links`, `/consents`, `/status-history`; `POST /status-transitions`, `/withdrawals`, `/assignments`, `/buyer-access-links`; documentos: `GET /document-slots`, `/document-files/{id}/download`, `PATCH /document-slots/{id}/review`; edición (F7): `POST /applications/{id}/participants`, `PATCH`/`DELETE /application-participants/{id}`, `PUT …/financial-profile`, `/financial-profiles/{id}/income-sources`, `/income-sources/{id}`, `PUT /applications/{id}/property`, `PUT …/financing` con `GET …/eligible-bank-products` |
+| 9 | Radicación | `/solicitudes/[id]?tab=radicacion` | Admin, asesor (`filings.read`) | `GET`/`POST /applications/{id}/document-package-jobs`, `GET /document-package-jobs/{id}/download`, `GET`/`POST /applications/{id}/filings`, `GET`/`POST /filings/{id}/responses`, `POST /filing-responses/{id}/evidence` |
 | 10 | Reportes | `/reportes` | Admin, asesor | `GET /reports/funnel`, `/reports/applications`, `/reports/applications.csv`, `GET`/`POST /reports/applications/export-jobs`, `GET /report-export-jobs/{id}/download` |
 | 11 | Usuarios | `/admin/usuarios`, `/aceptar-invitacion` | Admin (aceptar: sin sesión) | `GET`/`POST /users`, `GET`/`PATCH /users/{id}`, `PUT /users/{id}/roles`, `GET /roles`, `POST /users/{id}/activate`, `/deactivate`; `GET`/`POST /invitations`, `POST /invitations/{id}/resend`, `DELETE /invitations/{id}`, `POST /invitations/accept` |
 | 12 | Proyectos | `/proyectos` | Admin, asesor, constructora | `GET`/`POST /projects`, `GET`/`PATCH /projects/{id}`, `POST /projects/{id}/submit`, `/activate`, `/reject`, `/archive`; `/metadata/catalogs/municipality` |
 | 13 | Constructoras | `/admin/constructoras` | Admin | `GET`/`POST`/`PATCH /partners`, `POST /partners/{id}/activate`, `/deactivate`, `GET`/`POST /partners/{id}/members` |
 | 14 | Catálogos, bancos y requisitos | `/admin/bancos`, `/admin/bancos/productos/[id]`, `/admin/documentos`, `/admin/catalogos`, `/admin/catalogos/[id]`, `/admin/flujos` | Admin | `/banks`, `/bank-products` (con `PUT …/purposes`), `/bank-policy-rules` (con `/versions` y `POST …/test`), `/document-types`, `/document-requirements` (con `POST …/preview`), `/catalogs`, `/catalog-items`, `PUT /catalogs/{id}/items/order`, `/workflow-transitions` |
+
+### Broker y comisiones (F7)
+
+| Pantalla | Ruta | Quién | Endpoints principales |
+| --- | --- | --- | --- |
+| Mis prospectos | `/prospectos` | Broker | `GET /broker/opportunities`, `GET /applications` (en su forma de resumen), `GET /dashboard/summary` (la foto por estado); `POST /clients` y `POST /opportunities` ("Nuevo prospecto"); `POST /applications/{id}/buyer-access-links` ("Enviar enlace") |
+| Comisiones | `/comisiones` | Admin | `GET /commission-settlements` y `/{id}`, `POST /commission-shares/{id}/pay`, `POST /commission-settlements/{id}/void`, `POST /applications/{id}/commission-settlement`; `GET`/`POST`/`PATCH /commission-plans` (con `If-Match`) y `POST …/close` |
+| Mis comisiones | `/mis-comisiones` | Asesor, broker | `GET /me/commissions` |
 
 ### Portal del comprador (8)
 

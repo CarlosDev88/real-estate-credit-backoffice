@@ -12,11 +12,11 @@ Contado en `master` el **19 de noviembre de 2026**:
 | --- | ---: | --- |
 | Módulos del backend (apps de Django) | 16 | [06 · Módulos](06-modulos.md) |
 | Tablas propias en PostgreSQL | 57 | [05 · Modelo de datos](05-modelo-de-datos.md) |
-| Operaciones de la API (contrato OpenAPI 3.1) | 235 | [03 · Arquitectura §6](03-arquitectura.md#6-el-contrato-openapi-primero) |
+| Operaciones de la API (contrato OpenAPI 3.1) | 236 | [03 · Arquitectura §6](03-arquitectura.md#6-el-contrato-openapi-primero) |
 | Vistas del producto (14 de operación y 8 del portal) | 22 | [01 · El producto §5](01-el-producto.md#5-las-22-vistas) |
-| Funciones de prueba del backend · cobertura mínima | 1.860 · 95 % | [09 · Calidad](09-calidad.md#2-los-números) |
-| Archivos de prueba del frontend · cobertura mínima | 57 · 70 % | [09 · Calidad](09-calidad.md#2-los-números) |
-| Casos de la matriz de acceso · brechas encontradas | 2.115 · 0 | [12 · Auditorías §2](12-auditorias.md#2-seguridad) |
+| Funciones de prueba del backend · cobertura mínima | 1.879 · 95 % | [09 · Calidad](09-calidad.md#2-los-números) |
+| Archivos de prueba del frontend · cobertura mínima | 60 · 70 % | [09 · Calidad](09-calidad.md#2-los-números) |
+| Casos de la matriz de acceso · brechas encontradas | 2.124 · 0 (2.115 en la fase A) | [12 · Auditorías §2](12-auditorias.md#2-seguridad) |
 | Hallazgos de la auditoría de seguridad (fase A) | 20: 0 críticos, 0 altos, 5 medios | [12 · Auditorías §2](12-auditorias.md#2-seguridad) |
 | Revisiones obligatorias del CI por PR | 2 | [09 · Calidad §3](09-calidad.md#3-el-ci-dos-revisiones-obligatorias) |
 | Decisiones de arquitectura registradas | 15 | [ADR](../adr/README.md) |
@@ -64,7 +64,9 @@ Estos documentos son la especificación original. La guía los resume y los enla
 | [Specs de construcción](../../specs/) | Cada tarea con sus decisiones ("Precisiones acordadas"). |
 | [`backend/README.md`](../../backend/README.md) | Módulos del backend, modos locales, comandos y convenciones (en inglés). |
 | [Seguridad](../SEGURIDAD.md) y [sus fases](../seguridad/hallazgos.md) | El informe de la auditoría de seguridad: alcance, método, modelo de amenazas, controles, matriz de acceso y cada hallazgo con su estado. |
-| `docs/PERFORMANCE.md`, `docs/DESIGN-SYSTEM.md` | *(en curso, por otros equipos de trabajo; se enlazarán aquí cuando estén en `master`)* |
+| [Design system](../DESIGN-SYSTEM.md) | Umbral: qué trae, de dónde salen los tokens, sus reglas y cómo agregar un componente. |
+| [Storybook publicado](https://carlosdev88.github.io/real-estate-credit-backoffice/) y [referencia de la API](https://carlosdev88.github.io/real-estate-credit-backoffice/api/) | En GitHub Pages, estáticos y de solo lectura: los componentes de Umbral y el contrato en Redoc, con buscador, ejemplos, errores y permisos. |
+| `docs/PERFORMANCE.md` | *(en curso, por otro equipo de trabajo; se enlazará aquí cuando esté en `master`)* |
 
 ## Convenciones de esta guía
 

@@ -114,9 +114,10 @@ done
 demo_ok "API lista en ${API_URL}"
 
 # --- 5. Datos de demo ----------------------------------------------------------------
-demo_step "Cargando los datos de demo (se puede repetir: no duplica ni borra nada)"
+demo_step "Cargando los datos de demo (se puede repetir: agrega solo lo que falta y nunca borra)"
 echo
-if ! compose exec -T backend python manage.py seed_demo_data; then
+# --new-portal-link: cada corrida imprime un enlace del portal (revoca el anterior sin usar).
+if ! compose exec -T backend python manage.py seed_demo_data --new-portal-link; then
   demo_error "Falló la carga de datos de demo. Revisa el mensaje de arriba."
   exit "$DEMO_EXIT_ERROR"
 fi
@@ -129,7 +130,7 @@ fi
 
 printf '%s\n' "${DEMO_C_BOLD}Demo lista${DEMO_C_RESET}"
 printf '  Backoffice ................ %s\n' "${WEB_URL}/login"
-printf '  Portal del comprador ...... el enlace de un solo uso que imprimió el seed, arriba\n'
+printf '  Portal del comprador ...... el enlace de un solo uso que imprimió el seed, arriba (72 horas)\n'
 printf '  API ....................... %s\n' "${API_URL}/api/v1/"
 printf '  Documentación de la API ... %s (solo con DEBUG)\n' "${API_URL}/docs"
 printf '  Usuarios y contraseña ..... en la tabla que imprimió el seed, arriba\n'

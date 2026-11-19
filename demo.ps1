@@ -165,9 +165,10 @@ foreach ($probe in 'health', 'ready') {
 Write-DemoOk "API lista en $apiUrl"
 
 # --- 5. Datos de demo ----------------------------------------------------------------
-Write-DemoStep 'Cargando los datos de demo (se puede repetir: no duplica ni borra nada)'
+Write-DemoStep 'Cargando los datos de demo (se puede repetir: agrega solo lo que falta y nunca borra)'
 Write-Host ''
-if ((Invoke-Compose exec -T backend python manage.py seed_demo_data) -ne 0) {
+# --new-portal-link: cada corrida imprime un enlace del portal (revoca el anterior sin usar).
+if ((Invoke-Compose exec -T backend python manage.py seed_demo_data --new-portal-link) -ne 0) {
     Write-DemoError 'Falló la carga de datos de demo. Revisa el mensaje de arriba.'
     Exit-Demo Error
 }
@@ -180,7 +181,7 @@ if (-not (Wait-DemoUrl -Url "$webUrl/login" -TimeoutSeconds 120)) {
 
 Write-Host 'Demo lista'
 Write-Host "  Backoffice ................ $webUrl/login"
-Write-Host '  Portal del comprador ...... el enlace de un solo uso que imprimió el seed, arriba'
+Write-Host '  Portal del comprador ...... el enlace de un solo uso que imprimió el seed, arriba (72 horas)'
 Write-Host "  API ....................... $apiUrl/api/v1/"
 Write-Host "  Documentación de la API ... $apiUrl/docs (solo con DEBUG)"
 Write-Host '  Usuarios y contraseña ..... en la tabla que imprimió el seed, arriba'
