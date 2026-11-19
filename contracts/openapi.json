@@ -23308,6 +23308,10 @@
                         ],
                         "readOnly": true
                     },
+                    "status_label": {
+                        "type": "string",
+                        "readOnly": true
+                    },
                     "operational_notes": {
                         "type": "string",
                         "readOnly": true
@@ -23331,6 +23335,7 @@
                     "operational_notes",
                     "short_name",
                     "status",
+                    "status_label",
                     "tax_id",
                     "updated_at"
                 ]
@@ -23402,6 +23407,10 @@
                         ],
                         "readOnly": true
                     },
+                    "status_label": {
+                        "type": "string",
+                        "readOnly": true
+                    },
                     "operational_notes": {
                         "type": "string",
                         "readOnly": true
@@ -23433,6 +23442,7 @@
                     "products",
                     "short_name",
                     "status",
+                    "status_label",
                     "tax_id",
                     "updated_at"
                 ]
@@ -23657,6 +23667,10 @@
                         ],
                         "readOnly": true
                     },
+                    "status_label": {
+                        "type": "string",
+                        "readOnly": true
+                    },
                     "min_amount_cop": {
                         "type": [
                             "integer",
@@ -23733,6 +23747,7 @@
                     "product_type",
                     "purposes",
                     "status",
+                    "status_label",
                     "updated_at",
                     "valid_from",
                     "valid_to"
@@ -23878,13 +23893,18 @@
                             }
                         ],
                         "readOnly": true
+                    },
+                    "status_label": {
+                        "type": "string",
+                        "readOnly": true
                     }
                 },
                 "required": [
                     "code",
                     "id",
                     "name",
-                    "status"
+                    "status",
+                    "status_label"
                 ]
             },
             "BankRef": {

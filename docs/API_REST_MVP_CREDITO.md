@@ -1791,6 +1791,8 @@ Los códigos usados históricamente no se renombran ni eliminan. Si dejan de apl
 | `POST` | `/bank-products/{product_id}/deactivate` | `banks.update` | Desactiva producto. |
 | `PUT` | `/bank-products/{product_id}/purposes` | `banks.update` | Define finalidades admitidas. |
 
+El banco (listado, detalle y cada producto del detalle) y el producto traen `status_label` ("Activo" o "Inactivo").
+
 Para el MVP existen tres bancos de prueba —Bancolombia, Fondo Nacional del Ahorro y Banco de Bogotá— y un producto hipotecario configurable por banco. Ningún campo o endpoint presume comunicación automática con ellos.
 
 `short_name` es un nombre corto opcional para listados (hasta 30 caracteres, por ejemplo `FNA`), editable en `POST /banks` y `PATCH /banks/{bank_id}`. Vacío por omisión: el frontend muestra `name`. De los bancos de prueba, solo el Fondo Nacional del Ahorro trae `short_name` (`FNA`). Sale en el banco, en su detalle y en cada referencia al banco (`bank_product.bank` del listado de solicitudes y de los productos).

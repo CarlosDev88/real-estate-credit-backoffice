@@ -3,7 +3,14 @@ from typing import Any
 from django.core.validators import RegexValidator
 from rest_framework import serializers
 
-from apps.banking.models import Bank, BankPolicyRule, BankProduct, RuleSeverity, RuleStatus
+from apps.banking.models import (
+    Bank,
+    BankPolicyRule,
+    BankProduct,
+    BankStatus,
+    RuleSeverity,
+    RuleStatus,
+)
 from apps.banking.rule_engine import OUTCOME_LABELS, Outcome
 from apps.banking.rule_fields import FieldInputType
 from apps.banking.services import active_purpose_items
@@ -49,6 +56,8 @@ class BankRefSerializer(serializers.Serializer):
 
 
 class BankSerializer(serializers.ModelSerializer):
+    status_label = ChoiceLabelField(BankStatus, source="status")
+
     class Meta:
         model = Bank
         fields = [
@@ -58,6 +67,7 @@ class BankSerializer(serializers.ModelSerializer):
             "short_name",
             "tax_id",
             "status",
+            "status_label",
             "operational_notes",
             "created_at",
             "updated_at",
@@ -66,9 +76,11 @@ class BankSerializer(serializers.ModelSerializer):
 
 
 class BankProductSummarySerializer(serializers.ModelSerializer):
+    status_label = ChoiceLabelField(BankStatus, source="status")
+
     class Meta:
         model = BankProduct
-        fields = ["id", "code", "name", "status"]
+        fields = ["id", "code", "name", "status", "status_label"]
         read_only_fields = fields
 
 
@@ -110,6 +122,7 @@ class BankProductSerializer(serializers.ModelSerializer):
     bank = BankRefSerializer(read_only=True)
     product_type = CatalogItemRefSerializer(source="product_type_item", read_only=True)
     purposes = serializers.SerializerMethodField()
+    status_label = ChoiceLabelField(BankStatus, source="status")
 
     class Meta:
         model = BankProduct
@@ -120,6 +133,7 @@ class BankProductSerializer(serializers.ModelSerializer):
             "name",
             "product_type",
             "status",
+            "status_label",
             "min_amount_cop",
             "max_amount_cop",
             "min_term_months",

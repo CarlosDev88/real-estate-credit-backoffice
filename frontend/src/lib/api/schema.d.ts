@@ -4067,6 +4067,7 @@ export interface components {
             readonly short_name: string;
             readonly tax_id: string;
             readonly status: components["schemas"]["PartnerStatusEnum"];
+            readonly status_label: string;
             readonly operational_notes: string;
             /** Format: date-time */
             readonly created_at: string;
@@ -4096,6 +4097,7 @@ export interface components {
             readonly short_name: string;
             readonly tax_id: string;
             readonly status: components["schemas"]["PartnerStatusEnum"];
+            readonly status_label: string;
             readonly operational_notes: string;
             /** Format: date-time */
             readonly created_at: string;
@@ -4165,6 +4167,7 @@ export interface components {
             readonly name: string;
             readonly product_type: components["schemas"]["CatalogItemRef"];
             readonly status: components["schemas"]["PartnerStatusEnum"];
+            readonly status_label: string;
             readonly min_amount_cop: number | null;
             readonly max_amount_cop: number | null;
             readonly min_term_months: number | null;
@@ -4224,6 +4227,7 @@ export interface components {
             readonly code: string;
             readonly name: string;
             readonly status: components["schemas"]["PartnerStatusEnum"];
+            readonly status_label: string;
         };
         BankRef: {
             /** Format: uuid */
