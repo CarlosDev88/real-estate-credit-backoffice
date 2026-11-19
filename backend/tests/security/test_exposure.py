@@ -8,8 +8,10 @@ datos de otro alcance.
 import logging
 
 import pytest
+from django.test import override_settings
 
 from config.log_redaction import RedactObjectTokensFilter
+from config.settings import base
 from tests.security.conftest import BROKER_OTHER, World
 from tests.security.requests import client_for
 
@@ -92,10 +94,13 @@ def test_duplicate_document_never_reveals_the_other_client(world: World) -> None
     assert all("resource_id" not in detail for detail in response.json()["details"])
 
 
-@pytest.mark.xfail(strict=True, reason="SEC-16")
-def test_a_broker_cannot_tell_whether_a_document_is_already_registered(world: World) -> None:
-    """El 409 por sí solo confirma que esa cédula ya está en el CRM, aunque sea de un
-    cliente que el broker no ve."""
+def test_a_duplicate_document_is_an_accepted_409_without_the_other_client(world: World) -> None:
+    """SEC-16, **aceptado** (decisión de producto, Fase B): el documento identifica a la
+    persona y no se crea el mismo cliente una vez por broker; la unicidad es regla de
+    negocio. El ``409`` confirma que la cédula existe, pero no trae nada del otro cliente
+    (ni ``resource_id``, ni nombre, correo o teléfono) y SEC-10 limita cuántas veces se
+    puede probar (120 escrituras por minuto). Esta prueba fija ese comportamiento: si
+    cambia, hay que revisar la decisión en ``docs/SEGURIDAD.md``."""
     client_a = world.a.client
     response = client_for(world, BROKER_OTHER).post(
         "/api/v1/clients",
@@ -107,4 +112,27 @@ def test_a_broker_cannot_tell_whether_a_document_is_already_registered(world: Wo
         },
         format="json",
     )
-    assert response.status_code != 409
+    assert response.status_code == 409, response.content
+    body = response.json()
+    assert body["code"] == "DUPLICATE_CLIENT_DOCUMENT"
+    assert set(body) == {"code", "message", "details", "request_id"}
+    assert all("resource_id" not in detail for detail in body["details"])
+    text = response.content.decode()
+    for value in (client_a.pk, client_a.first_names, client_a.last_names, client_a.email):
+        assert not value or str(value) not in text
+
+
+@override_settings(AUTH_RATE_LIMITS={**base.AUTH_RATE_LIMITS, "general_write": "3/1m"})
+def test_probing_documents_is_limited_by_the_general_write_limit(world: World) -> None:
+    """La mitigación de SEC-16: probar cédulas una por una choca con el límite general de
+    escrituras (SEC-10; aquí bajado a 3 por minuto)."""
+    client = client_for(world, BROKER_OTHER)
+    body = {"document_type_code": "CC", "first_names": "Otra", "last_names": "Persona"}
+    statuses = [
+        client.post(
+            "/api/v1/clients", {**body, "document_number": f"80000000{i}"}, format="json"
+        ).status_code
+        for i in range(4)
+    ]
+    assert 429 not in statuses[:3]
+    assert statuses[3] == 429

@@ -175,26 +175,26 @@ una línea. Ficha completa de cada uno (cómo reproducirlo, impacto, dónde): [`
 
 | Id | Título | Severidad | OWASP API | Estado |
 | --- | --- | --- | --- | --- |
-| [SEC-01](seguridad/hallazgos.md#sec-01--no-hay-configuración-de-producción-y-los-puntos-de-entrada-cargan-local-que-fuerza-debugtrue) | No hay configuración de producción y los puntos de entrada cargan `local` (`DEBUG=True`) | Baja | API8 | abierto |
-| [SEC-02](seguridad/hallazgos.md#sec-02--la-configuración-base-no-endurece-https) | La configuración base no endurece HTTPS | Baja | API8 | abierto |
-| [SEC-03](seguridad/hallazgos.md#sec-03--las-claves-no-se-validan-al-arrancar-la-clave-jwt-local-tiene-31-bytes) | Las claves no se validan al arrancar | Baja | API8 | abierto |
+| [SEC-01](seguridad/hallazgos.md#sec-01--no-hay-configuración-de-producción-y-los-puntos-de-entrada-cargan-local-que-fuerza-debugtrue) | No hay configuración de producción y los puntos de entrada cargan `local` (`DEBUG=True`) | Baja | API8 | corregido |
+| [SEC-02](seguridad/hallazgos.md#sec-02--la-configuración-base-no-endurece-https) | La configuración base no endurece HTTPS | Baja | API8 | corregido |
+| [SEC-03](seguridad/hallazgos.md#sec-03--las-claves-no-se-validan-al-arrancar-la-clave-jwt-local-tiene-31-bytes) | Las claves no se validan al arrancar | Baja | API8 | corregido |
 | [SEC-04](seguridad/hallazgos.md#sec-04--djangorestframework-3172-tiene-dos-cve-de-denegación-de-servicio-sin-sesión) | DRF 3.17.2 con dos CVE de denegación de servicio | **Media** | API4 | corregido |
-| [SEC-05](seguridad/hallazgos.md#sec-05--el-compose-publica-postgresql-y-el-backend-en-todas-las-interfaces-del-equipo) | El compose publica PostgreSQL y el backend en todas las interfaces | Baja | API8 | abierto |
-| [SEC-06](seguridad/hallazgos.md#sec-06--imagen-del-backend-base-sin-digest-pip-sin-versión-y-runserver-como-comando) | Imagen del backend sin digest y con `runserver` | Informativa | API8 | abierto |
+| [SEC-05](seguridad/hallazgos.md#sec-05--el-compose-publica-postgresql-y-el-backend-en-todas-las-interfaces-del-equipo) | El compose publica PostgreSQL y el backend en todas las interfaces | Baja | API8 | corregido |
+| [SEC-06](seguridad/hallazgos.md#sec-06--imagen-del-backend-base-sin-digest-pip-sin-versión-y-runserver-como-comando) | Imagen del backend sin digest y con `runserver` | Informativa | API8 | corregido |
 | [SEC-07](seguridad/hallazgos.md#sec-07--options-responde-500-en-27-rutas-una-de-ellas-pública) | `OPTIONS` responde 500 en 27 rutas | Baja | API8 | corregido |
 | [SEC-08](seguridad/hallazgos.md#sec-08--las-respuestas-con-datos-personales-no-llevan-cache-control-no-store-ni-vary-cookie) | Respuestas con datos personales sin `Cache-Control: no-store` | **Media** | API8 | corregido |
 | [SEC-09](seguridad/hallazgos.md#sec-09--el-límite-de-login-y-de-recuperación-se-salta-con-otros-correos-o-con-otras-ip) | El límite de login y recuperación se salta con otros correos u otras IP | **Media** | API2 | corregido |
 | [SEC-10](seguridad/hallazgos.md#sec-10--no-existen-los-límites-generales-por-usuario-que-piden-req-93-y-api-26) | Faltan los límites generales por usuario | **Media** | API4 | corregido |
 | [SEC-11](seguridad/hallazgos.md#sec-11--un-json-de-más-de-25-mb-responde-500-sin-debug-o-la-página-de-depuración-con-debug-no-413) | Un JSON de más de 2,5 MB responde 500 y no 413 | Baja | API8 | corregido |
 | [SEC-12](seguridad/hallazgos.md#sec-12--las-rutas-inexistentes-y-los-ids-que-no-son-uuid-responden-html-de-django-no-el-formato-de-error-de-la-api) | Rutas inexistentes responden HTML de Django | Baja | API8 | corregido |
-| [SEC-13](seguridad/hallazgos.md#sec-13--el-contrato-no-coincide-con-la-api-en-2-respuestas-y-no-documenta-varios-estados) | El contrato no coincide con la API en 2 respuestas | Informativa | API9 | abierto |
+| [SEC-13](seguridad/hallazgos.md#sec-13--el-contrato-no-coincide-con-la-api-en-2-respuestas-y-no-documenta-varios-estados) | El contrato no coincide con la API en 2 respuestas | Informativa | API9 | corregido |
 | [SEC-14](seguridad/hallazgos.md#sec-14--la-recuperación-de-contraseña-revela-si-el-correo-existe-cuando-falla-el-envío) | La recuperación revela si el correo existe cuando falla el envío | **Media** | API2 | corregido |
 | [SEC-15](seguridad/hallazgos.md#sec-15--el-log-de-peticiones-guarda-la-búsqueda-completa-documento-o-nombre) | El log de peticiones guarda la búsqueda completa | Baja | API8 | corregido |
-| [SEC-16](seguridad/hallazgos.md#sec-16--un-409-al-crear-un-cliente-confirma-que-esa-cédula-ya-está-registrada) | El `409` de documento duplicado confirma que la cédula existe | Baja | API3 | abierto |
+| [SEC-16](seguridad/hallazgos.md#sec-16--un-409-al-crear-un-cliente-confirma-que-esa-cédula-ya-está-registrada) | El `409` de documento duplicado confirma que la cédula existe | Baja | API3 | aceptado |
 | [SEC-17](seguridad/hallazgos.md#sec-17--textos-de-la-configuración-de-bancos-sin-longitud-máxima) | Textos de la configuración de bancos sin longitud máxima | Informativa | API4 | corregido |
 | [SEC-18](seguridad/hallazgos.md#sec-18--admin-de-django-está-publicado-con-la-api-y-su-login-no-tiene-límite-de-intentos) | `/admin/` publicado y sin límite de intentos | Baja | API8 | corregido |
 | [SEC-19](seguridad/hallazgos.md#sec-19--el-esquema-openapi-y-la-documentación-interactiva-son-públicos) | Esquema OpenAPI y documentación públicos | Informativa | API9 | corregido |
-| [SEC-20](seguridad/hallazgos.md#sec-20--la-documentación-de-la-api-promete-9-rutas-que-no-existen-y-omite-5-que-sí) | La documentación no coincide con las rutas | Informativa | API9 | abierto |
+| [SEC-20](seguridad/hallazgos.md#sec-20--la-documentación-de-la-api-promete-9-rutas-que-no-existen-y-omite-5-que-sí) | La documentación no coincide con las rutas | Informativa | API9 | corregido |
 
 ### Fichas
 
@@ -205,19 +205,29 @@ ficha completa.
 **SEC-01 · Baja · API8 — Sin configuración de producción.** Los puntos de entrada (`wsgi`,
 `asgi`, Celery) cargan `config.settings.local`, que fija `DEBUG=True`, correo a la consola y
 cookies sin `Secure` aunque el entorno diga lo contrario. Riesgo: si se despliega así, páginas
-de depuración y enlaces con token en el log. Estado: abierto.
-**Cómo se solucionó:** Pendiente (Fase B). Corrección sugerida: `config/settings/production.py`
-con `DEBUG=False` fijo y que `wsgi`, `asgi` y `celery` lo usen por defecto.
+de depuración y enlaces con token en el log. Estado: corregido.
+**Cómo se solucionó (Fase B, este PR) — corregido.** *Causa:* sin configuración de producción.
+*Cambio:* `backend/config/settings/production.py` (`DEBUG = False` fijo, SMTP del entorno, solo
+JSON); `wsgi`, `asgi` y `celery` la usan por defecto; `manage.py` sigue en `local` y el compose
+fija `DJANGO_SETTINGS_MODULE` en sus tres servicios de Django. *Verificación:*
+`tests/security/test_deployment.py`; `check --deploy` con variables de ejemplo pasó de 4–6 avisos
+a solo `W021` (*preload*); `docker compose --profile full up` sigue levantando todo.
 
 **SEC-02 · Baja · API8 — HTTPS sin endurecer.** `base.py` no define HSTS, redirección a HTTPS,
-`SESSION_COOKIE_SECURE` ni `SECURE_PROXY_SSL_HEADER`. Estado: abierto.
-**Cómo se solucionó:** Pendiente (Fase B). Corrección sugerida: esos cuatro ajustes en
-`production.py`.
+`SESSION_COOKIE_SECURE` ni `SECURE_PROXY_SSL_HEADER`. Estado: corregido.
+**Cómo se solucionó (Fase B, este PR) — corregido.** *Cambio:* en `production.py`, HSTS de 3600 s
+con subdominios, `SECURE_PROXY_SSL_HEADER`, `SECURE_SSL_REDIRECT` (por defecto `True`) y cookies
+`Secure`. *Verificación:* `tests/security/test_deployment.py::test_production_hardens_https`; la
+imagen `production` redirige HTTP a HTTPS (`301`) y responde `Strict-Transport-Security`.
 
 **SEC-03 · Baja · API8 — Claves sin validar.** El arranque acepta cualquier clave no vacía; la
-JWT local tiene 31 bytes (RFC 7518 pide 32). Estado: abierto.
-**Cómo se solucionó:** Pendiente (Fase B). Corrección sugerida: un *system check* que exija
-≥ 32 bytes sin `DEBUG`; regenerar las claves locales.
+JWT local tiene 31 bytes (RFC 7518 pide 32). Estado: corregido.
+**Cómo se solucionó (Fase B, este PR) — corregido.** *Cambio:* `backend/apps/identity/checks.py`:
+error sin `DEBUG` (aviso con `DEBUG`) si la clave JWT tiene menos de 32 bytes o la `SECRET_KEY` no
+cumple la regla de Django; la imagen `production` corre `check` antes de gunicorn. *Verificación:*
+`tests/security/test_deployment.py` (los dos casos); la imagen no arranca con claves débiles. Las
+claves del `.env` local las regenera el orquestador
+(`python -c "import secrets; print(secrets.token_urlsafe(48))"`).
 
 **SEC-04 · Media · API4 — DRF con dos CVE de DoS.** CVE-2026-114136 (el `charset` de
 compresión salta el límite del cuerpo: 101 bytes llegan como 5 MB) y CVE-2026-114138 (`Accept`
@@ -230,14 +240,19 @@ en el 8010, el cuerpo bz2 de 96 bytes pasó de `400 VALIDATION_ERROR` (expandido
 a `400 MALFORMED_REQUEST` (66 ms), y el `Accept` de 9 KB de 64 ms a 7 ms (`406`).
 
 **SEC-05 · Baja · API8 — Puertos en todas las interfaces.** El compose publica PostgreSQL y la
-API en `0.0.0.0`. Estado: abierto.
-**Cómo se solucionó:** Pendiente (Fase B). Corrección sugerida: `127.0.0.1:` delante de cada
-puerto publicado.
+API en `0.0.0.0`. Estado: corregido.
+**Cómo se solucionó (Fase B, este PR) — corregido.** *Cambio:* `127.0.0.1:` delante de los cuatro
+puertos publicados en `backend/docker-compose.yml`. *Verificación:*
+`tests/security/test_deployment.py::test_compose_publishes_ports_only_on_localhost`; el compose
+levantado publica solo en `127.0.0.1`.
 
 **SEC-06 · Informativa · API8 — Imagen del backend.** Base sin digest, `pip` sin versión,
-`runserver` como comando y cabecera `Server` con la versión de Python. Estado: abierto.
-**Cómo se solucionó:** Pendiente (Fase B). Corrección sugerida: `FROM ...@sha256:`, `pip`
-fijado y `gunicorn` en la imagen de producción.
+`runserver` como comando y cabecera `Server` con la versión de Python. Estado: corregido.
+**Cómo se solucionó (Fase B, este PR) — corregido.** *Cambio:* `backend/Dockerfile` en dos etapas
+sobre `python:3.11-slim@sha256:07d48…b535` y `pip==26.3`: `dev` (compose) y `production` (gunicorn
+con `config/gunicorn.py`, sin `tests/` ni `scripts/`, sin *access log*). *Verificación:*
+`tests/security/test_deployment.py`; `hadolint` sin `DL3013`; la imagen arranca y responde
+`Server: gunicorn` (antes con la versión de Python).
 
 **SEC-07 · Baja · API8 — `OPTIONS` con 500.** 27 vistas genéricas fallan al describir sus
 campos; una es pública. Estado: corregido.
@@ -294,9 +309,14 @@ responden la página de Django. Estado: corregido.
 el 8011, de `text/html` a JSON. Con `DEBUG` (solo local) sigue la página de depuración.
 
 **SEC-13 · Informativa · API9 — Contrato desalineado.** Dos respuestas no siguen el esquema y
-faltan códigos 400/404/428. Estado: abierto.
-**Cómo se solucionó:** Pendiente (Fase B). Corrección sugerida: corregir los serializers o su
-`extend_schema` y regenerar el contrato.
+faltan códigos 400/404/428. Estado: corregido.
+**Cómo se solucionó (Fase B, este PR) — corregido.** *Causa:* `available-actions` documentado como
+página y el correo vacío declarado `format: email` (eso rompía el `oneOf` del broker). *Cambio:*
+`pagination_class = None` en esa vista, `BlankableEmailField` en los serializers de cliente,
+comprador y partner, y un *postprocessing hook* (`backend/config/openapi.py`) que agrega `400`,
+`404` y `428` con el esquema de error común. *Verificación:* `tests/security/test_deployment.py`;
+las dos respuestas reales del 8010 validan contra el contrato (antes 1 error cada una);
+`pnpm typecheck` pasa.
 
 **SEC-14 · Media · API2 — Enumeración por la recuperación.** El correo se envía dentro de la
 petición y solo si el usuario existe: con el correo caído, 500 para los que existen y 202 para
@@ -320,10 +340,14 @@ tokens. *Cambio:* `backend/config/log_redaction.py` escribe `***` en el valor de
 y tres pruebas más; en el 8010, `"GET /api/v1/clients?search=*** HTTP/1.1"`.
 
 **SEC-16 · Baja · API3 — El 409 confirma la cédula.** Crear un cliente con un documento ya
-registrado responde 409 aunque el cliente sea de otro alcance (sin revelar sus datos). Estado:
-abierto (documentado en API §13).
-**Cómo se solucionó:** Pendiente (Fase B). Corrección sugerida: decisión de producto; o un
-flujo de "cliente ya existente" que revise un asesor, o aceptarlo con el límite de SEC-10.
+registrado responde 409 aunque el cliente sea de otro alcance (sin revelar sus datos). Estado: aceptado.
+**Cómo se solucionó (Fase B, este PR) — aceptado.** Decisión de Carlos: el documento identifica a
+la persona y no tiene sentido crear el mismo cliente una vez por broker; la unicidad es regla de
+negocio. Mitigación: el `409` no trae datos del otro cliente y SEC-10 limita los intentos a 120
+por minuto. *Verificación:*
+`tests/security/test_exposure.py::test_a_duplicate_document_is_an_accepted_409_without_the_other_client`
+(antes `xfail`) y `::test_probing_documents_is_limited_by_the_general_write_limit`. *Riesgo
+residual:* confirmar que una cédula ya es cliente, sin saber de quién.
 
 **SEC-17 · Informativa · API4 — Textos de bancos sin tope.** `operational_notes` acepta 1 MB
 (solo admin). Estado: corregido.
@@ -349,9 +373,11 @@ con `DEBUG` o `API_DOCS_PUBLIC` (por defecto `False`) en `backend/config/urls.py
 en el 8011, de `200` a `404` (y `200` con la variable).
 
 **SEC-20 · Informativa · API9 — Documentación desalineada.** 9 rutas documentadas no existen y
-las 5 de direcciones del cliente no están documentadas. Estado: abierto.
-**Cómo se solucionó:** Pendiente (Fase B). Corrección sugerida: marcar las 9 como fuera del MVP
-y documentar las 5.
+las 5 de direcciones del cliente no están documentadas. Estado: corregido.
+**Cómo se solucionó (Fase B, este PR) — corregido.** *Cambio:* `docs/API_REST_MVP_CREDITO.md`: las 9
+rutas pasan a §31.1 "Rutas fuera del MVP" y §13 documenta las 4 de direcciones con permiso y
+alcance. *Verificación:* `tests/security/test_config_inventory.py::test_every_documented_route_exists`
+(sin `xfail`) y `::test_every_route_of_the_contract_is_documented` (nueva).
 
 ## 7. Riesgo residual
 

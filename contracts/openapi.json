@@ -192,6 +192,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             },
@@ -480,6 +490,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -748,6 +768,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -946,6 +976,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -1176,6 +1216,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -1194,24 +1244,6 @@
                             "format": "uuid"
                         },
                         "required": true
-                    },
-                    {
-                        "name": "page",
-                        "required": false,
-                        "in": "query",
-                        "description": "Un número de página dentro del conjunto de resultados paginado.",
-                        "schema": {
-                            "type": "integer"
-                        }
-                    },
-                    {
-                        "name": "page_size",
-                        "required": false,
-                        "in": "query",
-                        "description": "Número de resultados a devolver por página.",
-                        "schema": {
-                            "type": "integer"
-                        }
                     }
                 ],
                 "tags": [
@@ -1236,7 +1268,10 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/PaginatedAvailableActionList"
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/AvailableAction"
+                                    }
                                 }
                             }
                         },
@@ -2869,6 +2904,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -3325,6 +3370,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -3545,6 +3600,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -3930,6 +3995,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -4873,6 +4948,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -5035,6 +5120,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -5278,6 +5373,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -5554,6 +5659,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -5695,6 +5810,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -5771,6 +5896,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -5847,6 +5982,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -5925,6 +6070,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -6084,6 +6239,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -6225,6 +6390,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -6301,6 +6476,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -6377,6 +6562,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -9768,6 +9963,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -10077,6 +10282,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -10228,6 +10443,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -10431,6 +10656,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -10537,6 +10772,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -10614,6 +10859,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             },
@@ -10837,6 +11092,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -10990,6 +11255,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -11152,6 +11427,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -11640,6 +11925,15 @@
                             "format": "uuid"
                         },
                         "required": true
+                    },
+                    {
+                        "in": "header",
+                        "name": "If-Match",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "required": true,
+                        "description": "Versión que se edita, como la devolvió `ETag` (API §6)."
                     }
                 ],
                 "tags": [
@@ -13665,6 +13959,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -13827,6 +14131,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -14039,6 +14353,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -14462,6 +14786,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -14603,6 +14937,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -14679,6 +15023,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -14756,6 +15110,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -15203,6 +15567,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -15688,6 +16062,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -15803,6 +16187,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             },
@@ -16068,6 +16462,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -16755,6 +17159,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -16918,6 +17332,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -17016,6 +17440,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -17104,6 +17538,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -17255,6 +17699,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             },
@@ -17480,6 +17934,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -17621,6 +18085,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -17697,6 +18171,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -17774,6 +18258,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -17985,6 +18479,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -18173,6 +18677,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -18324,6 +18838,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -18420,6 +18944,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -18517,6 +19051,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -18614,6 +19158,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -18710,6 +19264,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -20633,6 +21197,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -20774,6 +21348,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -20850,6 +21434,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -20937,6 +21531,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -21035,6 +21639,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -21459,6 +22073,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -21610,6 +22234,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -24047,7 +24681,7 @@
                     },
                     "email": {
                         "type": "string",
-                        "format": "email",
+                        "description": "Correo electrónico, o vacío si no se registró.",
                         "readOnly": true
                     },
                     "phone": {
@@ -25874,7 +26508,7 @@
                     },
                     "email": {
                         "type": "string",
-                        "format": "email",
+                        "description": "Correo electrónico, o vacío si no se registró.",
                         "readOnly": true
                     },
                     "phone": {
@@ -26701,7 +27335,7 @@
                     },
                     "email": {
                         "type": "string",
-                        "format": "email",
+                        "description": "Correo electrónico, o vacío si no se registró.",
                         "readOnly": true
                     },
                     "phone": {
@@ -26875,7 +27509,7 @@
                     },
                     "email": {
                         "type": "string",
-                        "format": "email",
+                        "description": "Correo electrónico, o vacío si no se registró.",
                         "readOnly": true
                     },
                     "phone": {
@@ -32230,47 +32864,6 @@
                     }
                 }
             },
-            "PaginatedAvailableActionList": {
-                "type": "object",
-                "required": [
-                    "items",
-                    "page",
-                    "page_size",
-                    "total",
-                    "next",
-                    "previous"
-                ],
-                "properties": {
-                    "items": {
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/components/schemas/AvailableAction"
-                        }
-                    },
-                    "page": {
-                        "type": "integer",
-                        "example": 1
-                    },
-                    "page_size": {
-                        "type": "integer",
-                        "example": 25
-                    },
-                    "total": {
-                        "type": "integer",
-                        "example": 128
-                    },
-                    "next": {
-                        "type": "string",
-                        "nullable": true,
-                        "example": "/api/v1/x?page=2"
-                    },
-                    "previous": {
-                        "type": "string",
-                        "nullable": true,
-                        "example": null
-                    }
-                }
-            },
             "PaginatedBankList": {
                 "type": "object",
                 "required": [
@@ -34247,7 +34840,7 @@
                     },
                     "contact_email": {
                         "type": "string",
-                        "format": "email",
+                        "description": "Correo electrónico, o vacío si no se registró.",
                         "readOnly": true
                     },
                     "contact_phone": {
@@ -34357,7 +34950,7 @@
                     },
                     "contact_email": {
                         "type": "string",
-                        "format": "email",
+                        "description": "Correo electrónico, o vacío si no se registró.",
                         "readOnly": true
                     },
                     "contact_phone": {

@@ -28,6 +28,9 @@ AUTH_RATE_LIMITS = {
     "state_changes": "20000/1m",
 }
 
+# Fijas y largas: sin `DEBUG`, el check de SEC-03 (`apps/identity/checks.py`) exige 50
+# caracteres en `SECRET_KEY` y 32 bytes en la clave JWT, y las del entorno del CI son cortas.
+SECRET_KEY = "test-secret-key-only-for-automated-tests-0123456789-abcdefghij"
 AUTH_JWT_SIGNING_KEY = "test-signing-key-only-for-automated-tests-0123456789"
 AUTH_JWT_ISSUER = "mvp-credito-api"
 AUTH_JWT_AUDIENCE = "mvp-credito-backoffice"

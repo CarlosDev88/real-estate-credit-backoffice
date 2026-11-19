@@ -161,6 +161,12 @@ SPECTACULAR_SETTINGS = {
     "SERVE_INCLUDE_SCHEMA": False,
     "SERVE_AUTHENTICATION": [],
     "COMPONENT_SPLIT_REQUEST": True,
+    # El de drf-spectacular (enums) y el propio, que documenta 400/404/428 con el esquema
+    # de error común en las operaciones que no los declaran (SEC-13).
+    "POSTPROCESSING_HOOKS": [
+        "drf_spectacular.hooks.postprocess_schema_enums",
+        "config.openapi.add_error_responses",
+    ],
     # Nombres estables para enums que se repiten en varios recursos (campo `status`).
     "ENUM_NAME_OVERRIDES": {
         "PartnerStatusEnum": "apps.partners.models.partner.PartnerStatus",

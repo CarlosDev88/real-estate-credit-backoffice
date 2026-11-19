@@ -100,17 +100,30 @@ def _normalized(operation: str) -> str:
     return f"{method} " + re.sub(r"\{[^}]+\}", "{}", path.removeprefix("/api/v1"))
 
 
-@pytest.mark.xfail(strict=True, reason="SEC-20")
-def test_every_documented_route_exists() -> None:
+def _documented_operations() -> set[str]:
+    """Las filas de las tablas de ``docs/API_REST_MVP_CREDITO.md``: ``| `GET` | `/ruta` |``
+    o con varios métodos, ``| `GET`, `PATCH` | `/ruta` |``. Las rutas fuera del MVP (§31.1)
+    van en otra forma (``| `GET /ruta` |``) y no cuentan."""
     if not API_DOC.exists():
         pytest.fail("No se encontró docs/API_REST_MVP_CREDITO.md")
     text = API_DOC.read_text(encoding="utf-8")
-    documented = {
-        _normalized(f"{method} {path.split('?')[0]}")
-        for method, path in re.findall(
-            r"\|\s*`(GET|POST|PUT|PATCH|DELETE)`\s*\|\s*`(/[^`]+)`", text
-        )
-    }
-    documented = {op for op in documented if op.split(" ", 1)[1] not in INFRASTRUCTURE}
+    documented = set()
+    for methods, path in re.findall(
+        r"\|\s*((?:`(?:GET|POST|PUT|PATCH|DELETE)`,?\s*)+)\|\s*`(/[^`]+)`", text
+    ):
+        for method in re.findall(r"`(\w+)`", methods):
+            documented.add(_normalized(f"{method} {path.split('?')[0]}"))
+    return {op for op in documented if op.split(" ", 1)[1] not in INFRASTRUCTURE}
+
+
+def test_every_documented_route_exists() -> None:
+    """SEC-20: las 9 rutas que el MVP no implementa pasaron a "Fuera del MVP" (§31.1)."""
     implemented = {_normalized(op) for op in contract_operations()}
-    assert sorted(documented - implemented) == []
+    assert sorted(_documented_operations() - implemented) == []
+
+
+def test_every_route_of_the_contract_is_documented() -> None:
+    """SEC-20, al revés: ninguna ruta que recibe datos queda sin documentar (las de
+    direcciones del cliente faltaban)."""
+    implemented = {_normalized(op) for op in contract_operations()}
+    assert sorted(implemented - _documented_operations()) == []

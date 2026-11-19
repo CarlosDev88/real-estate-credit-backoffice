@@ -1253,6 +1253,9 @@ class ApplicationStatusHistoryView(ExpedienteView):
 
 class ApplicationAvailableActionsView(ExpedienteView):
     required_permissions = {"GET": "applications.read"}
+    # Responde una lista sin paginar; sin esto el contrato la documentaba como página
+    # (`PaginatedAvailableActionList`, SEC-13).
+    pagination_class = None
 
     @extend_schema(
         tags=[APPLICATIONS_TAG],
