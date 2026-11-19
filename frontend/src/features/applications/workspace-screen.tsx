@@ -2,13 +2,15 @@
 
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 
 import { useShellTrail } from "@/components/ui/app-shell";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ScrollTabs } from "@/components/ui/scroll-tabs";
 import { useMe } from "@/features/auth/queries";
+import { CommissionCard } from "@/features/commissions/commission-card";
+import { DISBURSED } from "@/features/commissions/queries";
 import { DocumentsTab } from "@/features/document-review/documents-tab";
 import { FilingsTab } from "@/features/filings/filings-tab";
 import { useFilings } from "@/features/filings/queries";
@@ -16,11 +18,15 @@ import { Card } from "@/components/ui/card";
 import { BackLink } from "@/components/ui/page-header";
 import { ErrorState, LoadingState } from "@/components/ui/state-views";
 import { Stepper } from "@/components/ui/stepper";
+import { FinancingEditPanel } from "@/features/applications/financing-edit";
+import { AddParticipantModal, ParticipantPanel } from "@/features/applications/participant-edit";
+import { PropertyEditPanel } from "@/features/applications/property-edit";
 import { HistoryPanel } from "@/features/applications/status-history";
 import {
   BuyerAccessCard,
   CompletenessCard,
   EvaluationCard,
+  FinancingCard,
   ParticipantsCard,
   PropertyCard,
   RecentChangesCard,
@@ -182,6 +188,12 @@ function Workspace({ detail, version }: { detail: ApplicationDetail; version: nu
   const link = useLatestBuyerLink(id, canReadLinks);
   const consents = useConsents(id, canReadConsents);
   const recent = useStatusHistory(id, 1);
+  // Edición del expediente (F7, Parte 3): con `applications.update`. El bloqueo después de
+  // `FILED` lo responde la API y se muestra en el panel.
+  const canEdit = permissions.has("applications.update");
+  const [editing, setEditing] = useState<"property" | "financing" | "add-participant" | null>(null);
+  const [participantId, setParticipantId] = useState<string | null>(null);
+  const openParticipant = participants.participants?.find((p) => p.id === participantId) ?? null;
 
   const pending = completeness.data
     ? Math.max(
@@ -264,6 +276,14 @@ function Workspace({ detail, version }: { detail: ApplicationDetail; version: nu
           <Section query={evaluation} title="Evaluación del banco">
             {(data) => <EvaluationCard evaluation={data} detail={detail} />}
           </Section>
+          {/* Parte 1 de la F7: estado de la liquidación de comisión del desembolso. */}
+          {detail.status === DISBURSED && permissions.has("commissions.read") && (
+            <CommissionCard
+              applicationId={id}
+              code={detail.code}
+              canManage={permissions.has("commissions.manage")}
+            />
+          )}
           <Section
             query={{
               data: participants.participants,
@@ -273,10 +293,30 @@ function Workspace({ detail, version }: { detail: ApplicationDetail; version: nu
             }}
             title="Participantes"
           >
-            {(data) => <ParticipantsCard participants={data} profiles={participants.profiles} />}
+            {(data) => (
+              <ParticipantsCard
+                participants={data}
+                profiles={participants.profiles}
+                onAdd={canEdit ? () => setEditing("add-participant") : undefined}
+                onOpen={canEdit ? (p) => setParticipantId(p.id) : undefined}
+              />
+            )}
           </Section>
           <Section query={property} title="Inmueble">
-            {(data) => <PropertyCard property={data} />}
+            {(data) => (
+              <PropertyCard
+                property={data}
+                onEdit={canEdit ? () => setEditing("property") : undefined}
+              />
+            )}
+          </Section>
+          <Section query={financing} title="Financiación">
+            {(data) => (
+              <FinancingCard
+                financing={data}
+                onEdit={canEdit ? () => setEditing("financing") : undefined}
+              />
+            )}
           </Section>
           {(canReadLinks || canReadConsents) && (
             <BuyerAccessCard
@@ -294,6 +334,38 @@ function Workspace({ detail, version }: { detail: ApplicationDetail; version: nu
             )}
           </Section>
         </section>
+      )}
+
+      {canEdit && (
+        <>
+          <PropertyEditPanel
+            detail={detail}
+            version={version}
+            property={property.data ?? null}
+            open={editing === "property"}
+            onClose={() => setEditing(null)}
+          />
+          <FinancingEditPanel
+            detail={detail}
+            version={version}
+            financing={financing.data ?? null}
+            open={editing === "financing"}
+            onClose={() => setEditing(null)}
+          />
+          <AddParticipantModal
+            applicationId={id}
+            participants={participants.participants ?? []}
+            open={editing === "add-participant"}
+            onClose={() => setEditing(null)}
+          />
+          <ParticipantPanel
+            applicationId={id}
+            version={version}
+            participant={openParticipant}
+            profile={openParticipant ? participants.profiles.get(openParticipant.id) : undefined}
+            onClose={() => setParticipantId(null)}
+          />
+        </>
       )}
 
       {tab === "documentos" && (

@@ -28,7 +28,12 @@ export const FILING_PERMISSIONS = [
   "filings.record_response",
 ];
 
-const item = (code: string, label: string, order: number) => ({
+const item = (
+  code: string,
+  label: string,
+  order: number,
+  metadata: Record<string, unknown> = {},
+) => ({
   id: `${code}-id`,
   code,
   label,
@@ -37,8 +42,41 @@ const item = (code: string, label: string, order: number) => ({
   active: true,
   parent_id: null,
   parent_code: null,
-  metadata: {},
+  metadata,
 });
+
+/**
+ * `metadata` de `filing_response_type` como lo publica la API (`response_type_metadata`):
+ * los campos propios del tipo y después las notas.
+ */
+const NOTES = ["public_message", "internal_comment"];
+export const RESPONSE_TYPE_METADATA: Record<string, Record<string, unknown>> = {
+  RECEIVED: { fields: NOTES, required: [], reason_catalog: null },
+  IN_ANALYSIS: { fields: NOTES, required: [], reason_catalog: null },
+  RETURNED: {
+    fields: ["reason_code", "observations", ...NOTES],
+    required: ["reason_code", "public_message", "observations"],
+    reason_catalog: "filing_return_reason",
+  },
+  APPROVED: {
+    fields: ["approved_amount_cop", "approved_term_months", "valid_until", ...NOTES],
+    required: ["approved_amount_cop", "approved_term_months", "public_message"],
+    reason_catalog: null,
+  },
+  REJECTED: {
+    fields: ["reason_code", ...NOTES],
+    required: ["reason_code", "public_message"],
+    reason_catalog: "filing_rejection_reason",
+  },
+  DISBURSED: {
+    fields: ["disbursed_amount_cop", ...NOTES],
+    required: ["disbursed_amount_cop"],
+    reason_catalog: null,
+  },
+  OTHER: { fields: NOTES, required: ["internal_comment"], reason_catalog: null },
+};
+const responseType = (code: string, label: string, order: number) =>
+  item(code, label, order, RESPONSE_TYPE_METADATA[code]);
 
 export const FILING_BOOTSTRAP = {
   ...BOOTSTRAP,
@@ -49,13 +87,13 @@ export const FILING_BOOTSTRAP = {
       item("EMAIL", "Correo electrónico", 2),
     ],
     filing_response_type: [
-      item("RECEIVED", "Recibida", 1),
-      item("IN_ANALYSIS", "En análisis", 2),
-      item("RETURNED", "Devuelta con observaciones", 3),
-      item("APPROVED", "Aprobada", 4),
-      item("REJECTED", "Rechazada", 5),
-      item("DISBURSED", "Desembolsada", 6),
-      item("OTHER", "Otra", 7),
+      responseType("RECEIVED", "Recibida", 1),
+      responseType("IN_ANALYSIS", "En análisis", 2),
+      responseType("RETURNED", "Devuelta con observaciones", 3),
+      responseType("APPROVED", "Aprobada", 4),
+      responseType("REJECTED", "Rechazada", 5),
+      responseType("DISBURSED", "Desembolsada", 6),
+      responseType("OTHER", "Otra", 7),
     ],
     filing_return_reason: [item("DOCUMENT_CORRECTION", "Corrección de documentos", 1)],
     filing_rejection_reason: [item("PAYMENT_CAPACITY", "Capacidad de pago insuficiente", 1)],
@@ -189,6 +227,8 @@ export interface FilingsApi extends WorkspaceApi {
   requested: PackageJob;
   /** Lo que responden los `GET` del paquete, en orden (el último se repite). */
   polled: PackageJob[];
+  /** Lista de paquetes de la solicitud (`GET .../document-package-jobs`); el `POST` suma. */
+  packageJobs: PackageJob[];
   /** Respuestas por radicación. */
   responses: Record<string, FilingResponse[]>;
   bodies: { filing: unknown[]; patch: unknown[]; response: Record<string, unknown>[] };
@@ -199,7 +239,14 @@ export interface FilingsApi extends WorkspaceApi {
 export function useFilingsApi(
   overrides: Partial<Omit<FilingsApi, keyof WorkspaceApi>> & Partial<WorkspaceApi> = {},
 ): FilingsApi {
-  const { filings = [], requested = makeJob(), polled, responses = {}, ...workspace } = overrides;
+  const {
+    filings = [],
+    requested = makeJob(),
+    polled,
+    packageJobs = [],
+    responses = {},
+    ...workspace
+  } = overrides;
   const base = useWorkspaceApi({
     detail: makeDetail({ status: "READY_TO_FILE", status_label: "Lista para radicar" }),
     permissions: FILING_PERMISSIONS,
@@ -212,6 +259,7 @@ export function useFilingsApi(
     filings,
     requested,
     polled: polled ?? [requested],
+    packageJobs,
     responses,
     bodies: { filing: [], patch: [], response: [] },
     calls: Object.assign(base.calls, { packageGet: 0, filings: 0 }),
@@ -223,8 +271,15 @@ export function useFilingsApi(
       state.calls.filings += 1;
       return HttpResponse.json(page(state.filings));
     }),
-    http.post(apiUrl(`/applications/${APP_ID}/document-package-jobs`), () =>
-      HttpResponse.json(state.requested, { status: 201 }),
+    http.post(apiUrl(`/applications/${APP_ID}/document-package-jobs`), () => {
+      state.packageJobs = [
+        state.requested,
+        ...state.packageJobs.filter((j) => j.id !== state.requested.id),
+      ];
+      return HttpResponse.json(state.requested, { status: 201 });
+    }),
+    http.get(apiUrl(`/applications/${APP_ID}/document-package-jobs`), () =>
+      HttpResponse.json(page(state.packageJobs)),
     ),
     http.get(apiUrl("/document-package-jobs/:jobId"), () => {
       const job = state.polled[Math.min(state.calls.packageGet, state.polled.length - 1)]!;

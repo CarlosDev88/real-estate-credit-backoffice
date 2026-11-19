@@ -13,6 +13,7 @@ import { EvidenceModal, useEvidenceViewer } from "@/features/filings/evidence";
 import { FilingBanner } from "@/features/filings/filing-banner";
 import { FilingCard } from "@/features/filings/filing-card";
 import { EditFilingModal } from "@/features/filings/filing-modals";
+import { PackagesList } from "@/features/filings/packages-list";
 import {
   useFilingResponses,
   useFilings,
@@ -95,6 +96,7 @@ export function FilingsTab({
           can={{ prepare: canPrepare, create: canCreate }}
         />
       )}
+      {canPrepare && <PackagesList applicationId={detail.id} />}
 
       {filings.isPending ? (
         <LoadingState label="Cargando radicaciones" blocks={[128]} />

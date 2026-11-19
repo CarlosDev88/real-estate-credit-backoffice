@@ -89,12 +89,17 @@ test("crea un cliente, ve el duplicado, crea la oportunidad y la solicitud", asy
   await dismissToasts(page);
   await expect(page).toHaveURL(/[?&]oportunidad=[0-9a-f-]{36}/);
 
-  // La oportunidad nace sin asesor: el asesor de prueba se la asigna.
+  // Creada por un asesor, la API se la asigna sola; si nace sin asesor, se la asigna él.
   const panel = dialogWith(page, "Oportunidad");
-  await panel.getByRole("button", { name: "Asignarme" }).click();
-  await expect(page.getByText("Te asignaste la oportunidad")).toBeVisible();
-  await dismissToasts(page);
-  await expect(panel.getByRole("button", { name: "Asignarme" })).toBeHidden();
+  const assign = panel.getByRole("button", { name: "Asignarme" });
+  await expect(panel.getByText("Asesor", { exact: true })).toBeVisible();
+  if (await assign.isVisible()) {
+    await assign.click();
+    await expect(page.getByText("Te asignaste la oportunidad")).toBeVisible();
+    await dismissToasts(page);
+  }
+  await expect(assign).toBeHidden();
+  await expect(panel.getByText("Asignaciones")).toBeVisible();
 
   // 4. Crear la solicitud desde la oportunidad: llega al expediente nuevo.
   await panel.getByRole("button", { name: "Crear solicitud de crédito" }).click();

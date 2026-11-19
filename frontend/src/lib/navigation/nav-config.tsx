@@ -10,18 +10,29 @@ import {
   ProjectIcon,
   UserShieldIcon,
 } from "@/features/admin-common/icons";
+import { BrokerIcon } from "@/features/broker/broker-icon";
+import { CommissionsIcon, MyCommissionsIcon } from "@/features/commissions/commissions-icon";
 import { DashboardIcon } from "@/features/dashboard/dashboard-icon";
 import { ReportsIcon } from "@/features/reports/reports-icon";
 import { MyDayIcon } from "@/features/workday/my-day-icon";
 
 // Navegación del backoffice. Es la estructura de la app, no una lista de negocio:
 // cada entrada pide un permiso de `/auth/me` y solo aparece si la ruta existe.
+
+/**
+ * Para quién es la entrada. `broker`: solo el broker sin rol interno; `internal`: todos
+ * menos él (la API le responde otras formas y esas pantallas no son para él). Sin
+ * `audience`, la ven los dos (ver `audienceOf` en `access.ts`).
+ */
+export type Audience = "broker" | "internal";
+
 export interface NavItem {
   href: string;
   label: string;
   icon: ReactNode;
   group: string | null;
   permission: string;
+  audience?: Audience;
 }
 
 export interface NavGroup {
@@ -38,6 +49,7 @@ export const NAV_ITEMS: NavItem[] = [
     icon: <DashboardIcon />,
     group: "Operación",
     permission: "dashboard.read",
+    audience: "internal",
   },
   // F5: bandeja de atención y tareas; el permiso es el de `GET /workday/applications`.
   {
@@ -55,12 +67,22 @@ export const NAV_ITEMS: NavItem[] = [
     group: "Operación",
     permission: "reports.read",
   },
+  // F7: el inicio del broker (REQ §6): bandeja de prospectos, alta, enlace y estados.
+  {
+    href: "/prospectos",
+    label: "Mis prospectos",
+    icon: <BrokerIcon />,
+    group: "Comercial",
+    permission: "opportunities.read",
+    audience: "broker",
+  },
   {
     href: "/solicitudes",
     label: "Solicitudes",
     icon: <HouseIcon />,
     group: "Comercial",
     permission: "applications.read",
+    audience: "internal",
   },
   {
     href: "/clientes",
@@ -68,6 +90,23 @@ export const NAV_ITEMS: NavItem[] = [
     icon: <UsersIcon />,
     group: "Comercial",
     permission: "clients.read",
+    audience: "internal",
+  },
+  // F7: liquidaciones y planes (administración de comisiones) y la parte propia del
+  // asesor y del broker. Grupo propio, aparte de "Administración".
+  {
+    href: "/comisiones",
+    label: "Comisiones",
+    icon: <CommissionsIcon />,
+    group: "Finanzas",
+    permission: "commissions.read",
+  },
+  {
+    href: "/mis-comisiones",
+    label: "Mis comisiones",
+    icon: <MyCommissionsIcon />,
+    group: "Finanzas",
+    permission: "commissions.read_own",
   },
   // F6 (front-admin): grupo "Administración". Cada entrada pide su permiso de `/auth/me`;
   // el ícono vive en `features/admin-common` hasta que pase a `components/ui`.
@@ -93,6 +132,7 @@ export const NAV_ITEMS: NavItem[] = [
     icon: <ProjectIcon />,
     group: "Administración",
     permission: "projects.read",
+    audience: "internal",
   },
   // `banks.read` también lo tiene el asesor (lo usa en solicitudes): pide `banks.create`.
   {

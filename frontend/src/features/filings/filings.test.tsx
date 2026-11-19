@@ -6,7 +6,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ALL_PERMISSIONS, APP_ID, makeDetail } from "@/features/applications/workspace.fixtures";
 import { WorkspaceScreen } from "@/features/applications/workspace-screen";
-import { isResponseOverdue } from "@/features/filings/filing-card";
 import { apiError, makeFiling, makeJob, useFilingsApi } from "@/features/filings/filings.fixtures";
 import {
   defaultPastInput,
@@ -66,9 +65,14 @@ function renderScreen() {
 const filingTab = () => screen.findByRole("tabpanel", { name: "Radicación" });
 
 /** Pide el paquete y espera a que esté listo. */
+/** El panel "Entregar al banco" (la lista de paquetes repite algunos textos). */
+function deliveryPanel() {
+  return screen.getByRole("article", { name: "Entregar al banco" });
+}
+
 async function preparePackage(user: ReturnType<typeof userEvent.setup>) {
   await user.click(await screen.findByRole("button", { name: "Preparar paquete" }));
-  await screen.findByText("SOL-000182_expediente.zip");
+  await within(deliveryPanel()).findByText("SOL-000182_expediente.zip");
 }
 
 beforeEach(() => {
@@ -189,8 +193,59 @@ describe("radicación: paquete", { timeout: 20_000 }, () => {
     await user.click(within(panel).getByRole("button", { name: "Preparar paquete" }));
 
     expect(await within(panel).findByText("No se pudo armar el paquete")).toBeInTheDocument();
-    expect(within(panel).getByText(/STORAGE_UNAVAILABLE/)).toBeInTheDocument();
+    expect(within(deliveryPanel()).getByText(/STORAGE_UNAVAILABLE/)).toBeInTheDocument();
     expect(within(panel).getByRole("button", { name: "Preparar otro paquete" })).toBeEnabled();
+  });
+
+  it("lista los paquetes pedidos y retoma el vivo al volver a la pestaña", async () => {
+    useFilingsApi({
+      packageJobs: [
+        makeJob({ id: "job-new", status: "COMPLETED", status_label: "Listo" }),
+        makeJob({
+          id: "job-old",
+          status: "FAILED",
+          status_label: "Falló",
+          error_code: "CHECKSUM_MISMATCH",
+          output: null,
+        }),
+      ],
+    });
+    renderScreen();
+    const panel = await filingTab();
+
+    const list = await within(panel).findByRole("list", { name: "Paquetes de documentos" });
+    const rows = within(list).getAllByRole("listitem");
+    expect(rows).toHaveLength(2);
+    expect(within(rows[0]!).getByText("Listo")).toHaveAttribute("data-tone", "success");
+    expect(within(rows[0]!).getByRole("button", { name: /Descargar/ })).toBeInTheDocument();
+    expect(within(rows[1]!).getByText("Falló")).toHaveAttribute("data-tone", "danger");
+    expect(within(rows[1]!).getByText(/CHECKSUM_MISMATCH/)).toBeInTheDocument();
+    expect(within(rows[1]!).queryByRole("button")).toBeNull();
+    // El panel de entrega retoma el paquete listo sin volver a pedirlo.
+    expect(
+      await within(deliveryPanel()).findByRole("button", { name: "Descargar ZIP" }),
+    ).toBeInTheDocument();
+
+    await userEvent.setup().click(within(rows[0]!).getByRole("button", { name: /Descargar/ }));
+    await waitFor(() =>
+      expect(download.startDownload).toHaveBeenCalledWith("https://s3.example/zip?sig=1"),
+    );
+  });
+
+  it("pide el paquete con Idempotency-Key", async () => {
+    useFilingsApi();
+    const keys: (string | null)[] = [];
+    server.events.on("request:start", ({ request }) => {
+      if (request.method === "POST" && request.url.includes("document-package-jobs")) {
+        keys.push(request.headers.get("Idempotency-Key"));
+      }
+    });
+    const user = renderScreen();
+    await filingTab();
+    await preparePackage(user);
+    server.events.removeAllListeners("request:start");
+    expect(keys).toHaveLength(1);
+    expect(keys[0]).toMatch(/[0-9a-f-]{36}/);
   });
 
   it("si el paquete venció al descargar, lo dice y vuelve a leer el trabajo", async () => {
@@ -367,6 +422,8 @@ describe("radicación: lista", { timeout: 20_000 }, () => {
           status_label: "Devuelta",
           external_reference: null,
           target_response_at: "2026-01-01T10:00:00Z",
+          // "Vencida" sale de la API (`is_response_overdue`), no de un cálculo local.
+          is_response_overdue: true,
         }),
       ],
     });
@@ -469,15 +526,6 @@ describe("radicación: lista", { timeout: 20_000 }, () => {
 });
 
 describe("radicación: reglas de pantalla", () => {
-  it("la respuesta vence solo si pasó la fecha y no hay respuestas", () => {
-    const now = Date.parse("2026-11-17T12:00:00Z");
-    const late = makeFiling(1, { target_response_at: "2026-11-16T12:00:00Z" });
-    expect(isResponseOverdue(late, now)).toBe(true);
-    expect(isResponseOverdue({ ...late, responses_count: 1 }, now)).toBe(false);
-    expect(isResponseOverdue({ ...late, target_response_at: null }, now)).toBe(false);
-    expect(isResponseOverdue(makeFiling(1), now)).toBe(false);
-  });
-
   it("convierte la fecha local del campo y detecta las futuras", () => {
     const date = new Date(2026, 10, 17, 9, 5);
     expect(toLocalInput(date)).toBe("2026-11-17T09:05");
