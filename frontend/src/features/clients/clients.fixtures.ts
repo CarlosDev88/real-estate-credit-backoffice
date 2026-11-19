@@ -54,6 +54,10 @@ export const CLIENTS_BOOTSTRAP = {
       item("LOST", "Perdida", 4, false),
     ],
     loan_purpose: [item("NEW_HOME", "Vivienda nueva", 1), item("USED_HOME", "Vivienda usada", 2)],
+    opportunity_lost_reason: [
+      item("NO_RESPONSE", "No responde", 1),
+      item("OTHER_BANK", "Eligió otro banco", 2),
+    ],
     address_type: [item("RESIDENCE", "Residencia", 1), item("WORK", "Trabajo", 2)],
   },
 };
@@ -81,6 +85,19 @@ export function makeAddress(n: number, overrides: Partial<Address> = {}): Addres
   };
 }
 
+type OpportunityAction = OpportunityDetail["available_actions"][number];
+
+export function action(
+  code: string,
+  label: string,
+  kind: OpportunityAction["kind"],
+  target_status: OpportunityAction["target_status"],
+  target_status_label: string,
+  reason_required = false,
+): OpportunityAction {
+  return { code, label, kind, target_status, target_status_label, reason_required };
+}
+
 export function makeOpportunity(n: number, overrides: Partial<OpportunityDetail> = {}) {
   const base: OpportunityDetail = {
     id: `op-${n}`,
@@ -95,7 +112,13 @@ export function makeOpportunity(n: number, overrides: Partial<OpportunityDetail>
     converted_at: null,
     created_at: "2026-11-12T15:00:00Z",
     updated_at: "2026-11-12T15:00:00Z",
-    available_actions: [],
+    // Las de una oportunidad `ASSIGNED` (contrato: primaria, secundarias, destructivas).
+    available_actions: [
+      action("CONVERT_ASSIGNED", "Convertir en solicitud", "primary", "CONVERTED", "Convertida"),
+      action("MARK_CONTACTED", "Marcar como contactada", "secondary", "CONTACTED", "Contactada"),
+      action("MARK_LOST_ASSIGNED", "Marcar como perdida", "destructive", "LOST", "Perdida", true),
+      action("CANCEL_ASSIGNED", "Cancelar", "destructive", "CANCELLED", "Cancelada"),
+    ],
     assignments: [
       {
         id: "as-1",
@@ -145,6 +168,7 @@ export function makeClient(n: number, overrides: Partial<Client> = {}): Client {
     phone: "+573001234567",
     origin: { code: "DIRECT", label: "Directo" },
     created_by: { id: "u-1", name: "Asesora" },
+    applications_count: 2,
     created_at: "2026-11-10T15:00:00Z",
     updated_at: "2026-11-10T15:00:00Z",
     ...overrides,

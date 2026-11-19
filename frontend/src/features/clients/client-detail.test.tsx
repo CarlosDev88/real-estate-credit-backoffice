@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ClientDetailScreen } from "@/features/clients/client-detail-screen";
 import {
+  action,
   apiError,
   CLIENTS_BOOTSTRAP,
   CLIENTS_ME,
@@ -131,7 +132,18 @@ function useApi(
       HttpResponse.json(page(opts.applications ?? [makeClientApplication(1)])),
     ),
     http.post(apiUrl("/applications"), async ({ request }) => {
-      recorded.applications.push(await request.json());
+      const body = (await request.json()) as { opportunity_id: string };
+      recorded.applications.push(body);
+      // Como la API: la oportunidad queda convertida y ya no ofrece acciones.
+      const index = opportunities.findIndex((o) => o.id === body.opportunity_id);
+      if (index >= 0) {
+        opportunities[index] = {
+          ...opportunities[index]!,
+          status: "CONVERTED",
+          status_label: "Convertida",
+          available_actions: [],
+        };
+      }
       return HttpResponse.json({ id: "app-new", code: "SOL-000099" }, { status: 201 });
     }),
   );
@@ -267,7 +279,12 @@ describe("detalle del cliente", { timeout: 20_000 }, () => {
     useApi({
       opportunities: [
         makeOpportunity(1),
-        makeOpportunity(2, { project: null, assigned_advisor: null, status: "LOST" }),
+        makeOpportunity(2, {
+          project: null,
+          assigned_advisor: null,
+          status: "LOST",
+          status_label: "Perdida",
+        }),
       ],
     });
     await renderDetail("?tab=oportunidades");
@@ -280,7 +297,7 @@ describe("detalle del cliente", { timeout: 20_000 }, () => {
     ).toBeInTheDocument();
     expect(within(rows[0]!).getByText("Directo")).toBeInTheDocument();
     expect(within(rows[0]!).getByText("Asesora")).toBeInTheDocument();
-    // Un estado inactivo en el catálogo conserva su etiqueta.
+    // El texto del estado es el `status_label` de la API.
     expect(within(rows[1]!).getByText("Perdida")).toBeInTheDocument();
     expect(within(rows[1]!).getByText("Sin proyecto")).toBeInTheDocument();
     expect(within(rows[1]!).getByText("Sin asesor")).toBeInTheDocument();
@@ -396,6 +413,81 @@ describe("detalle del cliente", { timeout: 20_000 }, () => {
     await user.click(await within(panel).findByRole("button", { name: "Asignarme" }));
     await waitFor(() => expect(recorded.assignments).toEqual([{ advisor_id: "u-1", reason: "" }]));
     expect(await screen.findByText("Te asignaste la oportunidad")).toBeInTheDocument();
+  });
+
+  it("muestra las transiciones de `available_actions` y marca como contactada sin confirmar", async () => {
+    useApi();
+    const sent: unknown[] = [];
+    server.use(
+      http.post(apiUrl("/opportunities/:id/transitions"), async ({ request }) => {
+        sent.push(await request.json());
+        return HttpResponse.json(
+          makeOpportunity(1, { status: "CONTACTED", status_label: "Contactada" }),
+        );
+      }),
+    );
+    const user = await renderDetail("?tab=oportunidades&oportunidad=op-1");
+    const panel = await screen.findByRole("dialog");
+    // La conversión va por "Crear solicitud"; el resto, un botón por acción con su texto.
+    await within(panel).findByRole("button", { name: "Crear solicitud de crédito" });
+    expect(within(panel).queryByRole("button", { name: "Convertir en solicitud" })).toBeNull();
+    expect(within(panel).getByRole("button", { name: "Marcar como perdida" })).toHaveClass(
+      "ant-btn-dangerous",
+    );
+    await user.click(within(panel).getByRole("button", { name: "Marcar como contactada" }));
+    await waitFor(() => expect(sent).toEqual([{ target_status: "CONTACTED", comment: "" }]));
+    // El panel queda con la respuesta (`status_label` de la API).
+    expect(await within(panel).findByText("Contactada")).toBeInTheDocument();
+  });
+
+  it("marcar como perdida pide confirmación y el motivo del catálogo", async () => {
+    useApi();
+    const sent: unknown[] = [];
+    server.use(
+      http.post(apiUrl("/opportunities/:id/transitions"), async ({ request }) => {
+        sent.push(await request.json());
+        return HttpResponse.json(
+          makeOpportunity(1, { status: "LOST", status_label: "Perdida", available_actions: [] }),
+        );
+      }),
+    );
+    const user = await renderDetail("?tab=oportunidades&oportunidad=op-1");
+    const panel = await screen.findByRole("dialog");
+    await user.click(await within(panel).findByRole("button", { name: "Marcar como perdida" }));
+    const dialog = await modalTitled("Perdida");
+    await user.click(within(dialog).getByRole("button", { name: "Marcar como perdida" }));
+    expect(await within(dialog).findByText("Elige el motivo.")).toBeInTheDocument();
+    expect(sent).toHaveLength(0);
+
+    await pick(user, "Motivo", "Eligió otro banco");
+    await user.type(within(dialog).getByLabelText(/Comentario/), "Tasa más baja");
+    await user.click(within(dialog).getByRole("button", { name: "Marcar como perdida" }));
+    await waitFor(() =>
+      expect(sent).toEqual([
+        { target_status: "LOST", reason_code: "OTHER_BANK", comment: "Tasa más baja" },
+      ]),
+    );
+  });
+
+  it("sin la conversión en `available_actions` no ofrece crear la solicitud", async () => {
+    useApi({
+      opportunities: [
+        makeOpportunity(1, {
+          status: "NEW",
+          assigned_advisor: null,
+          available_actions: [
+            action("CANCEL_NEW", "Cancelar", "destructive", "CANCELLED", "Cancelada"),
+            action("ASSIGN", "Asignar asesor", "secondary", "ASSIGNED", "Asignada"),
+          ],
+        }),
+      ],
+    });
+    await renderDetail("?tab=oportunidades&oportunidad=op-1");
+    const panel = await screen.findByRole("dialog");
+    await within(panel).findByRole("button", { name: "Cancelar" });
+    expect(within(panel).queryByRole("button", { name: "Crear solicitud de crédito" })).toBeNull();
+    // `ASSIGN` va por "Asignar asesor" (`/assignments`), no como transición.
+    expect(within(panel).getAllByRole("button", { name: "Asignar asesor" })).toHaveLength(1);
   });
 
   it("sin asesor ni `users.read`, el error de asesor de la API va al aviso", async () => {

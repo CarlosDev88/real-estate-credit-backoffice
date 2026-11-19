@@ -329,15 +329,19 @@ export function useAssign(id: string) {
   });
 }
 
+/**
+ * Emite el enlace con `Idempotency-Key`: un reintento del mismo intento no crea otro (la
+ * API responde `409 IDEMPOTENCY_REPLAY_UNAVAILABLE`, porque no guarda el token en claro).
+ */
 export function useCreateBuyerLink(id: string) {
   const queryClient = useQueryClient();
   return useMutation({
     meta: { handlesErrors: true },
-    mutationFn: async (body: BuyerAccessLinkCreateRequest) =>
+    mutationFn: async ({ body, key }: { body: BuyerAccessLinkCreateRequest; key: string }) =>
       (
         await call(
           api.POST("/api/v1/applications/{application_id}/buyer-access-links", {
-            params: { path: { application_id: id } },
+            params: { path: { application_id: id }, header: { "Idempotency-Key": key } },
             body,
           }),
         )

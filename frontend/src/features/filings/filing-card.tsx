@@ -18,18 +18,6 @@ export interface FilingCardPermissions {
   snapshots: boolean;
 }
 
-/**
- * La respuesta esperada venció: pasó `target_response_at` y el banco todavía no
- * respondió nada (sin respuestas registradas).
- */
-export function isResponseOverdue(filing: Filing, now: number = Date.now()): boolean {
-  return (
-    !!filing.target_response_at &&
-    filing.responses_count === 0 &&
-    Date.parse(filing.target_response_at) < now
-  );
-}
-
 function Fact({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="min-w-0">
@@ -100,7 +88,8 @@ export function FilingCard({
 }) {
   const ids = useId();
   const [showSnapshots, setShowSnapshots] = useState(false);
-  const overdue = isResponseOverdue(filing);
+  // La API lo calcula (`is_response_overdue`): pasó la fecha esperada y no hay respuestas.
+  const overdue = filing.is_response_overdue;
   const titleId = `${ids}-title`;
 
   return (

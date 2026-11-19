@@ -166,7 +166,15 @@ describe("listado de clientes", { timeout: 20_000 }, () => {
     expect(screen.getByRole("heading", { name: "Clientes" })).toBeInTheDocument();
     const headers = screen.getAllByRole("columnheader").map((h) => h.textContent);
     // La flecha de "Nombre" está oculta (solo al pasar el mouse); "Creado" es el orden activo.
-    expect(headers).toEqual(["Nombre↕", "Documento", "Correo", "Teléfono", "Origen", "Creado↓"]);
+    expect(headers).toEqual([
+      "Nombre↕",
+      "Documento",
+      "Correo",
+      "Teléfono",
+      "Origen",
+      "Solicitudes",
+      "Creado↓",
+    ]);
 
     const first = rowOf("Persona Número 1");
     expect(within(first).getByText("CC")).toHaveAttribute("title", "Cédula de ciudadanía");
@@ -175,6 +183,8 @@ describe("listado de clientes", { timeout: 20_000 }, () => {
     expect(within(first).getByText("+573001234567")).toBeInTheDocument();
     expect(within(first).getByText("Directo")).toBeInTheDocument();
     expect(within(first).getByText("10 nov 2026")).toBeInTheDocument();
+    // `applications_count` de la API.
+    expect(within(first).getByText("2")).toBeInTheDocument();
     expect(within(first).getByRole("link", { name: "Persona Número 1" })).toHaveAttribute(
       "href",
       "/clientes/cl-1",
