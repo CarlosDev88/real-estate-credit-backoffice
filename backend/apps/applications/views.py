@@ -10,7 +10,12 @@ from django.db.models.functions import Concat
 from django.http import Http404
 from django.shortcuts import get_object_or_404
 from drf_spectacular.types import OpenApiTypes
-from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, extend_schema
+from drf_spectacular.utils import (
+    OpenApiParameter,
+    OpenApiResponse,
+    PolymorphicProxySerializer,
+    extend_schema,
+)
 from rest_framework import status
 from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.filters import SearchFilter
@@ -72,6 +77,7 @@ from apps.idempotency.decorators import IDEMPOTENCY_PARAMETER, idempotency_respo
 from apps.identity.consents import consent_summary
 from apps.identity.models import User
 from apps.identity.permissions import HasPermissionCode
+from config.api import PAGINATION_PARAMETERS, paginated_serializer
 from config.filters import StrictOrderingFilter, parse_bool_param, parse_uuid_param
 from config.openapi import etag_response_headers
 from config.serializers import ErrorSerializer
@@ -102,6 +108,27 @@ QUICK_FILTER_PARAM = OpenApiParameter(
     enum=QUICK_FILTER_CODES,
     description="Pestaña rápida (`/applications/quick-filters`). `all` no filtra; junto con "
     "`status` se aplican los dos. Un código desconocido responde `400`.",
+)
+# El broker (`INDEPENDENT_BROKER` sin `ADMIN` ni `ADVISOR`) recibe `ApplicationSummary`; el
+# resto, `Application` o `ApplicationDetail`. `oneOf` sin discriminador, como en `/clients`:
+# el front distingue por su rol.
+BY_ROLE = (
+    " El broker (`INDEPENDENT_BROKER` sin `ADMIN` ni `ADVISOR`) recibe `ApplicationSummary`: "
+    "el resumen operativo, sin datos financieros, inmueble ni documento completo del titular."
+)
+APPLICATION_DETAIL_BY_ROLE = PolymorphicProxySerializer(
+    component_name="ApplicationDetailByRole",
+    serializers=[ApplicationDetailSerializer, ApplicationSummarySerializer],
+    resource_type_field_name=None,
+)
+APPLICATION_PAGE_BY_ROLE = PolymorphicProxySerializer(
+    component_name="PaginatedApplicationListByRole",
+    serializers=[
+        paginated_serializer("PaginatedApplicationList", ApplicationSerializer),
+        paginated_serializer("PaginatedApplicationSummaryList", ApplicationSummarySerializer),
+    ],
+    resource_type_field_name=None,
+    many=False,
 )
 INCLUDE_PARAM = OpenApiParameter(
     "include",
@@ -316,14 +343,18 @@ class ApplicationListView(ApplicationView):
         summary="Solicitudes según el alcance",
         description=(
             "El administrador ve todas, el asesor las asignadas y el broker el resumen de "
-            "las solicitudes de las oportunidades que originó."
+            "las solicitudes de las oportunidades que originó." + BY_ROLE
         ),
+        # La respuesta `oneOf` no es una lista para drf-spectacular: los filtros se piden
+        # explícitamente y la paginación se declara a mano.
+        filters=True,
         parameters=[
             STATUS_PARAM,
             QUICK_FILTER_PARAM,
             *LIST_FILTER_PARAMETERS,
+            *PAGINATION_PARAMETERS,
         ],
-        responses={200: ApplicationSerializer(many=True), **COMMON_ERRORS},
+        responses={200: APPLICATION_PAGE_BY_ROLE, **COMMON_ERRORS},
     )
     def get(self, request: Request) -> Response:
         page = self.paginate_queryset(self.filter_queryset(self.get_queryset()))
@@ -438,10 +469,10 @@ class ApplicationDetailView(ApplicationView):
         description=(
             "Responde `ETag` con la versión, que se reenvía en `If-Match` al editar. "
             "`property` y `assignments` salen siempre; `participants` y `financing`, solo "
-            "con `include`. El broker recibe solo el resumen."
+            "con `include`." + BY_ROLE
         ),
         parameters=[INCLUDE_PARAM, etag_response_headers(200)],
-        responses={200: ApplicationDetailSerializer, **NOT_FOUND, **COMMON_ERRORS},
+        responses={200: APPLICATION_DETAIL_BY_ROLE, **NOT_FOUND, **COMMON_ERRORS},
     )
     def get(self, request: Request, application_id: Any) -> Response:
         include = frozenset() if self.scope.is_restricted else _include_param(request)
@@ -544,8 +575,9 @@ class ClientApplicationsView(ApplicationView):
         tags=[APPLICATIONS_TAG],
         operation_id="clients_applications_list",
         summary="Solicitudes visibles en las que participa el cliente",
-        parameters=[STATUS_PARAM],
-        responses={200: ApplicationSerializer(many=True), **NOT_FOUND, **COMMON_ERRORS},
+        description="Página de `Application`." + BY_ROLE,
+        parameters=[STATUS_PARAM, *PAGINATION_PARAMETERS],
+        responses={200: APPLICATION_PAGE_BY_ROLE, **NOT_FOUND, **COMMON_ERRORS},
     )
     def get(self, request: Request, client_id: Any) -> Response:
         client = get_object_or_404(clients_visible_to(self.actor), pk=client_id)

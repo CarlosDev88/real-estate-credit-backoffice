@@ -65,3 +65,12 @@ regexTarget = "match"
 regexes = ['''Umbral-Prueba-E2E-2026''']
 paths = ['''^frontend/e2e/backoffice/admin-flows\.spec\.ts$''']
 condition = "AND"
+
+# Contraseña inventada de las pruebas de límites (fase B de seguridad, SEC-09/SEC-10): se
+# manda a la confirmación de restablecimiento con un token falso para medir el `429`.
+# Por ruta: el CI escanea todas las ramas (`--log-opts=--all`), así que la excepción tiene
+# que estar en cualquier rama que se pruebe mientras exista `fix/security-phase-b`.
+[[allowlists]]
+description = "Contraseña inventada de las pruebas de límites de consumo"
+paths = ['''^backend/tests/security/test_rate_limits\.py$''']
+condition = "AND"
