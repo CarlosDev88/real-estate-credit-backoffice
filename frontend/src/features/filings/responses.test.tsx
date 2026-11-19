@@ -18,7 +18,11 @@ import {
   type FilingsApi,
 } from "@/features/filings/filings.fixtures";
 import { responseForm } from "@/features/filings/response-fields";
-import { buildResponseBody, observableSlots } from "@/features/filings/response-modal";
+import {
+  buildResponseBody,
+  observableSlots,
+  RecordResponseModal,
+} from "@/features/filings/response-modal";
 import { QueryProvider } from "@/providers/query-provider";
 import { apiUrl, server } from "@/test/msw-server";
 
@@ -794,5 +798,46 @@ describe("respuestas: reglas de pantalla", () => {
         makeResponse(2, { observations: undefined }),
       ]).map((o) => o.id),
     ).toEqual(["a"]);
+  });
+});
+
+describe("respuestas: el formulario no se reinicia solo", { timeout: 30_000 }, () => {
+  // `defaults()` lleva la hora actual: si se recalculara en cada render, el cambio de minuto
+  // reiniciaba el formulario (`values` de react-hook-form) y borraba lo que se había llenado.
+  it("conserva lo escrito aunque cambie el minuto y el modal se vuelva a pintar", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    try {
+      vi.setSystemTime(new Date(2026, 10, 19, 10, 0, 30));
+      useFiled();
+      const user = userEvent.setup();
+      // Otra `version` en cada render: el modal se vuelve a pintar de verdad.
+      const modal = (version: number) => (
+        <App>
+          <QueryProvider>
+            <RecordResponseModal
+              applicationId={APP_ID}
+              filing={makeFiling(1)}
+              version={version}
+              open
+              correcting={null}
+              onClose={() => {}}
+              onRecorded={() => {}}
+            />
+          </QueryProvider>
+        </App>
+      );
+      const { rerender } = render(modal(15));
+      const dialog = await screen.findByRole("dialog");
+      await choose(user, dialog, "Tipo de respuesta", "En análisis");
+      await user.type(within(dialog).getByLabelText(/Referencia del banco/), "AN-1");
+
+      vi.setSystemTime(new Date(2026, 10, 19, 10, 2, 30));
+      rerender(modal(16));
+
+      expect(within(dialog).getByTitle("En análisis")).toBeInTheDocument();
+      expect(within(dialog).getByLabelText(/Referencia del banco/)).toHaveValue("AN-1");
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

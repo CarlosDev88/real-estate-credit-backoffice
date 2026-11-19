@@ -2,7 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Checkbox, Input, InputNumber, Select } from "antd";
-import { useId, useMemo } from "react";
+import { useEffect, useId, useMemo } from "react";
 import { Controller, useForm, useWatch, type FieldErrors } from "react-hook-form";
 import { z } from "zod";
 
@@ -355,10 +355,17 @@ export function RecordResponseModal({
     () => makeSchema(filing.filed_at, (code) => responseForm(code, typeItems)),
     [filing.filed_at, typeItems],
   );
+  // Sin `values`: con él, react-hook-form reinicia el formulario cada vez que cambian, y la
+  // hora por omisión cambia con el minuto (se borraba lo que el asesor ya había llenado).
+  // El formulario se reinicia solo al abrir el modal, con la hora de ese momento.
+  const correctingType = correcting?.response_type;
   const { control, handleSubmit, setError, reset, formState } = useForm<Values>({
     resolver: zodResolver(schema),
-    values: defaults(correcting?.response_type),
+    defaultValues: defaults(correctingType),
   });
+  useEffect(() => {
+    if (open) reset(defaults(correctingType));
+  }, [open, correctingType, reset]);
   const onError = useFormErrorHandler<Values>(setError, FIELDS);
   const type = useWatch({ control, name: "response_type" });
   const form = responseForm(type, types.items);
