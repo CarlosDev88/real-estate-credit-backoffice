@@ -300,8 +300,7 @@ export function useUpdatePlan() {
       (
         await call(
           api.PATCH("/api/v1/commission-plans/{plan_id}", {
-            params: { path: { plan_id: id } },
-            headers: { "If-Match": ifMatch(version) },
+            params: { path: { plan_id: id }, header: { "If-Match": ifMatch(version) } },
             body,
           }),
         )

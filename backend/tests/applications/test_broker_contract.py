@@ -1,6 +1,6 @@
 """Contrato de solicitudes para el broker (TAREA-brechas-3-demo, parte 1): `GET
 /applications`, `GET /applications/{id}` y `GET /clients/{id}/applications` describen las
-dos formas (`oneOf`), como `/clients`. Los componentes que el front ya usa no cambian."""
+dos formas (`anyOf`, ver SEC-21), como `/clients`. Los componentes que el front ya usa no cambian."""
 
 from typing import Any
 
@@ -33,7 +33,7 @@ def test_the_application_responses_describe_both_shapes(schema: dict[str, Any]) 
 
     for path in (APPLICATIONS, CLIENT_APPLICATIONS):
         assert body_schema(schema, path, "get", "200") == ref("PaginatedApplicationListByRole")
-    assert components["PaginatedApplicationListByRole"]["oneOf"] == [
+    assert components["PaginatedApplicationListByRole"]["anyOf"] == [
         ref("PaginatedApplicationList"),
         ref("PaginatedApplicationSummaryList"),
     ]
@@ -44,7 +44,7 @@ def test_the_application_responses_describe_both_shapes(schema: dict[str, Any]) 
         "ApplicationSummary"
     )
     assert body_schema(schema, APPLICATION, "get", "200") == ref("ApplicationDetailByRole")
-    assert components["ApplicationDetailByRole"]["oneOf"] == [
+    assert components["ApplicationDetailByRole"]["anyOf"] == [
         ref("ApplicationDetail"),
         ref("ApplicationSummary"),
     ]
