@@ -153,4 +153,4 @@ El resumen con cada hallazgo y cómo se solucionó está en [12 · Auditorías](
 
 ---
 
-Siguiente: 10 · Operación local *(en preparación)* — cómo correrlo.
+Siguiente: [10 · Operación local](10-operacion-local.md) — cómo correrlo.
