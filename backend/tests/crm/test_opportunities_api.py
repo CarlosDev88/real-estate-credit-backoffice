@@ -5,7 +5,7 @@ from typing import Any
 import pytest
 from rest_framework.test import APIClient
 
-from apps.catalogs.workflow import ProjectStatus
+from apps.catalogs.workflow import OpportunityStatus, ProjectStatus
 from apps.crm.models import Client, Opportunity
 from apps.identity.models import User
 from apps.partners.models import Project
@@ -21,6 +21,7 @@ BROKER_OPPORTUNITY_FIELDS = {
     "project_id",
     "project_name",
     "status",
+    "status_label",
     "advisor_name",
     "created_at",
     "updated_at",
@@ -393,6 +394,8 @@ def test_broker_inbox_lists_own_prospects(
 
     assert ids(response) == [str(scoped_opportunities["from_broker"].id)]
     assert set(response.json()["items"][0]) == BROKER_OPPORTUNITY_FIELDS
+    item = response.json()["items"][0]
+    assert item["status_label"] == OpportunityStatus(item["status"]).label
     assert ids(broker_client.get(BROKER_OPPORTUNITIES_URL, {"status": "NEW"})) == []
 
 

@@ -2,10 +2,10 @@ from typing import Any
 
 from rest_framework import serializers
 
-from apps.identity.models import Role
+from apps.identity.models import InvitationStatus, Role, UserStatus
 from apps.identity.users import active_partner, role_codes
 from apps.partners.models import Partner
-from config.serializers import StrictSerializer
+from config.serializers import ChoiceLabelField, StrictSerializer
 from config.validators import validate_e164_phone
 
 PASSWORD_MAX_LENGTH = 128
@@ -98,6 +98,7 @@ class InvitationSerializer(serializers.Serializer):
     partner = serializers.SerializerMethodField()
     invited_by = serializers.SerializerMethodField()
     status = serializers.CharField()
+    status_label = ChoiceLabelField(InvitationStatus, source="status")
     expires_at = serializers.DateTimeField()
     consumed_at = serializers.DateTimeField(allow_null=True)
     revoked_at = serializers.DateTimeField(allow_null=True)
@@ -163,6 +164,7 @@ class UserSerializer(serializers.Serializer):
     name = serializers.CharField(source="get_full_name")
     phone = serializers.CharField()
     status = serializers.CharField()
+    status_label = ChoiceLabelField(UserStatus, source="status")
     roles = serializers.SerializerMethodField()
     partner = serializers.SerializerMethodField()
     last_login = serializers.DateTimeField(allow_null=True)

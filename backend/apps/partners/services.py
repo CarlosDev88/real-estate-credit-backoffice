@@ -304,11 +304,16 @@ def _transitions_for(user: User, project: Project) -> QuerySet[WorkflowTransitio
     return available_transitions(user, flow_type=FlowType.PROJECT, from_status=project.status)
 
 
-def available_actions(user: User, project: Project) -> list[str]:
-    """Códigos de las transiciones que ``user`` puede ejecutar ahora sobre el proyecto."""
+def available_transitions_for(user: User, project: Project) -> list[WorkflowTransition]:
+    """Transiciones que ``user`` puede ejecutar ahora sobre el proyecto (por código)."""
     if not get_scope(user).sees_everything and not project.partner.is_active:
         return []
-    return list(_transitions_for(user, project).values_list("code", flat=True))
+    return list(_transitions_for(user, project))
+
+
+def available_actions(user: User, project: Project) -> list[str]:
+    """Códigos de las transiciones que ``user`` puede ejecutar ahora sobre el proyecto."""
+    return [transition.code for transition in available_transitions_for(user, project)]
 
 
 def transition_project(

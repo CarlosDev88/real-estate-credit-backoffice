@@ -52,8 +52,17 @@ from apps.documents.uploads import Upload, buyer_slots, upload_document
 from apps.identity.buyer_access import default_channel, issue_access_link
 from apps.identity.buyer_sessions import consume_access_link
 from apps.identity.consents import missing_consents, record_consent
-from apps.identity.models import BuyerSession, ConsentAction, Role, RoleCode, User, UserRole
+from apps.identity.models import (
+    BuyerAccessLink,
+    BuyerSession,
+    ConsentAction,
+    Role,
+    RoleCode,
+    User,
+    UserRole,
+)
 from apps.identity.users import create_user
+from apps.partners.models import Project
 
 logger = logging.getLogger(__name__)
 
@@ -587,11 +596,15 @@ def _build_case(
     admin: User,
     broker: User,
     names: _Names,
+    project: Project | None = None,
 ) -> CreditApplication:
     origin_actor = broker if case.origin == "BROKER" else advisor
     client = create_client(origin_actor, names.next())
     opportunity: Opportunity = create_opportunity(
-        origin_actor, client=client, project=None, origin_item=_item("lead_origin", case.origin)
+        origin_actor,
+        client=client,
+        project=project,
+        origin_item=_item("lead_origin", case.origin),
     )
     opportunity = assign_advisor(admin, opportunity, advisor=advisor)
     application = services.create_application(
@@ -654,30 +667,38 @@ def _round_robin(advisors: list[User]) -> Iterator[User]:
         yield from advisors
 
 
-def seed_demo_data(*, extra_advisor: User | None = None) -> DemoResult:
-    """Crea los datos de demo. Quien llama comprueba ``DEBUG`` y ``demo_data_exists``.
+def ensure_demo_users() -> tuple[dict[str, User], int]:
+    """Los cuatro usuarios de ``DEMO_USERS`` (por correo). Devuelve los usuarios y cuántos
+    se crearon ahora; uno que ya existe se reutiliza tal cual."""
+    before = User.objects.filter(email__in=[spec.email for spec in DEMO_USERS]).count()
+    with transaction.atomic():
+        admin = _ensure_user(DEMO_USERS[0], actor=None)
+        users = {DEMO_USERS[0].email: admin}
+        users |= {spec.email: _ensure_user(spec, actor=admin) for spec in DEMO_USERS[1:]}
+    return users, len(DEMO_USERS) - before
+
+
+def demo_advisors(users: dict[str, User]) -> list[User]:
+    return [users[DEMO_USERS[1].email], users[DEMO_USERS[2].email]]
+
+
+def seed_base_demo(*, users: dict[str, User], extra_advisor: User | None = None) -> DemoResult:
+    """La demo de siempre: 30 solicitudes en las pestañas y 4 radicadas, con tareas y notas
+    para el asesor de las pruebas end-to-end (o la primera asesora). Quien llama comprueba
+    ``demo_data_exists``; los productos de leasing y los planes de comisión ya existen.
 
     No corre en una sola transacción: el análisis de los archivos y la completitud
     guardada se ejecutan al confirmar cada operación, como en un uso real.
     """
-    with transaction.atomic():
-        admin = _ensure_user(DEMO_USERS[0], actor=None)
-        users = {spec.email: _ensure_user(spec, actor=admin) for spec in DEMO_USERS[1:]}
-    advisors = [users[DEMO_USERS[1].email], users[DEMO_USERS[2].email]]
+    admin = users[DEMO_USERS[0].email]
+    advisors = demo_advisors(users)
     if extra_advisor is not None:
         advisors.append(extra_advisor)
     broker = users[DEMO_USERS[3].email]
-    _ensure_leasing_products()
-    # Planes de comisión (paso 16) antes de los casos: un desembolso se liquida solo.
-    # Import local: `commissions` depende de `applications`.
-    from apps.commissions.demo_data import seed_plans, settle_disbursed
-
-    seed_plans(admin)
 
     result = DemoResult(users=list(DEMO_USERS))
     names = _Names()
     assignments = _round_robin(advisors)
-    portal: tuple[User, CreditApplication] | None = None
     # Cada asesor ve al menos una solicitud inactiva en su pestaña `waiting`: la primera
     # suya en `WAITING_BUYER_DATA` (el comprador nunca entró, porque esos casos no cargan).
     with_inactive: set[Any] = set()
@@ -690,8 +711,6 @@ def seed_demo_data(*, extra_advisor: User | None = None) -> DemoResult:
             _mark_buyer_inactive(application)
             with_inactive.add(advisor.pk)
         result.applications.append(application)
-        if case.portal_link:
-            portal = (advisor, application)
 
     # Cuatro más, radicadas y con respuestas del banco (paso 11). Import local: `filings`
     # depende de `applications`.
@@ -706,22 +725,61 @@ def seed_demo_data(*, extra_advisor: User | None = None) -> DemoResult:
     )
 
     # Tareas y notas (paso 12) para el asesor de las pruebas end-to-end o, si no hay,
-    # para la primera asesora. Import local: `tasks` y `activity` dependen de
-    # `applications`.
+    # para la primera asesora. Import local: `tasks`, `activity` y `commissions` dependen
+    # de `applications`.
     from apps.activity.demo_data import seed_notes
+    from apps.commissions.demo_data import settle_disbursed
     from apps.tasks.demo_data import seed_tasks
 
     owner = extra_advisor or advisors[0]
     seed_tasks(owner, result.applications)
     seed_notes(owner, result.applications)
     settle_disbursed(admin, result.applications)
-
-    # Al final, para que ninguna otra emisión lo revoque.
-    assert portal is not None
-    issued = issue_access_link(
-        portal[0], portal[1], channel=default_channel(), expires_in_hours=LINK_HOURS
-    )
-    result.portal_url = issued.url
-    result.portal_application_code = portal[1].code
-    logger.info("Datos de demo creados: %s solicitudes", len(result.applications))
+    logger.info("Demo base creada: %s solicitudes", len(result.applications))
     return result
+
+
+# --------------------------------------------------------------------------------------
+# Enlace del portal
+# --------------------------------------------------------------------------------------
+
+
+def portal_application() -> CreditApplication | None:
+    """La solicitud del enlace del portal (``DemoCase.portal_link``): la primera de la demo
+    base en `WAITING_DOCUMENTS` sin documentos cargados. Se busca, no se guarda, para
+    encontrarla también en una base con la demo de una versión anterior."""
+    return (
+        CreditApplication.objects.filter(
+            status=WD, opportunity__client__document_number__startswith=DEMO_DOCUMENT_PREFIX
+        )
+        .exclude(document_slots__current_file__isnull=False)
+        .select_related("assigned_advisor")
+        .order_by("code")
+        .first()
+    )
+
+
+def pending_portal_link(application: CreditApplication) -> BuyerAccessLink | None:
+    """El enlace del portal que sigue sin usar, sin revocar y vigente, si hay."""
+    return (
+        BuyerAccessLink.objects.filter(
+            application=application,
+            consumed_at__isnull=True,
+            revoked_at__isnull=True,
+            expires_at__gt=timezone.now(),
+        )
+        .order_by("-created_at")
+        .first()
+    )
+
+
+def issue_portal_link(application: CreditApplication) -> str:
+    """Emite un enlace nuevo (de un solo uso; revoca el anterior) y devuelve su URL."""
+    assert application.assigned_advisor is not None
+    issued = issue_access_link(
+        application.assigned_advisor,
+        application,
+        channel=default_channel(),
+        expires_in_hours=LINK_HOURS,
+    )
+    return issued.url

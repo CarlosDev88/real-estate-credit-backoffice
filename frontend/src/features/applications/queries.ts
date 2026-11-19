@@ -21,6 +21,12 @@ export const applicationKeys = {
   quickFilters: (filters: ListFilters) => ["applications", "quick-filters", filters] as const,
 };
 
+/**
+ * El backoffice es de asesor y administrador: `/applications` les responde la forma interna
+ * (`Application` / `ApplicationDetail`). El contrato también describe la del broker
+ * (`ApplicationSummary`, `oneOf`), que estas pantallas no reciben.
+ */
+
 /** `GET /applications` con el estado de la URL. Mientras llega otra página, se ve la anterior. */
 export function useApplicationsList(params: ListParams) {
   return useQuery({
@@ -33,7 +39,7 @@ export function useApplicationsList(params: ListParams) {
             params: { query: compact(params) as ListQuery },
           }),
         )
-      ).data,
+      ).data as ApplicationPage,
     placeholderData: keepPreviousData,
   });
 }
