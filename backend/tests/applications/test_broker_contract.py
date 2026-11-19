@@ -1,6 +1,6 @@
 """Contrato de solicitudes para el broker (TAREA-brechas-3-demo, parte 1): `GET
 /applications`, `GET /applications/{id}` y `GET /clients/{id}/applications` describen las
-dos formas (`anyOf`, ver SEC-21), como `/clients`. Los componentes que el front ya usa no cambian."""
+dos formas (`anyOf`), como `/clients`. Los componentes que el front ya usa no cambian."""
 
 from typing import Any
 
