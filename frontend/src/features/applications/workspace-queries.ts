@@ -60,7 +60,11 @@ export interface DetailWithVersion {
   version: number;
 }
 
-/** Expediente con su versión. Un `404` (inexistente o fuera del alcance) es error. */
+/**
+ * Expediente con su versión. Un `404` (inexistente o fuera del alcance) es error. El
+ * backoffice es de asesor y administrador: recibe `ApplicationDetail`, no el resumen
+ * del broker (`ApplicationSummary`, la otra forma del `oneOf`).
+ */
 export function useApplicationDetail(id: string) {
   return useQuery({
     queryKey: workspaceKeys.detail(id),
@@ -70,7 +74,8 @@ export function useApplicationDetail(id: string) {
           params: { path: { application_id: id } },
         }),
       );
-      return { detail: data, version: version ?? data.version };
+      const detail = data as ApplicationDetail;
+      return { detail, version: version ?? detail.version };
     },
   });
 }

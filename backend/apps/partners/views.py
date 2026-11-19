@@ -24,6 +24,7 @@ from apps.identity.models import Role, RoleCode, User
 from apps.identity.permissions import HasPermissionCode
 from apps.identity.serializers import InvitationSerializer
 from apps.partners import services
+from apps.partners.actions import sort_by_kind
 from apps.partners.models import Partner, PartnerMembership, PartnerStatus, Project
 from apps.partners.serializers import (
     MembershipCreateSerializer,
@@ -341,8 +342,13 @@ class MembershipDetailView(PermissionCodeView):
 
 
 def _project_detail(user: User, project: Project) -> dict[str, Any]:
+    transitions = services.available_transitions_for(user, project)
     return ProjectDetailSerializer(
-        project, context={"available_actions": services.available_actions(user, project)}
+        project,
+        context={
+            "available_actions": [transition.code for transition in transitions],
+            "available_action_details": sort_by_kind(transitions),
+        },
     ).data
 
 

@@ -135,13 +135,34 @@ docker compose exec backend python manage.py seed_demo_data --advisor-email ases
 
 > **Local only.** The command runs only with `DJANGO_DEBUG=true`; without it, it stops with an error and writes nothing. Every demo user shares the password `DemoUmbral2026!`, written in the code: never run it against a shared or real database.
 
-- **Users:** `admin@demo.local` (`ADMIN`), `asesora.lucia@demo.local` and `asesor.andres@demo.local` (`ADVISOR`; Andrés has no phone), and `broker@demo.local` (`INDEPENDENT_BROKER`). `--advisor-email` is optional: that existing advisor also receives applications.
-- **Applications:** 30, spread over the `draft`, `waiting`, `review`, and `ready` tabs, with co-applicants and solidary debtors, financial profiles, property and financing (Bancolombia, FNA, and Banco de Bogotá; mortgage and housing leasing). In `review`, documents to review, some approved and one rejected. In `ready`, one is `ready_to_file_blocked` (a document rejected after it was ready). In `waiting`, one is `buyer_inactive`.
-- **Filed applications:** 3 more (33 in total), each with its package built and filed, plus bank responses: one in `CREDIT_ANALYSIS` (received and in analysis), one in `BANK_OBSERVATION` (returned with one observed document the buyer can replace from the portal), and one in `APPROVED` (amount and term approved).
+The goal: log in as the admin and find real, varied data on every screen, and walk through the product with one user for each of the 5 roles.
+
+| Role | Email | What it is for |
+| --- | --- | --- |
+| `ADMIN` | `admin@demo.local` | Sees everything: administration, reports, commissions and audit. |
+| `ADVISOR` | `asesora.lucia@demo.local` | Advisor with a portfolio: My day, applications, tasks and filings. |
+| `ADVISOR` | `asesor.andres@demo.local` | The other advisor; no phone (the portal hides WhatsApp). |
+| `INDEPENDENT_BROKER` | `broker@demo.local` | Their prospects, the summary of their applications and their commissions. |
+| `CONSTRUCTION_PARTNER` | `constructora@demo.local` | Their construction company and its projects. |
+
+All of them use `DemoUmbral2026!`. There is also `inactivo@demo.local`, a deactivated advisor (login answers `403`). `--advisor-email` is optional: that existing advisor (for example the E2E user) also receives applications of the base demo, with its 8 tasks and 2 notes.
+
+What it creates:
+
+- **Applications:** about 60, created over the last six months and in **every status** of the workflow, spread between the two advisors, with the broker originating a third. The base demo is still there: 30 in the `draft`, `waiting`, `review` and `ready` tabs (one `ready_to_file_blocked`, one `buyer_inactive` per advisor) and 4 filed. A six-month history adds 30 more: closed before filing (cancelled, own funds, external credit, withdrawn), filed with every bank response (received, in analysis, returned, returned and corrected with a second filing, approved, legalization, rejected, disbursed), one withdrawn after filing, and one filed without a response and already overdue (`is_response_overdue`).
+- **Real dates in the past:** each history application is built through the domain services and then moved back in time (status history, activity, documents, filings, responses, notices, settlement…), keeping the real order: a disbursement is never before its filing.
+- **Commissions:** pending, paid, one share paid with review pending (a corrected disbursement), voided and settled again; with broker (70/30) and direct (100 %). A 1 %, 70/30 plan for every product.
+- **Tasks, notes and activity:** overdue, today, upcoming, completed and cancelled tasks for both advisors; notes on clients, opportunities and applications.
+- **Buyer notices and email deliveries:** read and unread; sent, one failed with a retry scheduled and one failed for good.
+- **Opportunities** in every status (new, assigned, contacted, in progress, converted, lost, cancelled); **construction companies and projects** in every status (draft, in review, active, rejected back to draft, archived) with active and inactive memberships; **invitations** pending, accepted, expired and revoked; **banks and products** (one inactive) and **rules** with more than one version; two **report exports** (completed and expired); and **audit** events (logins, failed logins, a `403`, document downloads, an export).
 - **Files:** small PDF and PNG files generated on the fly, without real data, saved with the configured storage.
-- **Buyer portal:** the command prints a valid link (`http://localhost:3000/acceso?token=…`, 72 hours) for an application in `waiting`. To get a new one, issue it from the backoffice.
-- **Idempotent, never deletes:** demo clients have document numbers starting with `9900`. If any exists, the command prints `Los datos de demo ya existen` and creates nothing.
-- Everything is created through the domain services (history, slots, stored completeness, and bank evaluations stay consistent), and the command ends by running `refresh_application_completeness`.
+
+Running it again:
+
+- **Idempotent block by block, never deletes:** each of its 16 blocks has its own marker (an email, a code, a document prefix or a fixed name) and skips itself if it already exists. Running it twice in a row changes nothing, and on a database with the demo of an older version it **adds only what is missing**. The full run takes about two minutes; a second run, a few seconds.
+- **Output:** a summary per block (`creados (N)` or `ya existían`), the users table by role with the password, and the buyer portal link with its application code.
+- **Buyer portal:** the link (`http://localhost:3000/acceso?token=…`, single use, 72 hours) is printed when it is issued. If an unused one already exists, the command does not issue another (the token is only visible when issued) and says so; `--new-portal-link` issues a new one and revokes the previous one.
+- Everything goes through the domain services (history, slots, stored completeness and bank evaluations stay consistent); the only direct writes are the dates moved back and a few states that local mode cannot reach (a failed email, an expired invitation). The command ends by running `refresh_application_completeness`.
 
 ### Local Modes
 
@@ -490,7 +511,7 @@ The `idempotency` module (API §6) protects five critical `POST` operations: the
 - **Settlement:** recording a `DISBURSED` bank response settles automatically. The base is the disbursed amount, and the plan is the one valid on the disbursement date (Bogotá). The total is `base × rate`, rounded half up to the peso. With a `BROKER` origin the broker gets its share and the advisor the rest; with any other origin, the advisor gets 100 %. There is one active settlement per application (the application row is locked). Without a valid plan nothing breaks: the activity shows it and the admin settles by hand.
 - **Payments:** each share is paid separately (`paid_at`, `payment_reference`).
 - **Mine:** `GET /me/commissions` shows each advisor or broker only their own share, never the base, rate, total or the other share.
-- **Demo:** `seed_demo_data` creates a 1 %, 70/30 plan for every product, valid from 2026-01-01, and settles any demo application in `DISBURSED`.
+- **Demo:** `seed_demo_data` creates a 1 %, 70/30 plan for every product, valid from 2026-01-01, settles every demo application in `DISBURSED`, and leaves settlements pending, paid, partly paid with review pending, and voided.
 
 ## Internal Authentication
 

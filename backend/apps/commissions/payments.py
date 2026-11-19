@@ -67,6 +67,7 @@ def filter_settlements(
     settlements: QuerySet[CommissionSettlement],
     *,
     status: str | None = None,
+    application_id: uuid.UUID | None = None,
     bank_id: uuid.UUID | None = None,
     advisor_id: uuid.UUID | None = None,
     broker_id: uuid.UUID | None = None,
@@ -76,6 +77,8 @@ def filter_settlements(
 ) -> QuerySet[CommissionSettlement]:
     if status:
         settlements = settlements.filter(status=status)
+    if application_id:
+        settlements = settlements.filter(application_id=application_id)
     if bank_id:
         settlements = settlements.filter(plan__bank_product__bank_id=bank_id)
     for user_id, role in (

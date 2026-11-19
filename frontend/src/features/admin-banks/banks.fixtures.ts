@@ -53,12 +53,21 @@ export function makeBank(n: number, overrides: Partial<BankDetail> = {}): BankDe
     short_name: n === 1 ? "BN1" : "",
     tax_id: n === 1 ? "860000001-1" : "",
     status: "ACTIVE",
+    status_label: "Activo",
     operational_notes: "",
     created_at: "2026-11-01T15:00:00Z",
     updated_at: "2026-11-10T15:00:00Z",
     products:
       n === 1
-        ? [{ id: PRODUCT_ID, code: "HIPO_VIS", name: "Hipotecario VIS", status: "ACTIVE" }]
+        ? [
+            {
+              id: PRODUCT_ID,
+              code: "HIPO_VIS",
+              name: "Hipotecario VIS",
+              status: "ACTIVE",
+              status_label: "Activo",
+            },
+          ]
         : [],
     ...overrides,
   };
@@ -71,6 +80,7 @@ export const PRODUCT: BankProduct = {
   name: "Hipotecario VIS",
   product_type: { code: "MORTGAGE", label: "Crédito hipotecario" },
   status: "ACTIVE",
+  status_label: "Activo",
   min_amount_cop: 30000000,
   max_amount_cop: 500000000,
   min_term_months: 60,
@@ -96,9 +106,11 @@ export function makeRule(version: number, overrides: Partial<Rule> = {}): Rule {
     code: "PLAZO_MAXIMO",
     version,
     severity: "BLOCKING",
+    severity_label: "Bloqueante",
     condition: CONDITION,
     message: "El plazo supera 20 años.",
     status: version === 1 ? "ACTIVE" : "DRAFT",
+    status_label: version === 1 ? "Activa" : "Borrador",
     valid_from: "2026-11-01T15:00:00Z",
     valid_to: null,
     created_by: { id: "u-1", name: "Adriana Mejía" },

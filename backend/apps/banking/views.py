@@ -41,6 +41,7 @@ from apps.banking.serializers import (
     BankSerializer,
     BankUpdateSerializer,
     ProductPurposesSerializer,
+    RuleFieldSerializer,
     RuleTestRequestSerializer,
     RuleTestResponseSerializer,
 )
@@ -471,6 +472,25 @@ class BankPolicyRuleListView(PermissionCodeView):
         serializer.is_valid(raise_exception=True)
         rule = services.create_rule(self.actor, serializer.to_service_data())
         return Response(_rule_data(rule.pk), status=status.HTTP_201_CREATED)
+
+
+class BankPolicyRuleFieldsView(PermissionCodeView):
+    required_permissions = {"GET": "bank_rules.read"}
+    pagination_class = None
+
+    @extend_schema(
+        tags=[RULES_TAG],
+        operation_id="bank_policy_rules_fields_list",
+        summary="Campos que admite una condición de regla",
+        description=(
+            "Lista blanca con la que se validan las condiciones al guardar y al publicar, "
+            "con su tipo de valor y, en los de catálogo, sus opciones vigentes. Sin "
+            "paginar: es una lista corta y fija."
+        ),
+        responses={200: RuleFieldSerializer(many=True), **COMMON_ERRORS},
+    )
+    def get(self, request: Request) -> Response:
+        return Response(RuleFieldSerializer(services.rule_field_definitions(), many=True).data)
 
 
 class BankPolicyRuleDetailView(PermissionCodeView):

@@ -173,7 +173,10 @@ export function useTransitionOpportunity(clientId: string, id: string) {
   });
 }
 
-/** `GET /clients/{id}/applications` (exige `applications.read`). */
+/**
+ * `GET /clients/{id}/applications` (exige `applications.read`). El backoffice es de asesor
+ * y administrador: recibe la página de `Application`, no la del broker (`oneOf`).
+ */
 export function useClientApplications(clientId: string, enabled: boolean) {
   return useQuery({
     queryKey: detailKeys.applications(clientId),
@@ -184,7 +187,7 @@ export function useClientApplications(clientId: string, enabled: boolean) {
             params: { path: { client_id: clientId }, query: { page_size: MAX_PAGE } },
           }),
         )
-      ).data,
+      ).data as Schemas["PaginatedApplicationList"],
     enabled,
   });
 }

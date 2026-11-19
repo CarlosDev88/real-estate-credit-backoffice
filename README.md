@@ -105,7 +105,7 @@ To try it with sample data, load the demo (local only, requires `DEBUG=True`):
 docker compose exec backend python manage.py seed_demo_data
 ```
 
-It creates demo users (`@demo.local`), clients, and applications in every stage, and prints a one-time buyer portal link. See [Test User](backend/README.md#test-user) to create your own internal user.
+It creates one demo user per role (`@demo.local`, password `DemoUmbral2026!`) and six months of varied data in every status, and prints the users table and a one-time buyer portal link. It can run again: it only adds what is missing. See [Demo Data](backend/README.md#demo-data); to create your own internal user, see [Test User](backend/README.md#test-user).
 
 Two ways to work:
 
