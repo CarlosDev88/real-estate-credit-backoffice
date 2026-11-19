@@ -132,7 +132,18 @@ function useApi(
       HttpResponse.json(page(opts.applications ?? [makeClientApplication(1)])),
     ),
     http.post(apiUrl("/applications"), async ({ request }) => {
-      recorded.applications.push(await request.json());
+      const body = (await request.json()) as { opportunity_id: string };
+      recorded.applications.push(body);
+      // Como la API: la oportunidad queda convertida y ya no ofrece acciones.
+      const index = opportunities.findIndex((o) => o.id === body.opportunity_id);
+      if (index >= 0) {
+        opportunities[index] = {
+          ...opportunities[index]!,
+          status: "CONVERTED",
+          status_label: "Convertida",
+          available_actions: [],
+        };
+      }
       return HttpResponse.json({ id: "app-new", code: "SOL-000099" }, { status: 201 });
     }),
   );

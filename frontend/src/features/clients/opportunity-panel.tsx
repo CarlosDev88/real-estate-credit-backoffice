@@ -605,7 +605,10 @@ function PanelBody({
         action={confirming}
         onClose={() => setConfirming(null)}
       />
-      {canConvert && (
+      {/* Por el permiso, no por `canConvert`: al crear la solicitud la oportunidad pasa a
+          `CONVERTED` y se refresca antes de navegar; si el modal se desmontara, no llegaría
+          al expediente nuevo. */}
+      {permissions.canCreateApplication && (
         <CreateApplicationModal
           clientId={clientId}
           opportunity={opportunity}
