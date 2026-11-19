@@ -40,3 +40,8 @@
 - **Commits:** `ci(ui): publish Storybook to GitHub Pages`, `docs(ui): add the design system guide`, `test(frontend): add commissions, broker and dossier editing end-to-end checks`.
 
 ## Precisiones acordadas
+- **Parte 4 — referencia de la API con Redoc** (`@redocly/cli@2.72.1 build-docs --inlineBundle`): un solo HTML sin CDN ni servidor (solo pide a `cdn.redoc.ly` el logo "API docs by Redocly"). Redoc no tiene "probar", así que la página es de solo lectura sin configurar nada.
+- **Parte 4 — workflow de Pages en dos jobs** (`build` con `contents: read`; `deploy` con `pages: write` e `id-token: write` y el entorno `github-pages`). En `push` a `master` corre solo si cambia `frontend/**`, `design/**`, `contracts/openapi.json` o el propio workflow; `concurrency` propio (`pages-<ref>`) sin cancelar un despliegue en curso.
+- **Parte 4 — `docs/DESIGN-SYSTEM.md` en español**, como la guía y `docs/SEGURIDAD.md`; las líneas del README siguen en inglés.
+- **Parte 4 — datos de los stories:** los nombres y el documento de ejemplo (`1032445908`) son fixtures inventados que ya están en el repo público (pruebas y Storybook); publicar Storybook no los expone más. Los archivos del visor son de muestra ("Sin datos reales").
+- **Parte 4 — E2E con usuarios `@demo.local`:** el pago de comisión (administrador de demo), "Mis comisiones" (el asesor de demo dueño de la parte) y el broker usan la contraseña de demo publicada en el backend (`E2E_DEMO_PASSWORD` la cambia). La oportunidad y el inmueble usan el asesor de `.env.local`.
