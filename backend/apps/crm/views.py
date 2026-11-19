@@ -41,7 +41,7 @@ from apps.crm.serializers import (
 )
 from apps.identity.models import User
 from apps.identity.permissions import HasPermissionCode
-from config.api import StandardResultsSetPagination, paginated_serializer
+from config.api import PAGINATION_PARAMETERS, paginated_serializer
 from config.filters import StrictOrderingFilter, parse_uuid_param
 from config.serializers import ErrorSerializer
 
@@ -80,18 +80,6 @@ CLIENT_DETAIL_BY_ROLE = PolymorphicProxySerializer(
     serializers=[ClientDetailSerializer, BrokerClientSerializer],
     resource_type_field_name=None,
 )
-PAGINATION_PARAMETERS = [
-    OpenApiParameter(
-        StandardResultsSetPagination.page_query_param,
-        OpenApiTypes.INT,
-        description=str(StandardResultsSetPagination.page_query_description),
-    ),
-    OpenApiParameter(
-        cast(str, StandardResultsSetPagination.page_size_query_param),
-        OpenApiTypes.INT,
-        description=str(StandardResultsSetPagination.page_size_query_description),
-    ),
-]
 CLIENT_PAGE_BY_ROLE = PolymorphicProxySerializer(
     component_name="PaginatedClientListByRole",
     serializers=[

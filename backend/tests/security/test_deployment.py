@@ -7,6 +7,7 @@
 - SEC-06: la imagen fija la base por digest y ``pip``, y su etapa ``production`` corre
   gunicorn sin pruebas ni scripts.
 - SEC-13: el contrato documenta 400/404/428 con el esquema de error común.
+- SEC-21: las respuestas por rol son `anyOf` (una página vacía valía para las dos formas).
 """
 
 import importlib
@@ -185,9 +186,10 @@ def test_every_operation_documents_its_common_errors() -> None:
     for method, path, operation in _operations():
         responses = operation["responses"]
         expected = []
-        if "requestBody" in operation:
+        query = [p["name"] for p in operation.get("parameters", []) if p.get("in") == "query"]
+        if "requestBody" in operation or query:
             expected.append("400")
-        if "{" in path:
+        if "{" in path or "page" in query:
             expected.append("404")
         if _if_match_required(operation):
             expected.append("428")
@@ -228,3 +230,13 @@ def test_emails_that_can_be_blank_have_no_email_format(schema: str, field: str) 
     prop = spec["components"]["schemas"][schema]["properties"][field]
     assert prop["type"] == "string"
     assert "format" not in prop
+
+
+def test_role_dependent_responses_use_any_of() -> None:
+    """SEC-21: una página vacía de ``GET /applications`` (o de clientes u oportunidades)
+    valía para las dos formas del ``oneOf`` (asesor y broker), y ``oneOf`` exige exactamente
+    una: la respuesta no validaba. Con ``anyOf`` valida."""
+    spec = json.loads(CONTRACT.read_text(encoding="utf-8"))
+    by_role = {n: s for n, s in spec["components"]["schemas"].items() if n.endswith("ByRole")}
+    assert len(by_role) >= 7
+    assert all("anyOf" in s and "oneOf" not in s for s in by_role.values()), sorted(by_role)

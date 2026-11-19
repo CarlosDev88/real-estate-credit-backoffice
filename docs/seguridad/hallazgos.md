@@ -1,4 +1,4 @@
-# Hallazgos de la auditoría de seguridad (Fase A)
+# Hallazgos de la auditoría de seguridad (Fases A y B)
 
 Lista viva: cada parte de la auditoría agrega los suyos. Formato y escala de severidad en
 `specs/TAREA-seguridad.md` §5. Ningún hallazgo incluye secretos, tokens ni URL firmadas: si
@@ -26,6 +26,7 @@ uno expone un valor, se describe y se corta.
 | [SEC-18](#sec-18--admin-de-django-está-publicado-con-la-api-y-su-login-no-tiene-límite-de-intentos) | `/admin/` de Django está publicado con la API y su login no tiene límite de intentos | Baja | API8 | corregido | 4 |
 | [SEC-19](#sec-19--el-esquema-openapi-y-la-documentación-interactiva-son-públicos) | El esquema OpenAPI y la documentación interactiva son públicos | Informativa | API9 | corregido | 4 |
 | [SEC-20](#sec-20--la-documentación-de-la-api-promete-9-rutas-que-no-existen-y-omite-5-que-sí) | La documentación de la API promete 9 rutas que no existen y omite 5 que sí | Informativa | API9 | corregido | 4 |
+| [SEC-21](#sec-21--las-respuestas-que-cambian-según-el-rol-no-validan-cuando-la-página-está-vacía) | Las respuestas que cambian según el rol no validan cuando la página está vacía | Informativa | API9 | corregido | Fase B (re-test) |
 
 ---
 
@@ -81,10 +82,10 @@ uno expone un valor, se describe y se corta.
 - **Esfuerzo estimado:** pequeño.
 - **Cómo se solucionó (Fase B):**
   1. **Causa:** el arranque solo exigía que las claves existieran, no que fueran fuertes.
-  2. **Cambio:** `backend/apps/identity/checks.py` (nuevo *system check*, registrado en `backend/apps/identity/apps.py`): `identity.E001` si `AUTH_JWT_SIGNING_KEY` tiene menos de 32 bytes y `identity.E002` si `SECRET_KEY` tiene menos de 50 caracteres, menos de 5 distintos o empieza por `django-insecure-` (la regla de Django). Sin `DEBUG` son errores; con `DEBUG`, avisos (`identity.W001`/`W002`). La imagen `production` corre `manage.py check` antes de gunicorn, que por sí solo no hace las comprobaciones. **Las claves locales las regenera el orquestador en el `.env`** con `python -c "import secrets; print(secrets.token_urlsafe(48))"`.
+  2. **Cambio:** `backend/apps/identity/checks.py` (nuevo *system check*, registrado en `backend/apps/identity/apps.py`): `identity.E001` si `AUTH_JWT_SIGNING_KEY` tiene menos de 32 bytes y `identity.E002` si `SECRET_KEY` tiene menos de 50 caracteres, menos de 5 distintos o empieza por `django-insecure-` (la regla de Django). Sin `DEBUG` son errores; con `DEBUG`, avisos (`identity.W001`/`W002`). La imagen `production` corre `manage.py check` antes de gunicorn, que por sí solo no hace las comprobaciones. Las claves locales del `.env` se regeneraron con `python -c "import secrets; print(secrets.token_urlsafe(48))"`.
   3. **Verificación:** `backend/tests/security/test_deployment.py``::test_weak_keys_are_errors_without_debug` (también `call_command("check")` falla), `::test_weak_keys_are_warnings_with_debug`, `::test_secret_key_rule_is_the_one_of_django` (3 casos), `::test_strong_keys_pass` y `::test_the_jwt_key_is_measured_in_bytes`. La imagen `production` con una clave JWT de 31 bytes y una `SECRET_KEY` de 49 caracteres no arranca (`SystemCheckError` con `identity.E001` y `E002`, salida 1); el compose local, con `DEBUG`, arranca y muestra los dos avisos.
   4. **PR:** Fase B (este PR).
-  5. **Estado:** corregido (el código). Las claves del `.env` local siguen cortas hasta que el orquestador las regenere; con `DEBUG` solo avisan.
+  5. **Estado:** corregido. Las claves del `.env` local ya se regeneraron: en el re-test, `manage.py check` sin `DEBUG` con ese `.env` no da ningún aviso.
 
 ### SEC-04 — `djangorestframework` 3.17.2 tiene dos CVE de denegación de servicio sin sesión
 - **Severidad:** Media (CVSS 3.1 ~5.3: AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L). Sin sesión, pero se necesita volumen para tumbar el servicio.
@@ -265,9 +266,9 @@ uno expone un valor, se describe y se corta.
   2. **Cambio:**
      - `available-actions`: `backend/apps/applications/views.py` (`pagination_class = None` en `ApplicationAvailableActionsView`): el contrato pasa de `PaginatedAvailableActionList` a la lista que la API ya respondía; sin `page`/`page_size`.
      - `document_type` del broker: el contrato sí tenía el `oneOf` correcto; lo que fallaba era el **correo vacío**. `Client.email` y `Partner.contact_email` admiten `""` y el contrato los declaraba `format: email`, así que un cliente sin correo invalidaba las dos ramas y schemathesis informaba el error de la primera (`"CC" is not of type "object"`). `backend/config/serializers.py` (`BlankableEmailField`, texto sin formato) en `backend/apps/crm/serializers.py` (`Client`, `ClientDetail`, `BrokerClient`), `backend/apps/identity/buyer_profile_serializers.py` (`BuyerProfile`) y `backend/apps/partners/serializers.py` (`Partner`, `PartnerDetail`).
-     - Errores comunes: `backend/config/openapi.py` (`add_error_responses`, *postprocessing hook* registrado en `SPECTACULAR_SETTINGS["POSTPROCESSING_HOOKS"]` de `backend/config/settings/base.py`): `400` en toda operación con cuerpo (faltaba en 64), `404` en toda operación con id en la ruta (ya estaba en todas), `428` donde se exige `If-Match` y, al revés, la cabecera `If-Match` donde ya se documentaba el `428` (`PATCH /commission-plans/{plan_id}`). Todo con el esquema `Error`. Ninguna respuesta 2xx cambia, salvo el esquema de `available-actions`, que ahora coincide con lo que la API respondía.
+     - Errores comunes: `backend/config/openapi.py` (`add_error_responses`, *postprocessing hook* registrado en `SPECTACULAR_SETTINGS["POSTPROCESSING_HOOKS"]` de `backend/config/settings/base.py`): `400` en toda operación con cuerpo (faltaba en 64), `404` en toda operación con id en la ruta (ya estaba en todas), y, tras el re-test, `400` en las 52 operaciones con parámetros de consulta (un filtro inválido) y `404` en los 26 listados paginados (página fuera de rango o no numérica); `428` donde se exige `If-Match` y, al revés, la cabecera `If-Match` donde ya se documentaba el `428` (`PATCH /commission-plans/{plan_id}`). Todo con el esquema `Error`. Ninguna respuesta 2xx cambia, salvo el esquema de `available-actions`, que ahora coincide con lo que la API respondía.
      - Regenerados `contracts/openapi.json` y `frontend/src/lib/api/schema.d.ts`; `pnpm typecheck` del frontend pasa.
-  3. **Verificación:** `backend/tests/security/test_deployment.py::test_every_operation_documents_its_common_errors`, `::test_available_actions_is_a_plain_list_in_the_contract` y `::test_emails_that_can_be_blank_have_no_email_format` (6 casos). Validación con `jsonschema` 4.23.0 de las respuestas reales del 8010 contra el contrato (`_security-work/secb_sec13.txt`): **antes** `GET /clients` como broker con un cliente sin correo → 1 error (`'CC' is not of type 'object'`) y `GET /applications/{id}/available-actions` → 1 error (lista frente a página); **después**, 0 y 0.
+  3. **Verificación:** `backend/tests/security/test_deployment.py::test_every_operation_documents_its_common_errors`, `::test_available_actions_is_a_plain_list_in_the_contract` y `::test_emails_that_can_be_blank_have_no_email_format` (6 casos). Validación con `jsonschema` 4.23.0 de las respuestas reales del 8010 contra el contrato (`_security-work/secb_sec13.txt`): **antes** `GET /clients` como broker con un cliente sin correo → 1 error (`'CC' is not of type 'object'`) y `GET /applications/{id}/available-actions` → 1 error (lista frente a página); **después**, 0 y 0. schemathesis como admin: `ST103` (código no documentado) pasó de 66 en la Fase A a 25 en una primera corrida de la Fase B y a **0** en la corrida final (re-test en `docs/SEGURIDAD.md` §9), y `ST108`, de 1 a 0; `DELETE /application-participants/{id}` documenta su `400` (el titular no se retira) en la vista.
   4. **PR:** Fase B (este PR).
   5. **Estado:** corregido.
 
@@ -387,5 +388,22 @@ uno expone un valor, se describe y se corta.
   1. **Causa:** la especificación de la API se escribió antes del MVP y no se actualizó con lo que quedó fuera ni con las rutas nuevas.
   2. **Cambio:** `docs/API_REST_MVP_CREDITO.md`: las 9 rutas sin implementar salen de sus tablas y pasan a la nueva §31.1 "Rutas fuera del MVP", con qué harían y qué usar en su lugar (no se borran); §13 suma las 4 rutas de direcciones del cliente (`GET`/`POST /clients/{client_id}/addresses`, `PATCH`/`DELETE /client-addresses/{address_id}`; la ficha decía 5, el contrato tiene 4) con permiso y alcance (broker `403`, fuera del alcance `404`); §24.2 dice que `/openapi.json` y `/docs` solo se publican con `DEBUG` o `API_DOCS_PUBLIC` (SEC-19). Las rutas del portal del comprador ya estaban en la tabla de §8, con varios métodos por fila.
   3. **Verificación:** `backend/tests/security/test_config_inventory.py::test_every_documented_route_exists` (ya sin `xfail`) y `::test_every_route_of_the_contract_is_documented` (nueva: ninguna operación del contrato queda sin documentar; entiende las filas con varios métodos).
+  4. **PR:** Fase B (este PR).
+  5. **Estado:** corregido.
+
+### SEC-21 — Las respuestas que cambian según el rol no validan cuando la página está vacía
+- **Severidad:** Informativa (contrato; no expone datos ni cambia el acceso). Apareció en el re-test de la Fase B.
+- **Categoría:** OWASP API9:2023 — Improper Inventory Management
+- **Dónde:** `contracts/openapi.json`, las 7 respuestas por rol que arma `PolymorphicProxySerializer` (`PaginatedApplicationListByRole`, `PaginatedClientListByRole`, `PaginatedOpportunityListByRole`, `ApplicationDetailByRole`, `ClientByRole`, `ClientDetailByRole`, `OpportunityDetailByRole`), declaradas con `oneOf`.
+- **Cómo reproducirlo:** schemathesis 4.33.4 como admin (re-test de la Fase B), `ST108` en `GET /applications`, `GET /clients/{id}/applications`, `GET /clients/{id}/opportunities` y `GET /opportunities`: `{"items":[],"next":null,"page":1,…,"total":0} is valid under more than one of the schemas listed in the 'oneOf' keyword`.
+- **Qué pasa:** una página vacía (y en general un objeto con solo los campos comunes) es válida para la forma del asesor y para la del broker; `oneOf` exige que valga para **exactamente una**, así que una respuesta correcta no valida contra el contrato.
+- **Qué debería pasar:** el contrato acepta toda respuesta que la API da.
+- **Impacto:** herramientas que validan contra el contrato marcan como error respuestas correctas (ruido en la auditoría y en clientes generados). El frontend no se ve afectado: `openapi-typescript` genera la misma unión.
+- **Corrección sugerida:** `anyOf` en lugar de `oneOf` en esas respuestas.
+- **Esfuerzo estimado:** pequeño.
+- **Cómo se solucionó (Fase B):**
+  1. **Causa:** `PolymorphicProxySerializer` sin discriminador genera `oneOf`, y las dos formas comparten la estructura de la página.
+  2. **Cambio:** `backend/config/openapi.py` (`add_error_responses`, el mismo *postprocessing hook* de SEC-13): los componentes `*ByRole` con `oneOf` y sin discriminador pasan a `anyOf`. Regenerados `contracts/openapi.json` y `frontend/src/lib/api/schema.d.ts` (los tipos no cambian; `pnpm typecheck` pasa).
+  3. **Verificación:** `backend/tests/security/test_deployment.py::test_role_dependent_responses_use_any_of`. schemathesis como admin: **antes** `ST108` × 4 (las cuatro operaciones de arriba); **después**, en la corrida final, `ST108` × 0 (re-test en `docs/SEGURIDAD.md` §9).
   4. **PR:** Fase B (este PR).
   5. **Estado:** corregido.

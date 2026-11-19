@@ -17,3 +17,30 @@ def seed_notes(advisor: User, applications: list[CreditApplication]) -> list[Act
         add_note(advisor, application, body)
         for application, body in zip(mine, DEMO_NOTES, strict=False)
     ]
+
+
+# Notas del equipo (TAREA-brechas-3-demo): dos por asesor en sus solicitudes.
+TEAM_NOTES = (
+    "El banco pidió confirmar la dirección del empleador.",
+    "El comprador quiere cerrar antes de fin de mes.",
+    "Se habló con la constructora por la fecha de escrituración.",
+    "Pendiente revisar el extracto de cesantías.",
+)
+
+
+def team_notes_exist() -> bool:
+    return ActivityLog.objects.filter(message__in=TEAM_NOTES).exists()
+
+
+def seed_team_notes(
+    advisors: list[User], applications: list[CreditApplication]
+) -> list[ActivityLog]:
+    created = []
+    for position, advisor in enumerate(advisors):
+        mine = [a for a in applications if a.assigned_advisor_id == advisor.pk]
+        bodies = TEAM_NOTES[position * 2 : position * 2 + 2]
+        created += [
+            add_note(advisor, application, body)
+            for application, body in zip(mine, bodies, strict=False)
+        ]
+    return created

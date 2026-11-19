@@ -21,54 +21,64 @@
 
 | Auditoría | Qué revisa | Informe | Hallazgos | Estado |
 | --- | --- | --- | --- | --- |
-| Seguridad | Autenticación, autorización por rol y objeto, archivos, datos personales, configuración | `docs/SEGURIDAD.md` *(en curso)* y `docs/seguridad/` *(en curso)* | SEC-01 a SEC-13 (por severidad: pendiente del informe) | 🔄 En curso, rama `chore/security-audit` |
+| Seguridad | Autenticación, autorización por rol y objeto, archivos, datos personales, configuración | [`docs/SEGURIDAD.md`](../SEGURIDAD.md) y [`docs/seguridad/`](../seguridad/) | 21: 0 críticos, 0 altos, 5 medios, 10 bajos, 6 informativos | ✅ Fase A (#32) y Fase B (este PR): 20 corregidos y 1 aceptado |
 | Rendimiento del frontend | Peso de las páginas, tiempos de carga y de interacción | `docs/PERFORMANCE.md` *(en curso)* | Pendiente | 🔄 En preparación |
 | Carga y estrés del backend | Latencia bajo carga (el p95 < 800 ms de RNF-17), errores y límites | `docs/PERFORMANCE.md` *(en curso)* | Pendiente | 🔄 En preparación |
 
-Los informes se enlazarán aquí cuando se fusionen sus ramas.
+Los informes de rendimiento y carga se enlazarán aquí cuando se fusionen sus ramas.
 
 ---
 
 ## 2. Seguridad
 
+Informe completo: [`docs/SEGURIDAD.md`](../SEGURIDAD.md) (resumen, método, modelo de amenazas, matriz de acceso, cada hallazgo con su ficha y el re-test). Fichas largas: [`docs/seguridad/hallazgos.md`](../seguridad/hallazgos.md). Cómo repetir la auditoría en local: [`backend/security/README.md`](../../backend/security/README.md).
+
 ### 2.1 Qué se revisó y con qué método
 
-El método completo se describe en el informe al cierre. Su pieza central es una **matriz de acceso**: cada una de las **235 operaciones** del contrato probada con cada uno de los **9 actores** que define la auditoría (su lista estará en el informe). **Lo que ya se sabe: la matriz no encontró brechas** de acceso (dato del orquestador, rama `chore/security-audit`). El informe completo y la lista de hallazgos estarán en `docs/SEGURIDAD.md` *(en curso)* y `docs/seguridad/hallazgos.md` *(en curso)*.
-
-Puntos que [04 · System design §10](04-system-design.md#10-lo-que-queda-pendiente-dicho-claro) ya marcaba como pendientes frente a REQ y que la auditoría debería confirmar o descartar: cabeceras de seguridad (HSTS, CSP), límite general de la API, análisis de dependencias en el CI y MFA.
+La API completa (las operaciones de `contracts/openapi.json`), con los cinco tipos de usuario, más el código, las dependencias, el historial de git y los contenedores. Con analizadores automáticos (bandit, semgrep, pip-audit, gitleaks, hadolint), ataques simulados contra una copia local (schemathesis y OWASP ZAP), una **matriz de acceso** que pide cada operación como cada uno de los 9 actores de la auditoría (2 124 casos, todos con el resultado esperado) y una revisión manual. La **Fase A** (#32) encontró y documentó; la **Fase B** (este PR) corrigió y volvió a probar con las mismas herramientas.
 
 ### 2.2 Hallazgos por severidad
 
 | Severidad | Cuántos | Corregidos | Aceptados |
 | --- | ---: | ---: | ---: |
-| Crítica | — | — | — |
-| Alta | — | — | — |
-| Media | — | — | — |
-| Baja | — | — | — |
-| Informativa | — | — | — |
-| **Total** | **13** (SEC-01 a SEC-13) | — | — |
+| Crítica | 0 | — | — |
+| Alta | 0 | — | — |
+| Media | 5 | 5 | 0 |
+| Baja | 10 | 9 | 1 |
+| Informativa | 6 | 6 | 0 |
+| **Total** | **21** (SEC-01 a SEC-21) | **20** | **1** |
+
+SEC-21 (informativo) apareció en el re-test de la Fase B y se corrigió en el mismo PR.
 
 ### 2.3 Hallazgos y cómo se solucionó cada uno
 
 | Id | Problema | Causa | Solución aplicada | Cómo se verificó | PR |
 | --- | --- | --- | --- | --- | --- |
-| SEC-01 | 🔄 En curso | | | | |
-| SEC-02 | 🔄 En curso | | | | |
-| SEC-03 | 🔄 En curso | | | | |
-| SEC-04 | 🔄 En curso | | | | |
-| SEC-05 | 🔄 En curso | | | | |
-| SEC-06 | 🔄 En curso | | | | |
-| SEC-07 | 🔄 En curso | | | | |
-| SEC-08 | 🔄 En curso | | | | |
-| SEC-09 | 🔄 En curso | | | | |
-| SEC-10 | 🔄 En curso | | | | |
-| SEC-11 | 🔄 En curso | | | | |
-| SEC-12 | 🔄 En curso | | | | |
-| SEC-13 | 🔄 En curso | | | | |
+| SEC-01 | Sin configuración de producción | Los puntos de entrada cargaban `local` (`DEBUG=True`) | `config/settings/production.py`; `wsgi`, `asgi` y Celery la usan por defecto | `test_deployment.py`; `check --deploy` solo con `W021` | Fase B |
+| SEC-02 | HTTPS sin endurecer | Nada fijaba HSTS, redirección ni cookies `Secure` | Lo fija `production.py` | `test_deployment.py`; la imagen redirige y manda HSTS | Fase B |
+| SEC-03 | Claves sin validar | Se exigía que existieran, no que fueran fuertes | *System check* `identity.E001`/`E002` (aviso con `DEBUG`) | `test_deployment.py`; la imagen no arranca con claves débiles | Fase B |
+| SEC-04 | DRF con dos CVE de DoS | El rango de `requirements.txt` dejaba fuera el arreglo | DRF `>=3.18.2,<3.19` | `test_resources.py`; el cuerpo bz2 ya no se expande | Fase B |
+| SEC-05 | Puertos en todas las interfaces | El compose no ponía IP | `127.0.0.1:` en cada puerto | `test_deployment.py`; compose levantado | Fase B |
+| SEC-06 | Imagen no reproducible y con `runserver` | Una sola etapa, base y `pip` sin fijar | Dos etapas, digest, `pip` fijo, gunicorn en `production` | `test_deployment.py`; hadolint sin `DL3013` | Fase B |
+| SEC-07 | `OPTIONS` con 500 | La metadata de DRF fallaba en vistas sin `serializer_class` | `DEFAULT_METADATA_CLASS = None` | `test_http_responses.py`; 0 de 176 rutas con 5xx | Fase B |
+| SEC-08 | Datos personales cacheables | DRF no pone `Cache-Control` | *Middleware* con `no-store` y `Vary: Cookie` | `test_http_responses.py` | Fase B |
+| SEC-09 | Límite de login saltable | Una sola clave "IP + correo" | Límites por IP y por cuenta | `test_rate_limits.py`; corta en el 21.º correo y el 11.º fallo | Fase B |
+| SEC-10 | Sin límites generales | No había `DEFAULT_THROTTLE_CLASSES` | 600 lecturas, 120 escrituras y 20 cambios de estado por minuto | `test_rate_limits.py` | Fase B |
+| SEC-11 | 500 con un JSON grande | `RequestDataTooBig` no es de DRF | `413 PAYLOAD_TOO_LARGE` | `test_http_responses.py` | Fase B |
+| SEC-12 | 404 en HTML | Sin `handler404`/`handler500` | JSON en `/api/` | `test_http_responses.py` | Fase B |
+| SEC-13 | Contrato desalineado | Dos esquemas mal y errores sin documentar | Esquemas corregidos y un *hook* que documenta 400/404/428 | `test_deployment.py`; schemathesis sin `ST103` ni `ST108` | Fase B |
+| SEC-14 | Enumeración por la recuperación | Correo síncrono, solo si el usuario existía | Correo por la cola de Celery; el token se genera en el worker | `test_auth.py`; 202 siempre y el mismo tiempo | Fase B |
+| SEC-15 | Búsquedas en el log | El filtro solo ocultaba tokens | `***` en `search`, `email`, `document_number` y `q` | `test_exposure.py` | Fase B |
+| SEC-16 | El `409` confirma una cédula | La unicidad del documento es regla de negocio | **Aceptado** (ver 2.4) | `test_exposure.py` fija el comportamiento | Fase B |
+| SEC-17 | Textos de bancos sin tope | Sin `max_length` | `max_length=4000` | `test_resources.py` | Fase B |
+| SEC-18 | `/admin/` publicado y sin límite | Se montaba siempre | Solo con `DEBUG` o `ADMIN_ENABLED`, con límite por IP | `test_config_inventory.py` | Fase B |
+| SEC-19 | Esquema y Swagger públicos | Se montaban siempre | Solo con `DEBUG` o `API_DOCS_PUBLIC` | `test_config_inventory.py` | Fase B |
+| SEC-20 | Documentación de la API desalineada | No se actualizó con el MVP | 9 rutas a "Fuera del MVP"; direcciones documentadas | `test_config_inventory.py` (en los dos sentidos) | Fase B |
+| SEC-21 | `oneOf` ambiguo en respuestas por rol | Una página vacía valía para las dos formas | `anyOf` en el contrato | `test_deployment.py`; schemathesis sin `ST108` | Fase B |
 
 ### 2.4 Aceptados, con su motivo
 
-*(Se completa al cierre: un hallazgo aceptado es uno que no se corrige en el MVP, con el riesgo explicado y quién lo aceptó.)*
+- **SEC-16 (baja), aceptado por Carlos.** El documento identifica a la persona y no tiene sentido crear el mismo cliente una vez por broker: la unicidad es regla de negocio. Mitigación: el `409` no trae ningún dato del otro cliente y el límite general de escrituras (SEC-10) deja probar como mucho 120 cédulas por minuto. Riesgo residual: confirmar que una cédula ya es cliente, sin saber de quién.
 
 ---
 

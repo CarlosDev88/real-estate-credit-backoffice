@@ -47,3 +47,51 @@ def seed_tasks(advisor: User, applications: list[CreditApplication]) -> list[Tas
         )
         for index, (title, days, hour, priority) in enumerate(DEMO_TASKS)
     ]
+
+
+# Tareas del equipo (TAREA-brechas-3-demo): para cada asesor de demo, en todos los estados.
+# (título, días desde hoy, hora local, prioridad, final: "", "complete" o "cancel")
+TEAM_TASKS: tuple[tuple[str, int, int, str, str], ...] = (
+    ("Llamar para confirmar los ingresos", -4, 9, "HIGH", ""),
+    ("Recordar la carta laboral al comprador", -2, 15, "MEDIUM", ""),
+    ("Revisar la respuesta del banco", 0, 10, "HIGH", ""),
+    ("Enviar la simulación actualizada", 0, 16, "LOW", ""),
+    ("Agendar la visita al inmueble", 2, 11, "MEDIUM", ""),
+    ("Preparar la legalización con la notaría", 6, 14, "MEDIUM", ""),
+    ("Solicitar el avalúo", -6, 10, "MEDIUM", "complete"),
+    ("Confirmar los datos del co-solicitante", -3, 12, "LOW", "complete"),
+    ("Llamar al comprador que desistió", -5, 9, "LOW", "cancel"),
+)
+TEAM_TASK_TITLES = tuple(title for title, *_ in TEAM_TASKS)
+
+
+def team_tasks_exist(advisors: list[User]) -> bool:
+    return Task.objects.filter(assigned_to__in=advisors, title__in=TEAM_TASK_TITLES).exists()
+
+
+def seed_team_tasks(advisors: list[User], applications: list[CreditApplication]) -> list[Task]:
+    """Las tareas de ``TEAM_TASKS`` para cada asesor, sobre sus solicitudes en curso."""
+    priorities = {
+        item.code: item for item in CatalogItem.objects.filter(catalog__code=PRIORITY_CATALOG)
+    }
+    created = []
+    for advisor in advisors:
+        mine = [
+            a for a in applications if a.assigned_advisor_id == advisor.pk and not a.is_terminal
+        ]
+        if not mine:
+            continue
+        for index, (title, days, hour, priority, final) in enumerate(TEAM_TASKS):
+            task = services.create_task(
+                advisor,
+                parent=services.TaskParent(application=mine[index % len(mine)]),
+                title=title,
+                due_at=_due_at(days, hour),
+                priority=priorities[priority],
+            )
+            if final == "complete":
+                task = services.complete_task(advisor, task)
+            elif final == "cancel":
+                task = services.cancel_task(advisor, task, reason="El comprador desistió.")
+            created.append(task)
+    return created

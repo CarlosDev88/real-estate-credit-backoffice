@@ -5,8 +5,8 @@
 
 **Qué se probó:** que nadie vea ni toque lo que no le corresponde (OWASP API1:2023 *Broken
 Object Level Authorization* y API5:2023 *Broken Function Level Authorization*). Cada una
-de las 235 operaciones del contrato se pide como cada uno de los 9 actores, sobre
-los recursos del **lado A**, y se compara el estado con lo esperado: **2115 casos**.
+de las 236 operaciones del contrato se pide como cada uno de los 9 actores, sobre
+los recursos del **lado A**, y se compara el estado con lo esperado: **2124 casos**.
 
 **Resultado:** **ninguna brecha.** Todas las operaciones responden lo esperado para los 9 actores. Además, en las respuestas permitidas al broker y al comprador
 se comprueba que no lleguen campos prohibidos (montos detallados, archivos y URL firmadas,
@@ -59,15 +59,15 @@ permisos sembrados por rol.
 
 | Actor | ✓ | ✗ 401 | ✗ 403 | ✗ 404 |
 | --- | --- | --- | --- | --- |
-| `anon` | 7 | 228 | 0 | 0 |
-| `admin` | 200 | 33 | 2 | 0 |
-| `advisor_owner` | 128 | 33 | 74 | 0 |
-| `advisor_other` | 53 | 33 | 74 | 75 |
-| `broker_owner` | 38 | 33 | 164 | 0 |
-| `broker_other` | 23 | 33 | 161 | 18 |
-| `partner` | 20 | 33 | 182 | 0 |
-| `buyer_owner` | 39 | 196 | 0 | 0 |
-| `buyer_other` | 13 | 196 | 0 | 26 |
+| `anon` | 7 | 229 | 0 | 0 |
+| `admin` | 201 | 33 | 2 | 0 |
+| `advisor_owner` | 129 | 33 | 74 | 0 |
+| `advisor_other` | 54 | 33 | 74 | 75 |
+| `broker_owner` | 38 | 33 | 165 | 0 |
+| `broker_other` | 23 | 33 | 162 | 18 |
+| `partner` | 20 | 33 | 183 | 0 |
+| `buyer_owner` | 39 | 197 | 0 | 0 |
+| `buyer_other` | 13 | 197 | 0 | 26 |
 
 ## Patrones
 
@@ -80,7 +80,7 @@ Cada fila de la matriz usa uno de estos patrones (una letra por actor: `A` permi
 | `NO_REFRESH_COOKIE` | `UUUUUUUUU` | 1 | Sin cookie de refresh: 401 para todos. |
 | `ANY_INTERNAL` | `UAAAAAAUU` | 6 | Cualquier usuario interno con sesión. |
 | `ADMIN_ONLY` | `UAFFFFFUU` | 71 | Solo administración (API §25). |
-| `ADMIN_ADVISOR` | `UAAAFFFUU` | 26 | Administrador y asesor, sin alcance por objeto. |
+| `ADMIN_ADVISOR` | `UAAAFFFUU` | 27 | Administrador y asesor, sin alcance por objeto. |
 | `ADMIN_ADVISOR_PARTNER` | `UAAAFFAUU` | 5 | Además la constructora sobre lo de su partner (API §11 y §12). |
 | `ADMIN_PARTNER` | `UAFFFFAUU` | 2 | Administrador y la constructora dueña (API §11.2). |
 | `INTERNAL_NO_PARTNER` | `UAAAAAFUU` | 8 | Listados con alcance; la constructora no ve expedientes (REQ §3). |
@@ -169,6 +169,7 @@ Cada fila de la matriz usa uno de estos patrones (una letra por actor: `A` permi
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `GET /bank-policy-rules` | `ADMIN_ADVISOR` | ✗ 401 | ✓ | ✓ | ✓ | ✗ 403 | ✗ 403 | ✗ 403 | ✗ 401 | ✗ 401 |
 | `POST /bank-policy-rules` | `ADMIN_ONLY` | ✗ 401 | ✓ | ✗ 403 | ✗ 403 | ✗ 403 | ✗ 403 | ✗ 403 | ✗ 401 | ✗ 401 |
+| `GET /bank-policy-rules/fields` | `ADMIN_ADVISOR` | ✗ 401 | ✓ | ✓ | ✓ | ✗ 403 | ✗ 403 | ✗ 403 | ✗ 401 | ✗ 401 |
 | `GET /bank-policy-rules/{rule_id}` | `ADMIN_ADVISOR` | ✗ 401 | ✓ | ✓ | ✓ | ✗ 403 | ✗ 403 | ✗ 403 | ✗ 401 | ✗ 401 |
 | `PATCH /bank-policy-rules/{rule_id}` | `ADMIN_ONLY` | ✗ 401 | ✓ | ✗ 403 | ✗ 403 | ✗ 403 | ✗ 403 | ✗ 403 | ✗ 401 | ✗ 401 |
 | `POST /bank-policy-rules/{rule_id}/activate` | `ADMIN_ONLY` | ✗ 401 | ✓ | ✗ 403 | ✗ 403 | ✗ 403 | ✗ 403 | ✗ 403 | ✗ 401 | ✗ 401 |

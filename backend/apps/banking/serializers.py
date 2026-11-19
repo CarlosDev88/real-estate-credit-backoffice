@@ -3,14 +3,22 @@ from typing import Any
 from django.core.validators import RegexValidator
 from rest_framework import serializers
 
-from apps.banking.models import Bank, BankPolicyRule, BankProduct, RuleSeverity
-from apps.banking.rule_engine import Outcome
+from apps.banking.models import (
+    Bank,
+    BankPolicyRule,
+    BankProduct,
+    BankStatus,
+    RuleSeverity,
+    RuleStatus,
+)
+from apps.banking.rule_engine import OUTCOME_LABELS, Outcome
+from apps.banking.rule_fields import FieldInputType
 from apps.banking.services import active_purpose_items
 from apps.catalogs.fields import CatalogItemCodeField
 from apps.catalogs.models import CatalogItem
 from apps.catalogs.serializers import CatalogItemRefSerializer
 from apps.partners.validators import normalize_nit
-from config.serializers import StrictSerializer
+from config.serializers import ChoiceLabelField, StrictSerializer
 
 MAX_AMOUNT_COP = 10**15  # Cabe en BIGINT con holgura.
 MAX_TERM_MONTHS = 600  # 50 años; cabe en SMALLINT.
@@ -48,6 +56,8 @@ class BankRefSerializer(serializers.Serializer):
 
 
 class BankSerializer(serializers.ModelSerializer):
+    status_label = ChoiceLabelField(BankStatus, source="status")
+
     class Meta:
         model = Bank
         fields = [
@@ -57,6 +67,7 @@ class BankSerializer(serializers.ModelSerializer):
             "short_name",
             "tax_id",
             "status",
+            "status_label",
             "operational_notes",
             "created_at",
             "updated_at",
@@ -65,9 +76,11 @@ class BankSerializer(serializers.ModelSerializer):
 
 
 class BankProductSummarySerializer(serializers.ModelSerializer):
+    status_label = ChoiceLabelField(BankStatus, source="status")
+
     class Meta:
         model = BankProduct
-        fields = ["id", "code", "name", "status"]
+        fields = ["id", "code", "name", "status", "status_label"]
         read_only_fields = fields
 
 
@@ -112,6 +125,7 @@ class BankProductSerializer(serializers.ModelSerializer):
     bank = BankRefSerializer(read_only=True)
     product_type = CatalogItemRefSerializer(source="product_type_item", read_only=True)
     purposes = serializers.SerializerMethodField()
+    status_label = ChoiceLabelField(BankStatus, source="status")
 
     class Meta:
         model = BankProduct
@@ -122,6 +136,7 @@ class BankProductSerializer(serializers.ModelSerializer):
             "name",
             "product_type",
             "status",
+            "status_label",
             "min_amount_cop",
             "max_amount_cop",
             "min_term_months",
@@ -236,6 +251,8 @@ class BankPolicyRuleSerializer(serializers.ModelSerializer):
     purpose = CatalogItemRefSerializer(source="purpose_item", read_only=True, allow_null=True)
     created_by = BankingUserRefSerializer(read_only=True)
     condition = serializers.JSONField(read_only=True)
+    severity_label = ChoiceLabelField(RuleSeverity, source="severity")
+    status_label = ChoiceLabelField(RuleStatus, source="status")
 
     class Meta:
         model = BankPolicyRule
@@ -246,9 +263,11 @@ class BankPolicyRuleSerializer(serializers.ModelSerializer):
             "code",
             "version",
             "severity",
+            "severity_label",
             "condition",
             "message",
             "status",
+            "status_label",
             "valid_from",
             "valid_to",
             "created_by",
@@ -335,6 +354,7 @@ class RuleTestRequestSerializer(StrictSerializer):
 class RuleTestResultSerializer(serializers.Serializer):
     name = serializers.CharField()
     outcome = serializers.ChoiceField(choices=[outcome.value for outcome in Outcome])
+    outcome_label = ChoiceLabelField(OUTCOME_LABELS, source="outcome")
     unresolved_fields = serializers.ListField(child=serializers.CharField())
     expected = serializers.CharField(allow_null=True)
     matches_expected = serializers.BooleanField(allow_null=True)
@@ -349,3 +369,31 @@ class RuleVersionRefSerializer(serializers.Serializer):
 class RuleTestResponseSerializer(serializers.Serializer):
     rule = RuleVersionRefSerializer()
     results = RuleTestResultSerializer(many=True)
+
+
+class RuleFieldOptionSerializer(serializers.Serializer):
+    code = serializers.CharField()
+    label = serializers.CharField()  # type: ignore[assignment]
+
+
+class RuleFieldSerializer(serializers.Serializer):
+    """Campo que admite una condición de regla (lista blanca de ``rule_fields.py``)."""
+
+    code = serializers.CharField(
+        help_text="Ruta del campo en la condición, p. ej. `financing.term_months`."
+    )
+    label = serializers.CharField()  # type: ignore[assignment]
+    description = serializers.CharField()
+    type = serializers.ChoiceField(
+        choices=[(value.value, value.value) for value in FieldInputType],
+        help_text="`money` es un monto en COP; `choice`, un código del catálogo `catalog`.",
+    )
+    catalog = serializers.CharField(
+        allow_null=True, help_text="Catálogo de los valores de un campo `choice`."
+    )
+    options = RuleFieldOptionSerializer(
+        many=True,
+        allow_null=True,
+        help_text="Valores vigentes de un campo `choice`. `null` en los demás y en un "
+        "catálogo bajo demanda (`municipality`), que se pide en `/metadata/catalogs/{code}`.",
+    )

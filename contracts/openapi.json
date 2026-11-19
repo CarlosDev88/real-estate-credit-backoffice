@@ -241,6 +241,16 @@
                         },
                         "description": "Retirado."
                     },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "VALIDATION_ERROR: el titular no se retira"
+                    },
                     "409": {
                         "content": {
                             "application/json": {
@@ -507,7 +517,7 @@
         "/api/v1/applications": {
             "get": {
                 "operationId": "applications_list",
-                "description": "El administrador ve todas, el asesor las asignadas y el broker el resumen de las solicitudes de las oportunidades que originó.",
+                "description": "El administrador ve todas, el asesor las asignadas y el broker el resumen de las solicitudes de las oportunidades que originó. El broker (`INDEPENDENT_BROKER` sin `ADMIN` ni `ADVISOR`) recibe `ApplicationSummary`: el resumen operativo, sin datos financieros, inmueble ni documento completo del titular.",
                 "summary": "Solicitudes según el alcance",
                 "parameters": [
                     {
@@ -544,22 +554,20 @@
                         "description": "Código `lead_origin`. Uno que no existe responde `400`."
                     },
                     {
-                        "name": "page",
-                        "required": false,
                         "in": "query",
-                        "description": "Un número de página dentro del conjunto de resultados paginado.",
+                        "name": "page",
                         "schema": {
                             "type": "integer"
-                        }
+                        },
+                        "description": "Un número de página dentro del conjunto de resultados paginado."
                     },
                     {
-                        "name": "page_size",
-                        "required": false,
                         "in": "query",
-                        "description": "Número de resultados a devolver por página.",
+                        "name": "page_size",
                         "schema": {
                             "type": "integer"
-                        }
+                        },
+                        "description": "Número de resultados a devolver por página."
                     },
                     {
                         "in": "query",
@@ -659,7 +667,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/PaginatedApplicationList"
+                                    "$ref": "#/components/schemas/PaginatedApplicationListByRole"
                                 }
                             }
                         },
@@ -684,6 +692,26 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido."
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`RESOURCE_NOT_FOUND`: la página no existe (fuera de rango o no numérica)."
                     }
                 }
             },
@@ -785,7 +813,7 @@
         "/api/v1/applications/{application_id}": {
             "get": {
                 "operationId": "applications_retrieve",
-                "description": "Responde `ETag` con la versión, que se reenvía en `If-Match` al editar. `property` y `assignments` salen siempre; `participants` y `financing`, solo con `include`. El broker recibe solo el resumen.",
+                "description": "Responde `ETag` con la versión, que se reenvía en `If-Match` al editar. `property` y `assignments` salen siempre; `participants` y `financing`, solo con `include`. El broker (`INDEPENDENT_BROKER` sin `ADMIN` ni `ADVISOR`) recibe `ApplicationSummary`: el resumen operativo, sin datos financieros, inmueble ni documento completo del titular.",
                 "summary": "Expediente según el rol",
                 "parameters": [
                     {
@@ -828,7 +856,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/ApplicationDetail"
+                                    "$ref": "#/components/schemas/ApplicationDetailByRole"
                                 }
                             }
                         },
@@ -863,6 +891,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido."
                     }
                 }
             },
@@ -1106,6 +1144,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido."
                     }
                 }
             }
@@ -1579,6 +1627,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido."
                     }
                 }
             },
@@ -1981,6 +2039,16 @@
                             }
                         },
                         "description": "RESOURCE_NOT_FOUND (inexistente o fuera del alcance)"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido."
                     }
                 }
             }
@@ -2067,6 +2135,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido."
                     }
                 }
             },
@@ -2312,6 +2390,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido."
                     }
                 }
             }
@@ -2485,6 +2573,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido."
                     }
                 }
             }
@@ -2571,6 +2669,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido."
                     }
                 }
             },
@@ -3000,6 +3108,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido."
                     }
                 }
             },
@@ -3172,6 +3290,16 @@
                             }
                         },
                         "description": "RESOURCE_NOT_FOUND (inexistente o fuera del alcance)"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido."
                     }
                 }
             }
@@ -3275,6 +3403,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido."
                     }
                 }
             },
@@ -3705,6 +3843,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido."
                     }
                 }
             }
@@ -4122,6 +4270,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido."
                     }
                 }
             }
@@ -4323,6 +4481,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED (solo el administrador; el intento queda auditado)"
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`RESOURCE_NOT_FOUND`: la página no existe (fuera de rango o no numérica)."
                     }
                 }
             }
@@ -4884,6 +5052,26 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido."
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`RESOURCE_NOT_FOUND`: la página no existe (fuera de rango o no numérica)."
                     }
                 }
             },
@@ -5468,6 +5656,66 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido."
+                    }
+                }
+            }
+        },
+        "/api/v1/bank-policy-rules/fields": {
+            "get": {
+                "operationId": "bank_policy_rules_fields_list",
+                "description": "Lista blanca con la que se validan las condiciones al guardar y al publicar, con su tipo de valor y, en los de catálogo, sus opciones vigentes. Sin paginar: es una lista corta y fija.",
+                "summary": "Campos que admite una condición de regla",
+                "tags": [
+                    "Bank policy rules"
+                ],
+                "security": [
+                    {
+                        "internalSession": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/RuleField"
+                                    }
+                                }
+                            }
+                        },
+                        "description": ""
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "NOT_AUTHENTICATED o SESSION_EXPIRED"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "PERMISSION_DENIED o CSRF_FAILED"
                     }
                 }
             }
@@ -5595,6 +5843,26 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido."
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`RESOURCE_NOT_FOUND`: la página no existe (fuera de rango o no numérica)."
                     }
                 }
             },
@@ -6175,6 +6443,26 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido."
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`RESOURCE_NOT_FOUND`: la página no existe (fuera de rango o no numérica)."
                     }
                 }
             },
@@ -6661,6 +6949,26 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido."
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`RESOURCE_NOT_FOUND`: la página no existe (fuera de rango o no numérica)."
                     }
                 }
             }
@@ -6984,6 +7292,16 @@
                             }
                         },
                         "description": "CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido."
                     }
                 }
             }
@@ -7254,6 +7572,16 @@
                             }
                         },
                         "description": "CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido."
                     }
                 }
             }
@@ -7349,6 +7677,16 @@
                             }
                         },
                         "description": "CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido."
                     }
                 }
             }
@@ -7664,6 +8002,16 @@
                             }
                         },
                         "description": "CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido."
                     }
                 }
             }
@@ -8581,6 +8929,16 @@
                             }
                         },
                         "description": "CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido."
                     }
                 }
             }
@@ -8676,6 +9034,16 @@
                             }
                         },
                         "description": "CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido."
                     }
                 }
             },
@@ -9087,6 +9455,16 @@
                             }
                         },
                         "description": "RESOURCE_NOT_FOUND"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido."
                     }
                 }
             }
@@ -9172,6 +9550,16 @@
                             }
                         },
                         "description": "CSRF_FAILED"
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`RESOURCE_NOT_FOUND`: la página no existe (fuera de rango o no numérica)."
                     }
                 }
             }
@@ -9737,6 +10125,26 @@
                             }
                         },
                         "description": "CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido."
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`RESOURCE_NOT_FOUND`: la página no existe (fuera de rango o no numérica)."
                     }
                 }
             }
@@ -10218,6 +10626,26 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido."
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`RESOURCE_NOT_FOUND`: la página no existe (fuera de rango o no numérica)."
                     }
                 }
             },
@@ -10571,6 +10999,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido."
                     }
                 }
             },
@@ -11027,6 +11465,26 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido."
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`RESOURCE_NOT_FOUND`: la página no existe (fuera de rango o no numérica)."
                     }
                 }
             },
@@ -11351,6 +11809,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido."
                     }
                 }
             },
@@ -11444,6 +11912,7 @@
         "/api/v1/clients/{client_id}/applications": {
             "get": {
                 "operationId": "clients_applications_list",
+                "description": "Página de `Application`. El broker (`INDEPENDENT_BROKER` sin `ADMIN` ni `ADVISOR`) recibe `ApplicationSummary`: el resumen operativo, sin datos financieros, inmueble ni documento completo del titular.",
                 "summary": "Solicitudes visibles en las que participa el cliente",
                 "parameters": [
                     {
@@ -11456,22 +11925,20 @@
                         "required": true
                     },
                     {
-                        "name": "page",
-                        "required": false,
                         "in": "query",
-                        "description": "Un número de página dentro del conjunto de resultados paginado.",
+                        "name": "page",
                         "schema": {
                             "type": "integer"
-                        }
+                        },
+                        "description": "Un número de página dentro del conjunto de resultados paginado."
                     },
                     {
-                        "name": "page_size",
-                        "required": false,
                         "in": "query",
-                        "description": "Número de resultados a devolver por página.",
+                        "name": "page_size",
                         "schema": {
                             "type": "integer"
-                        }
+                        },
+                        "description": "Número de resultados a devolver por página."
                     },
                     {
                         "in": "query",
@@ -11513,7 +11980,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/PaginatedApplicationList"
+                                    "$ref": "#/components/schemas/PaginatedApplicationListByRole"
                                 }
                             }
                         },
@@ -11548,6 +12015,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido."
                     }
                 }
             }
@@ -11656,6 +12133,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido."
                     }
                 }
             }
@@ -11749,6 +12236,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`RESOURCE_NOT_FOUND`: la página no existe (fuera de rango o no numérica)."
                     }
                 }
             },
@@ -12150,6 +12647,15 @@
                     },
                     {
                         "in": "query",
+                        "name": "application_id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "description": "Solicitud liquidada: su historial, la vigente y las anuladas."
+                    },
+                    {
+                        "in": "query",
                         "name": "bank_id",
                         "schema": {
                             "type": "string",
@@ -12268,6 +12774,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`RESOURCE_NOT_FOUND`: la página no existe (fuera de rango o no numérica)."
                     }
                 }
             }
@@ -13894,6 +14410,26 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido."
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`RESOURCE_NOT_FOUND`: la página no existe (fuera de rango o no numérica)."
                     }
                 }
             },
@@ -14624,6 +15160,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido."
                     }
                 }
             }
@@ -14722,6 +15268,26 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido."
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`RESOURCE_NOT_FOUND`: la página no existe (fuera de rango o no numérica)."
                     }
                 }
             },
@@ -15663,6 +16229,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido."
                     }
                 }
             }
@@ -15749,6 +16325,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido."
                     }
                 }
             },
@@ -15967,6 +16553,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido."
                     }
                 }
             },
@@ -16387,6 +16983,26 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido."
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`RESOURCE_NOT_FOUND`: la página no existe (fuera de rango o no numérica)."
                     }
                 }
             },
@@ -16801,6 +17417,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`RESOURCE_NOT_FOUND`: la página no existe (fuera de rango o no numérica)."
                     }
                 }
             }
@@ -16952,6 +17578,16 @@
                             }
                         },
                         "description": "RESOURCE_NOT_FOUND"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido."
                     }
                 }
             }
@@ -17084,6 +17720,26 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido."
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`RESOURCE_NOT_FOUND`: la página no existe (fuera de rango o no numérica)."
                     }
                 }
             },
@@ -17870,6 +18526,26 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido."
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`RESOURCE_NOT_FOUND`: la página no existe (fuera de rango o no numérica)."
                     }
                 }
             },
@@ -18374,6 +19050,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido."
                     }
                 }
             },
@@ -18602,6 +19288,26 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido."
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`RESOURCE_NOT_FOUND`: la página no existe (fuera de rango o no numérica)."
                     }
                 }
             },
@@ -19699,6 +20405,16 @@
                             }
                         },
                         "description": "RATE_LIMITED: más de 20 consultas por minuto al dashboard y los reportes (cupo compartido, por usuario). `Retry-After` dice cuántos segundos esperar."
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`RESOURCE_NOT_FOUND`: la página no existe (fuera de rango o no numérica)."
                     }
                 }
             }
@@ -19990,6 +20706,26 @@
                             }
                         },
                         "description": "RATE_LIMITED: más de 20 consultas por minuto al dashboard y los reportes (cupo compartido, por usuario). `Retry-After` dice cuántos segundos esperar."
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido."
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`RESOURCE_NOT_FOUND`: la página no existe (fuera de rango o no numérica)."
                     }
                 }
             },
@@ -20470,6 +21206,26 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido."
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`RESOURCE_NOT_FOUND`: la página no existe (fuera de rango o no numérica)."
                     }
                 }
             }
@@ -20605,6 +21361,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`RESOURCE_NOT_FOUND`: la página no existe (fuera de rango o no numérica)."
                     }
                 }
             },
@@ -21122,6 +21888,26 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido."
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`RESOURCE_NOT_FOUND`: la página no existe (fuera de rango o no numérica)."
                     }
                 }
             },
@@ -21797,6 +22583,26 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido."
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`RESOURCE_NOT_FOUND`: la página no existe (fuera de rango o no numérica)."
                     }
                 }
             }
@@ -21892,6 +22698,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido."
                     }
                 }
             }
@@ -22009,6 +22825,26 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido."
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`RESOURCE_NOT_FOUND`: la página no existe (fuera de rango o no numérica)."
                     }
                 }
             },
@@ -23256,6 +24092,16 @@
                     "withdrawn_at"
                 ]
             },
+            "ApplicationDetailByRole": {
+                "anyOf": [
+                    {
+                        "$ref": "#/components/schemas/ApplicationDetail"
+                    },
+                    {
+                        "$ref": "#/components/schemas/ApplicationSummary"
+                    }
+                ]
+            },
             "ApplicationNotification": {
                 "type": "object",
                 "properties": {
@@ -23876,6 +24722,10 @@
                         ],
                         "readOnly": true
                     },
+                    "status_label": {
+                        "type": "string",
+                        "readOnly": true
+                    },
                     "operational_notes": {
                         "type": "string",
                         "readOnly": true
@@ -23899,6 +24749,7 @@
                     "operational_notes",
                     "short_name",
                     "status",
+                    "status_label",
                     "tax_id",
                     "updated_at"
                 ]
@@ -23971,6 +24822,10 @@
                         ],
                         "readOnly": true
                     },
+                    "status_label": {
+                        "type": "string",
+                        "readOnly": true
+                    },
                     "operational_notes": {
                         "type": "string",
                         "readOnly": true
@@ -24002,6 +24857,7 @@
                     "products",
                     "short_name",
                     "status",
+                    "status_label",
                     "tax_id",
                     "updated_at"
                 ]
@@ -24049,6 +24905,10 @@
                         ],
                         "readOnly": true
                     },
+                    "severity_label": {
+                        "type": "string",
+                        "readOnly": true
+                    },
                     "condition": {
                         "readOnly": true
                     },
@@ -24064,6 +24924,10 @@
                         ],
                         "readOnly": true,
                         "default": "DRAFT"
+                    },
+                    "status_label": {
+                        "type": "string",
+                        "readOnly": true
                     },
                     "valid_from": {
                         "type": "string",
@@ -24107,7 +24971,9 @@
                     "message",
                     "purpose",
                     "severity",
+                    "severity_label",
                     "status",
+                    "status_label",
                     "updated_at",
                     "valid_from",
                     "valid_to",
@@ -24216,6 +25082,10 @@
                         ],
                         "readOnly": true
                     },
+                    "status_label": {
+                        "type": "string",
+                        "readOnly": true
+                    },
                     "min_amount_cop": {
                         "type": [
                             "integer",
@@ -24292,6 +25162,7 @@
                     "product_type",
                     "purposes",
                     "status",
+                    "status_label",
                     "updated_at",
                     "valid_from",
                     "valid_to"
@@ -24437,13 +25308,18 @@
                             }
                         ],
                         "readOnly": true
+                    },
+                    "status_label": {
+                        "type": "string",
+                        "readOnly": true
                     }
                 },
                 "required": [
                     "code",
                     "id",
                     "name",
-                    "status"
+                    "status",
+                    "status_label"
                 ]
             },
             "BankRef": {
@@ -24753,6 +25629,10 @@
                         ],
                         "readOnly": true
                     },
+                    "status_label": {
+                        "type": "string",
+                        "readOnly": true
+                    },
                     "advisor_name": {
                         "type": [
                             "string",
@@ -24780,6 +25660,7 @@
                     "project_id",
                     "project_name",
                     "status",
+                    "status_label",
                     "updated_at"
                 ]
             },
@@ -27396,7 +28277,7 @@
                 ]
             },
             "ClientByRole": {
-                "oneOf": [
+                "anyOf": [
                     {
                         "$ref": "#/components/schemas/Client"
                     },
@@ -27578,7 +28459,7 @@
                 ]
             },
             "ClientDetailByRole": {
-                "oneOf": [
+                "anyOf": [
                     {
                         "$ref": "#/components/schemas/ClientDetail"
                     },
@@ -31290,6 +32171,10 @@
                     "status": {
                         "type": "string"
                     },
+                    "status_label": {
+                        "type": "string",
+                        "readOnly": true
+                    },
                     "expires_at": {
                         "type": "string",
                         "format": "date-time"
@@ -31328,6 +32213,7 @@
                     "revoked_at",
                     "role",
                     "status",
+                    "status_label",
                     "updated_at"
                 ]
             },
@@ -31563,6 +32449,10 @@
                         "readOnly": true,
                         "default": "ACTIVE"
                     },
+                    "status_label": {
+                        "type": "string",
+                        "readOnly": true
+                    },
                     "started_at": {
                         "type": "string",
                         "format": "date",
@@ -31596,6 +32486,7 @@
                     "partner_name",
                     "started_at",
                     "status",
+                    "status_label",
                     "updated_at",
                     "user"
                 ]
@@ -32383,7 +33274,7 @@
                 ]
             },
             "OpportunityDetailByRole": {
-                "oneOf": [
+                "anyOf": [
                     {
                         "$ref": "#/components/schemas/OpportunityDetail"
                     },
@@ -32702,14 +33593,6 @@
             },
             "PaginatedApplicationList": {
                 "type": "object",
-                "required": [
-                    "items",
-                    "page",
-                    "page_size",
-                    "total",
-                    "next",
-                    "previous"
-                ],
                 "properties": {
                     "items": {
                         "type": "array",
@@ -32718,28 +33601,45 @@
                         }
                     },
                     "page": {
-                        "type": "integer",
-                        "example": 1
+                        "type": "integer"
                     },
                     "page_size": {
-                        "type": "integer",
-                        "example": 25
+                        "type": "integer"
                     },
                     "total": {
-                        "type": "integer",
-                        "example": 128
+                        "type": "integer"
                     },
                     "next": {
-                        "type": "string",
-                        "nullable": true,
-                        "example": "/api/v1/x?page=2"
+                        "type": [
+                            "string",
+                            "null"
+                        ]
                     },
                     "previous": {
-                        "type": "string",
-                        "nullable": true,
-                        "example": null
+                        "type": [
+                            "string",
+                            "null"
+                        ]
                     }
-                }
+                },
+                "required": [
+                    "items",
+                    "next",
+                    "page",
+                    "page_size",
+                    "previous",
+                    "total"
+                ]
+            },
+            "PaginatedApplicationListByRole": {
+                "anyOf": [
+                    {
+                        "$ref": "#/components/schemas/PaginatedApplicationList"
+                    },
+                    {
+                        "$ref": "#/components/schemas/PaginatedApplicationSummaryList"
+                    }
+                ]
             },
             "PaginatedApplicationNotificationList": {
                 "type": "object",
@@ -32822,6 +33722,46 @@
                         "example": null
                     }
                 }
+            },
+            "PaginatedApplicationSummaryList": {
+                "type": "object",
+                "properties": {
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/ApplicationSummary"
+                        }
+                    },
+                    "page": {
+                        "type": "integer"
+                    },
+                    "page_size": {
+                        "type": "integer"
+                    },
+                    "total": {
+                        "type": "integer"
+                    },
+                    "next": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "previous": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    }
+                },
+                "required": [
+                    "items",
+                    "next",
+                    "page",
+                    "page_size",
+                    "previous",
+                    "total"
+                ]
             },
             "PaginatedAuditEventList": {
                 "type": "object",
@@ -33518,7 +34458,7 @@
                 ]
             },
             "PaginatedClientListByRole": {
-                "oneOf": [
+                "anyOf": [
                     {
                         "$ref": "#/components/schemas/PaginatedClientList"
                     },
@@ -34265,7 +35205,7 @@
                 ]
             },
             "PaginatedOpportunityListByRole": {
-                "oneOf": [
+                "anyOf": [
                     {
                         "$ref": "#/components/schemas/PaginatedOpportunityList"
                     },
@@ -34834,6 +35774,10 @@
                         ],
                         "readOnly": true
                     },
+                    "status_label": {
+                        "type": "string",
+                        "readOnly": true
+                    },
                     "contact_name": {
                         "type": "string",
                         "readOnly": true
@@ -34866,6 +35810,7 @@
                     "id",
                     "legal_name",
                     "status",
+                    "status_label",
                     "tax_id",
                     "trade_name",
                     "updated_at"
@@ -34944,6 +35889,10 @@
                         ],
                         "readOnly": true
                     },
+                    "status_label": {
+                        "type": "string",
+                        "readOnly": true
+                    },
                     "contact_name": {
                         "type": "string",
                         "readOnly": true
@@ -34982,6 +35931,7 @@
                     "legal_name",
                     "metrics",
                     "status",
+                    "status_label",
                     "tax_id",
                     "trade_name",
                     "updated_at"
@@ -36150,6 +37100,49 @@
                     "validated_by"
                 ]
             },
+            "ProjectAvailableAction": {
+                "type": "object",
+                "description": "Transición que el actor puede ejecutar ahora. Misma forma que `AvailableAction` de\nla solicitud, sin `guard_code` (el flujo del proyecto no tiene guardas).",
+                "properties": {
+                    "code": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "label": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "kind": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/AvailableActionKindEnum"
+                            }
+                        ],
+                        "description": "primary: enviar a validación o aprobar; secondary: devolver a borrador; destructive: archivar. La lista sale en ese orden.",
+                        "readOnly": true
+                    },
+                    "target_status": {
+                        "$ref": "#/components/schemas/ProjectStatusEnum"
+                    },
+                    "target_status_label": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "reason_required": {
+                        "type": "boolean",
+                        "readOnly": true,
+                        "description": "La acción exige `reason` (texto libre): devolver a borrador (`/reject`) y archivar (`/archive`)."
+                    }
+                },
+                "required": [
+                    "code",
+                    "kind",
+                    "label",
+                    "reason_required",
+                    "target_status",
+                    "target_status_label"
+                ]
+            },
             "ProjectCreateRequest": {
                 "type": "object",
                 "description": "Serializer que rechaza campos no declarados (``additionalProperties: false``).\n\nEvita la asignación masiva: el cliente solo puede enviar los campos permitidos.",
@@ -36300,11 +37293,21 @@
                         "items": {
                             "type": "string"
                         },
-                        "readOnly": true
+                        "readOnly": true,
+                        "description": "Códigos de las acciones disponibles (por código). Con etiqueta, tipo y motivo: `available_action_details`."
+                    },
+                    "available_action_details": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/ProjectAvailableAction"
+                        },
+                        "readOnly": true,
+                        "description": "Las mismas acciones de `available_actions` con su etiqueta, en orden principal, secundaria y destructiva."
                     }
                 },
                 "required": [
                     "address",
+                    "available_action_details",
                     "available_actions",
                     "city",
                     "code",
@@ -36879,6 +37882,81 @@
                 "type": "string",
                 "description": "* `CO_APPLICANT` - Co-solicitante\n* `SOLIDARY_DEBTOR` - Deudor solidario"
             },
+            "RuleField": {
+                "type": "object",
+                "description": "Campo que admite una condición de regla (lista blanca de ``rule_fields.py``).",
+                "properties": {
+                    "code": {
+                        "type": "string",
+                        "description": "Ruta del campo en la condición, p. ej. `financing.term_months`."
+                    },
+                    "label": {
+                        "type": "string"
+                    },
+                    "description": {
+                        "type": "string"
+                    },
+                    "type": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/RuleFieldTypeEnum"
+                            }
+                        ],
+                        "description": "`money` es un monto en COP; `choice`, un código del catálogo `catalog`.\n\n* `number` - number\n* `money` - money\n* `percent` - percent\n* `boolean` - boolean\n* `choice` - choice"
+                    },
+                    "catalog": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Catálogo de los valores de un campo `choice`."
+                    },
+                    "options": {
+                        "type": [
+                            "array",
+                            "null"
+                        ],
+                        "items": {
+                            "$ref": "#/components/schemas/RuleFieldOption"
+                        },
+                        "description": "Valores vigentes de un campo `choice`. `null` en los demás y en un catálogo bajo demanda (`municipality`), que se pide en `/metadata/catalogs/{code}`."
+                    }
+                },
+                "required": [
+                    "catalog",
+                    "code",
+                    "description",
+                    "label",
+                    "options",
+                    "type"
+                ]
+            },
+            "RuleFieldOption": {
+                "type": "object",
+                "properties": {
+                    "code": {
+                        "type": "string"
+                    },
+                    "label": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "code",
+                    "label"
+                ]
+            },
+            "RuleFieldTypeEnum": {
+                "enum": [
+                    "number",
+                    "money",
+                    "percent",
+                    "boolean",
+                    "choice"
+                ],
+                "type": "string",
+                "description": "* `number` - number\n* `money` - money\n* `percent` - percent\n* `boolean` - boolean\n* `choice` - choice"
+            },
             "RuleIssue": {
                 "type": "object",
                 "description": "Regla incumplida (`FAILED`) o sin datos para decidir (`MISSING_DATA`).",
@@ -37033,6 +38111,10 @@
                     "outcome": {
                         "$ref": "#/components/schemas/RuleOutcomeEnum"
                     },
+                    "outcome_label": {
+                        "type": "string",
+                        "readOnly": true
+                    },
                     "unresolved_fields": {
                         "type": "array",
                         "items": {
@@ -37057,6 +38139,7 @@
                     "matches_expected",
                     "name",
                     "outcome",
+                    "outcome_label",
                     "unresolved_fields"
                 ]
             },
@@ -37878,6 +38961,10 @@
                     "status": {
                         "type": "string"
                     },
+                    "status_label": {
+                        "type": "string",
+                        "readOnly": true
+                    },
                     "roles": {
                         "type": "array",
                         "items": {
@@ -37923,6 +39010,7 @@
                     "phone",
                     "roles",
                     "status",
+                    "status_label",
                     "updated_at"
                 ]
             },
@@ -38005,6 +39093,10 @@
                     "status": {
                         "type": "string"
                     },
+                    "status_label": {
+                        "type": "string",
+                        "readOnly": true
+                    },
                     "roles": {
                         "type": "array",
                         "items": {
@@ -38059,6 +39151,7 @@
                     "phone",
                     "roles",
                     "status",
+                    "status_label",
                     "updated_at"
                 ]
             },

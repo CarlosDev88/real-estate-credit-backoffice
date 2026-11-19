@@ -347,6 +347,7 @@ class BrokerOpportunitySerializer(serializers.ModelSerializer):
     advisor_name = serializers.CharField(
         source="assigned_advisor.get_full_name", read_only=True, allow_null=True
     )
+    status_label = ChoiceLabelField(OpportunityStatus, source="status")
 
     class Meta:
         model = Opportunity
@@ -357,6 +358,7 @@ class BrokerOpportunitySerializer(serializers.ModelSerializer):
             "project_id",
             "project_name",
             "status",
+            "status_label",
             "advisor_name",
             "created_at",
             "updated_at",

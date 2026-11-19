@@ -486,6 +486,8 @@ Soporta `If-None-Match`; puede devolver `304`.
 
 Los endpoints de metadatos no reemplazan las validaciones de backend.
 
+Catálogos de sistema del bootstrap que nombran códigos del contrato (no se editan desde la administración; sus etiquetas son las del backend): `participant_role` (`PRIMARY` "Titular", `CO_APPLICANT` "Co-solicitante", `SOLIDARY_DEBTOR` "Deudor solidario"), `commission_settlement_status` (`ACTIVE` "Vigente", `VOIDED` "Anulada") y `commission_share_status` (`PENDING` "Pendiente de pago", `PAID` "Pagada", `VOIDED` "Anulada"), además de los de estado de §14, §15 y §12.
+
 ## 10. Usuarios internos, roles e invitaciones
 
 ### 10.1 Usuarios
@@ -518,7 +520,8 @@ Reglas:
 - correo normalizado único;
 - un usuario de constructora requiere membresía partner;
 - desactivar revoca `auth_sessions`;
-- el comprador no se crea en `/users`.
+- el comprador no se crea en `/users`;
+- cada usuario trae `status_label` ("Pendiente de definir contraseña", "Activo" o "Inactivo").
 
 ### 10.2 Invitaciones internas
 
@@ -539,6 +542,8 @@ Reglas:
   "password_confirmation": "contraseña-segura"
 }
 ```
+
+Cada invitación trae `status_label` ("Pendiente", "Aceptada", "Revocada" o "Vencida").
 
 ## 11. Partners y membresías
 
@@ -564,6 +569,8 @@ Reglas:
 | `DELETE` | `/partner-memberships/{membership_id}` | `partner_members.remove` | Finaliza membresía; no borra historial. |
 
 `CONSTRUCTION_PARTNER` solo puede consultar su propia membresía y partner. En el MVP no puede pertenecer simultáneamente a dos partners activos.
+
+El partner (listado y detalle) y cada membresía traen `status_label` ("Activo" o "Inactivo").
 
 ## 12. Proyectos inmobiliarios
 
@@ -596,7 +603,8 @@ Reglas:
 - para `CONSTRUCTION_PARTNER`, `partner_id` se ignora y se deriva de la membresía;
 - un proyecto nuevo siempre inicia `DRAFT`;
 - solo `ACTIVE` puede asociarse a nuevas oportunidades;
-- archivar no elimina asociaciones históricas.
+- archivar no elimina asociaciones históricas;
+- el detalle (y la respuesta de editar y de cada transición) trae `available_actions`, los códigos de las transiciones que el actor puede ejecutar ahora (por código), y `available_action_details`, las mismas con la forma de las acciones de la solicitud sin `guard_code`: `[{code, label, kind, target_status, target_status_label, reason_required}]`. `kind`: enviar a validación y aprobar son `primary`, devolver a borrador (`REJECT`) es `secondary` y archivar es `destructive`; salen en ese orden y, dentro de cada grupo, por código. `reason_required` es `true` en `/reject` y `/archive` (`reason` obligatorio).
 
 ## 13. Clientes
 
@@ -662,7 +670,7 @@ Si existe `project_id`, debe estar `ACTIVE`. El partner no usa estos endpoints e
 - **Forma por rol:** el broker recibe `BrokerOpportunity` (resumen de su prospecto) en `GET /opportunities`, `GET /clients/{client_id}/opportunities`, `POST`, `GET` y `PATCH /opportunities/{id}`; el resto, `Opportunity` (listados) u `OpportunityDetail`. El contrato lo describe con `oneOf` (`PaginatedOpportunityListByRole` y `OpportunityDetailByRole`), como en clientes. `/broker/opportunities` sigue respondiendo `PaginatedBrokerOpportunityList`.
 - **`notes`:** opcional, hasta 2000 caracteres. Queda como la primera nota interna de la oportunidad (una fila `NOTE_ADDED` de la actividad).
 - **Asignación automática:** si quien crea la oportunidad tiene rol `ADVISOR`, queda asignada a él y en `ASSIGNED` en la misma transacción, con su fila en `assignments` (`reason`: "Asignación automática: la creó el asesor.") y la transición `ASSIGN`. Si esa transición no está activa, responde `409 INVALID_STATE_TRANSITION` y no se crea nada. Si la crea un broker o el administrador, queda `NEW` y sin asesor.
-- **`status_label`:** en `Opportunity` y `OpportunityDetail`, la etiqueta del estado (catálogo `opportunity_status`).
+- **`status_label`:** en `Opportunity`, `OpportunityDetail` y `BrokerOpportunity`, la etiqueta del estado (catálogo `opportunity_status`).
 - **`assignments`:** historial de asesores, del más reciente al más antiguo: `[{id, advisor: {id, name}, assigned_by: {id, name} | null, reason, created_at, ended_at}]`.
 - **`available_actions`:** las transiciones que el actor puede ejecutar desde el estado actual (rol y permiso), con la forma de las acciones de la solicitud sin `guard_code`: `[{code, label, kind, target_status, target_status_label, reason_required}]`. `kind`: la conversión (`CONVERT_*`, al crear la solicitud) es `primary`; perder (`MARK_LOST_*`) y cancelar (`CANCEL_*`) son `destructive`; el resto (`ASSIGN`, por `/assignments`, `MARK_CONTACTED`, `START_PROGRESS`) es `secondary`. Sale en ese orden y, dentro de cada grupo, por código. `reason_required` es `true` solo para `LOST` (`reason_code` del catálogo `opportunity_lost_reason`).
 
@@ -805,6 +813,7 @@ Listado `GET /applications`:
 - **Completitud en la fila:** `completeness_pct` (0 a 100, o `null` si todavía no se calculó; el frontend muestra "—") y `ready_to_file_blocked` (`true` si la solicitud está en `READY_TO_FILE` y ya no cumple la guarda, `false` si cumple, `null` en otro estado o sin valor). Es un valor guardado con la misma regla de `/completeness`: se recalcula después de cada cambio de datos, de estado, de la evaluación bancaria y del expediente, y con el comando `refresh_application_completeness`, que cubre lo que cambia con el tiempo (documentos que vencen, reglas o requisitos nuevos). `/completeness` sigue calculando en vivo.
 - **Actividad del comprador en la fila:** `last_buyer_activity_at` (la última vez que el comprador usó el portal en esa solicitud; `null` si nunca entró) y `buyer_inactive` (solo en la pestaña `waiting`: `true` si esa actividad, o el inicio de la etapa si nunca entró, tiene más de 3 días; `false` si no; `null` en los demás estados). El frontend arma el texto del aviso con `last_buyer_activity_at`.
 - **El broker** recibe el mismo resumen de siempre, sin montos, participantes, completitud ni actividad del comprador.
+- **Forma por rol:** el broker (`INDEPENDENT_BROKER` sin `ADMIN` ni `ADVISOR`) recibe `ApplicationSummary` en `GET /applications`, `GET /applications/{application_id}` y `GET /clients/{client_id}/applications`; el resto, `Application` (listados) o `ApplicationDetail`. El contrato lo describe con `oneOf` (`PaginatedApplicationListByRole` y `ApplicationDetailByRole`), como en clientes.
 
 Pestañas rápidas (`quick_filter` y `GET /applications/quick-filters`), una configuración fija del backend en la que cada estado está en exactamente una pestaña:
 
@@ -1096,7 +1105,7 @@ La lista sale ordenada por grupo (`primary`, `secondary`, `destructive`) y, dent
 }
 ```
 
-El cuerpo lleva `client_id` de un cliente visible o el bloque de identidad plano (`document_type_code`, `document_number`, `first_names`, `last_names`, `birth_date`, `email`, `phone`), nunca ambos. El bloque crea el cliente con las mismas reglas que `POST /clients` (`409 DUPLICATE_CLIENT_DOCUMENT` si el documento ya existe). `role_code` admite `CO_APPLICANT` o `SOLIDARY_DEBTOR`. `income_share_cop` (aporte declarado al hogar) exige `contributes_income = true`. El modelo de datos no tiene relación de parentesco.
+El cuerpo lleva `client_id` de un cliente visible o el bloque de identidad plano (`document_type_code`, `document_number`, `first_names`, `last_names`, `birth_date`, `email`, `phone`), nunca ambos. El bloque crea el cliente con las mismas reglas que `POST /clients` (`409 DUPLICATE_CLIENT_DOCUMENT` si el documento ya existe). `role_code` admite `CO_APPLICANT` o `SOLIDARY_DEBTOR`; las etiquetas salen del catálogo `participant_role` del bootstrap. `income_share_cop` (aporte declarado al hogar) exige `contributes_income = true`. El modelo de datos no tiene relación de parentesco.
 
 Reglas:
 
@@ -1779,6 +1788,8 @@ Los códigos usados históricamente no se renombran ni eliminan. Si dejan de apl
 | `POST` | `/bank-products/{product_id}/deactivate` | `banks.update` | Desactiva producto. |
 | `PUT` | `/bank-products/{product_id}/purposes` | `banks.update` | Define finalidades admitidas. |
 
+El banco (listado, detalle y cada producto del detalle) y el producto traen `status_label` ("Activo" o "Inactivo").
+
 Para el MVP existen tres bancos de prueba —Bancolombia, Fondo Nacional del Ahorro y Banco de Bogotá— y un producto hipotecario configurable por banco. Ningún campo o endpoint presume comunicación automática con ellos.
 
 `short_name` es un nombre corto opcional para listados (hasta 30 caracteres, por ejemplo `FNA`), editable en `POST /banks` y `PATCH /banks/{bank_id}`. Vacío por omisión: el frontend muestra `name`. De los bancos de prueba, solo el Fondo Nacional del Ahorro trae `short_name` (`FNA`). Sale en el banco, en su detalle y en cada referencia al banco (`bank_product.bank` del listado de solicitudes y de los productos).
@@ -1803,6 +1814,7 @@ Un producto es elegible en una fecha si el banco y el producto están `ACTIVE`, 
 | `POST` | `/bank-policy-rules/{rule_id}/deactivate` | `bank_rules.publish` | Detiene su aplicación futura. |
 | `POST` | `/bank-policy-rules/{rule_id}/test` | `bank_rules.update` | Ejecuta casos de prueba sin afectar solicitudes. |
 | `GET` | `/bank-policy-rules/{rule_id}/versions` | `bank_rules.read` | Historial inmutable de versiones. |
+| `GET` | `/bank-policy-rules/fields` | `bank_rules.read` | Campos que admite una condición, con su tipo y opciones. |
 
 Una regla define banco/producto, finalidad, perfil del solicitante, severidad (`BLOCKING` o `WARNING`), condición declarativa, mensaje y vigencia. No se admite código Python/JavaScript enviado por usuarios. El motor solo interpreta operadores permitidos (`eq`, `in`, `gte`, `lte`, `and`, `or`, `sum`, `ratio`) sobre campos incluidos en una lista segura.
 
@@ -1828,6 +1840,9 @@ Ejemplo conceptual:
 ```
 
 Las evaluaciones guardan la versión exacta de las reglas aplicadas. Cambiar una regla no modifica retrospectivamente el resultado histórico.
+
+- **Etiquetas:** la regla trae `status_label` (Borrador, Activa, Inactiva) y `severity_label` (Bloqueante, Advertencia); cada resultado de `/test` trae `outcome_label` (Cumple, No cumple, Faltan datos).
+- **`GET /bank-policy-rules/fields`:** arreglo sin paginar con la lista segura de campos, la misma con la que se valida la condición al guardar y al publicar (`apps/banking/rule_fields.py`): `[{code, label, description, type, catalog, options}]`. `type` es `number`, `money` (monto en COP, los campos `*_cop`), `percent` (reservado; hoy ningún campo), `boolean` o `choice` (un código del catálogo `catalog`). `options` trae los valores vigentes del catálogo (`[{code, label}]`) y es `null` en los demás tipos y en un catálogo bajo demanda (`municipality`), que se pide en `/metadata/catalogs/{code}`. Las opciones salen de una sola consulta.
 
 #### Gramática de la condición
 
@@ -1968,7 +1983,7 @@ Aunque las transiciones se consultan por API, los estados estructurales del domi
 | `GET` | `/commission-plans/{plan_id}` | `commission_plans.read` | Detalle. |
 | `PATCH` | `/commission-plans/{plan_id}` | `commission_plans.manage` | Edita solo si ninguna liquidación lo usa. |
 | `POST` | `/commission-plans/{plan_id}/close` | `commission_plans.manage` | Fija el fin de vigencia. |
-| `GET` | `/commission-settlements` | `commissions.read` | Lista liquidaciones; filtros por estado, banco, asesor, broker, fechas y revisión pendiente. |
+| `GET` | `/commission-settlements` | `commissions.read` | Lista liquidaciones; filtros por estado, solicitud, banco, asesor, broker, fechas y revisión pendiente. |
 | `GET` | `/commission-settlements/{settlement_id}` | `commissions.read` | Detalle con sus partes. |
 | `POST` | `/applications/{application_id}/commission-settlement` | `commissions.manage` | Liquida manualmente una solicitud `DISBURSED`; idempotente (`201` si crea, `200` si ya existía). |
 | `POST` | `/commission-settlements/{settlement_id}/void` | `commissions.manage` | Anula con motivo, si ninguna parte está pagada. |
@@ -1998,7 +2013,8 @@ Los permisos `commission_plans.*` y `commissions.read`/`.manage` son del adminis
 **Pagos.** `/commission-shares/{id}/pay` recibe `paid_at` (no futura) y `payment_reference`, ambos obligatorios. Solo se paga una parte `PENDING` (`409 COMMISSION_SHARE_NOT_PAYABLE`).
 
 **Consultas.**
-- `GET /commission-settlements` filtra por `status`, `bank_id`, `advisor_id`, `broker_id`, `needs_review` y `date_from`/`date_to` (fecha de desembolso, días de Bogotá).
+- `GET /commission-settlements` filtra por `status`, `application_id` (todas las liquidaciones de esa solicitud: la vigente y las anuladas), `bank_id`, `advisor_id`, `broker_id`, `needs_review` y `date_from`/`date_to` (fecha de desembolso, días de Bogotá).
+- Las etiquetas de los filtros de estado salen de los catálogos `commission_settlement_status` y `commission_share_status` del bootstrap.
 - La liquidación trae `lead_origin_label`, `status_label`, `disbursed_on` y sus `shares` con `beneficiary_role_label` y `status_label`.
 
 **Mis comisiones.**

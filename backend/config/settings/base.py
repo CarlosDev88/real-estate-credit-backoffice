@@ -217,6 +217,8 @@ SPECTACULAR_SETTINGS = {
         "CommissionSettlementStatusEnum": "apps.commissions.models.SettlementStatus",
         "CommissionShareStatusEnum": "apps.commissions.models.ShareStatus",
         "BeneficiaryRoleEnum": "apps.commissions.models.BeneficiaryRole",
+        # Reglas bancarias: tipo de valor de cada campo del editor de condiciones.
+        "RuleFieldTypeEnum": "apps.banking.rule_fields.FieldInputType",
     },
 }
 

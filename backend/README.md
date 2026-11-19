@@ -135,13 +135,34 @@ docker compose exec backend python manage.py seed_demo_data --advisor-email ases
 
 > **Local only.** The command runs only with `DJANGO_DEBUG=true`; without it, it stops with an error and writes nothing. Every demo user shares the password `DemoUmbral2026!`, written in the code: never run it against a shared or real database.
 
-- **Users:** `admin@demo.local` (`ADMIN`), `asesora.lucia@demo.local` and `asesor.andres@demo.local` (`ADVISOR`; Andrés has no phone), and `broker@demo.local` (`INDEPENDENT_BROKER`). `--advisor-email` is optional: that existing advisor also receives applications.
-- **Applications:** 30, spread over the `draft`, `waiting`, `review`, and `ready` tabs, with co-applicants and solidary debtors, financial profiles, property and financing (Bancolombia, FNA, and Banco de Bogotá; mortgage and housing leasing). In `review`, documents to review, some approved and one rejected. In `ready`, one is `ready_to_file_blocked` (a document rejected after it was ready). In `waiting`, one is `buyer_inactive`.
-- **Filed applications:** 3 more (33 in total), each with its package built and filed, plus bank responses: one in `CREDIT_ANALYSIS` (received and in analysis), one in `BANK_OBSERVATION` (returned with one observed document the buyer can replace from the portal), and one in `APPROVED` (amount and term approved).
+The goal: log in as the admin and find real, varied data on every screen, and walk through the product with one user for each of the 5 roles.
+
+| Role | Email | What it is for |
+| --- | --- | --- |
+| `ADMIN` | `admin@demo.local` | Sees everything: administration, reports, commissions and audit. |
+| `ADVISOR` | `asesora.lucia@demo.local` | Advisor with a portfolio: My day, applications, tasks and filings. |
+| `ADVISOR` | `asesor.andres@demo.local` | The other advisor; no phone (the portal hides WhatsApp). |
+| `INDEPENDENT_BROKER` | `broker@demo.local` | Their prospects, the summary of their applications and their commissions. |
+| `CONSTRUCTION_PARTNER` | `constructora@demo.local` | Their construction company and its projects. |
+
+All of them use `DemoUmbral2026!`. There is also `inactivo@demo.local`, a deactivated advisor (login answers `403`). `--advisor-email` is optional: that existing advisor (for example the E2E user) also receives applications of the base demo, with its 8 tasks and 2 notes.
+
+What it creates:
+
+- **Applications:** about 60, created over the last six months and in **every status** of the workflow, spread between the two advisors, with the broker originating a third. The base demo is still there: 30 in the `draft`, `waiting`, `review` and `ready` tabs (one `ready_to_file_blocked`, one `buyer_inactive` per advisor) and 4 filed. A six-month history adds 30 more: closed before filing (cancelled, own funds, external credit, withdrawn), filed with every bank response (received, in analysis, returned, returned and corrected with a second filing, approved, legalization, rejected, disbursed), one withdrawn after filing, and one filed without a response and already overdue (`is_response_overdue`).
+- **Real dates in the past:** each history application is built through the domain services and then moved back in time (status history, activity, documents, filings, responses, notices, settlement…), keeping the real order: a disbursement is never before its filing.
+- **Commissions:** pending, paid, one share paid with review pending (a corrected disbursement), voided and settled again; with broker (70/30) and direct (100 %). A 1 %, 70/30 plan for every product.
+- **Tasks, notes and activity:** overdue, today, upcoming, completed and cancelled tasks for both advisors; notes on clients, opportunities and applications.
+- **Buyer notices and email deliveries:** read and unread; sent, one failed with a retry scheduled and one failed for good.
+- **Opportunities** in every status (new, assigned, contacted, in progress, converted, lost, cancelled); **construction companies and projects** in every status (draft, in review, active, rejected back to draft, archived) with active and inactive memberships; **invitations** pending, accepted, expired and revoked; **banks and products** (one inactive) and **rules** with more than one version; two **report exports** (completed and expired); and **audit** events (logins, failed logins, a `403`, document downloads, an export).
 - **Files:** small PDF and PNG files generated on the fly, without real data, saved with the configured storage.
-- **Buyer portal:** the command prints a valid link (`http://localhost:3000/acceso?token=…`, 72 hours) for an application in `waiting`. To get a new one, issue it from the backoffice.
-- **Idempotent, never deletes:** demo clients have document numbers starting with `9900`. If any exists, the command prints `Los datos de demo ya existen` and creates nothing.
-- Everything is created through the domain services (history, slots, stored completeness, and bank evaluations stay consistent), and the command ends by running `refresh_application_completeness`.
+
+Running it again:
+
+- **Idempotent block by block, never deletes:** each of its 16 blocks has its own marker (an email, a code, a document prefix or a fixed name) and skips itself if it already exists. Running it twice in a row changes nothing, and on a database with the demo of an older version it **adds only what is missing**. The full run takes about two minutes; a second run, a few seconds.
+- **Output:** a summary per block (`creados (N)` or `ya existían`), the users table by role with the password, and the buyer portal link with its application code.
+- **Buyer portal:** the link (`http://localhost:3000/acceso?token=…`, single use, 72 hours) is printed when it is issued. If an unused one already exists, the command does not issue another (the token is only visible when issued) and says so; `--new-portal-link` issues a new one and revokes the previous one.
+- Everything goes through the domain services (history, slots, stored completeness and bank evaluations stay consistent); the only direct writes are the dates moved back and a few states that local mode cannot reach (a failed email, an expired invitation). The command ends by running `refresh_application_completeness`.
 
 ### Local Modes
 
@@ -490,7 +511,7 @@ The `idempotency` module (API §6) protects five critical `POST` operations: the
 - **Settlement:** recording a `DISBURSED` bank response settles automatically. The base is the disbursed amount, and the plan is the one valid on the disbursement date (Bogotá). The total is `base × rate`, rounded half up to the peso. With a `BROKER` origin the broker gets its share and the advisor the rest; with any other origin, the advisor gets 100 %. There is one active settlement per application (the application row is locked). Without a valid plan nothing breaks: the activity shows it and the admin settles by hand.
 - **Payments:** each share is paid separately (`paid_at`, `payment_reference`).
 - **Mine:** `GET /me/commissions` shows each advisor or broker only their own share, never the base, rate, total or the other share.
-- **Demo:** `seed_demo_data` creates a 1 %, 70/30 plan for every product, valid from 2026-01-01, and settles any demo application in `DISBURSED`.
+- **Demo:** `seed_demo_data` creates a 1 %, 70/30 plan for every product, valid from 2026-01-01, settles every demo application in `DISBURSED`, and leaves settlements pending, paid, partly paid with review pending, and voided.
 
 ## Internal Authentication
 
@@ -506,11 +527,11 @@ In local development (`AUTH_COOKIE_SECURE=false`, plain HTTP) the cookie names d
 
 | Method | Route | Notes |
 | --- | --- | --- |
-| `POST` | `/api/v1/auth/login` | 5 attempts per email + IP every 15 minutes. |
+| `POST` | `/api/v1/auth/login` | 5 attempts per email + IP, 20 per IP over all emails, and 10 per email over all IPs, every 15 minutes. |
 | `POST` | `/api/v1/auth/refresh` | Rotates the refresh token. Reusing a rotated token revokes the whole session chain. |
 | `POST` | `/api/v1/auth/logout` | `204`; revokes the current session. Idempotent. |
 | `GET` | `/api/v1/auth/me` | Profile, role, permissions, and scope. Source of truth for the frontend. |
-| `POST` | `/api/v1/auth/password-reset-requests` | Always `202`, whether or not the email exists. 3 per email + IP per hour. |
+| `POST` | `/api/v1/auth/password-reset-requests` | Always `202`, whether or not the email exists; the email goes out through the Celery queue. 3 per email + IP, 10 per IP, and 5 per email per hour. |
 | `POST` | `/api/v1/auth/password-resets/confirm` | Single-use token valid for 30 minutes; revokes every session. |
 | `POST` | `/api/v1/auth/change-password` | Requires the current password; revokes the other sessions. |
 
@@ -520,6 +541,52 @@ Frontend integration rules:
 - On every `POST`, `PUT`, `PATCH`, or `DELETE`, send the `X-CSRFToken` header with the value of the `app_csrf` cookie.
 - On a `401 SESSION_EXPIRED`, call `/auth/refresh` once and retry. Serialize refresh calls (one at a time across tabs): two concurrent refreshes with the same token look like token theft and close the session.
 - Revoking a session or deactivating a user cuts access immediately: every request checks that the JWT session is still active.
+
+## Security Settings and Production Image
+
+These come from the security audit, phase B ([`docs/SEGURIDAD.md`](../docs/SEGURIDAD.md)).
+
+**Rate limits.** Every quota lives in `AUTH_RATE_LIMITS` (`config/settings/base.py`) and is multiplied by `AUTH_RATE_LIMIT_MULTIPLIER` only with `DJANGO_DEBUG=True`:
+
+| Key | Default | Applies to |
+| --- | --- | --- |
+| `general_read` | `600/1m` | Every `GET`, `HEAD`, and `OPTIONS`, per internal user or buyer session; per IP without a session. |
+| `general_write` | `120/1m` | Every other method, with the same key. |
+| `state_changes` | `20/1m` | One shared quota for status transitions, withdrawals, filings, and opportunity transitions (views with `throttle_scope = "state_changes"`). |
+| `login_ip` / `login_account` | `20/15m` / `10/15m` | Login per IP over all emails / per email over all IPs (besides `login`, per email + IP). |
+| `password_reset_request_ip` / `password_reset_request_account` | `10/1h` / `5/1h` | The same for password reset requests. |
+| `admin_login` | `10/15m` | `/admin/` login per IP, when the admin is published. |
+
+Views with their own limits add them to the general ones: `throttle_classes = [*GENERAL_THROTTLES, ...]`. Tests raise the general rates ×1000 in `config/settings/test.py`; only the rate-limit tests bring them back.
+
+**New variables** (all optional; the defaults are the safe ones):
+
+| Variable | Default | What it does |
+| --- | --- | --- |
+| `ADMIN_ENABLED` | `False` | Publishes Django's `/admin/` without `DEBUG`. With `DEBUG` it is always published. |
+| `ADMIN_URL_PATH` | `admin/` | Path of the admin when published. |
+| `API_DOCS_PUBLIC` | `False` | Publishes `/openapi.json` and `/docs` without `DEBUG`. The frontend and the published reference use `contracts/openapi.json` instead. |
+| `SECURE_SSL_REDIRECT` | `True` | Production only: redirect HTTP to HTTPS (turn it off if the proxy already redirects). |
+| `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD`, `EMAIL_USE_TLS`, `EMAIL_USE_SSL`, `EMAIL_TIMEOUT` | `localhost`, `587`, empty, empty, `True`, `False`, `10` | Production only: the SMTP server. |
+| `GUNICORN_WORKERS`, `GUNICORN_BIND`, `GUNICORN_TIMEOUT`, `GUNICORN_MAX_REQUESTS`, `GUNICORN_MAX_REQUESTS_JITTER`, `GUNICORN_LOG_LEVEL` | `3`, `0.0.0.0:8000`, `60`, `1000`, `100`, `info` | Production image only (`config/gunicorn.py`). |
+
+**Keys.** Without `DEBUG`, Django refuses to start if `AUTH_JWT_SIGNING_KEY` has fewer than 32 bytes or `DJANGO_SECRET_KEY` has fewer than 50 characters, fewer than 5 distinct ones, or the `django-insecure-` prefix (`identity.E001`/`E002`); with `DEBUG` they are warnings. Generate each key with:
+
+```powershell
+python -c "import secrets; print(secrets.token_urlsafe(48))"
+```
+
+**Settings modules.** `config.settings.local` (what `manage.py` uses and what the compose sets in every Django service), `config.settings.test` (pytest and the CI), and `config.settings.production` (`DEBUG = False` fixed, SMTP, HSTS for one hour, HTTPS redirect behind a proxy that sends `X-Forwarded-Proto`, and `Secure` cookies). `config/wsgi.py`, `config/asgi.py`, and `config/celery.py` default to `production`, so any process started without `DJANGO_SETTINGS_MODULE` never runs with `DEBUG`.
+
+**Production image.** The `Dockerfile` has two stages on a base pinned by digest: `dev` (the one the compose builds, with `runserver`) and `production` (gunicorn, only `manage.py`, `config/`, and `apps/`, non-root user, no access log, and `manage.py check` before starting):
+
+```powershell
+docker build --target production -t mvp-credit-backend:production .
+docker run --rm -p 127.0.0.1:8000:8000 --env-file <production env file> mvp-credit-backend:production
+python manage.py check --deploy --settings=config.settings.production   # with production variables
+```
+
+The compose publishes every port only on `127.0.0.1`.
 
 ## Users and Roles
 
