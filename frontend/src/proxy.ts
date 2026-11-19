@@ -25,7 +25,8 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  // Todo menos lo público: login, acceso del comprador, portal, páginas de desarrollo,
+  // Todo menos lo público: login, acceso del comprador, portal, aceptar una invitación
+  // (F6: sin sesión, y el token no debe pasar al `next` del login), páginas de desarrollo,
   // la API (rewrite), los recursos de Next.js y los archivos estáticos.
-  matcher: ["/((?!login|acceso|portal|dev|api|_next|.*\\..*).*)"],
+  matcher: ["/((?!login|acceso|portal|aceptar-invitacion|dev|api|_next|.*\\..*).*)"],
 };

@@ -1,6 +1,15 @@
 import type { ReactNode } from "react";
 
 import { HouseIcon, UsersIcon } from "@/components/ui/icons";
+import {
+  BankIcon,
+  BuildingIcon,
+  CatalogIcon,
+  DocumentsIcon,
+  FlowIcon,
+  ProjectIcon,
+  UserShieldIcon,
+} from "@/features/admin-common/icons";
 import { BrokerIcon } from "@/features/broker/broker-icon";
 import { CommissionsIcon, MyCommissionsIcon } from "@/features/commissions/commissions-icon";
 import { DashboardIcon } from "@/features/dashboard/dashboard-icon";
@@ -98,6 +107,62 @@ export const NAV_ITEMS: NavItem[] = [
     icon: <MyCommissionsIcon />,
     group: "Finanzas",
     permission: "commissions.read_own",
+  },
+  // F6 (front-admin): grupo "Administración". Cada entrada pide su permiso de `/auth/me`;
+  // el ícono vive en `features/admin-common` hasta que pase a `components/ui`.
+  {
+    href: "/admin/usuarios",
+    label: "Usuarios",
+    icon: <UserShieldIcon />,
+    group: "Administración",
+    permission: "users.read",
+  },
+  // `partners.read` también lo tienen asesor y constructora: la entrada pide
+  // `partners.create` (solo administrador), como pide la spec F6.
+  {
+    href: "/admin/constructoras",
+    label: "Constructoras",
+    icon: <BuildingIcon />,
+    group: "Administración",
+    permission: "partners.create",
+  },
+  {
+    href: "/proyectos",
+    label: "Proyectos",
+    icon: <ProjectIcon />,
+    group: "Administración",
+    permission: "projects.read",
+    audience: "internal",
+  },
+  // `banks.read` también lo tiene el asesor (lo usa en solicitudes): pide `banks.create`.
+  {
+    href: "/admin/bancos",
+    label: "Bancos",
+    icon: <BankIcon />,
+    group: "Administración",
+    permission: "banks.create",
+  },
+  // `document_requirements.read` también lo tiene el asesor: pide `.create` (administrador).
+  {
+    href: "/admin/documentos",
+    label: "Documentos",
+    icon: <DocumentsIcon />,
+    group: "Administración",
+    permission: "document_requirements.create",
+  },
+  {
+    href: "/admin/catalogos",
+    label: "Catálogos",
+    icon: <CatalogIcon />,
+    group: "Administración",
+    permission: "catalogs.read",
+  },
+  {
+    href: "/admin/flujos",
+    label: "Flujos",
+    icon: <FlowIcon />,
+    group: "Administración",
+    permission: "workflow.read",
   },
 ];
 

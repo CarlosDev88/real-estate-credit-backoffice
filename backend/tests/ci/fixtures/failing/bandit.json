@@ -1,0 +1,29 @@
+{
+  "results": [
+    {
+      "test_id": "B602",
+      "filename": "@BASE@/apps/crm/tasks.py",
+      "line_number": 31,
+      "issue_severity": "HIGH",
+      "issue_confidence": "HIGH",
+      "issue_text": "subprocess call with shell=True identified, security issue."
+    },
+    {
+      "test_id": "B608",
+      "filename": "@BASE@/apps/reporting/sql.py",
+      "line_number": 8,
+      "issue_severity": "MEDIUM",
+      "issue_confidence": "LOW",
+      "issue_text": "Possible SQL injection vector through string-based query construction."
+    },
+    {
+      "test_id": "B310",
+      "filename": "@BASE@/apps/notifications/hooks.py",
+      "line_number": 20,
+      "issue_severity": "MEDIUM",
+      "issue_confidence": "HIGH",
+      "issue_text": "Audit url open for permitted schemes."
+    }
+  ],
+  "metrics": {}
+}

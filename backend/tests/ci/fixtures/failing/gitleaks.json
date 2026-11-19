@@ -1,0 +1,18 @@
+[
+  {
+    "RuleID": "generic-api-key",
+    "File": "backend/config/settings/prod.py",
+    "StartLine": 12,
+    "Commit": "0123456789abcdef0123456789abcdef01234567",
+    "Secret": "REDACTED",
+    "Match": "key = REDACTED"
+  },
+  {
+    "RuleID": "aws-access-token",
+    "File": "backend/scripts/deploy.sh",
+    "StartLine": 3,
+    "Commit": "89abcdef0123456789abcdef0123456789abcdef",
+    "Secret": "REDACTED",
+    "Match": "REDACTED"
+  }
+]

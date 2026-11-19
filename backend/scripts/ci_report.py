@@ -72,6 +72,7 @@ SPECTACULAR_ISSUE = re.compile(
     r"^(?:(?P<location>.+?): )?(?P<severity>Warning|Error)(?: \[[^\]]*\])?: (?P<message>.+)$"
 )
 SPECTACULAR_TOTALS = re.compile(r"^(Warnings|Errors):\s+(\d+)", re.MULTILINE)
+PIP_AUDIT_IGNORED = re.compile(r"(\d+) ignored")
 HTTP_METHODS = ("get", "put", "post", "delete", "options", "head", "patch", "trace")
 
 # Nombres de las filas, en el orden de la tabla.
@@ -83,6 +84,12 @@ TESTS = "Tests"
 COVERAGE = "Cobertura"
 WARNINGS = "Advertencias"
 OPENAPI = "Contrato OpenAPI"
+PIP_AUDIT = "Dependencias (pip-audit)"
+PIP_AUDIT_UNFIXED = "Dependencias sin arreglo"
+GITLEAKS = "Secretos (gitleaks)"
+BANDIT = "Bandit"
+BANDIT_MEDIUM = "Bandit (severidad media)"
+SECURITY_MATRIX = "Matriz de acceso"
 
 
 class Status(Enum):
@@ -692,6 +699,142 @@ def check_openapi(ctx: Context) -> Verdict:
     return Verdict(Status.FAILED, "Falló la generación del contrato (ver el log)", details)
 
 
+# --- Seguridad (docs/seguridad/01-automatico.md) ----------------------------------------
+
+
+@dataclass(frozen=True)
+class Vulnerability:
+    package: str
+    version: str
+    id: str
+    fixes: tuple[str, ...]
+
+    def line(self) -> str:
+        fixes = ", ".join(self.fixes) if self.fixes else "sin arreglo"
+        return f"{self.package} {self.version}  {self.id}  → {fixes}"
+
+
+def load_pip_audit(ctx: Context) -> list[Vulnerability] | None:
+    """Vulnerabilidades del JSON de pip-audit (sin las de ``security/pip-audit-ignore.txt``,
+    que pip-audit ya no reporta)."""
+    data = _load_json(ctx, "pip-audit.json")
+    if not isinstance(data, dict):
+        return None
+    found = []
+    for dependency in data.get("dependencies") or []:
+        if not isinstance(dependency, dict):
+            continue
+        for vuln in dependency.get("vulns") or []:
+            if isinstance(vuln, dict):
+                found.append(
+                    Vulnerability(
+                        str(dependency.get("name") or "?"),
+                        str(dependency.get("version") or "?"),
+                        str(vuln.get("id") or "?"),
+                        tuple(str(fix) for fix in vuln.get("fix_versions") or []),
+                    )
+                )
+    return found
+
+
+def _packages(vulns: Sequence[Vulnerability]) -> str:
+    return ", ".join(dict.fromkeys(vuln.package for vuln in vulns))
+
+
+def check_pip_audit(ctx: Context) -> Verdict:
+    """Bloquea si alguna vulnerabilidad tiene versión con arreglo."""
+    vulns = load_pip_audit(ctx)
+    if vulns is None:
+        if ctx.outcome("pip_audit") == SUCCESS:
+            return Verdict(Status.PASSED, "Sin vulnerabilidades con arreglo")
+        details = _tail_details(f"{PIP_AUDIT}: salida", ctx.read_text("pip-audit.txt"))
+        return Verdict(Status.FAILED, "Falló (ver el log)", details)
+    fixable = [vuln for vuln in vulns if vuln.fixes]
+    if fixable:
+        summary = f"{plural(len(fixable), 'con arreglo', 'con arreglo')}: {_packages(fixable)}"
+        title = f"{PIP_AUDIT}: {plural(len(fixable), 'vulnerabilidad', 'vulnerabilidades')}"
+        return Verdict(Status.FAILED, summary, (Detail(title, [v.line() for v in fixable]),))
+    summary = "Sin vulnerabilidades con arreglo"
+    ignored = PIP_AUDIT_IGNORED.search(ctx.read_text("pip-audit.txt") or "")
+    if ignored and int(ignored.group(1)):
+        summary += f" · {ignored.group(1)} revisadas en security/pip-audit-ignore.txt"
+    return Verdict(Status.PASSED, summary)
+
+
+def check_pip_audit_unfixed(ctx: Context) -> Verdict:
+    """Las que todavía no tienen arreglo: aviso, nunca bloquean."""
+    unfixed = [vuln for vuln in load_pip_audit(ctx) or [] if not vuln.fixes]
+    if not unfixed:
+        return Verdict(Status.PASSED, "Ninguna")
+    summary = f"{len(unfixed)} sin arreglo: {_packages(unfixed)}"
+    return Verdict(
+        Status.WARNING, summary, (Detail(PIP_AUDIT_UNFIXED, [v.line() for v in unfixed]),)
+    )
+
+
+def check_gitleaks(ctx: Context) -> Verdict:
+    if ctx.outcome("gitleaks") == SUCCESS:
+        return Verdict(Status.PASSED, "Sin secretos nuevos")
+    leaks = _load_json(ctx, "gitleaks.json")
+    if not isinstance(leaks, list) or not leaks:
+        details = _tail_details(f"{GITLEAKS}: salida", ctx.read_text("gitleaks.txt"))
+        return Verdict(Status.FAILED, "Falló (ver el log)", details)
+    # Nunca el valor: solo la regla, dónde y en qué commit.
+    entries = [
+        f"{leak.get('RuleID', '?')}  {leak.get('File', '?')}:{_to_int(leak.get('StartLine'))}"
+        f"  {str(leak.get('Commit') or '')[:7]}"
+        for leak in leaks
+        if isinstance(leak, dict)
+    ]
+    files = {str(leak.get("File")) for leak in leaks if isinstance(leak, dict)}
+    summary = (
+        f"{plural(len(entries), 'posible secreto', 'posibles secretos')} en "
+        f"{plural(len(files), 'archivo', 'archivos')}"
+    )
+    return Verdict(Status.FAILED, summary, (Detail(f"{GITLEAKS}: {summary}", entries),))
+
+
+def load_bandit(ctx: Context, severity: str) -> list[str] | None:
+    data = _load_json(ctx, "bandit.json")
+    if not isinstance(data, dict):
+        return None
+    return [
+        f"{item.get('test_id', '?')}  {ctx.relative(str(item.get('filename') or '?'))}:"
+        f"{_to_int(item.get('line_number'))}  {first_line(str(item.get('issue_text') or ''))}"
+        for item in data.get("results") or []
+        if isinstance(item, dict) and item.get("issue_severity") == severity
+    ]
+
+
+def check_bandit(ctx: Context) -> Verdict:
+    """Solo la severidad alta bloquea (``bandit -lll``)."""
+    high = load_bandit(ctx, "HIGH")
+    if ctx.outcome("bandit") == SUCCESS and not high:
+        return Verdict(Status.PASSED, "Sin hallazgos de severidad alta")
+    if not high:
+        details = _tail_details(f"{BANDIT}: salida", ctx.read_text("bandit.txt"))
+        return Verdict(Status.FAILED, "Falló (ver el log)", details)
+    summary = plural(len(high), "hallazgo de severidad alta", "hallazgos de severidad alta")
+    return Verdict(Status.FAILED, summary, (Detail(f"{BANDIT}: {summary}", high),))
+
+
+def check_bandit_medium(ctx: Context) -> Verdict:
+    medium = load_bandit(ctx, "MEDIUM") or []
+    if not medium:
+        return Verdict(Status.PASSED, "Ninguno")
+    summary = plural(len(medium), "hallazgo", "hallazgos")
+    return Verdict(Status.WARNING, summary, (Detail(f"{BANDIT_MEDIUM}: {summary}", medium),))
+
+
+def check_security_matrix(ctx: Context) -> Verdict:
+    if ctx.outcome("security_matrix") == SUCCESS:
+        return Verdict(Status.PASSED, "Al día")
+    details = _tail_details(f"{SECURITY_MATRIX}: salida", ctx.read_text("security-matrix.txt"))
+    return Verdict(
+        Status.FAILED, "Desactualizada: correr python security/render_matrix.py", details
+    )
+
+
 # --- Armado del reporte --------------------------------------------------------------------
 
 
@@ -718,6 +861,13 @@ CHECKS = (
     # Las advertencias salen de la corrida de tests y nunca bloquean.
     CheckSpec(WARNINGS, "tests", check_warnings, blocking=False),
     CheckSpec(OPENAPI, "openapi", check_openapi),
+    # Seguridad: las vulnerabilidades sin arreglo y bandit medio salen como aviso.
+    CheckSpec(PIP_AUDIT, "pip_audit", check_pip_audit),
+    CheckSpec(PIP_AUDIT_UNFIXED, "pip_audit", check_pip_audit_unfixed, blocking=False),
+    CheckSpec(GITLEAKS, "gitleaks", check_gitleaks),
+    CheckSpec(BANDIT, "bandit", check_bandit),
+    CheckSpec(BANDIT_MEDIUM, "bandit", check_bandit_medium, blocking=False),
+    CheckSpec(SECURITY_MATRIX, "security_matrix", check_security_matrix),
 )
 OUTCOME_KEYS = ("install", *dict.fromkeys(spec.outcome_key for spec in CHECKS))
 

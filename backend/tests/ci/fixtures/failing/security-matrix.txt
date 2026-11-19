@@ -1,0 +1,1 @@
+/repo/docs/seguridad/03-matriz-acceso.md no está al día: python security/render_matrix.py
