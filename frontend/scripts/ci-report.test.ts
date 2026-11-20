@@ -34,6 +34,8 @@ const ALL_SUCCESS = {
   OUTCOME_BUILD: "success",
   OUTCOME_STORYBOOK: "success",
   OUTCOME_STORYBOOK_A11Y: "success",
+  OUTCOME_BUNDLE_BUDGET: "success",
+  OUTCOME_LIGHTHOUSE: "success",
 };
 
 const RUN_ENV = {
@@ -66,9 +68,9 @@ afterEach(() => {
 });
 
 describe("todo en verde", () => {
-  it("encabezado, enlace al run, duración y 9 filas en ✅", () => {
+  it("encabezado, enlace al run, duración y 11 filas en ✅", () => {
     const md = report("green", ALL_SUCCESS);
-    expect(md.startsWith(`${MARKER}\n## Frontend CI · ✅ 9 de 9 pasaron\n`)).toBe(true);
+    expect(md.startsWith(`${MARKER}\n## Frontend CI · ✅ 11 de 11 pasaron\n`)).toBe(true);
     expect(md).toContain(
       "Commit `abcdef1` · [Ver run](https://github.com/acme/mvp-backoffice/actions/runs/123) · 2 min 14 s",
     );
@@ -83,6 +85,12 @@ describe("todo en verde", () => {
     expect(md.indexOf("| Storybook |")).toBeGreaterThan(md.indexOf("| Build |"));
     expect(md).toContain(
       "| Accesibilidad (Storybook) | ✅ | 3 stories sin violaciones serias ni críticas |",
+    );
+    expect(md).toContain(
+      "| Presupuesto de bundle | ✅ | 2 rutas dentro del presupuesto · la mayor, /solicitudes/\\[id\\]: 337,4 kB de 375 kB |",
+    );
+    expect(md).toContain(
+      "| Lighthouse (páginas públicas) | ✅ | 2 páginas cumplen (perf./a11y/buenas pr.: /login 94/100/96 · /acceso 98/100/96) |",
     );
     expect(md).not.toContain("<details>");
   });
@@ -100,11 +108,13 @@ describe("fallos y warnings juntos", () => {
     OUTCOME_BUILD: "failure",
     OUTCOME_STORYBOOK: "failure",
     OUTCOME_STORYBOOK_A11Y: "failure",
+    OUTCOME_BUNDLE_BUDGET: "failure",
+    OUTCOME_LIGHTHOUSE: "failure",
   };
   const md = report("failing", env);
 
   it("encabezado y filas", () => {
-    expect(md).toContain("## Frontend CI · ❌ 9 de 9 fallaron\n");
+    expect(md).toContain("## Frontend CI · ❌ 11 de 11 fallaron\n");
     expect(md).toContain("| ESLint | ❌ | 2 errores · 1 advertencia en 2 archivos |");
     expect(md).toContain("| Prettier (formato) | ❌ | 2 archivos sin formatear |");
     expect(md).toContain("| TypeScript | ❌ | 2 errores en 2 archivos |");
@@ -119,6 +129,17 @@ describe("fallos y warnings juntos", () => {
     expect(md).toContain(
       "| Accesibilidad (Storybook) | ❌ | 1 de 2 stories con violaciones o errores |",
     );
+  });
+
+  it("Presupuesto de bundle y Lighthouse: filas y detalle", () => {
+    expect(md).toContain("| Presupuesto de bundle | ❌ | 2 de 3 rutas fuera del presupuesto |");
+    expect(md).toContain("/solicitudes/[id]: 401,5 kB · presupuesto 375 kB");
+    expect(md).toContain("/nueva: 300,2 kB · sin presupuesto en performance-budget.json");
+    expect(md).toContain(
+      "| Lighthouse (páginas públicas) | ❌ | 2 aserciones fallan en 1 página |",
+    );
+    expect(md).toContain("/login · total-blocking-time: 412.5 (esperado <= 350)");
+    expect(md).toContain("/login · categories:performance: 0.86 (esperado >= 0.9)");
   });
 
   it("Accesibilidad: los stories que fallan, con la regla de axe", () => {
@@ -192,7 +213,7 @@ describe("fallos y warnings juntos", () => {
     );
     expect(markdown).toContain("| ESLint | ⚠️ | 1 advertencia en 1 archivo |");
     expect(markdown).toContain(
-      "## Frontend CI · ✅ 7 de 9 pasaron · ⏭️ 2 no corrieron · ⚠️ 1 con advertencias",
+      "## Frontend CI · ✅ 9 de 11 pasaron · ⏭️ 2 no corrieron · ⚠️ 1 con advertencias",
     );
   });
 });
@@ -210,9 +231,11 @@ describe("pasos que no corrieron", () => {
       OUTCOME_BUILD: "cancelled",
       OUTCOME_STORYBOOK: "skipped",
       OUTCOME_STORYBOOK_A11Y: "skipped",
+      OUTCOME_BUNDLE_BUDGET: "skipped",
+      OUTCOME_LIGHTHOUSE: "skipped",
     });
     expect(md).toContain(
-      "## Frontend CI · ❌ Falló la preparación del entorno · ⏭️ 9 no corrieron\n",
+      "## Frontend CI · ❌ Falló la preparación del entorno · ⏭️ 11 no corrieron\n",
     );
     expect(md).toContain("| Cobertura | ⏭️ | No corrió |");
     expect(md).toContain("| Build | ⏭️ | Cancelado |");

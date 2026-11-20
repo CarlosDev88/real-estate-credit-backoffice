@@ -1,0 +1,5 @@
+[
+  { "url": "http://localhost:3003/login", "isRepresentativeRun": false, "summary": { "performance": 0.9, "accessibility": 1, "best-practices": 0.96 } },
+  { "url": "http://localhost:3003/login", "isRepresentativeRun": true, "summary": { "performance": 0.94, "accessibility": 1, "best-practices": 0.96 } },
+  { "url": "http://localhost:3003/acceso", "isRepresentativeRun": true, "summary": { "performance": 0.98, "accessibility": 1, "best-practices": 0.96 } }
+]

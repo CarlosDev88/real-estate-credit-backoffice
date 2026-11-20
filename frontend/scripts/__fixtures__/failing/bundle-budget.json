@@ -1,0 +1,9 @@
+{
+  "ok": false,
+  "routes": [
+    { "route": "/login", "kb": 298, "budget": 330, "status": "ok" },
+    { "route": "/nueva", "kb": 300.2, "budget": null, "status": "missing" },
+    { "route": "/solicitudes/[id]", "kb": 401.5, "budget": 375, "status": "over" }
+  ],
+  "stale": []
+}

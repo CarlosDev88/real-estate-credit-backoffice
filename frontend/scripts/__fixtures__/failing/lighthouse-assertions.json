@@ -1,0 +1,4 @@
+[
+  { "name": "maxNumericValue", "expected": 350, "actual": 412.5, "operator": "<=", "passed": false, "auditId": "total-blocking-time", "level": "error", "url": "http://localhost:3003/login" },
+  { "name": "minScore", "expected": 0.9, "actual": 0.86, "operator": ">=", "passed": false, "auditId": "categories:performance", "level": "error", "url": "http://localhost:3003/login" }
+]
