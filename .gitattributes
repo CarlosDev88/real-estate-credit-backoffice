@@ -1,0 +1,2 @@
+# Los scripts de shell siempre en LF, aunque el checkout use core.autocrlf=true.
+*.sh text eol=lf

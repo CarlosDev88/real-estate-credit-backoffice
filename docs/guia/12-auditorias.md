@@ -2,7 +2,7 @@
 
 > **En simple:** además de las pruebas y el CI, el proyecto pasa por **tres auditorías independientes**: de seguridad, de rendimiento del frontend y de carga y estrés del backend. Cada una revisa con un método propio, deja su informe completo y una lista de hallazgos. Este documento junta las tres en lenguaje simple y, para cada hallazgo, cuenta **qué pasaba, por qué, qué se cambió, cómo se comprobó y en qué PR se cerró**.
 
-> **Estado al 18 de noviembre de 2026: las tres auditorías están en curso.** Ninguna está fusionada en `master` todavía. Este documento deja la estructura completa y se llena al cierre, cuando terminen las correcciones. Lo que ya se sabe está marcado como tal.
+> **Estado al 19 de noviembre de 2026.** La auditoría de **seguridad** está cerrada: la fase A (encontrar y documentar) entró con el #32 y la fase B (corregir y volver a probar) con el #37. Quedaron 21 hallazgos, 20 corregidos y 1 aceptado. Las auditorías de **rendimiento del frontend** y de **carga del backend** siguen en preparación.
 
 ---
 
@@ -21,7 +21,7 @@
 
 | Auditoría | Qué revisa | Informe | Hallazgos | Estado |
 | --- | --- | --- | --- | --- |
-| Seguridad | Autenticación, autorización por rol y objeto, archivos, datos personales, configuración | [`docs/SEGURIDAD.md`](../SEGURIDAD.md) y [`docs/seguridad/`](../seguridad/) | 21: 0 críticos, 0 altos, 5 medios, 10 bajos, 6 informativos | ✅ Fase A (#32) y Fase B (este PR): 20 corregidos y 1 aceptado |
+| Seguridad | La API completa (autenticación, autorización por rol y por objeto, archivos, datos personales, configuración), el código, las dependencias, el historial de git y los contenedores | [`docs/SEGURIDAD.md`](../SEGURIDAD.md) y [`docs/seguridad/`](../seguridad/hallazgos.md) | **21**: 0 críticos, 0 altos, 5 medios, 10 bajos, 6 informativos | ✅ Fase A (#32) y fase B (#37): 20 corregidos y 1 aceptado |
 | Rendimiento del frontend | Peso de las páginas, tiempos de carga y de interacción | `docs/PERFORMANCE.md` *(en curso)* | Pendiente | 🔄 En preparación |
 | Carga y estrés del backend | Latencia bajo carga (el p95 < 800 ms de RNF-17), errores y límites | `docs/PERFORMANCE.md` *(en curso)* | Pendiente | 🔄 En preparación |
 
@@ -35,9 +35,34 @@ Informe completo: [`docs/SEGURIDAD.md`](../SEGURIDAD.md) (resumen, método, mode
 
 ### 2.1 Qué se revisó y con qué método
 
-La API completa (las operaciones de `contracts/openapi.json`), con los cinco tipos de usuario, más el código, las dependencias, el historial de git y los contenedores. Con analizadores automáticos (bandit, semgrep, pip-audit, gitleaks, hadolint), ataques simulados contra una copia local (schemathesis y OWASP ZAP), una **matriz de acceso** que pide cada operación como cada uno de los 9 actores de la auditoría (2 124 casos, todos con el resultado esperado) y una revisión manual. La **Fase A** (#32) encontró y documentó; la **Fase B** (este PR) corrigió y volvió a probar con las mismas herramientas.
+**Fase A (#32), encontrar y documentar.** En cuatro partes, todo en local, sobre datos de demo y con una base de datos de usar y tirar ([`docs/SEGURIDAD.md`](../SEGURIDAD.md) §2):
+
+| Parte | Qué | Con qué | Detalle |
+| --- | --- | --- | --- |
+| 1 · Automático | Configuración de Django, código, dependencias, secretos en todo el historial y contenedores | `manage.py check --deploy`, bandit, semgrep, pip-audit, pnpm audit, gitleaks, hadolint | [`01-automatico.md`](../seguridad/01-automatico.md) |
+| 2 · Dinámico | Ataques simulados contra una copia local de la API: fuzzing con 4 sesiones, escaneo pasivo y activo, cabeceras, CORS, cookies, límites y errores | schemathesis (~42.000 casos), OWASP ZAP (~72.000 peticiones), curl | [`02-dinamico.md`](../seguridad/02-dinamico.md) |
+| 3 · Matriz de acceso | Cada una de las 235 operaciones de entonces pedida como cada uno de 9 actores: sin sesión, admin, la asesora dueña, otro asesor, el broker que originó, otro broker, la constructora, el comprador dueño y otro comprador | pytest (`backend/tests/security/`) | [`03-matriz-acceso.md`](../seguridad/03-matriz-acceso.md) |
+| 4 · Manual | Revisión del código de 10 áreas sensibles, incluidas carreras (diez peticiones a la vez) | lectura de código, pytest, `backend/security/race_checks.py` | [`04-manual.md`](../seguridad/04-manual.md) |
+
+**Lo más importante es lo que no apareció** (SEGURIDAD §1): la matriz dio **2.115 casos, todos con el resultado esperado, sin ninguna brecha de acceso**; nadie puede ver ni tocar expedientes, documentos, clientes o comisiones que no le corresponden; sin sesión no se llega a ningún dato; no hay inyecciones; los archivos se validan por su contenido real; y los enlaces del comprador, las radicaciones y los pagos no se duplican aunque lleguen diez peticiones a la vez.
+
+**Criterio con que se decidió cada hallazgo** (SEGURIDAD §6): los críticos y altos se corrigen todos; los medios, si el esfuerzo es pequeño (si no, se aceptan con su motivo); los bajos e informativos se documentan y se corrigen si son de una línea. No hubo críticos ni altos, y los cinco medios se corrigieron.
+
+**Fase B (#37), corregir y volver a probar.** Cada corrección trae su prueba en `backend/tests/security/` (tres archivos nuevos, `test_deployment.py`, `test_http_responses.py` y `test_rate_limits.py`, y casos agregados a los existentes). Después, el re-test repitió cada reproducción de la fase A con su "antes" y su "después" y volvió a pasar las mismas herramientas con las mismas versiones (SEGURIDAD §9):
+
+| Herramienta | Fase A | Fase B (re-test) |
+| --- | --- | --- |
+| schemathesis, como admin | 3.866 casos; 6 respuestas 5xx (`OPTIONS`), 66 errores sin documentar | 9.101 casos; **0 respuestas 5xx**, 0 errores sin documentar |
+| OWASP ZAP activo | ~72.000 peticiones, ningún 5xx, ninguna alerta alta | 61.717 peticiones, **ningún 5xx**; la única alerta alta (inyección SQL) se comprobó a mano y es un falso positivo |
+| gitleaks (todo el historial) | 7 resultados, todos descartados | **0** |
+| `pytest tests/security` | ~2.400 pruebas, 8 `xfail` (las brechas abiertas) | **2.493 pruebas, 0 `xfail`**; matriz de **2.124 casos** sin brechas (9 más por la operación que sumó el #36) |
+| `check --deploy` con la configuración de producción | 4 avisos | Solo `W021` (el *preload* de HSTS, que se decide al tener dominio) |
+
+**Lo que quedó en el CI** para que no vuelva a pasar: la matriz corre en cada PR y exige una fila para cada operación nueva del contrato (ya pasó una vez: el #36 sumó `GET /bank-policy-rules/fields` con su fila, y hoy son 236 operaciones y 2.124 casos, en [`docs/seguridad/03-matriz-acceso.md`](../seguridad/03-matriz-acceso.md)); cada vista nueva hereda los límites generales de SEC-10 (una prueba lo exige); el contrato documenta solo sus errores (el *hook* de SEC-13); y `pip-audit`, `gitleaks` y `bandit` corren en cada PR ([09 · Calidad §3](09-calidad.md#3-el-ci-dos-revisiones-obligatorias)).
 
 ### 2.2 Hallazgos por severidad
+
+Escala de la auditoría: **Crítica** (acceso sin sesión a datos personales, tomar la cuenta de otro, ejecución de código), **Alta** (ver o cambiar datos de otro alcance, saltar la autenticación del comprador, un secreto real filtrado), **Media** (campos de más dentro del propio alcance, límites que se saltan, enumeración de usuarios, una cabecera que importa), **Baja** (endurecimiento) e **Informativa** (buena práctica o aplica solo al desplegar).
 
 | Severidad | Cuántos | Corregidos | Aceptados |
 | --- | ---: | ---: | ---: |
@@ -48,37 +73,49 @@ La API completa (las operaciones de `contracts/openapi.json`), con los cinco tip
 | Informativa | 6 | 6 | 0 |
 | **Total** | **21** (SEC-01 a SEC-21) | **20** | **1** |
 
-SEC-21 (informativo) apareció en el re-test de la Fase B y se corrigió en el mismo PR.
+La fase A encontró 20; **SEC-21** (informativo) apareció en el re-test de la fase B y se corrigió en el mismo PR. Los tres más importantes de la fase A, los tres corregidos: **SEC-09** (se podía probar una contraseña contra todas las cuentas desde un solo equipo, o una cuenta desde muchos), **SEC-04** (dos vulnerabilidades públicas de la librería de la API que permitían dejar sin respuesta al servidor sin cuenta) y **SEC-08** (datos personales que el navegador podía guardar en disco).
 
 ### 2.3 Hallazgos y cómo se solucionó cada uno
 
-| Id | Problema | Causa | Solución aplicada | Cómo se verificó | PR |
-| --- | --- | --- | --- | --- | --- |
-| SEC-01 | Sin configuración de producción | Los puntos de entrada cargaban `local` (`DEBUG=True`) | `config/settings/production.py`; `wsgi`, `asgi` y Celery la usan por defecto | `test_deployment.py`; `check --deploy` solo con `W021` | Fase B |
-| SEC-02 | HTTPS sin endurecer | Nada fijaba HSTS, redirección ni cookies `Secure` | Lo fija `production.py` | `test_deployment.py`; la imagen redirige y manda HSTS | Fase B |
-| SEC-03 | Claves sin validar | Se exigía que existieran, no que fueran fuertes | *System check* `identity.E001`/`E002` (aviso con `DEBUG`) | `test_deployment.py`; la imagen no arranca con claves débiles | Fase B |
-| SEC-04 | DRF con dos CVE de DoS | El rango de `requirements.txt` dejaba fuera el arreglo | DRF `>=3.18.2,<3.19` | `test_resources.py`; el cuerpo bz2 ya no se expande | Fase B |
-| SEC-05 | Puertos en todas las interfaces | El compose no ponía IP | `127.0.0.1:` en cada puerto | `test_deployment.py`; compose levantado | Fase B |
-| SEC-06 | Imagen no reproducible y con `runserver` | Una sola etapa, base y `pip` sin fijar | Dos etapas, digest, `pip` fijo, gunicorn en `production` | `test_deployment.py`; hadolint sin `DL3013` | Fase B |
-| SEC-07 | `OPTIONS` con 500 | La metadata de DRF fallaba en vistas sin `serializer_class` | `DEFAULT_METADATA_CLASS = None` | `test_http_responses.py`; 0 de 176 rutas con 5xx | Fase B |
-| SEC-08 | Datos personales cacheables | DRF no pone `Cache-Control` | *Middleware* con `no-store` y `Vary: Cookie` | `test_http_responses.py` | Fase B |
-| SEC-09 | Límite de login saltable | Una sola clave "IP + correo" | Límites por IP y por cuenta | `test_rate_limits.py`; corta en el 21.º correo y el 11.º fallo | Fase B |
-| SEC-10 | Sin límites generales | No había `DEFAULT_THROTTLE_CLASSES` | 600 lecturas, 120 escrituras y 20 cambios de estado por minuto | `test_rate_limits.py` | Fase B |
-| SEC-11 | 500 con un JSON grande | `RequestDataTooBig` no es de DRF | `413 PAYLOAD_TOO_LARGE` | `test_http_responses.py` | Fase B |
-| SEC-12 | 404 en HTML | Sin `handler404`/`handler500` | JSON en `/api/` | `test_http_responses.py` | Fase B |
-| SEC-13 | Contrato desalineado | Dos esquemas mal y errores sin documentar | Esquemas corregidos y un *hook* que documenta 400/404/428 | `test_deployment.py`; schemathesis sin `ST103` ni `ST108` | Fase B |
-| SEC-14 | Enumeración por la recuperación | Correo síncrono, solo si el usuario existía | Correo por la cola de Celery; el token se genera en el worker | `test_auth.py`; 202 siempre y el mismo tiempo | Fase B |
-| SEC-15 | Búsquedas en el log | El filtro solo ocultaba tokens | `***` en `search`, `email`, `document_number` y `q` | `test_exposure.py` | Fase B |
-| SEC-16 | El `409` confirma una cédula | La unicidad del documento es regla de negocio | **Aceptado** (ver 2.4) | `test_exposure.py` fija el comportamiento | Fase B |
-| SEC-17 | Textos de bancos sin tope | Sin `max_length` | `max_length=4000` | `test_resources.py` | Fase B |
-| SEC-18 | `/admin/` publicado y sin límite | Se montaba siempre | Solo con `DEBUG` o `ADMIN_ENABLED`, con límite por IP | `test_config_inventory.py` | Fase B |
-| SEC-19 | Esquema y Swagger públicos | Se montaban siempre | Solo con `DEBUG` o `API_DOCS_PUBLIC` | `test_config_inventory.py` | Fase B |
-| SEC-20 | Documentación de la API desalineada | No se actualizó con el MVP | 9 rutas a "Fuera del MVP"; direcciones documentadas | `test_config_inventory.py` (en los dos sentidos) | Fase B |
-| SEC-21 | `oneOf` ambiguo en respuestas por rol | Una página vacía valía para las dos formas | `anyOf` en el contrato | `test_deployment.py`; schemathesis sin `ST108` | Fase B |
+Cada id lleva a su ficha en [`docs/seguridad/hallazgos.md`](../seguridad/hallazgos.md): dónde, cómo reproducirlo, impacto y la corrección. El "antes" y el "después" medidos de cada uno están en SEGURIDAD §9.1. Las pruebas citadas están en `backend/tests/security/`.
+
+| Id | Problema | Severidad | Causa | Solución aplicada | Cómo se verificó | PR |
+| --- | --- | --- | --- | --- | --- | --- |
+| [SEC-01](../seguridad/hallazgos.md#sec-01--no-hay-configuración-de-producción-y-los-puntos-de-entrada-cargan-local-que-fuerza-debugtrue) | No había configuración de producción | Baja (Alta si se desplegara así) | Los puntos de entrada cargaban `local`, que fuerza `DEBUG=True` | `backend/config/settings/production.py` (`DEBUG` fijo en `False`); `wsgi`, `asgi` y Celery la usan por defecto | `test_deployment.py`; `check --deploy` solo con `W021` | #37 |
+| [SEC-02](../seguridad/hallazgos.md#sec-02--la-configuración-base-no-endurece-https) | HTTPS sin endurecer | Baja | Nada fijaba HSTS, la redirección ni las cookies `Secure` | Lo fija `production.py` (HSTS de una hora para empezar, redirección y cookies solo por HTTPS) | `test_deployment.py`; la imagen `production` redirige con `301` y manda HSTS | #37 |
+| [SEC-03](../seguridad/hallazgos.md#sec-03--las-claves-no-se-validan-al-arrancar-la-clave-jwt-local-tiene-31-bytes) | Claves sin validar | Baja | Se exigía que existieran, no que fueran fuertes | *System check* `identity.E001`/`E002` en `backend/apps/identity/checks.py` (con `DEBUG`, solo aviso) | `test_deployment.py`; sin `DEBUG`, el backend no arranca con claves débiles | #37 |
+| [SEC-04](../seguridad/hallazgos.md#sec-04--djangorestframework-3172-tiene-dos-cve-de-denegación-de-servicio-sin-sesión) | DRF con dos CVE de denegación de servicio | **Media** | El rango de `requirements.txt` dejaba fuera la versión corregida | DRF `>=3.18.2,<3.19` | `test_resources.py`; un cuerpo comprimido de 96 bytes ya no se expande a 5 MB | #37 |
+| [SEC-05](../seguridad/hallazgos.md#sec-05--el-compose-publica-postgresql-y-el-backend-en-todas-las-interfaces-del-equipo) | Puertos en todas las interfaces | Baja | El compose no ponía IP | `127.0.0.1:` en cada puerto de `backend/docker-compose.yml` | `test_deployment.py`; compose levantado | #37 |
+| [SEC-06](../seguridad/hallazgos.md#sec-06--imagen-del-backend-base-sin-digest-pip-sin-versión-y-runserver-como-comando) | Imagen no reproducible y con `runserver` | Informativa | Una sola etapa, con la base y `pip` sin fijar | `backend/Dockerfile` en dos etapas (`dev` y `production`), base por digest, `pip` fijo y gunicorn en `production` | `test_deployment.py`; hadolint sin `DL3013`; la imagen responde `Server: gunicorn` | #37 |
+| [SEC-07](../seguridad/hallazgos.md#sec-07--options-responde-500-en-27-rutas-una-de-ellas-pública) | `OPTIONS` respondía `500` | Baja | La metadata de DRF fallaba en las vistas sin `serializer_class` | `DEFAULT_METADATA_CLASS = None` | `test_http_responses.py`; 0 de 176 rutas con 5xx | #37 |
+| [SEC-08](../seguridad/hallazgos.md#sec-08--las-respuestas-con-datos-personales-no-llevan-cache-control-no-store-ni-vary-cookie) | Datos personales que el navegador podía guardar | **Media** | DRF no pone `Cache-Control` | Un *middleware* (`backend/config/middleware.py`) con `Cache-Control: no-store` y `Vary: Cookie` en toda la API | `test_http_responses.py`; ZAP ya no la marca como cacheable | #37 |
+| [SEC-09](../seguridad/hallazgos.md#sec-09--el-límite-de-login-y-de-recuperación-se-salta-con-otros-correos-o-con-otras-ip) | El límite del login se saltaba | **Media** | Una sola clave, "IP + correo" | Límites por IP (sobre todas las cuentas) y por cuenta (desde todas las IP) en `backend/apps/identity/throttling.py` | `test_rate_limits.py`; corta en el 21.º correo desde una IP y en el 11.º fallo de una cuenta desde 3 IP | #37 |
+| [SEC-10](../seguridad/hallazgos.md#sec-10--no-existen-los-límites-generales-por-usuario-que-piden-req-93-y-api-26) | Sin límites generales por usuario | **Media** | No había `DEFAULT_THROTTLE_CLASSES` | 600 lecturas, 120 escrituras y 20 cambios de estado por minuto (`AUTH_RATE_LIMITS` en `base.py`) | `test_rate_limits.py`; `429` con `Retry-After` en la petición 601, 121 y 21 | #37 |
+| [SEC-11](../seguridad/hallazgos.md#sec-11--un-json-de-más-de-25-mb-responde-500-sin-debug-o-la-página-de-depuración-con-debug-no-413) | Un JSON grande respondía `500` | Baja | `RequestDataTooBig` es de Django y DRF no lo traduce | `413 PAYLOAD_TOO_LARGE` en `backend/config/exceptions.py` | `test_http_responses.py` | #37 |
+| [SEC-12](../seguridad/hallazgos.md#sec-12--las-rutas-inexistentes-y-los-ids-que-no-son-uuid-responden-html-de-django-no-el-formato-de-error-de-la-api) | `404` en HTML | Baja | Sin `handler404` ni `handler500` | Errores en JSON bajo `/api/` (`backend/config/urls.py`, sin `DEBUG`) | `test_http_responses.py` | #37 |
+| [SEC-13](../seguridad/hallazgos.md#sec-13--el-contrato-no-coincide-con-la-api-en-2-respuestas-y-no-documenta-varios-estados) | Contrato desalineado | Informativa | Dos esquemas mal y errores sin documentar | Esquemas corregidos y un *hook* (`backend/config/openapi.py`) que documenta `400`, `404` y `428` | `test_deployment.py`; schemathesis sin `ST103` ni `ST108` | #37 |
+| [SEC-14](../seguridad/hallazgos.md#sec-14--la-recuperación-de-contraseña-revela-si-el-correo-existe-cuando-falla-el-envío) | La recuperación revelaba si el correo existe | **Media** | El correo salía en la misma petición, solo si el usuario existía | El correo va por la cola de Celery (`backend/apps/identity/tasks.py`) y el token se genera en el worker | `test_auth.py`; `202` siempre y el mismo tiempo de respuesta | #37 |
+| [SEC-15](../seguridad/hallazgos.md#sec-15--el-log-de-peticiones-guarda-la-búsqueda-completa-documento-o-nombre) | Búsquedas completas en el log | Baja | El filtro solo ocultaba tokens | `***` en `search`, `email`, `document_number` y `q` (`backend/config/log_redaction.py`); gunicorn sin *access log* | `test_exposure.py` | #37 |
+| [SEC-16](../seguridad/hallazgos.md#sec-16--un-409-al-crear-un-cliente-confirma-que-esa-cédula-ya-está-registrada) | El `409` confirma que una cédula ya es cliente | Baja | La unicidad del documento es una regla de negocio | **Aceptado** (ver 2.4) | `test_exposure.py` fija el comportamiento | #37 |
+| [SEC-17](../seguridad/hallazgos.md#sec-17--textos-de-la-configuración-de-bancos-sin-longitud-máxima) | Textos de bancos sin tope | Informativa | Sin `max_length` | `max_length=4000` en `backend/apps/banking/serializers.py` | `test_resources.py`; 100.000 caracteres → `400` | #37 |
+| [SEC-18](../seguridad/hallazgos.md#sec-18--admin-de-django-está-publicado-con-la-api-y-su-login-no-tiene-límite-de-intentos) | `/admin/` publicado y sin límite | Baja | Se montaba siempre | Solo con `DEBUG` o `ADMIN_ENABLED`, en `ADMIN_URL_PATH` y con límite por IP | `test_config_inventory.py`; `429` en el 11.º intento | #37 |
+| [SEC-19](../seguridad/hallazgos.md#sec-19--el-esquema-openapi-y-la-documentación-interactiva-son-públicos) | Esquema y Swagger públicos | Informativa | Se montaban siempre | Solo con `DEBUG` o `API_DOCS_PUBLIC`; la referencia pública es la de GitHub Pages, hecha con `contracts/openapi.json` | `test_config_inventory.py` | #37 |
+| [SEC-20](../seguridad/hallazgos.md#sec-20--la-documentación-de-la-api-promete-9-rutas-que-no-existen-y-omite-5-que-sí) | La documentación de la API no coincidía con las rutas | Informativa | No se actualizó al construir el MVP | `docs/API_REST_MVP_CREDITO.md`: 9 rutas a "Fuera del MVP" y las que faltaban, documentadas | `test_config_inventory.py`, en los dos sentidos | #37 |
+| [SEC-21](../seguridad/hallazgos.md#sec-21--las-respuestas-que-cambian-según-el-rol-no-validan-cuando-la-página-está-vacía) | Respuestas por rol que no validaban con la página vacía | Informativa | Con `oneOf`, una página vacía valía para las dos formas | `anyOf` en el contrato | `test_deployment.py`; schemathesis sin `ST108` | #37 |
 
 ### 2.4 Aceptados, con su motivo
 
 - **SEC-16 (baja), aceptado por Carlos.** El documento identifica a la persona y no tiene sentido crear el mismo cliente una vez por broker: la unicidad es regla de negocio. Mitigación: el `409` no trae ningún dato del otro cliente y el límite general de escrituras (SEC-10) deja probar como mucho 120 cédulas por minuto. Riesgo residual: confirmar que una cédula ya es cliente, sin saber de quién.
+
+### 2.5 Riesgo residual
+
+Lo que queda después de la fase B, según SEGURIDAD §7:
+
+- **Fuerza bruta muy distribuida y bloqueo de cuentas.** El límite por cuenta frena el ataque a una cuenta desde muchas IP, pero quien conozca un correo puede dejar esa cuenta 15 minutos sin entrar. Un ataque desde miles de IP lo frena la protección perimetral (WAF o límites en el proxy) al desplegar.
+- **Producción todavía no existe.** La configuración y la imagen `production` quedaron listas y probadas en local; al desplegar faltan el proxy con TLS, los secretos reales (el check de SEC-03 exige que sean fuertes, pero generarlos y rotarlos es del despliegue), los logs centralizados y los backups. La imagen `production` todavía trae las herramientas de prueba, porque `requirements.txt` es uno solo.
+- **El modo local simple.** Allí la recuperación de contraseña envía el correo en el mismo proceso (no hay worker), así que el tiempo del envío se nota cuando el correo existe; producción usa el worker. Y los contenedores que ya estaban creados siguen publicados en todas las interfaces hasta que se recrean con el compose nuevo.
+- **Archivos y enlaces.** Un PDF con contenido activo es un PDF válido (lo acotan el antivirus del modo completo, la descarga siempre adjunta y con `nosniff`); quien tenga un enlace mágico antes que el comprador entra a su portal (lo acotan el solo uso, el vencimiento, la revocación y la sesión de 24 h).
+- **No se probó** el frontend como aplicación (XSS, CSP del sitio), el modo completo con S3 real y Celery distribuido, ni la carga sostenida (esa es la auditoría de la §4).
 
 ---
 
@@ -139,6 +176,9 @@ Mientras tanto, los patrones que ya se vieron durante la construcción y la regl
 | Consultas que crecen con las filas | Aserciones de número de consultas en los listados | 20 archivos de `backend/tests/` |
 | Colores escritos a mano y contraste insuficiente | Prueba sin colores fijos y `axe` en cada story en el CI | `frontend/src/test/no-hardcoded-colors.test.ts`, paso "Storybook (a11y)" |
 | Secretos o documentos en la auditoría | Un fixture que revisa cada evento escrito en las pruebas | `backend/tests/applications/audit/` (P1.10 de [`specs/TAREA-auditoria.md`](../../specs/TAREA-auditoria.md)) |
+| Una operación nueva de la API sin decidir quién puede usarla | La matriz de acceso exige una fila (9 actores) por cada operación del contrato, y su documento generado debe estar al día | `backend/tests/security/access_matrix.py`, paso "Access matrix document is up to date" |
+| Una dependencia con una vulnerabilidad que ya tiene arreglo, o un secreto en cualquier commit | `pip-audit` y `gitleaks` (todo el historial) en cada PR | `.github/workflows/backend.yml`, `backend/security/pip-audit-ignore.txt`, `.gitleaks.toml` |
+| Código con un patrón inseguro conocido | `bandit` en cada PR (bloquea la severidad alta) | `.github/workflows/backend.yml` |
 
 ---
 

@@ -579,7 +579,7 @@ Las decisiones vienen del Anexo A de [`specs/TAREA-documentacion.md`](../../spec
 
 | Decisión | Por qué | Fuente |
 | --- | --- | --- |
-| 16 módulos y 22 vistas (14 de operación y 8 del portal); solo local y CI, sin despliegue | Mostrar un flujo completo y verificable sin el costo de operar infraestructura. La única publicación prevista es el Storybook. | Anexo A |
+| 16 módulos y 22 vistas (14 de operación y 8 del portal); solo local y CI, sin despliegue | Mostrar un flujo completo y verificable sin el costo de operar infraestructura. Lo único publicado, en GitHub Pages, es el Storybook y la referencia de la API, estáticos. | Anexo A; `.github/workflows/storybook-pages.yml` |
 | Sin integración con bancos, DataCrédito ni firma electrónica | El riesgo del MVP está en la consistencia del expediente, no en integraciones (REQ §8.1). | REQ §2, Anexo A |
 | El banco nunca "responde solo" | El sistema no afirma que el banco recibió o aprobó nada hasta que el asesor lo registra. | REQ §2 |
 

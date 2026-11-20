@@ -113,13 +113,15 @@ flowchart LR
 | Contenedor | Imagen o build | Para qué | Modo |
 | --- | --- | --- | --- |
 | `postgres` | `postgres:16-alpine` | Base de datos. En el modo simple también guarda la caché de los límites de consumo (`createcachetable`). | Los dos |
-| `backend` | `backend/Dockerfile` (`python:3.11-slim`) | La API. Al arrancar corre `migrate`, `createcachetable`, `refresh_application_completeness` y `describe_local_services`, y después `runserver`. | Los dos |
+| `backend` | `backend/Dockerfile`, etapa `dev` (`python:3.11-slim` fijada por digest) | La API. Al arrancar corre `migrate`, `createcachetable`, `refresh_application_completeness` y `describe_local_services`, y después `runserver`, con `config.settings.local`. | Los dos |
 | `frontend` | `frontend/Dockerfile` (build de producción de Next.js) | Backoffice y portal. Se construye con `API_ORIGIN=http://backend:8000`. | Los dos |
 | `redis` | `redis:7-alpine` | Broker de Celery y caché compartida de los límites de consumo. | `full` |
 | `seaweedfs` | `chrislusf/seaweedfs:3.85` | Almacenamiento compatible con S3. Se eligió porque la edición comunitaria de MinIO dejó de publicar imágenes. | `full` |
-| `storage-init` | `backend/Dockerfile` | Crea el bucket privado (`init_document_storage`) y termina. | `full` |
-| `worker` | `backend/Dockerfile` | `celery -A config worker`: antivirus, paquetes ZIP, correos y exportaciones. | `full` |
+| `storage-init` | `backend/Dockerfile`, etapa `dev` | Crea el bucket privado (`init_document_storage`) y termina. | `full` |
+| `worker` | `backend/Dockerfile`, etapa `dev` | `celery -A config worker`: antivirus, paquetes ZIP, correos y exportaciones. | `full` |
 | `clamav` | `clamav/clamav:1.4.3` | Antivirus `clamd` por TCP, solo en la red interna. La primera descarga de firmas tarda minutos. | `full` |
+
+Los cuatro puertos que el compose publica (`5433`, `8000`, `3000` y el `8333` del almacenamiento) quedan solo en `127.0.0.1`: desde otra máquina de la red no se llega a ninguno (SEC-05 de la auditoría de seguridad).
 
 Fuente: [`backend/docker-compose.yml`](../../backend/docker-compose.yml) y [`specs/TAREA-local-simple.md`](../../specs/TAREA-local-simple.md).
 
@@ -349,7 +351,7 @@ flowchart LR
 - **Nombres estables.** drf-spectacular nombra solo los enums y puede renombrarlos si otro campo coincide. Los nombres publicados se fijan en `ENUM_NAME_OVERRIDES` (`backend/config/settings/base.py`) y una prueba los protege: `backend/tests/test_contract_names.py`. Otra prueba exige que toda operación con `If-Match` declare su `ETag`: `backend/tests/test_etag_contract.py`.
 - **Solo se agrega.** Una vez que el front usa un campo, no se quita ni se renombra (regla de oro de [`specs/TAREA-brechas-2.md`](../../specs/TAREA-brechas-2.md)). La compatibilidad dentro de `/api/v1` es un requisito (RNF-20).
 
-Tamaño del contrato al 18 de noviembre de 2026 (contado sobre `contracts/openapi.json`): **175 rutas, 235 operaciones** (201 internas y 34 del comprador) y **374 esquemas**.
+Tamaño del contrato al 19 de noviembre de 2026, después del #36 (contado sobre `contracts/openapi.json`): **176 rutas, 236 operaciones** (202 internas y 34 del comprador) y **380 esquemas**. El 18 eran 175, 235 y 374: el #36 sumó `GET /bank-policy-rules/fields` y campos y esquemas para la administración y el broker, sin quitar nada (381). La fase B de seguridad (#37) no tocó rutas ni operaciones: corrigió esquemas y documentó los errores que faltaban (SEC-13). Por eso se fue `PaginatedAvailableActionList`: `GET /applications/{id}/available-actions` siempre respondió una lista, y el contrato ahora dice eso.
 
 **Por qué "contrato primero":** el frontend nunca adivina la forma de una respuesta, y un cambio del backend que rompería al front se ve en el mismo PR, no en producción. También es la base de la regla de REQ §8.5: las listas, etiquetas y transiciones vienen de la API, así que el front no necesita copiarlas.
 
@@ -416,7 +418,7 @@ Reglas de seguridad de los modos:
 - Al arrancar, el backend escribe una línea con el modo de cada servicio (`describe_local_services`), y `check_document_services` comprueba que respondan.
 - Hay un solo almacenamiento activo por proceso: los archivos guardados en un modo no se ven desde el otro (Precisión 3).
 
-Cómo correr cada modo, los puertos y los problemas comunes van en 10 · Operación local *(en preparación)*.
+Cómo correr cada modo, los puertos y los problemas comunes van en [10 · Operación local](10-operacion-local.md).
 
 ## 9. Cómo se pasaría a producción
 
@@ -424,19 +426,21 @@ El proyecto no se despliega, pero se construyó para que pasar a producción sea
 
 | Tema | Hoy (local) | En producción | Estado |
 | --- | --- | --- | --- |
-| Modo de Django | `DJANGO_DEBUG=True` | `False`. Con `False` se niegan a arrancar el disco, la memoria y el antivirus de prueba. | ✅ Listo por configuración |
-| Servidor de aplicación | `runserver` (comando del compose) | `gunicorn`, que ya está en `backend/requirements.txt` ("Servidor de aplicación para entornos no locales") | 🔧 Falta el comando de arranque |
+| Configuración de Django | `config.settings.local` (la fijan `manage.py` y cada servicio del compose), con `DEBUG` | `config.settings.production`, la que cargan por defecto `config/wsgi.py`, `asgi.py` y `celery.py`: `DEBUG` fijo en `False`, HSTS, redirección a HTTPS, cookies solo por HTTPS, correo SMTP y la API solo en JSON. Sin `DEBUG` se niegan a arrancar el disco, la memoria, el antivirus de prueba y las claves débiles (`identity.E001`/`E002`, `backend/apps/identity/checks.py`) | ✅ Listo y probado en local (`backend/tests/security/test_deployment.py`) |
+| Servidor de aplicación | `runserver`, en la etapa `dev` de `backend/Dockerfile` | La etapa `production` de la misma imagen: solo `manage.py`, `config/` y `apps/`, usuario sin privilegios, `manage.py check` antes de arrancar y `gunicorn` con `backend/config/gunicorn.py` (3 workers por defecto, sin *access log* para no escribir búsquedas en el log) | ✅ Lista; todavía trae las herramientas de prueba porque `requirements.txt` es uno solo |
 | Almacenamiento | Disco o SeaweedFS | S3 real con cifrado SSE (`DOCUMENT_STORAGE_SSE=AES256`, el valor por defecto): solo cambian las variables `DOCUMENT_STORAGE_*` | ✅ Listo por configuración |
 | Antivirus | Escáner de prueba o ClamAV en compose | ClamAV gestionado, con firmas actualizadas | ✅ Listo por configuración |
 | Tareas | En el proceso o worker local | Worker(s) de Celery con Redis | ✅ Listo por configuración |
 | Tareas periódicas | Comandos a mano | Agendar `retry_notification_deliveries`, `requeue_pending_scans`, `requeue_document_packages`, `expire_document_packages`, `purge_idempotency_keys`, `purge_report_exports` y `purge_audit_events` (por ejemplo, con Celery beat) | 🔧 No hay agenda configurada (`beat_schedule` no existe en el código) |
-| HTTPS y cookies | HTTP local, `AUTH_COOKIE_SECURE=False` | HTTPS obligatorio (RNF-01), `AUTH_COOKIE_SECURE=True` (el valor por defecto): cookies `__Host-` | ✅ Listo por configuración |
+| HTTPS y cookies | HTTP local, `AUTH_COOKIE_SECURE=False` | HTTPS obligatorio (RNF-01): `production.py` fija `AUTH_COOKIE_SECURE=True` (cookies `__Host-`), HSTS de una hora para empezar y la redirección; el TLS termina en un proxy que debe fijar `X-Forwarded-Proto` | ✅ Listo; el proxy con TLS es del despliegue |
 | Dominio y proxy | Next.js reenvía `/api/v1` a la API | Decidir el dominio final y si se mantiene el proxy de Next o un balanceador delante; con proxies de confianza, `NUM_PROXIES` para leer la IP real en los límites de consumo | ⏳ Decisión pendiente (REQ §12: "estrategia de cookies entre Next.js y API") |
 | Correo | Consola | Proveedor transaccional y plantillas aprobadas | ⏳ Decisión pendiente (REQ §12) |
 | Textos legales | Consentimientos provisionales | Texto legal validado, responsable de tratamiento y retención | ⏳ Decisión pendiente (REQ §12) |
 | Respaldo | Volúmenes de Docker | Copia diaria y pruebas de restauración (RNF-09, REQ §11.1) | ⏳ Fuera del alcance actual |
 | Observabilidad | Logs con `request_id` y auditoría en la base | Métricas (latencia, errores, colas), alertas y trazas (REQ §11.1) | ⏳ Fuera del alcance actual |
-| Secretos | `backend/.env` local | Un gestor de secretos; `DJANGO_SECRET_KEY` y `AUTH_JWT_SIGNING_KEY` distintas y de alta entropía | 🔧 A definir con la plataforma |
+| Secretos | `backend/.env` local | Un gestor de secretos; `DJANGO_SECRET_KEY` y `AUTH_JWT_SIGNING_KEY` distintas y de alta entropía (el *check* de arranque ya rechaza las débiles) | 🔧 A definir con la plataforma |
+
+La auditoría de seguridad dejó estos puntos como hallazgos en la fase A (#32) y la fase B (#37) los corrigió: la configuración de producción (SEC-01), el endurecimiento de HTTPS (SEC-02), la validación de las claves al arrancar (SEC-03), los puertos solo en `127.0.0.1` (SEC-05) y la imagen en dos etapas con gunicorn (SEC-06). El detalle está en [12 · Auditorías §2.3](12-auditorias.md#23-hallazgos-y-cómo-se-solucionó-cada-uno).
 
 Lo que **no** cambia: el código de dominio, el contrato, las migraciones y el frontend. El frontend ya se construye como build de producción en su contenedor (`frontend/Dockerfile`).
 
