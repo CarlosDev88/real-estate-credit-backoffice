@@ -112,6 +112,9 @@ async function postRefresh(): Promise<boolean> {
       headers,
       credentials: "same-origin",
     });
+    // Se lee el cuerpo aunque solo importe el estado: sin leerlo, el navegador deja la
+    // petición abierta hasta salir de la página (PERF-09).
+    await response.text().catch(() => "");
     return response.ok;
   } catch {
     return false;
