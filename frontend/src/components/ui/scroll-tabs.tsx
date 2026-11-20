@@ -82,19 +82,25 @@ export function ScrollTabs({ items, value, onChange, ariaLabel, className = "" }
   useEffect(() => {
     const el = listRef.current;
     if (!el) return;
-    measure();
     el.addEventListener("scroll", measure, { passive: true });
+    // `ResizeObserver` avisa una vez al observar, ya con el layout hecho. Medir aquí, en el
+    // efecto, forzaba un layout síncrono de toda la página al montar (PERF-07).
     const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(measure);
-    observer?.observe(el);
+    if (observer) observer.observe(el);
+    else measure();
     return () => {
       el.removeEventListener("scroll", measure);
       observer?.disconnect();
     };
   }, [measure, items.length]);
 
-  // La pestaña elegida siempre queda a la vista.
+  // La pestaña elegida siempre queda a la vista. En el cuadro siguiente: justo antes del
+  // layout que el navegador hace igual, no en medio del render (PERF-07).
   useEffect(() => {
-    tabRefs.current.get(value)?.scrollIntoView?.({ block: "nearest", inline: "nearest" });
+    const frame = requestAnimationFrame(() =>
+      tabRefs.current.get(value)?.scrollIntoView?.({ block: "nearest", inline: "nearest" }),
+    );
+    return () => cancelAnimationFrame(frame);
   }, [value]);
 
   const focusTab = (key: string) => {
