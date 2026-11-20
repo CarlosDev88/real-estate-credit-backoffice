@@ -71,6 +71,18 @@ describe("aceptar invitación", { timeout: 20_000 }, () => {
     ).toBeInTheDocument();
   });
 
+  it("sin token según el servidor: el aviso sale en el primer render (PERF-08)", () => {
+    window.history.replaceState(null, "", "/aceptar-invitacion");
+    renderWithProviders(
+      <ThemeProvider initialMode="light" hasCookie>
+        <AcceptInvitationScreen hasToken={false} />
+      </ThemeProvider>,
+    );
+    // Sin esperar efectos ni el formulario: es lo que pinta el servidor.
+    expect(screen.getByRole("heading", { name: "Este enlace no es válido" })).toBeInTheDocument();
+    expect(screen.queryByText("Abriendo tu invitación…")).toBeNull();
+  });
+
   it("valida el formato antes de enviar", async () => {
     const user = open("?token=t");
     await user.click(await screen.findByRole("button", { name: "Activar mi cuenta" }));

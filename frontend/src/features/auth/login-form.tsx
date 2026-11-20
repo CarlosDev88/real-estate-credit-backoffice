@@ -1,26 +1,21 @@
 "use client";
 
-import { zodResolver } from "@hookform/resolvers/zod";
 import { Alert, Button, Input } from "antd";
 import { useState } from "react";
-import { Controller, useForm } from "react-hook-form";
-import { z } from "zod";
+import { Controller, useForm, type Resolver } from "react-hook-form";
 
 import { EyeIcon, LockIcon, MailIcon } from "@/components/ui/icons";
 import { applyFieldErrors, isApiError, retryAfterMessage } from "@/lib/api/errors";
 import type { LoginResponse } from "@/features/auth/queries";
 import { useLogin } from "@/features/auth/queries";
+import type { LoginValues } from "@/features/auth/login-schema";
+import { useIdlePreload } from "@/lib/hooks/use-lazy";
 
-const schema = z.object({
-  email: z
-    .string()
-    .trim()
-    .min(1, { error: "Escribe tu correo." })
-    .pipe(z.email({ error: "Escribe un correo válido." })),
-  password: z.string().min(1, { error: "Escribe tu contraseña." }),
-});
-
-type LoginValues = z.infer<typeof schema>;
+const loadSchema = () => import("@/features/auth/login-schema");
+const PRELOADS = [loadSchema] as const;
+/** El esquema (Zod) se pide al validar por primera vez; después ya está en memoria. */
+const resolver: Resolver<LoginValues> = async (values, context, options) =>
+  (await loadSchema()).loginResolver(values, context, options);
 const FIELDS = ["email", "password"] as const;
 
 interface FormError {
@@ -52,13 +47,14 @@ export function LoginForm({ onSuccess }: { onSuccess: (data: LoginResponse) => v
   const login = useLogin();
   const [formError, setFormError] = useState<FormError | null>(null);
   const [showPassword, setShowPassword] = useState(false);
+  useIdlePreload(PRELOADS);
   const {
     control,
     handleSubmit,
     setError,
     formState: { errors },
   } = useForm<LoginValues>({
-    resolver: zodResolver(schema),
+    resolver,
     defaultValues: { email: "", password: "" },
   });
 
