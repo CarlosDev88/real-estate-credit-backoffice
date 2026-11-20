@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "antd";
+import { useTransition } from "react";
 import type { ReactNode } from "react";
 
 import { Money } from "@/components/ui/money";
@@ -234,6 +235,9 @@ export function ResponseTimeline({
   const responses = useFilingResponses(filingId);
   const items = responses.data ?? [];
   const correctedIds = new Set(items.map((r) => r.corrects_response_id).filter(Boolean));
+  // El modal de respuesta se monta en una transición: el clic pinta enseguida (el botón
+  // queda cargando) y la página no se congela mientras se arma el formulario (PERF-04).
+  const [opening, startOpening] = useTransition();
 
   return (
     <section
@@ -245,7 +249,7 @@ export function ResponseTimeline({
         <div className="flex-1" />
         {/* Botón normal: la acción principal de la vista es la del encabezado. */}
         {onRecord && (
-          <Button size="small" onClick={onRecord}>
+          <Button size="small" loading={opening} onClick={() => startOpening(onRecord)}>
             Registrar respuesta
           </Button>
         )}
@@ -273,7 +277,7 @@ export function ResponseTimeline({
               viewer={viewer}
               slotLabel={slotLabel}
               onOpenDocument={onOpenDocument}
-              onCorrect={() => onCorrect(response)}
+              onCorrect={() => startOpening(() => onCorrect(response))}
               onAttach={() => onAttach(response)}
             />
           ))}
