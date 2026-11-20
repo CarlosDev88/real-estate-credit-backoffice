@@ -125,7 +125,7 @@ Otros que quedaron escritos en las Precisiones:
 
 ## 8. La línea de tiempo
 
-El historial de `master` (`git log --oneline`) tiene 35 PR numerados, del #1 al #36 (el #13 no aparece en `master`; revisado el 19 de noviembre de 2026). Antes del primer PR entraron, como commits directos, la base de Django y los módulos 1 a 4 (identidad, catálogos, constructoras, invitaciones y usuarios). En grandes bloques:
+El historial de `master` (`git log --oneline`) tiene 36 PR numerados, del #1 al #37 (el #13 no aparece en `master`; revisado el 19 de noviembre de 2026). Antes del primer PR entraron, como commits directos, la base de Django y los módulos 1 a 4 (identidad, catálogos, constructoras, invitaciones y usuarios). En grandes bloques:
 
 | PR | Qué entró |
 | --- | --- |
@@ -143,6 +143,7 @@ El historial de `master` (`git log --oneline`) tiene 35 PR numerados, del #1 al 
 | #34 | Administración (F6): usuarios e invitaciones, constructoras, proyectos, bancos, documentos, catálogos y flujos |
 | #35 | Esta guía (Partes 1, 2, 3 y 5) |
 | #36 | Terceras brechas del backend (contrato para la administración y el broker) y la demo completa: 64 solicitudes en seis meses, un usuario por rol y 16 bloques idempotentes |
+| #37 | Auditoría de seguridad, fase B: 20 hallazgos corregidos y 1 aceptado (SEC-16), la configuración y la imagen de producción, los límites generales y el re-test con las mismas herramientas |
 
 La demo con un solo comando y la puesta al día de esta guía van en un segundo PR de documentación.
 

@@ -1,5 +1,6 @@
 #Requires -Version 7.2
-# Pruebas de scripts/demo/DemoLib.psm1, sin Docker y en un directorio temporal.
+# Pruebas de scripts/demo/DemoLib.psm1 y de Invoke-Compose de demo.ps1, sin Docker y en un
+# directorio temporal.
 # Uso: pwsh -NoProfile -File scripts/demo/DemoLib.Tests.ps1   (sale con 1 si alguna falla)
 # Sin Pester a propósito: así corren con cualquier PowerShell 7.
 
@@ -103,6 +104,45 @@ try {
     try { Initialize-DemoEnv -BackendDir $dir | Out-Null } catch { $threw = $true }
     Check 'sin .env.example es un error' { $threw }
     Check 'sin .env.example no crea nada' { -not (Test-Path -LiteralPath (Join-Path $dir '.env')) }
+
+    # --- Invoke-Compose de demo.ps1, con un docker falso ---------------------------------
+    # Se toma la función del archivo con el parser (demo.ps1 no se ejecuta). El docker
+    # falso es una función: tapa al de verdad (las funciones van antes que los programas),
+    # guarda sus argumentos y la carpeta, y devuelve un código propio.
+    $demoAst = [System.Management.Automation.Language.Parser]::ParseFile(
+        (Join-Path $PSScriptRoot '../../demo.ps1'), [ref] $null, [ref] $null)
+    $composeAst = $demoAst.Find({
+            param($node)
+            $node -is [System.Management.Automation.Language.FunctionDefinitionAst] -and $node.Name -eq 'Invoke-Compose'
+        }, $true)
+    Check 'demo.ps1 define Invoke-Compose' { $null -ne $composeAst }
+    # Con param() o [CmdletBinding()] es función avanzada y PowerShell toma `-d` como su
+    # `-Debug`: `up -d` quedaba en primer plano y el script nunca llegaba al seed.
+    Check 'Invoke-Compose es una función simple (sin param ni CmdletBinding)' { $null -eq $composeAst.Body.ParamBlock }
+
+    $BackendDir = Join-Path $work 'compose-backend'
+    New-Item -ItemType Directory -Path $BackendDir | Out-Null
+    $script:DockerCalls = [System.Collections.Generic.List[object]]::new()
+    function docker {
+        $script:DockerCalls.Add([pscustomobject]@{ Args = @($args); Dir = (Get-Location).Path })
+        $global:LASTEXITCODE = 7
+    }
+    . ([scriptblock]::Create($composeAst.Extent.Text))
+
+    $here = (Get-Location).Path
+    $code = Invoke-Compose up -d --build
+    Check 'up -d --build le llega completo a docker' { ($script:DockerCalls[0].Args -join ' ') -ceq 'compose up -d --build' }
+    Check 'corre desde backend/' { $script:DockerCalls[0].Dir -eq (Get-Item -LiteralPath $BackendDir).FullName }
+    Check 'devuelve el código de docker' { $code -eq 7 }
+    Check 'vuelve a la carpeta de antes' { (Get-Location).Path -eq $here }
+
+    Invoke-Compose --profile full up -d --build | Out-Null
+    Check 'el perfil full y up -d llegan completos' { ($script:DockerCalls[1].Args -join ' ') -ceq 'compose --profile full up -d --build' }
+    Invoke-Compose exec -T backend python manage.py seed_demo_data --new-portal-link | Out-Null
+    Check 'exec -T y el seed llegan completos' {
+        ($script:DockerCalls[2].Args -join ' ') -ceq 'compose exec -T backend python manage.py seed_demo_data --new-portal-link'
+    }
+    Remove-Item -LiteralPath Function:docker
 
     # --- Confirmación del borrado --------------------------------------------------------
     Check 'BORRAR confirma' { Test-DemoResetAnswer 'BORRAR' }

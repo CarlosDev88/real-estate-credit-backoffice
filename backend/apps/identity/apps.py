@@ -8,4 +8,8 @@ class IdentityConfig(AppConfig):
 
     def ready(self) -> None:
         # Registra la extensión de OpenAPI para la autenticación por cookie.
-        from apps.identity import schema  # noqa: F401
+        # Comprobaciones de arranque de las claves (SEC-03).
+        from apps.identity import (
+            checks,  # noqa: F401
+            schema,  # noqa: F401
+        )

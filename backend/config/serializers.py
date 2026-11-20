@@ -8,6 +8,16 @@ from rest_framework import serializers
 from rest_framework.exceptions import ErrorDetail
 
 
+@extend_schema_field(
+    {"type": "string", "description": "Correo electrónico, o vacío si no se registró."}
+)
+class BlankableEmailField(serializers.CharField):
+    """Correo de un campo ``EmailField(blank=True)`` del modelo, de solo lectura. En el
+    contrato es texto sin ``format: email``: ``""`` no es un correo válido y la respuesta no
+    validaba contra el esquema (SEC-13). Es un ``CharField`` porque drf-spectacular deduce el
+    formato del ``EmailValidator``."""
+
+
 @extend_schema_field(OpenApiTypes.STR)
 class ChoiceLabelField(serializers.Field):
     """Etiqueta visible de un código (``*_label``), de solo lectura.

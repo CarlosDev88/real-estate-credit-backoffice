@@ -33,7 +33,7 @@ def test_client_responses_describe_both_shapes(schema: dict[str, Any]) -> None:
     components = schema["components"]["schemas"]
 
     assert body_schema(schema, CLIENTS, "get", "200") == ref("PaginatedClientListByRole")
-    assert components["PaginatedClientListByRole"]["oneOf"] == [
+    assert components["PaginatedClientListByRole"]["anyOf"] == [
         ref("PaginatedClientList"),
         ref("PaginatedBrokerClientList"),
     ]
@@ -42,10 +42,10 @@ def test_client_responses_describe_both_shapes(schema: dict[str, Any]) -> None:
         "BrokerClient"
     )
     assert body_schema(schema, CLIENTS, "post", "201") == ref("ClientByRole")
-    assert components["ClientByRole"]["oneOf"] == [ref("Client"), ref("BrokerClient")]
+    assert components["ClientByRole"]["anyOf"] == [ref("Client"), ref("BrokerClient")]
     for method in ("get", "patch"):
         assert body_schema(schema, CLIENT, method, "200") == ref("ClientDetailByRole")
-    assert components["ClientDetailByRole"]["oneOf"] == [ref("ClientDetail"), ref("BrokerClient")]
+    assert components["ClientDetailByRole"]["anyOf"] == [ref("ClientDetail"), ref("BrokerClient")]
     assert set(components["BrokerClient"]["properties"]) == BROKER_CLIENT_FIELDS
 
 
@@ -108,7 +108,7 @@ def test_opportunity_responses_describe_both_shapes(schema: dict[str, Any]) -> N
 
     for path in (OPPORTUNITIES, "/api/v1/clients/{client_id}/opportunities"):
         assert body_schema(schema, path, "get", "200") == ref("PaginatedOpportunityListByRole")
-    assert components["PaginatedOpportunityListByRole"]["oneOf"] == [
+    assert components["PaginatedOpportunityListByRole"]["anyOf"] == [
         ref("PaginatedOpportunityList"),
         ref("PaginatedBrokerOpportunityList"),
     ]
@@ -121,7 +121,7 @@ def test_opportunity_responses_describe_both_shapes(schema: dict[str, Any]) -> N
     assert body_schema(schema, OPPORTUNITIES, "post", "201") == ref("OpportunityDetailByRole")
     for method in ("get", "patch"):
         assert body_schema(schema, OPPORTUNITY, method, "200") == ref("OpportunityDetailByRole")
-    assert components["OpportunityDetailByRole"]["oneOf"] == [
+    assert components["OpportunityDetailByRole"]["anyOf"] == [
         ref("OpportunityDetail"),
         ref("BrokerOpportunity"),
     ]

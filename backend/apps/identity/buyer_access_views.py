@@ -30,7 +30,7 @@ from apps.identity.buyer_access_serializers import (
 )
 from apps.identity.models import BuyerAccessLinkStatus, User, buyer_access_link_status_filter
 from apps.identity.permissions import HasPermissionCode
-from apps.identity.throttling import BuyerAccessIssueRateThrottle
+from apps.identity.throttling import GENERAL_THROTTLES, BuyerAccessIssueRateThrottle
 from config.serializers import ErrorSerializer
 
 BUYER_ACCESS_TAG = "Buyer access"
@@ -61,7 +61,7 @@ class _BuyerAccessView(GenericAPIView):
 
 class ApplicationBuyerAccessLinksView(_BuyerAccessView):
     required_permissions = {"GET": "buyer_access.read", "POST": "buyer_access.create"}
-    throttle_classes = [BuyerAccessIssueRateThrottle]
+    throttle_classes = [*GENERAL_THROTTLES, BuyerAccessIssueRateThrottle]
 
     @extend_schema(
         tags=[BUYER_ACCESS_TAG],

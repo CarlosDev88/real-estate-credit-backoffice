@@ -49,11 +49,12 @@ function Exit-Demo {
 
 # Corre `docker compose` desde backend/, donde están el compose y el .env.
 function Invoke-Compose {
-    param([Parameter(ValueFromRemainingArguments)][string[]] $Arguments)
+    # Función simple, sin param(): así PowerShell no toma `-d` o `-T` como sus propios
+    # parámetros comunes (`-d` se volvía `-Debug` y `up -d` quedaba pegado a los logs).
     Push-Location $BackendDir
     try {
         # Out-Host: la salida va a la pantalla y la función devuelve solo el código.
-        & docker compose @Arguments | Out-Host
+        & docker compose @args | Out-Host
         return $LASTEXITCODE
     }
     finally {

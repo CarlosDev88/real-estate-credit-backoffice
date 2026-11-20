@@ -66,7 +66,7 @@ flowchart TD
 
 1. **Docker.** Revisa que existan `docker` y `docker compose` y que Docker responda. Si no, sale con un mensaje en español y el código 3.
 2. **`backend/.env`.** Si **no existe**, lo crea copiando `backend/.env.example` y escribe `DJANGO_SECRET_KEY` y `AUTH_JWT_SIGNING_KEY` nuevas (48 bytes de un generador criptográfico, en base64 de URL: 64 caracteres) y `DJANGO_DEBUG=True`. Conserva el resto del archivo tal cual, incluido su fin de línea. **Si ya existe, no lo toca nunca.**
-3. **Contenedores.** `docker compose up -d --build` desde `backend/`: `postgres`, `backend` y `frontend`. La primera vez construye las imágenes y tarda varios minutos.
+3. **Contenedores.** `docker compose up -d --build` desde `backend/`: `postgres`, `backend` y `frontend`. El backend se construye con la etapa `dev` de `backend/Dockerfile` (`runserver` con la configuración local); la etapa `production`, con gunicorn, no la usa la demo ([03 · Arquitectura §9](03-arquitectura.md#9-cómo-se-pasaría-a-producción)). La primera vez construye las imágenes y tarda varios minutos.
 4. **Salud.** Espera a que `http://localhost:8000/health` (el proceso responde) y `/ready` (la base responde) devuelvan `200`, con un máximo de 300 segundos (600 en el modo completo). Al arrancar, el backend aplica las migraciones solo.
 5. **Datos de demo.** Corre `python manage.py seed_demo_data --new-portal-link` dentro del contenedor. El comando solo funciona con `DEBUG` y nunca borra nada. Cada uno de sus 16 bloques tiene su marca y se salta si ya existe, así que en una base con una demo vieja agrega solo lo que falta. Sin `--new-portal-link`, si ya hay un enlace del portal sin usar, el comando no emite otro y no imprime ninguna URL (el token solo se ve al emitirlo); con la opción emite uno nuevo y revoca el anterior, así que **la demo siempre muestra un enlace que sirve**.
 6. **Resumen.** El script **imprime la salida del seed tal cual**: un resumen por bloque (`creados (N)` o `ya existían`), la **tabla de usuarios por rol** con la contraseña de demo y el **enlace del portal del comprador** (de un solo uso, 72 horas) con el código de su solicitud. Después agrega las URL:
@@ -76,7 +76,7 @@ flowchart TD
 | Backoffice | http://localhost:3000/login |
 | Portal del comprador | El enlace que imprime el seed (`http://localhost:3000/acceso?token=…`) |
 | API | http://localhost:8000/api/v1/ |
-| Documentación interactiva de la API | http://localhost:8000/docs (solo con `DEBUG`) |
+| Documentación interactiva de la API | http://localhost:8000/docs y el esquema en `/openapi.json` (solo con `DEBUG`, que la demo enciende; la referencia publicada está en [GitHub Pages](https://carlosdev88.github.io/real-estate-credit-backoffice/api/)) |
 | Salud | http://localhost:8000/health y /ready |
 
 Los usuarios de demo, con la contraseña de demo `DemoUmbral2026!` (está escrita en el código, `backend/apps/applications/demo_data.py`; **solo para local**). Es la tabla que imprime el comando, con los textos de `backend/apps/applications/demo_seed.py` (`PURPOSES`) y de `backend/README.md`, "Demo Data":
@@ -243,11 +243,11 @@ Al arrancar, el log del backend dice con qué modo arrancó: `Servicios locales:
 | Puerto | Servicio | Modo |
 | ---: | --- | --- |
 | 3000 | Frontend (Next.js) | Los dos |
-| 8000 | Backend (API, `/docs`, `/health`, `/ready`) | Los dos |
+| 8000 | Backend (API, `/health`, `/ready` y, con `DEBUG`, `/docs` y `/openapi.json`) | Los dos |
 | 5433 | PostgreSQL (en el host; adentro es el 5432) | Los dos |
 | 8333 | SeaweedFS (S3) | Completo |
 
-Se cambian con `FRONTEND_HOST_PORT`, `BACKEND_HOST_PORT`, `POSTGRES_HOST_PORT` y `DOCUMENT_STORAGE_HOST_PORT` en `backend/.env` (`backend/docker-compose.yml`). Redis, el worker y ClamAV no publican puertos: solo están en la red interna.
+Se cambian con `FRONTEND_HOST_PORT`, `BACKEND_HOST_PORT`, `POSTGRES_HOST_PORT` y `DOCUMENT_STORAGE_HOST_PORT` en `backend/.env` (`backend/docker-compose.yml`). Redis, el worker y ClamAV no publican puertos: solo están en la red interna. Los cuatro que sí se publican quedan **solo en `127.0.0.1`** (SEC-05 de la auditoría de seguridad): se entra desde la misma máquina, no desde otra de la red.
 
 ## 6. Comandos útiles
 
@@ -302,16 +302,20 @@ Los datos viven en volúmenes con nombre fijo (`mvp_credit_postgres_data`, `mvp_
 | Síntoma | Causa | Qué hacer |
 | --- | --- | --- |
 | `401 SESSION_EXPIRED` al azar, en cualquier pantalla o prueba | El reloj de la máquina virtual de Docker se atrasa o adelanta varios segundos y los JWT dejan de valer (`nbf`/`iat`) | Reiniciar Docker Desktop (el arreglo es del host, no del código). Ver [11 · Cómo se construyó §7](11-como-se-construyo.md#7-errores-reales-que-se-atraparon) |
-| `Bind for 0.0.0.0:3000 failed: port is already allocated` (u 8000, 5433) | Otro proceso usa el puerto; a menudo un `pnpm dev` o `next dev` que quedó huérfano | En Windows: `netstat -ano \| findstr :3000` y `taskkill /PID <pid> /F`. O cambia el puerto en `backend/.env` |
+| `docker compose up` falla porque hay un contenedor con un nombre como `<id>_mvp-credit-backend-postgres-1` | Una recreación anterior del contenedor (por ejemplo, al cambiar el compose) quedó a medias y dejó el contenedor con un nombre temporal | `docker rm -f <ese nombre>` y vuelve a correr la demo. Los datos están en el volumen, que no se toca |
+| `Bind for 127.0.0.1:3000 failed: port is already allocated` (u 8000, 5433) | Otro proceso usa el puerto; a menudo un `pnpm dev` o `next dev` que quedó huérfano | En Windows: `netstat -ano \| findstr :3000` y `taskkill /PID <pid> /F`. O cambia el puerto en `backend/.env` |
 | `pnpm` falla en Windows con un error del atajo | El atajo global de pnpm está roto en algunas instalaciones | Usa `corepack pnpm …` o `node <ruta>/pnpm/bin/pnpm.mjs …` |
 | Todo `/api/v1/*` responde `400` y el log dice `DisallowedHost` | `DJANGO_ALLOWED_HOSTS` en `backend/.env` no incluye `backend` | Agrégalo (`.env.example` ya lo trae) |
-| `429` en el login | 5 intentos por correo e IP cada 15 minutos | Espera, o limpia la caché ([§6](#6-comandos-útiles)) |
+| `429` en el login | 5 intentos por correo e IP cada 15 minutos; además, 20 por IP con cualquier correo y 10 por cuenta desde cualquier IP | Espera, o limpia la caché ([§6](#6-comandos-útiles)) |
+| `429` al usar mucho una pantalla o un script contra la API | Los límites generales: 600 lecturas y 120 escrituras por minuto por usuario, y 20 cambios de estado o radicaciones ([04 · System design §7](04-system-design.md#7-límites-de-consumo)) | Espera el `Retry-After`; en local, `AUTH_RATE_LIMIT_MULTIPLIER` los afloja como a los demás |
 | El seed dice que todo "ya existía" menos el enlace del portal | Es idempotente: ya corrió antes. La demo pide siempre un enlace nuevo (`--new-portal-link`) | Nada; es lo esperado |
 | Corriendo el comando a mano, el seed no imprime el enlace y dice que ya hay uno sin usar | Sin `--new-portal-link` no emite otro: el token solo se ve al emitirlo | Agrega `--new-portal-link` (revoca el anterior) |
 | El enlace del portal dice que ya se usó o venció | Es de un solo uso y dura 72 h | Vuelve a correr la demo (imprime uno nuevo) o emítelo desde el encabezado de la solicitud (como asesor) |
 | Una descarga responde `503 DOWNLOAD_UNAVAILABLE` | El archivo se subió en el otro modo | Vuelve al modo en que se subió; los archivos no se mueven entre modos |
 | En el modo completo, las cargas quedan en "pendiente" | ClamAV todavía está bajando sus firmas | Espera a que `docker compose --profile full ps clamav` diga `healthy` |
-| La API no está en `0.0.0.0` o `/docs` responde `404` | La fase B de la auditoría de seguridad (en curso) publica los puertos solo en `127.0.0.1` y deja `/docs` y `/openapi.json` solo con `DEBUG` | La demo corre con `DEBUG` y desde la misma máquina: funciona igual. Para entrar desde otra máquina de la red, eso ya no es posible a propósito |
+| Desde otra máquina de la red no se llega a la API ni al backoffice | Desde la fase B de la auditoría de seguridad (#37), el compose publica los puertos solo en `127.0.0.1` (SEC-05) | Es a propósito: se entra desde la misma máquina. Si `docker compose ps` todavía muestra `0.0.0.0:…`, son contenedores creados con el compose anterior; `docker compose up -d` los recrea |
+| `/docs`, `/openapi.json` o `/admin/` responden `404` | Sin `DEBUG` no se publican (SEC-18 y SEC-19); `/admin/` solo con `ADMIN_ENABLED` y `/docs` solo con `API_DOCS_PUBLIC` | Revisa `DJANGO_DEBUG=True` en `backend/.env` (la demo lo pone al crearlo), o usa la [referencia publicada](https://carlosdev88.github.io/real-estate-credit-backoffice/api/) |
+| El backend no arranca y el log dice `identity.E001` o `identity.E002` | Sin `DEBUG`, una `AUTH_JWT_SIGNING_KEY` de menos de 32 bytes o una `DJANGO_SECRET_KEY` débil es un error (SEC-03); con `DEBUG` es solo un aviso (`identity.W001`/`W002`) | Genera claves nuevas: `python -c "import secrets; print(secrets.token_urlsafe(48))"` (las del `.env` que crea la demo ya cumplen) |
 | `demo.ps1` no se puede ejecutar por la política de ejecución | La política de PowerShell bloquea scripts | `pwsh -ExecutionPolicy Bypass -File ./demo.ps1` |
 | `./demo.sh: Permission denied` | El archivo no tiene permiso de ejecución | `bash demo.sh`, o `chmod +x demo.sh` |
 | `demo.ps1` dice que necesita la versión 7.2 | Se abrió con Windows PowerShell 5.1 | Ábrelo con `pwsh` (PowerShell 7) |
@@ -324,12 +328,25 @@ La lógica que no necesita Docker está separada en `scripts/demo/` para probarl
 | --- | --- | --- |
 | Lógica en bash | `bash scripts/demo/test-demo-lib.sh` | 45 pruebas, 0 fallas (Git Bash 5.2) |
 | La misma, con el bash de macOS | `docker run --rm -v <repo>:/w:ro bash:3.2 bash /w/scripts/demo/test-demo-lib.sh` | 45 pruebas, 0 fallas |
-| Lógica en PowerShell | `pwsh -NoProfile -File scripts/demo/DemoLib.Tests.ps1` | 37 pruebas, 0 fallas (PowerShell 7.7) |
+| Lógica en PowerShell | `pwsh -NoProfile -File scripts/demo/DemoLib.Tests.ps1` | 45 pruebas, 0 fallas (PowerShell 7.7); con el `demo.ps1` de antes del arreglo de abajo, 3 fallan |
 | Análisis estático | `shellcheck -x demo.sh scripts/demo/*.sh` (imagen `koalaman/shellcheck:v0.10.0`) | Sin avisos |
 | Sintaxis de `demo.ps1` | `Parser::ParseFile` | 0 errores |
 | Sin Docker en el `PATH` | Los dos scripts | Salen con código 3 y "No encuentro el comando docker" |
 | Opciones inválidas | `--stop --reset` / `-Stop -Reset` | Salen con código 2 |
 
-Qué cubren las pruebas: los argumentos; que las claves tengan 64 caracteres, sean distintas y válidas; que `backend/.env` se cree solo si no existe, con las dos claves nuevas, `DJANGO_DEBUG=True`, el resto de las líneas intactas, el mismo fin de línea (CRLF como el `.env.example` real), sin temporales y sin cambiar el ejemplo; que un `.env` existente quede **idéntico** (mismo hash); que sin `.env.example` falle sin crear nada; y que el borrado solo se confirme con `BORRAR` exacto. Las pruebas usan un `.env.example` de mentira en un directorio temporal: nunca leen ni tocan el real.
+Qué cubren las pruebas: los argumentos; que las claves tengan 64 caracteres, sean distintas y válidas; que `backend/.env` se cree solo si no existe, con las dos claves nuevas, `DJANGO_DEBUG=True`, el resto de las líneas intactas, el mismo fin de línea (CRLF como el `.env.example` real), sin temporales y sin cambiar el ejemplo; que un `.env` existente quede **idéntico** (mismo hash); que sin `.env.example` falle sin crear nada; y que el borrado solo se confirme con `BORRAR` exacto. Las pruebas usan un `.env.example` de mentira en un directorio temporal: nunca leen ni tocan el real. En PowerShell también cubren cómo `demo.ps1` llama a `docker compose` (abajo).
 
-**Lo que falta:** correr la demo de punta a punta. Con otros agentes usando Docker y el puerto 8000, levantar el compose reiniciaría su backend (los contenedores y volúmenes tienen nombres fijos). Se corre cuando el orquestador lo indique y el resultado se agrega aquí.
+### La demo de punta a punta
+
+La corrió Carlos el 19 de noviembre de 2026 con `./demo.ps1`, sin `-Reset`, en Windows con PowerShell 7.7 y Docker Desktop. Las imágenes ya estaban construidas y la base ya tenía la demo, así que fue la corrida "de nuevo", no la primera:
+
+| Paso | Resultado |
+| --- | --- |
+| Contenedores | Arriba en segundo plano; `/health` y `/ready` respondieron, las migraciones estaban al día y el *system check* no dio avisos |
+| `seed_demo_data --new-portal-link` | Los 16 bloques "ya existían" salvo "Enlace del portal: creados (1)"; la completitud se recalculó en 52 solicitudes, 0 con error |
+| Lo que imprimió | La tabla de los 6 usuarios (5 roles y el inactivo) con la contraseña de demo, el enlace del portal de la solicitud `SOL-000014` (de un solo uso, 72 horas) y el bloque "Demo lista" con el backoffice en `:3000/login`, la API, `/docs` (solo con `DEBUG`), `-Stop`, `-Reset` y el enlace a este recorrido |
+| Tiempo | Unos minutos la primera vez (construye las imágenes); segundos en las siguientes |
+
+**El bug que encontró, ya arreglado.** En una corrida anterior, `docker compose up` se quedó en primer plano mostrando los logs y el script nunca llegó al seed. La causa: `Invoke-Compose` (en `demo.ps1`) recibía sus argumentos con `param([Parameter(ValueFromRemainingArguments)]…)`, y eso la vuelve una **función avanzada**, que acepta los parámetros comunes de PowerShell. El `-d` de `up -d --build` se tomaba como abreviatura de `-Debug` y no le llegaba a Docker. El arreglo: una función simple que pasa `$args` tal cual. `demo.sh` no tenía el problema. Para que no vuelva, `DemoLib.Tests.ps1` toma `Invoke-Compose` de `demo.ps1` con el parser de PowerShell, sin ejecutar el script. Revisa que no tenga `param()` y la llama con un `docker` falso, una función que tapa al de verdad y guarda lo que recibe. Así comprueba que `up -d --build`, `--profile full up -d --build` y `exec -T backend python manage.py seed_demo_data --new-portal-link` llegan completos, desde `backend/`, y que se devuelve el código de Docker. Con la versión anterior, 3 de esas pruebas fallan.
+
+Otra corrida anterior falló por un contenedor de Postgres a medio recrear; está en [Problemas comunes](#8-problemas-comunes).

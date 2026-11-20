@@ -15,6 +15,13 @@ SECRET_KEY = env("DJANGO_SECRET_KEY")
 DEBUG = env.bool("DJANGO_DEBUG")
 ALLOWED_HOSTS = env.list("DJANGO_ALLOWED_HOSTS", default=[])
 
+# Superficie fuera de la API (SEC-18 y SEC-19). `/admin/` y la documentación interactiva
+# solo se publican con `DEBUG` o si se encienden a propósito. El contrato del frontend y la
+# referencia publicada salen de `contracts/openapi.json`, no de estas rutas.
+ADMIN_ENABLED = env.bool("ADMIN_ENABLED", default=False)
+ADMIN_URL_PATH = env("ADMIN_URL_PATH", default="admin/")
+API_DOCS_PUBLIC = env.bool("API_DOCS_PUBLIC", default=False)
+
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
@@ -45,6 +52,9 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "config.middleware.RequestIDMiddleware",
+    # `Cache-Control: no-store` y `Vary: Cookie` en `/api/v1/` (SEC-08); va arriba para
+    # cubrir también los errores que responden otros middlewares.
+    "config.middleware.ApiNoStoreMiddleware",
     "apps.audit.context.AuditContextMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
@@ -126,6 +136,18 @@ REST_FRAMEWORK = {
     "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
     "DEFAULT_PARSER_CLASSES": ["rest_framework.parsers.JSONParser"],
     "EXCEPTION_HANDLER": "config.exceptions.api_exception_handler",
+    # Sin metadata de `OPTIONS` (SEC-07): DRF responde 405 en vez de describir los campos
+    # (fallaba con 500 en las vistas sin `serializer_class`). El *preflight* de CORS lo
+    # responde `corsheaders` antes de llegar a la vista.
+    "DEFAULT_METADATA_CLASS": None,
+    # Límites generales por usuario, sesión del comprador o IP (SEC-10, API §26). Es la
+    # misma lista que `apps.identity.throttling.GENERAL_THROTTLES`; las tasas van en
+    # `AUTH_RATE_LIMITS` (`general_read`, `general_write`, `state_changes`).
+    "DEFAULT_THROTTLE_CLASSES": [
+        "apps.identity.throttling.GeneralReadRateThrottle",
+        "apps.identity.throttling.GeneralWriteRateThrottle",
+        "apps.identity.throttling.ScopedUserRateThrottle",
+    ],
     # Proxies de confianza delante de la API. Con 0 se ignora X-Forwarded-For.
     "NUM_PROXIES": env.int("NUM_PROXIES", default=0),
     "TEST_REQUEST_DEFAULT_FORMAT": "json",
@@ -139,6 +161,12 @@ SPECTACULAR_SETTINGS = {
     "SERVE_INCLUDE_SCHEMA": False,
     "SERVE_AUTHENTICATION": [],
     "COMPONENT_SPLIT_REQUEST": True,
+    # El de drf-spectacular (enums) y el propio, que documenta 400/404/428 con el esquema
+    # de error común en las operaciones que no los declaran (SEC-13).
+    "POSTPROCESSING_HOOKS": [
+        "drf_spectacular.hooks.postprocess_schema_enums",
+        "config.openapi.add_error_responses",
+    ],
     # Nombres estables para enums que se repiten en varios recursos (campo `status`).
     "ENUM_NAME_OVERRIDES": {
         "PartnerStatusEnum": "apps.partners.models.partner.PartnerStatus",
@@ -236,8 +264,14 @@ AUTH_COOKIE_SAMESITE = "Lax"
 
 # Límites de consumo (sección 26). Formato `<cantidad>/<n><s|m|h|d>`.
 AUTH_RATE_LIMITS = {
+    # Login y recuperación: por IP + correo, y además por IP sobre todos los correos
+    # (rociado) y por correo sobre todas las IP (fuerza bruta distribuida), SEC-09.
     "login": "5/15m",
+    "login_ip": "20/15m",
+    "login_account": "10/15m",
     "password_reset_request": "3/1h",
+    "password_reset_request_ip": "10/1h",
+    "password_reset_request_account": "5/1h",
     "password_reset_confirm": "10/15m",
     "change_password": "5/15m",
     "invitation_accept": "10/15m",
@@ -250,6 +284,14 @@ AUTH_RATE_LIMITS = {
     "document_download": "60/1h",
     # Dashboard y reportes, por usuario (REQUERIMIENTOS §9.3: endpoints costosos).
     "reports": env("REPORTS_RATE_LIMIT", default="20/1m"),
+    # Generales (SEC-10, REQUERIMIENTOS §9.3 y API §26), por usuario interno o sesión del
+    # comprador; sin sesión, por IP. Lecturas = GET, HEAD y OPTIONS; el resto, escrituras.
+    "general_read": "600/1m",
+    "general_write": "120/1m",
+    # Cambios de estado, radicaciones y desistimientos (`throttle_scope`), un cupo común.
+    "state_changes": "20/1m",
+    # Login de `/admin/`, por IP, cuando se publica (SEC-18).
+    "admin_login": "10/15m",
 }
 # Solo en local: con `DEBUG=True`, cada cupo de `AUTH_RATE_LIMITS` (también `reports`) se
 # multiplica por este número. Con `DEBUG=False` se ignora siempre.

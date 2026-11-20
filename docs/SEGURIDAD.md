@@ -1,8 +1,9 @@
 # Seguridad del backend
 
 Informe de la auditoría de seguridad del backoffice de crédito hipotecario (Django 5.2 +
-DRF, PostgreSQL 16). **Fase A: encontrar y documentar** (noviembre de 2026). La Fase B
-corrige; cada hallazgo dice abajo cómo quedó.
+DRF, PostgreSQL 16), en dos fases de noviembre de 2026: **Fase A, encontrar y documentar**
+(#32), y **Fase B, corregir y volver a probar** (este PR). Cada hallazgo dice abajo cómo se
+solucionó; el re-test está en la §9.
 
 Este documento no contiene secretos: ni contraseñas reales, ni tokens, ni cookies, ni URL
 firmadas. La única contraseña que aparece en el repo es la de los datos de demo, que es
@@ -29,17 +30,27 @@ a ningún dato; no hay inyecciones; los archivos se validan por su contenido rea
 enlaces del comprador, las radicaciones y los pagos no se duplican aunque lleguen diez
 peticiones a la vez.
 
-**Los tres más importantes, en una frase cada uno:**
+**Fase B: 19 corregidos y 1 aceptado; el re-test encontró 1 más (informativo) y también se
+corrigió.** Los 5 medios están corregidos. El aceptado es SEC-16 (baja): el `409` al crear un
+cliente con una cédula que ya existe, que es regla de negocio. El re-test (§9) repitió cada
+reproducción de la Fase A con su "antes" y su "después", más schemathesis y ZAP con las mismas
+versiones: **ningún error 5xx y ningún hallazgo nuevo de severidad media o más**. Lo que queda
+(§7) es lo propio de no haber desplegado todavía: protección perimetral, secretos reales y que
+alguien recree los contenedores locales con la configuración nueva.
+
+**Los tres más importantes de la Fase A, en una frase cada uno (los tres, corregidos):**
 1. **Prueba de contraseñas a escala** (SEC-09, medio): el límite de intentos de inicio de
    sesión es por "dirección IP + correo", así que alguien puede probar una contraseña contra
    todas las cuentas desde un solo equipo, o atacar una cuenta desde muchos equipos.
+   **Corregido:** ahora también hay un límite por equipo (sobre todas las cuentas) y uno por
+   cuenta (sobre todos los equipos).
 2. **Dos fallas conocidas en una librería** (SEC-04, medio): la versión de Django REST
    Framework tiene dos vulnerabilidades públicas que permiten, sin cuenta, dejar sin
    respuesta al servidor con pocas peticiones; la versión corregida existe pero hay que
-   cambiar el rango permitido.
+   cambiar el rango permitido. **Corregido:** DRF 3.18.
 3. **Datos personales en la caché del navegador** (SEC-08, medio): las respuestas con datos
    de clientes no le dicen al navegador que no las guarde; en un equipo compartido podrían
-   quedar en disco.
+   quedar en disco. **Corregido:** toda respuesta de la API lleva `Cache-Control: no-store`.
 
 ## 2. Alcance y método
 
@@ -168,152 +179,247 @@ la prueba: [`seguridad/03-matriz-acceso.md`](seguridad/03-matriz-acceso.md).
 
 ## 6. Hallazgos
 
-Estado: `abierto` (pendiente de la Fase B), `corregido en #NN` o `aceptado` con el motivo.
+Estado: `corregido` (en la Fase B, este PR) o `aceptado` con el motivo. Ninguno queda
+`abierto`. SEC-21 apareció en el re-test de la Fase B.
 Criterio de la Fase B: Crítica y Alta se corrigen todas; Media, si el esfuerzo es pequeño
 (si no, se acepta con el motivo); Baja e Informativa se documentan y se corrigen si son de
 una línea. Ficha completa de cada uno (cómo reproducirlo, impacto, dónde): [`seguridad/hallazgos.md`](seguridad/hallazgos.md).
 
 | Id | Título | Severidad | OWASP API | Estado |
 | --- | --- | --- | --- | --- |
-| [SEC-01](seguridad/hallazgos.md#sec-01--no-hay-configuración-de-producción-y-los-puntos-de-entrada-cargan-local-que-fuerza-debugtrue) | No hay configuración de producción y los puntos de entrada cargan `local` (`DEBUG=True`) | Baja | API8 | abierto |
-| [SEC-02](seguridad/hallazgos.md#sec-02--la-configuración-base-no-endurece-https) | La configuración base no endurece HTTPS | Baja | API8 | abierto |
-| [SEC-03](seguridad/hallazgos.md#sec-03--las-claves-no-se-validan-al-arrancar-la-clave-jwt-local-tiene-31-bytes) | Las claves no se validan al arrancar | Baja | API8 | abierto |
-| [SEC-04](seguridad/hallazgos.md#sec-04--djangorestframework-3172-tiene-dos-cve-de-denegación-de-servicio-sin-sesión) | DRF 3.17.2 con dos CVE de denegación de servicio | **Media** | API4 | abierto |
-| [SEC-05](seguridad/hallazgos.md#sec-05--el-compose-publica-postgresql-y-el-backend-en-todas-las-interfaces-del-equipo) | El compose publica PostgreSQL y el backend en todas las interfaces | Baja | API8 | abierto |
-| [SEC-06](seguridad/hallazgos.md#sec-06--imagen-del-backend-base-sin-digest-pip-sin-versión-y-runserver-como-comando) | Imagen del backend sin digest y con `runserver` | Informativa | API8 | abierto |
-| [SEC-07](seguridad/hallazgos.md#sec-07--options-responde-500-en-27-rutas-una-de-ellas-pública) | `OPTIONS` responde 500 en 27 rutas | Baja | API8 | abierto |
-| [SEC-08](seguridad/hallazgos.md#sec-08--las-respuestas-con-datos-personales-no-llevan-cache-control-no-store-ni-vary-cookie) | Respuestas con datos personales sin `Cache-Control: no-store` | **Media** | API8 | abierto |
-| [SEC-09](seguridad/hallazgos.md#sec-09--el-límite-de-login-y-de-recuperación-se-salta-con-otros-correos-o-con-otras-ip) | El límite de login y recuperación se salta con otros correos u otras IP | **Media** | API2 | abierto |
-| [SEC-10](seguridad/hallazgos.md#sec-10--no-existen-los-límites-generales-por-usuario-que-piden-req-93-y-api-26) | Faltan los límites generales por usuario | **Media** | API4 | abierto |
-| [SEC-11](seguridad/hallazgos.md#sec-11--un-json-de-más-de-25-mb-responde-500-sin-debug-o-la-página-de-depuración-con-debug-no-413) | Un JSON de más de 2,5 MB responde 500 y no 413 | Baja | API8 | abierto |
-| [SEC-12](seguridad/hallazgos.md#sec-12--las-rutas-inexistentes-y-los-ids-que-no-son-uuid-responden-html-de-django-no-el-formato-de-error-de-la-api) | Rutas inexistentes responden HTML de Django | Baja | API8 | abierto |
-| [SEC-13](seguridad/hallazgos.md#sec-13--el-contrato-no-coincide-con-la-api-en-2-respuestas-y-no-documenta-varios-estados) | El contrato no coincide con la API en 2 respuestas | Informativa | API9 | abierto |
-| [SEC-14](seguridad/hallazgos.md#sec-14--la-recuperación-de-contraseña-revela-si-el-correo-existe-cuando-falla-el-envío) | La recuperación revela si el correo existe cuando falla el envío | **Media** | API2 | abierto |
-| [SEC-15](seguridad/hallazgos.md#sec-15--el-log-de-peticiones-guarda-la-búsqueda-completa-documento-o-nombre) | El log de peticiones guarda la búsqueda completa | Baja | API8 | abierto |
-| [SEC-16](seguridad/hallazgos.md#sec-16--un-409-al-crear-un-cliente-confirma-que-esa-cédula-ya-está-registrada) | El `409` de documento duplicado confirma que la cédula existe | Baja | API3 | abierto |
-| [SEC-17](seguridad/hallazgos.md#sec-17--textos-de-la-configuración-de-bancos-sin-longitud-máxima) | Textos de la configuración de bancos sin longitud máxima | Informativa | API4 | abierto |
-| [SEC-18](seguridad/hallazgos.md#sec-18--admin-de-django-está-publicado-con-la-api-y-su-login-no-tiene-límite-de-intentos) | `/admin/` publicado y sin límite de intentos | Baja | API8 | abierto |
-| [SEC-19](seguridad/hallazgos.md#sec-19--el-esquema-openapi-y-la-documentación-interactiva-son-públicos) | Esquema OpenAPI y documentación públicos | Informativa | API9 | abierto |
-| [SEC-20](seguridad/hallazgos.md#sec-20--la-documentación-de-la-api-promete-9-rutas-que-no-existen-y-omite-5-que-sí) | La documentación no coincide con las rutas | Informativa | API9 | abierto |
+| [SEC-01](seguridad/hallazgos.md#sec-01--no-hay-configuración-de-producción-y-los-puntos-de-entrada-cargan-local-que-fuerza-debugtrue) | No hay configuración de producción y los puntos de entrada cargan `local` (`DEBUG=True`) | Baja | API8 | corregido |
+| [SEC-02](seguridad/hallazgos.md#sec-02--la-configuración-base-no-endurece-https) | La configuración base no endurece HTTPS | Baja | API8 | corregido |
+| [SEC-03](seguridad/hallazgos.md#sec-03--las-claves-no-se-validan-al-arrancar-la-clave-jwt-local-tiene-31-bytes) | Las claves no se validan al arrancar | Baja | API8 | corregido |
+| [SEC-04](seguridad/hallazgos.md#sec-04--djangorestframework-3172-tiene-dos-cve-de-denegación-de-servicio-sin-sesión) | DRF 3.17.2 con dos CVE de denegación de servicio | **Media** | API4 | corregido |
+| [SEC-05](seguridad/hallazgos.md#sec-05--el-compose-publica-postgresql-y-el-backend-en-todas-las-interfaces-del-equipo) | El compose publica PostgreSQL y el backend en todas las interfaces | Baja | API8 | corregido |
+| [SEC-06](seguridad/hallazgos.md#sec-06--imagen-del-backend-base-sin-digest-pip-sin-versión-y-runserver-como-comando) | Imagen del backend sin digest y con `runserver` | Informativa | API8 | corregido |
+| [SEC-07](seguridad/hallazgos.md#sec-07--options-responde-500-en-27-rutas-una-de-ellas-pública) | `OPTIONS` responde 500 en 27 rutas | Baja | API8 | corregido |
+| [SEC-08](seguridad/hallazgos.md#sec-08--las-respuestas-con-datos-personales-no-llevan-cache-control-no-store-ni-vary-cookie) | Respuestas con datos personales sin `Cache-Control: no-store` | **Media** | API8 | corregido |
+| [SEC-09](seguridad/hallazgos.md#sec-09--el-límite-de-login-y-de-recuperación-se-salta-con-otros-correos-o-con-otras-ip) | El límite de login y recuperación se salta con otros correos u otras IP | **Media** | API2 | corregido |
+| [SEC-10](seguridad/hallazgos.md#sec-10--no-existen-los-límites-generales-por-usuario-que-piden-req-93-y-api-26) | Faltan los límites generales por usuario | **Media** | API4 | corregido |
+| [SEC-11](seguridad/hallazgos.md#sec-11--un-json-de-más-de-25-mb-responde-500-sin-debug-o-la-página-de-depuración-con-debug-no-413) | Un JSON de más de 2,5 MB responde 500 y no 413 | Baja | API8 | corregido |
+| [SEC-12](seguridad/hallazgos.md#sec-12--las-rutas-inexistentes-y-los-ids-que-no-son-uuid-responden-html-de-django-no-el-formato-de-error-de-la-api) | Rutas inexistentes responden HTML de Django | Baja | API8 | corregido |
+| [SEC-13](seguridad/hallazgos.md#sec-13--el-contrato-no-coincide-con-la-api-en-2-respuestas-y-no-documenta-varios-estados) | El contrato no coincide con la API en 2 respuestas | Informativa | API9 | corregido |
+| [SEC-14](seguridad/hallazgos.md#sec-14--la-recuperación-de-contraseña-revela-si-el-correo-existe-cuando-falla-el-envío) | La recuperación revela si el correo existe cuando falla el envío | **Media** | API2 | corregido |
+| [SEC-15](seguridad/hallazgos.md#sec-15--el-log-de-peticiones-guarda-la-búsqueda-completa-documento-o-nombre) | El log de peticiones guarda la búsqueda completa | Baja | API8 | corregido |
+| [SEC-16](seguridad/hallazgos.md#sec-16--un-409-al-crear-un-cliente-confirma-que-esa-cédula-ya-está-registrada) | El `409` de documento duplicado confirma que la cédula existe | Baja | API3 | aceptado |
+| [SEC-17](seguridad/hallazgos.md#sec-17--textos-de-la-configuración-de-bancos-sin-longitud-máxima) | Textos de la configuración de bancos sin longitud máxima | Informativa | API4 | corregido |
+| [SEC-18](seguridad/hallazgos.md#sec-18--admin-de-django-está-publicado-con-la-api-y-su-login-no-tiene-límite-de-intentos) | `/admin/` publicado y sin límite de intentos | Baja | API8 | corregido |
+| [SEC-19](seguridad/hallazgos.md#sec-19--el-esquema-openapi-y-la-documentación-interactiva-son-públicos) | Esquema OpenAPI y documentación públicos | Informativa | API9 | corregido |
+| [SEC-20](seguridad/hallazgos.md#sec-20--la-documentación-de-la-api-promete-9-rutas-que-no-existen-y-omite-5-que-sí) | La documentación no coincide con las rutas | Informativa | API9 | corregido |
+| [SEC-21](seguridad/hallazgos.md#sec-21--las-respuestas-que-cambian-según-el-rol-no-validan-cuando-la-página-está-vacía) | Respuestas por rol que no validan con la página vacía | Informativa | API9 | corregido |
 
 ### Fichas
 
-Cada ficha: qué pasa, qué riesgo trae, el estado y cómo se soluciona. La prueba que lo
-reproduce está en `backend/tests/security/` (marcada `xfail` con su id) o el comando, en la
-ficha completa.
+Cada ficha: qué pasa, qué riesgo trae, el estado y cómo se solucionó. La prueba que lo cubre
+está en `backend/tests/security/` (en la Fase A eran `xfail` con su id; ahora son pruebas
+normales) y los comandos, en la ficha completa.
 
 **SEC-01 · Baja · API8 — Sin configuración de producción.** Los puntos de entrada (`wsgi`,
 `asgi`, Celery) cargan `config.settings.local`, que fija `DEBUG=True`, correo a la consola y
 cookies sin `Secure` aunque el entorno diga lo contrario. Riesgo: si se despliega así, páginas
-de depuración y enlaces con token en el log. Estado: abierto.
-**Cómo se solucionó:** Pendiente (Fase B). Corrección sugerida: `config/settings/production.py`
-con `DEBUG=False` fijo y que `wsgi`, `asgi` y `celery` lo usen por defecto.
+de depuración y enlaces con token en el log. Estado: corregido.
+**Cómo se solucionó (Fase B, este PR) — corregido.** *Causa:* sin configuración de producción.
+*Cambio:* `backend/config/settings/production.py` (`DEBUG = False` fijo, SMTP del entorno, solo
+JSON); `wsgi`, `asgi` y `celery` la usan por defecto; `manage.py` sigue en `local` y el compose
+fija `DJANGO_SETTINGS_MODULE` en sus tres servicios de Django. *Verificación:*
+`tests/security/test_deployment.py`; `check --deploy` con variables de ejemplo pasó de 4–6 avisos
+a solo `W021` (*preload*); `docker compose --profile full up` sigue levantando todo.
 
 **SEC-02 · Baja · API8 — HTTPS sin endurecer.** `base.py` no define HSTS, redirección a HTTPS,
-`SESSION_COOKIE_SECURE` ni `SECURE_PROXY_SSL_HEADER`. Estado: abierto.
-**Cómo se solucionó:** Pendiente (Fase B). Corrección sugerida: esos cuatro ajustes en
-`production.py`.
+`SESSION_COOKIE_SECURE` ni `SECURE_PROXY_SSL_HEADER`. Estado: corregido.
+**Cómo se solucionó (Fase B, este PR) — corregido.** *Cambio:* en `production.py`, HSTS de 3600 s
+con subdominios, `SECURE_PROXY_SSL_HEADER`, `SECURE_SSL_REDIRECT` (por defecto `True`) y cookies
+`Secure`. *Verificación:* `tests/security/test_deployment.py::test_production_hardens_https`; la
+imagen `production` redirige HTTP a HTTPS (`301`) y responde `Strict-Transport-Security`.
 
 **SEC-03 · Baja · API8 — Claves sin validar.** El arranque acepta cualquier clave no vacía; la
-JWT local tiene 31 bytes (RFC 7518 pide 32). Estado: abierto.
-**Cómo se solucionó:** Pendiente (Fase B). Corrección sugerida: un *system check* que exija
-≥ 32 bytes sin `DEBUG`; regenerar las claves locales.
+JWT local tiene 31 bytes (RFC 7518 pide 32). Estado: corregido.
+**Cómo se solucionó (Fase B, este PR) — corregido.** *Cambio:* `backend/apps/identity/checks.py`:
+error sin `DEBUG` (aviso con `DEBUG`) si la clave JWT tiene menos de 32 bytes o la `SECRET_KEY` no
+cumple la regla de Django; la imagen `production` corre `check` antes de gunicorn. *Verificación:*
+`tests/security/test_deployment.py` (los dos casos); la imagen no arranca con claves débiles. Las
+claves del `.env` local ya se regeneraron
+(`python -c "import secrets; print(secrets.token_urlsafe(48))"`): el check no da avisos.
 
 **SEC-04 · Media · API4 — DRF con dos CVE de DoS.** CVE-2026-114136 (el `charset` de
 compresión salta el límite del cuerpo: 101 bytes llegan como 5 MB) y CVE-2026-114138 (`Accept`
-en tiempo cuadrático). El arreglo, 3.18.2, queda fuera del rango `<3.18`. Estado: abierto
-(revisado en `backend/security/pip-audit-ignore.txt`).
-**Cómo se solucionó:** Pendiente (Fase B). Corrección sugerida: `djangorestframework>=3.18.2,<3.19`
-y quitar las dos líneas del archivo de excepciones.
+en tiempo cuadrático). El arreglo, 3.18.2, quedaba fuera del rango `<3.18`. Estado: corregido.
+**Cómo se solucionó (Fase B, este PR) — corregido.** *Causa:* el rango `<3.18` de
+`requirements.txt` dejaba fuera el arreglo. *Cambio:* `backend/requirements.txt` (DRF
+`>=3.18.2,<3.19`, stubs compatibles) y `backend/security/pip-audit-ignore.txt` sin las dos
+excepciones. *Verificación:* `tests/security/test_resources.py::test_a_compressed_charset_is_not_expanded`;
+en el 8010, el cuerpo bz2 de 96 bytes pasó de `400 VALIDATION_ERROR` (expandido a 5 MB, 586 ms)
+a `400 MALFORMED_REQUEST` (66 ms), y el `Accept` de 9 KB de 64 ms a 7 ms (`406`).
 
 **SEC-05 · Baja · API8 — Puertos en todas las interfaces.** El compose publica PostgreSQL y la
-API en `0.0.0.0`. Estado: abierto.
-**Cómo se solucionó:** Pendiente (Fase B). Corrección sugerida: `127.0.0.1:` delante de cada
-puerto publicado.
+API en `0.0.0.0`. Estado: corregido.
+**Cómo se solucionó (Fase B, este PR) — corregido.** *Cambio:* `127.0.0.1:` delante de los cuatro
+puertos publicados en `backend/docker-compose.yml`. *Verificación:*
+`tests/security/test_deployment.py::test_compose_publishes_ports_only_on_localhost`; el compose
+levantado publica solo en `127.0.0.1`.
 
 **SEC-06 · Informativa · API8 — Imagen del backend.** Base sin digest, `pip` sin versión,
-`runserver` como comando y cabecera `Server` con la versión de Python. Estado: abierto.
-**Cómo se solucionó:** Pendiente (Fase B). Corrección sugerida: `FROM ...@sha256:`, `pip`
-fijado y `gunicorn` en la imagen de producción.
+`runserver` como comando y cabecera `Server` con la versión de Python. Estado: corregido.
+**Cómo se solucionó (Fase B, este PR) — corregido.** *Cambio:* `backend/Dockerfile` en dos etapas
+sobre `python:3.11-slim@sha256:07d48…b535` y `pip==26.3`: `dev` (compose) y `production` (gunicorn
+con `config/gunicorn.py`, sin `tests/` ni `scripts/`, sin *access log*). *Verificación:*
+`tests/security/test_deployment.py`; `hadolint` sin `DL3013`; la imagen arranca y responde
+`Server: gunicorn` (antes con la versión de Python).
 
 **SEC-07 · Baja · API8 — `OPTIONS` con 500.** 27 vistas genéricas fallan al describir sus
-campos; una es pública. Estado: abierto.
-**Cómo se solucionó:** Pendiente (Fase B). Corrección sugerida:
-`REST_FRAMEWORK["DEFAULT_METADATA_CLASS"] = None` (el *preflight* de CORS no cambia).
+campos; una es pública. Estado: corregido.
+**Cómo se solucionó (Fase B, este PR) — corregido.** *Causa:* la metadata de DRF describía los
+campos con `get_serializer()`. *Cambio:* `REST_FRAMEWORK["DEFAULT_METADATA_CLASS"] = None`
+(`backend/config/settings/base.py`): `OPTIONS` responde `405` y el *preflight* sigue en
+`corsheaders`. *Verificación:* `tests/security/test_http_responses.py` (las 175 rutas con y sin
+sesión, sin 5xx; *preflight* desde `localhost:3000`); en el 8011, de 29 × `500` a ninguno.
 
 **SEC-08 · Media · API8 — Sin `Cache-Control: no-store`.** Las respuestas con datos personales
-(y el CSV de reportes) se pueden guardar en caché, y no varían por `Cookie`. Estado: abierto.
-**Cómo se solucionó:** Pendiente (Fase B). Corrección sugerida: un *middleware* que ponga
-`no-store` y `Vary: Cookie` en `/api/v1/` cuando la vista no fije su propio `Cache-Control`.
+(y el CSV de reportes) se pueden guardar en caché, y no varían por `Cookie`. Estado: corregido.
+**Cómo se solucionó (Fase B, este PR) — corregido.** *Causa:* DRF no pone `Cache-Control`.
+*Cambio:* `ApiNoStoreMiddleware` (`backend/config/middleware.py`, en `MIDDLEWARE`): `no-store` en
+`/api/v1/` cuando la vista no trae uno propio, y `Vary: Cookie` siempre. *Verificación:*
+`tests/security/test_http_responses.py` (listado, detalle, `/auth/me`, CSV y catálogo con ETag);
+en el 8011, `/auth/me`, clientes, solicitud y CSV pasaron de sin cabecera a `no-store`.
 
 **SEC-09 · Media · API2 — Límite de login saltable.** La clave del límite es "IP + correo":
 12 correos desde una IP pasan sin freno, y la misma cuenta suma 5 intentos por cada IP nueva.
-Estado: abierto.
-**Cómo se solucionó:** Pendiente (Fase B). Corrección sugerida: dos límites más, por IP sobre
-todos los correos y por cuenta sobre todas las IP, y una demora progresiva.
+Estado: corregido.
+**Cómo se solucionó (Fase B, este PR) — corregido.** *Causa:* una sola clave "IP + correo".
+*Cambio:* `backend/apps/identity/throttling.py` y `views.py` suman, al límite de IP + correo, uno
+por IP (login `20/15m`, recuperación `10/1h`) y uno por cuenta (`10/15m`, `5/1h`), con tasas en
+`AUTH_RATE_LIMITS` (`backend/config/settings/base.py`). Decisión: sin demora con `sleep`; el
+límite por cuenta es el control progresivo. *Verificación:* `tests/security/test_rate_limits.py`
+(rociado, una cuenta desde varias IP y recuperación a muchos correos); en el 8010, el rociado
+corta en el 21.º correo y la cuenta en el 11.º fallo aunque cambie de IP. *Riesgo residual:*
+quien conozca un correo puede bloquear esa cuenta 15 minutos.
 
 **SEC-10 · Media · API4 — Sin límites generales.** No existen los 120/min de escrituras, 600/min
-de lecturas ni 20/min de cambios de estado que pide REQ §9.3. Estado: abierto.
-**Cómo se solucionó:** Pendiente (Fase B). Corrección sugerida: `DEFAULT_THROTTLE_CLASSES` por
-usuario o sesión y uno con alcance propio para estados y radicaciones.
+de lecturas ni 20/min de cambios de estado que pide REQ §9.3. Estado: corregido.
+**Cómo se solucionó (Fase B, este PR) — corregido.** *Causa:* sin `DEFAULT_THROTTLE_CLASSES`.
+*Cambio:* `backend/apps/identity/throttling.py` (lecturas `600/1m`, escrituras `120/1m` por usuario,
+sesión del comprador o IP, y `20/1m` común a cambios de estado, desistimientos, radicaciones y
+transiciones de oportunidad con `throttle_scope`), `backend/config/settings/base.py` y las vistas
+con límites propios, que ahora los suman a los generales. *Verificación:*
+`tests/security/test_rate_limits.py` (lectura, escritura y cambio de estado con `429`,
+`Retry-After` y el texto en español); en el 8010, `POST /clients` corta en el 121.º, `GET
+/clients` en el 601.º y los cambios de estado en el 21.º.
 
 **SEC-11 · Baja · API8 — 500 con un JSON grande.** El límite de 2,5 MB sí corta, pero responde
-500 en vez de 413. Estado: abierto.
-**Cómo se solucionó:** Pendiente (Fase B). Corrección sugerida: convertir `RequestDataTooBig` en
-`413 PAYLOAD_TOO_LARGE` en el manejador de errores.
+500 en vez de 413. Estado: corregido.
+**Cómo se solucionó (Fase B, este PR) — corregido.** *Causa:* `RequestDataTooBig` no es de
+DRF. *Cambio:* `backend/config/exceptions.py` la convierte en `413 PAYLOAD_TOO_LARGE`.
+*Verificación:* `tests/security/test_http_responses.py` (3 MB en el login y en `POST /clients`); en
+el 8011, de `500` a `413` con el formato de la API.
 
 **SEC-12 · Baja · API8 — 404 en HTML.** Las rutas inexistentes y los ids que no son UUID
-responden la página de Django. Estado: abierto.
-**Cómo se solucionó:** Pendiente (Fase B). Corrección sugerida: `handler404`/`handler500` con el
-formato de error de la API para `/api/`.
+responden la página de Django. Estado: corregido.
+**Cómo se solucionó (Fase B, este PR) — corregido.** *Causa:* sin `handler404`/`handler500`.
+*Cambio:* `backend/config/views.py` y `backend/config/urls.py`: JSON con `build_error_body` en
+`/api/`, la página de Django fuera. *Verificación:* `tests/security/test_http_responses.py`
+(`/api/v1/no-existe` y `/api/v1/applications/abc` → `404 RESOURCE_NOT_FOUND` con `request_id`); en
+el 8011, de `text/html` a JSON. Con `DEBUG` (solo local) sigue la página de depuración.
 
 **SEC-13 · Informativa · API9 — Contrato desalineado.** Dos respuestas no siguen el esquema y
-faltan códigos 400/404/428. Estado: abierto.
-**Cómo se solucionó:** Pendiente (Fase B). Corrección sugerida: corregir los serializers o su
-`extend_schema` y regenerar el contrato.
+faltan códigos 400/404/428. Estado: corregido.
+**Cómo se solucionó (Fase B, este PR) — corregido.** *Causa:* `available-actions` documentado como
+página y el correo vacío declarado `format: email` (eso rompía el `oneOf` del broker). *Cambio:*
+`pagination_class = None` en esa vista, `BlankableEmailField` en los serializers de cliente,
+comprador y partner, y un *postprocessing hook* (`backend/config/openapi.py`) que agrega `400`,
+`404` y `428` con el esquema de error común. *Verificación:* `tests/security/test_deployment.py`;
+las dos respuestas reales del 8010 validan contra el contrato (antes 1 error cada una);
+`pnpm typecheck` pasa.
 
 **SEC-14 · Media · API2 — Enumeración por la recuperación.** El correo se envía dentro de la
 petición y solo si el usuario existe: con el correo caído, 500 para los que existen y 202 para
-los que no. Estado: abierto.
-**Cómo se solucionó:** Pendiente (Fase B). Corrección sugerida: mandar el correo por la cola de
-notificaciones (o capturar el error), para que la respuesta sea siempre la misma.
+los que no. Estado: corregido.
+**Cómo se solucionó (Fase B, este PR) — corregido.** *Causa:* `send_mail` síncrono en la
+petición, solo si el usuario existía. *Cambio:* `backend/apps/identity/tasks.py` (nuevo),
+`services.py` e `invitations.py`: la petición solo encola después del commit; el worker busca el
+usuario, genera el token (que no pasa por el broker) y envía; un fallo queda en el log. Las
+invitaciones, que también eran síncronas, van igual. *Verificación:*
+`tests/security/test_auth.py::test_reset_request_answers_the_same_when_the_mail_fails` (sin
+`xfail`) y tres pruebas más; en el 8010 con worker, `202` siempre y +4,1 ms de mediana (antes
++14 ms y `500` con el SMTP caído). *Riesgo residual:* en el modo local simple (tareas en el
+mismo proceso) el tiempo del envío se suma cuando el correo existe.
 
 **SEC-15 · Baja · API8 — Búsquedas en el log.** El log de peticiones guarda la URL con
-`?search=` (documento, nombre). Estado: abierto.
-**Cómo se solucionó:** Pendiente (Fase B). Corrección sugerida: ocultar los valores de `search`
-en el filtro de `config/log_redaction.py` y en el *access log* de producción.
+`?search=` (documento, nombre). Estado: corregido.
+**Cómo se solucionó (Fase B, este PR) — corregido.** *Causa:* el filtro solo ocultaba los
+tokens. *Cambio:* `backend/config/log_redaction.py` escribe `***` en el valor de `search`, `email`,
+`document_number` y `q` de cualquier mensaje. *Verificación:*
+`tests/security/test_exposure.py::test_search_terms_are_not_written_to_the_access_log` (sin `xfail`)
+y tres pruebas más; en el 8010, `"GET /api/v1/clients?search=*** HTTP/1.1"`.
 
 **SEC-16 · Baja · API3 — El 409 confirma la cédula.** Crear un cliente con un documento ya
-registrado responde 409 aunque el cliente sea de otro alcance (sin revelar sus datos). Estado:
-abierto (documentado en API §13).
-**Cómo se solucionó:** Pendiente (Fase B). Corrección sugerida: decisión de producto; o un
-flujo de "cliente ya existente" que revise un asesor, o aceptarlo con el límite de SEC-10.
+registrado responde 409 aunque el cliente sea de otro alcance (sin revelar sus datos). Estado: aceptado.
+**Cómo se solucionó (Fase B, este PR) — aceptado.** Decisión de Carlos: el documento identifica a
+la persona y no tiene sentido crear el mismo cliente una vez por broker; la unicidad es regla de
+negocio. Mitigación: el `409` no trae datos del otro cliente y SEC-10 limita los intentos a 120
+por minuto. *Verificación:*
+`tests/security/test_exposure.py::test_a_duplicate_document_is_an_accepted_409_without_the_other_client`
+(antes `xfail`) y `::test_probing_documents_is_limited_by_the_general_write_limit`. *Riesgo
+residual:* confirmar que una cédula ya es cliente, sin saber de quién.
 
 **SEC-17 · Informativa · API4 — Textos de bancos sin tope.** `operational_notes` acepta 1 MB
-(solo admin). Estado: abierto.
-**Cómo se solucionó:** Pendiente (Fase B). Corrección sugerida: `max_length=4000`.
+(solo admin). Estado: corregido.
+**Cómo se solucionó (Fase B, este PR) — corregido.** *Cambio:* `max_length=4000` en los dos
+campos (`backend/apps/banking/serializers.py`). *Verificación:*
+`tests/security/test_resources.py::test_bank_operational_notes_have_a_maximum_length` (sin `xfail`)
+y la de edición; en el 8011, 100 000 caracteres pasaron de `201` a `400`.
 
 **SEC-18 · Baja · API8 — Admin de Django expuesto.** `/admin/` en el mismo host, con 42 modelos
-y sin límite de intentos; hoy no hay usuarios que puedan entrar. Estado: abierto.
-**Cómo se solucionó:** Pendiente (Fase B). Corrección sugerida: montarlo solo con `DEBUG` o con
-una variable, y con límite de intentos si se publica.
+y sin límite de intentos; hoy no hay usuarios que puedan entrar. Estado: corregido.
+**Cómo se solucionó (Fase B, este PR) — corregido.** *Causa:* `admin/` montado siempre y sin
+límite. *Cambio:* `backend/config/urls.py`, `views.py` y `settings/base.py`: solo con `DEBUG` o
+`ADMIN_ENABLED` (por defecto `False`), en `ADMIN_URL_PATH`, y su login con un límite por IP de
+`10/15m`. *Verificación:* `tests/security/test_config_inventory.py` (apagado → `404`; encendido →
+`429` al 11.º intento); en el 8011, de 12 × `200` a `404`, y encendido 10 × `200` + `429`.
 
 **SEC-19 · Informativa · API9 — Esquema y docs públicos.** `/openapi.json` y `/docs` sin sesión,
-también sin `DEBUG`. Estado: abierto.
-**Cómo se solucionó:** Pendiente (Fase B). Corrección sugerida: publicarlos solo con `DEBUG` o
-para usuarios internos.
+también sin `DEBUG`. Estado: corregido.
+**Cómo se solucionó (Fase B, este PR) — corregido.** *Cambio:* `/openapi.json` y `/docs` solo
+con `DEBUG` o `API_DOCS_PUBLIC` (por defecto `False`) en `backend/config/urls.py`; el frontend usa
+`contracts/openapi.json`. *Verificación:*
+`tests/security/test_config_inventory.py::test_api_schema_and_docs_need_a_session` (sin `xfail`);
+en el 8011, de `200` a `404` (y `200` con la variable).
 
 **SEC-20 · Informativa · API9 — Documentación desalineada.** 9 rutas documentadas no existen y
-las 5 de direcciones del cliente no están documentadas. Estado: abierto.
-**Cómo se solucionó:** Pendiente (Fase B). Corrección sugerida: marcar las 9 como fuera del MVP
-y documentar las 5.
+las 5 de direcciones del cliente no están documentadas. Estado: corregido.
+**Cómo se solucionó (Fase B, este PR) — corregido.** *Cambio:* `docs/API_REST_MVP_CREDITO.md`: las 9
+rutas pasan a §31.1 "Rutas fuera del MVP" y §13 documenta las 4 de direcciones con permiso y
+alcance. *Verificación:* `tests/security/test_config_inventory.py::test_every_documented_route_exists`
+(sin `xfail`) y `::test_every_route_of_the_contract_is_documented` (nueva).
+
+**SEC-21 · Informativa · API9 — `oneOf` ambiguo en las respuestas por rol (nuevo en el
+re-test).** Una página vacía de solicitudes, clientes u oportunidades valía para la forma del
+asesor y la del broker, y `oneOf` exige exactamente una: la respuesta correcta no validaba
+(schemathesis `ST108` × 4). Estado: corregido.
+**Cómo se solucionó (Fase B, este PR) — corregido.** *Cambio:* el *postprocessing hook* de
+`backend/config/openapi.py` pasa los 7 componentes `*ByRole` a `anyOf`. *Verificación:*
+`tests/security/test_deployment.py::test_role_dependent_responses_use_any_of` y la corrida
+final de schemathesis (§9).
 
 ## 7. Riesgo residual
 
-Lo que queda aunque se corrija todo lo anterior, y cómo se acota:
+Lo que queda después de la Fase B, y cómo se acota:
 
-- **Fuerza bruta distribuida.** Ningún límite por IP frena un ataque desde miles de IP; hace
-  falta protección perimetral (WAF o *rate limiting* en el proxy) al desplegar.
+- **Fuerza bruta muy distribuida y bloqueo de cuentas.** Los límites por cuenta (SEC-09)
+  frenan el ataque a una cuenta desde muchas IP, pero quien conozca un correo puede dejar esa
+  cuenta 15 minutos sin poder entrar (10 fallos desde cualquier lado). Un ataque desde miles
+  de IP contra miles de cuentas lo frena la protección perimetral (WAF o límites en el proxy)
+  al desplegar.
+- **SEC-16, aceptado.** Un usuario con `clients.create` (también un broker externo) puede
+  confirmar que una cédula ya es cliente, sin saber de quién; como mucho 120 intentos por
+  minuto (SEC-10).
+- **Recuperación en el modo local simple.** Con `CELERY_TASK_ALWAYS_EAGER=true` el correo se
+  envía en el mismo proceso: el error no llega a la respuesta, pero el tiempo del envío sí se
+  suma cuando el correo existe. Producción usa el worker (SEC-14).
+- **Claves de producción.** El check de SEC-03 exige claves fuertes, pero generarlas, guardarlas
+  y rotarlas es del despliegue. Las del `.env` local ya se regeneraron (el check no da avisos).
+- **Contenedores locales ya creados.** El Postgres que corre en el equipo sigue publicado en
+  todas las interfaces hasta que se recree con el compose nuevo (SEC-05).
 - **Archivos con contenido activo.** Un PDF con JavaScript pasa la validación (es un PDF
   válido): lo cubren el antivirus, la descarga siempre adjunta y con `nosniff`, y el visor del
   usuario. ClamAV solo corre en el modo completo; en el modo local simple el antivirus es
@@ -321,12 +427,16 @@ Lo que queda aunque se corrija todo lo anterior, y cómo se acota:
 - **Enlace mágico reenviado.** Quien tenga el enlace antes que el comprador entra a su portal
   (es la naturaleza del acceso sin contraseña): lo acotan el solo uso, el vencimiento, la
   revocación y que la sesión dure 24 h y quede limitada a esa solicitud.
-- **Producción todavía no existe.** HTTPS, HSTS, secretos de producción, logs y backups se
-  revisan al desplegar (SEC-01, SEC-02, SEC-03, SEC-06).
+- **Producción todavía no existe.** `config/settings/production.py` y la imagen `production`
+  quedaron listos y probados en local (SEC-01, SEC-02, SEC-06); faltan al desplegar el proxy
+  con TLS que fije `X-Forwarded-Proto`, los secretos reales, los logs centralizados y los
+  backups. La imagen `production` todavía trae las herramientas de prueba y calidad
+  (`requirements.txt` es uno solo).
 - **Lo que no se probó:** el frontend como aplicación (XSS en la interfaz, CSP del sitio), el
   modo completo con S3 real y Celery distribuido, y la carga sostenida.
 - **Pruebas que vigilan:** la matriz exige que cada operación nueva del contrato tenga su fila;
-  `pip-audit`, `gitleaks` y `bandit` corren en cada PR.
+  cada vista nueva hereda los límites generales (una prueba lo exige); el contrato documenta
+  sus errores solo (el *hook* de SEC-13); `pip-audit`, `gitleaks` y `bandit` corren en cada PR.
 
 ## 8. Cómo reproducir
 
@@ -340,3 +450,85 @@ python security/render_matrix.py --check  # el documento de la matriz está al d
 
 Y en cada PR, el CI corre la suite completa más `pip-audit`, `gitleaks`, `bandit` y la
 verificación de la matriz; el resultado sale en el comentario del PR.
+
+## 9. Re-test de la Fase B
+
+**Fecha:** 2026-11-19. **Código:** la rama de la Fase B con `master` traído (#36, brechas 3 y
+demo completa). **Entorno:** el 8010 (`runserver` con `DEBUG`, `AUTH_RATE_LIMIT_MULTIPLIER=1`
+para medir límites, worker de Celery y Redis propios) y el 8011 (sin `DEBUG`), sobre una base
+propia recreada con la demo nueva (16 bloques, 64 solicitudes) y los actores de la matriz.
+**Versiones:** Python 3.11.18, Django 5.2.19, DRF 3.18.3, schemathesis 4.33.4, OWASP ZAP 2.17.0
+(`sha256:9624669db72f…`), gitleaks 8.30.1 (la imagen del CI), hadolint 2.15.1, jsonschema
+4.23.0 y curl 8.23.0. Crudos en `_security-work/` (fuera del repo): `secb_retest_final.txt`,
+`secb_st_*`, `secb_zap/`.
+
+### 9.1 Cada hallazgo, antes y después
+
+"Antes" es la medición de la Fase A (o, donde se indica, el código anterior a la corrección);
+"después", la del re-test.
+
+| Id | Antes | Después |
+| --- | --- | --- |
+| SEC-01 | Los puntos de entrada cargaban `local` (`DEBUG=True`); `check --deploy` con 4–6 avisos | `production` por defecto; `check --deploy` solo con `W021` (*preload*) |
+| SEC-02 | Sin HSTS, redirección ni cookies `Secure` | La imagen `production`: `301` a HTTPS y `Strict-Transport-Security: max-age=3600; includeSubDomains` |
+| SEC-03 | Cualquier clave no vacía; JWT local de 31 bytes | Sin `DEBUG`, `identity.E001`/`E002` y no arranca; con `DEBUG`, aviso |
+| SEC-04 | 96 bytes bz2 → correo de 5 MB en el serializer (`400 VALIDATION_ERROR`, 586 ms); `Accept` de 9 KB, 64 ms | `400 MALFORMED_REQUEST` sin expandir; `Accept` → `406` en 3 ms |
+| SEC-05 | `0.0.0.0:5433` y `0.0.0.0:8000` | Los 4 puertos del compose en `127.0.0.1` |
+| SEC-06 | `hadolint` `DL3013`; `Server: WSGIServer/0.2 CPython/3.11.18` | Sin `DL3013`; la imagen `production` responde `Server: gunicorn` |
+| SEC-07 | `OPTIONS`: 1 ruta con 500 sin sesión y 28 como admin | 176 rutas, ningún 5xx; el *preflight* de CORS igual |
+| SEC-08 | Sin `Cache-Control`; `Vary: origin` | `no-store` y `Vary: origin, Cookie`; ZAP 10049 pasó a *Non-Storable Content* |
+| SEC-09 | Rociado: 12 × `401`; +5 intentos por IP; recuperación: 6 × `202` | Rociado: `429` en el 21.º correo; una cuenta: `429` en el 11.º fallo desde 3 IP; recuperación: `429` en el 11.º correo y en el 6.º pedido de la misma cuenta |
+| SEC-10 | 150 escrituras y 650 lecturas sin `429` | `429` en la escritura 121, la lectura 601 y el cambio de estado 21, con `Retry-After` y el texto en español |
+| SEC-11 | JSON de 3–5 MB → `500` | `413 PAYLOAD_TOO_LARGE` |
+| SEC-12 | `/api/v1/no-existe` → `404 text/html` | `404 application/json`, `RESOURCE_NOT_FOUND` (sin `DEBUG`) |
+| SEC-13 | schemathesis admin: `ST103` × 66, `ST108` × 1 | `ST103` × 0, `ST108` × 0; las respuestas reales validan con `jsonschema` |
+| SEC-14 | `500` con el SMTP caído; +14 ms con un correo existente | `202` siempre; −0,4 ms de diferencia de mediana (20 pares, con worker) |
+| SEC-15 | `?search=9900000013` en el log | `?search=***` (también `email`, `document_number` y `q`) |
+| SEC-16 | `409` sin datos del otro cliente | Igual (**aceptado**), y el sondeo choca con el límite de escrituras |
+| SEC-17 | `operational_notes` de 100 000 caracteres → `201` | `400 VALIDATION_ERROR` |
+| SEC-18 | `/admin/login/` publicado; 12 intentos → 12 × `200` | Por defecto `404`; encendido en otra ruta, `429` en el 11.º intento |
+| SEC-19 | `/openapi.json` y `/docs` → `200` sin sesión | `404`; `200` solo con `API_DOCS_PUBLIC=True` |
+| SEC-20 | 9 rutas documentadas que no existen; 4 sin documentar | 0 y 0 (prueba en los dos sentidos) |
+| SEC-21 | *(nuevo)* schemathesis `ST108` × 4: página vacía válida para las dos formas del `oneOf` | `ST108` × 0 (`anyOf`) |
+
+### 9.2 Herramientas
+
+| Herramienta | Fase A | Fase B (re-test) |
+| --- | --- | --- |
+| schemathesis, admin | 3 866 casos, 322 fallas únicas, 6 min; `ST101` (5xx) × 6 (`OPTIONS`), `ST103` × 66, `ST105` × 13, `ST108` × 1 | 9 101 casos, 307 fallas únicas, 11 min (tope); **`ST101` × 0**, `ST103` × 0, `ST105` × 2, `ST108` × 0 |
+| schemathesis, sin sesión | 15 170 casos, 19 fallas, 18 min (tope); `ST101` × 1 | 7 160 casos, 8 fallas, 9 min (tope); **`ST101` × 0**; `ST401` × 0 |
+| OWASP ZAP activo (admin) | ~72 000 peticiones, 16 min, ningún 5xx; 8 tipos de alerta, ninguna alta | 61 717 peticiones, 15 min, **ningún 5xx**; 6 avisos, 0 FAIL (detalle abajo) |
+| gitleaks (todo el historial, `--log-opts=--all`) | 40 commits, 7 resultados, todos descartados (UUID de ejemplo y contraseñas inventadas de pruebas, en `.gitleaks.toml`) | 60 commits de todas las ramas y el diff sin commitear: **0** |
+| `pytest tests/security` | ~2 400 pruebas, 8 `xfail` (las brechas abiertas) | **2 493 pruebas, 0 `xfail`**; matriz de **2 124 casos** (2 115 en la Fase A; 9 más por lo que agregó el #36), todos con el resultado esperado |
+| `check --deploy` (producción) | `W004`, `W008`, `W009`, `W012` (+ `W016`, `W018` con `local`) | Solo `W021` |
+| hadolint | `DL3013` + 2 informativos | 2 informativos (`DL3066`) |
+
+Lo que queda en schemathesis es lo mismo que la Fase A clasificó como descartado: `ST401` y
+`ST201` como admin son el artefacto del nombre de la cookie local (`app_access` sin el
+prefijo `__Host-` del contrato); `ST202`, validaciones de negocio que el esquema no expresa;
+`ST203`, el `428` sin `If-Match`, que es lo correcto y ya está documentado; y los 2 `ST105`,
+`client-addresses` con un id que no es UUID, que con `DEBUG` responde la página 404 de
+Django (sin `DEBUG` responde JSON: SEC-12). La corrida sin sesión tuvo un `ST112` (un login con
+campos raros tardó 12,7 s); repetido 5 veces con el mismo cuerpo, la mediana fue 38 ms: un pico
+del servidor de desarrollo durante el escaneo, no un vector.
+
+Una primera corrida de schemathesis como admin, antes de las últimas correcciones, dio
+`ST103` × 25 (404 de páginas fuera de rango y 400 de filtros inválidos) y `ST108` × 4: de ahí
+salieron la extensión del *hook* de SEC-13 y SEC-21. La corrida de la tabla es la final.
+
+**ZAP, avisos del re-test.** Un primer escaneo activo quedó **inválido**: la cookie de admin no
+se aplicó (el *replacer* recibió una cookie vencida) y casi todo respondió `401`; se repitió con
+la sesión comprobada antes y después (`GET /auth/me` → `200`). En el escaneo válido:
+
+| Alerta (id) | Riesgo ZAP | Clasificación |
+| --- | --- | --- |
+| SQL Injection (40018) | High (confianza media) | **descartado, falso positivo.** Cuatro rutas `activate`/`deactivate` (bancos, productos, tipos documentales) con el campo `reason`: ZAP comparó respuestas con `AND 1=1` y `AND 1=2` mientras sus propias peticiones cambiaban el estado del recurso. Repetido con el estado fijo, `reason` = `John Doe`, `… AND 1=1 -- `, `… AND 1=2 -- ` y `… OR 1=1 -- ` dan la misma respuesta (`_security-work/secb_zap/sqli_check.txt`). `reason` va por el ORM y a un `logger` con parámetros; el único SQL escrito a mano es `SELECT nextval(%s)`. La Fase A ya prueba inyección en filtros y cuerpos (`tests/security/test_injection.py`), y sigue verde |
+| Unexpected Content-Type (100001) | Low | descartado: rutas con un id que no es UUID, que con `DEBUG` responden la página 404 de Django; sin `DEBUG`, JSON (SEC-12) |
+| Content Security Policy (10038) y Permissions Policy (10063) | Medium / Low | descartado: las mismas páginas 404 de depuración; la API responde JSON con `nosniff` |
+| `Server` revela versión (10036) | Low | `runserver` del 8010; la imagen `production` responde `Server: gunicorn` (SEC-06) |
+| Cross-Origin-Resource-Policy (90004) | Low | descartado como en la Fase A: CORS ya limita quién lee las respuestas con credenciales |
+| Non-Storable Content (10049) | Informativa | confirma SEC-08 (en la Fase A era *Storable and Cacheable Content*) |
+
+Desaparecieron frente a la Fase A *Private IP Disclosure* (2) y *Storable and Cacheable
+Content* (10049). **Conclusión:** ningún 5xx nuevo y ningún hallazgo nuevo de severidad media o
+más; el único hallazgo nuevo (SEC-21, informativo) quedó corregido.

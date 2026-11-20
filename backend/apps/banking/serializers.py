@@ -97,7 +97,10 @@ class BankCreateSerializer(StrictSerializer):
     name = serializers.CharField(max_length=180)
     short_name = serializers.CharField(max_length=30, required=False, allow_blank=True, default="")
     tax_id = serializers.CharField(max_length=30, required=False, allow_blank=True, default="")
-    operational_notes = serializers.CharField(required=False, allow_blank=True, default="")
+    # Tope de los textos libres (SEC-17), como los demás de la API.
+    operational_notes = serializers.CharField(
+        max_length=4000, required=False, allow_blank=True, default=""
+    )
 
     def validate_tax_id(self, value: str) -> str:
         return _normalize_tax_id(value)
@@ -109,7 +112,7 @@ class BankUpdateSerializer(StrictSerializer):
     name = serializers.CharField(max_length=180, required=False)
     short_name = serializers.CharField(max_length=30, required=False, allow_blank=True)
     tax_id = serializers.CharField(max_length=30, required=False, allow_blank=True)
-    operational_notes = serializers.CharField(required=False, allow_blank=True)
+    operational_notes = serializers.CharField(max_length=4000, required=False, allow_blank=True)
 
     def validate_tax_id(self, value: str) -> str:
         return _normalize_tax_id(value)

@@ -192,6 +192,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             },
@@ -230,6 +240,16 @@
                             }
                         },
                         "description": "Retirado."
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "VALIDATION_ERROR: el titular no se retira"
                     },
                     "409": {
                         "content": {
@@ -480,6 +500,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -662,6 +692,26 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido."
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`RESOURCE_NOT_FOUND`: la página no existe (fuera de rango o no numérica)."
                     }
                 }
             },
@@ -746,6 +796,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -831,6 +891,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido."
                     }
                 }
             },
@@ -944,6 +1014,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -1064,6 +1144,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido."
                     }
                 }
             }
@@ -1174,6 +1264,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -1192,24 +1292,6 @@
                             "format": "uuid"
                         },
                         "required": true
-                    },
-                    {
-                        "name": "page",
-                        "required": false,
-                        "in": "query",
-                        "description": "Un número de página dentro del conjunto de resultados paginado.",
-                        "schema": {
-                            "type": "integer"
-                        }
-                    },
-                    {
-                        "name": "page_size",
-                        "required": false,
-                        "in": "query",
-                        "description": "Número de resultados a devolver por página.",
-                        "schema": {
-                            "type": "integer"
-                        }
                     }
                 ],
                 "tags": [
@@ -1234,7 +1316,10 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/PaginatedAvailableActionList"
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/AvailableAction"
+                                    }
                                 }
                             }
                         },
@@ -1542,6 +1627,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido."
                     }
                 }
             },
@@ -1944,6 +2039,16 @@
                             }
                         },
                         "description": "RESOURCE_NOT_FOUND (inexistente o fuera del alcance)"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido."
                     }
                 }
             }
@@ -2030,6 +2135,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido."
                     }
                 }
             },
@@ -2275,6 +2390,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido."
                     }
                 }
             }
@@ -2448,6 +2573,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido."
                     }
                 }
             }
@@ -2534,6 +2669,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido."
                     }
                 }
             },
@@ -2867,6 +3012,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -2953,6 +3108,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido."
                     }
                 }
             },
@@ -3125,6 +3290,16 @@
                             }
                         },
                         "description": "RESOURCE_NOT_FOUND (inexistente o fuera del alcance)"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido."
                     }
                 }
             }
@@ -3228,6 +3403,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido."
                     }
                 }
             },
@@ -3323,6 +3508,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -3543,6 +3738,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -3638,6 +3843,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido."
                     }
                 }
             }
@@ -3928,6 +4143,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -4045,6 +4270,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido."
                     }
                 }
             }
@@ -4246,6 +4481,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED (solo el administrador; el intento queda auditado)"
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`RESOURCE_NOT_FOUND`: la página no existe (fuera de rango o no numérica)."
                     }
                 }
             }
@@ -4807,6 +5052,26 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido."
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`RESOURCE_NOT_FOUND`: la página no existe (fuera de rango o no numérica)."
                     }
                 }
             },
@@ -4871,6 +5136,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -5033,6 +5308,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -5276,6 +5561,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -5361,6 +5656,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido."
                     }
                 }
             }
@@ -5538,6 +5843,26 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido."
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`RESOURCE_NOT_FOUND`: la página no existe (fuera de rango o no numérica)."
                     }
                 }
             },
@@ -5602,6 +5927,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -5743,6 +6078,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -5819,6 +6164,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -5895,6 +6250,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -5973,6 +6338,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -6068,6 +6443,26 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido."
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`RESOURCE_NOT_FOUND`: la página no existe (fuera de rango o no numérica)."
                     }
                 }
             },
@@ -6132,6 +6527,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -6273,6 +6678,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -6349,6 +6764,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -6425,6 +6850,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -6514,6 +6949,26 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido."
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`RESOURCE_NOT_FOUND`: la página no existe (fuera de rango o no numérica)."
                     }
                 }
             }
@@ -6837,6 +7292,16 @@
                             }
                         },
                         "description": "CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido."
                     }
                 }
             }
@@ -7107,6 +7572,16 @@
                             }
                         },
                         "description": "CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido."
                     }
                 }
             }
@@ -7202,6 +7677,16 @@
                             }
                         },
                         "description": "CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido."
                     }
                 }
             }
@@ -7517,6 +8002,16 @@
                             }
                         },
                         "description": "CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido."
                     }
                 }
             }
@@ -8434,6 +8929,16 @@
                             }
                         },
                         "description": "CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido."
                     }
                 }
             }
@@ -8529,6 +9034,16 @@
                             }
                         },
                         "description": "CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido."
                     }
                 }
             },
@@ -8940,6 +9455,16 @@
                             }
                         },
                         "description": "RESOURCE_NOT_FOUND"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido."
                     }
                 }
             }
@@ -9025,6 +9550,16 @@
                             }
                         },
                         "description": "CSRF_FAILED"
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`RESOURCE_NOT_FOUND`: la página no existe (fuera de rango o no numérica)."
                     }
                 }
             }
@@ -9590,6 +10125,26 @@
                             }
                         },
                         "description": "CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido."
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`RESOURCE_NOT_FOUND`: la página no existe (fuera de rango o no numérica)."
                     }
                 }
             }
@@ -9816,6 +10371,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -10061,6 +10626,26 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido."
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`RESOURCE_NOT_FOUND`: la página no existe (fuera de rango o no numérica)."
                     }
                 }
             },
@@ -10125,6 +10710,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -10276,6 +10871,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -10394,6 +10999,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido."
                     }
                 }
             },
@@ -10479,6 +11094,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -10585,6 +11210,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -10662,6 +11297,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             },
@@ -10820,6 +11465,26 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido."
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`RESOURCE_NOT_FOUND`: la página no existe (fuera de rango o no numérica)."
                     }
                 }
             },
@@ -10885,6 +11550,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -11038,6 +11713,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -11124,6 +11809,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido."
                     }
                 }
             },
@@ -11200,6 +11895,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -11310,6 +12015,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido."
                     }
                 }
             }
@@ -11418,6 +12133,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido."
                     }
                 }
             }
@@ -11511,6 +12236,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`RESOURCE_NOT_FOUND`: la página no existe (fuera de rango o no numérica)."
                     }
                 }
             },
@@ -11687,6 +12422,15 @@
                             "format": "uuid"
                         },
                         "required": true
+                    },
+                    {
+                        "in": "header",
+                        "name": "If-Match",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "required": true,
+                        "description": "Versión que se edita, como la devolvió `ETag` (API §6)."
                     }
                 ],
                 "tags": [
@@ -12030,6 +12774,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`RESOURCE_NOT_FOUND`: la página no existe (fuera de rango o no numérica)."
                     }
                 }
             }
@@ -13656,6 +14410,26 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido."
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`RESOURCE_NOT_FOUND`: la página no existe (fuera de rango o no numérica)."
                     }
                 }
             },
@@ -13721,6 +14495,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -13883,6 +14667,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -14095,6 +14889,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -14356,6 +15160,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido."
                     }
                 }
             }
@@ -14454,6 +15268,26 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido."
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`RESOURCE_NOT_FOUND`: la página no existe (fuera de rango o no numérica)."
                     }
                 }
             },
@@ -14518,6 +15352,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -14659,6 +15503,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -14735,6 +15589,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -14812,6 +15676,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -15259,6 +16133,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -15345,6 +16229,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido."
                     }
                 }
             }
@@ -15431,6 +16325,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido."
                     }
                 }
             },
@@ -15649,6 +16553,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido."
                     }
                 }
             },
@@ -15744,6 +16658,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -15859,6 +16783,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             },
@@ -16049,6 +16983,26 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido."
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`RESOURCE_NOT_FOUND`: la página no existe (fuera de rango o no numérica)."
                     }
                 }
             },
@@ -16124,6 +17078,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -16453,6 +17417,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`RESOURCE_NOT_FOUND`: la página no existe (fuera de rango o no numérica)."
                     }
                 }
             }
@@ -16604,6 +17578,16 @@
                             }
                         },
                         "description": "RESOURCE_NOT_FOUND"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido."
                     }
                 }
             }
@@ -16736,6 +17720,26 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido."
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`RESOURCE_NOT_FOUND`: la página no existe (fuera de rango o no numérica)."
                     }
                 }
             },
@@ -16811,6 +17815,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -16974,6 +17988,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -17072,6 +18096,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -17160,6 +18194,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -17311,6 +18355,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             },
@@ -17472,6 +18526,26 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido."
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`RESOURCE_NOT_FOUND`: la página no existe (fuera de rango o no numérica)."
                     }
                 }
             },
@@ -17536,6 +18610,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -17677,6 +18761,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -17753,6 +18847,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -17830,6 +18934,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -17936,6 +19050,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido."
                     }
                 }
             },
@@ -18041,6 +19165,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -18154,6 +19288,26 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido."
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`RESOURCE_NOT_FOUND`: la página no existe (fuera de rango o no numérica)."
                     }
                 }
             },
@@ -18229,6 +19383,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -18380,6 +19544,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -18476,6 +19650,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -18573,6 +19757,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -18670,6 +19864,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -18766,6 +19970,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -19191,6 +20405,16 @@
                             }
                         },
                         "description": "RATE_LIMITED: más de 20 consultas por minuto al dashboard y los reportes (cupo compartido, por usuario). `Retry-After` dice cuántos segundos esperar."
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`RESOURCE_NOT_FOUND`: la página no existe (fuera de rango o no numérica)."
                     }
                 }
             }
@@ -19482,6 +20706,26 @@
                             }
                         },
                         "description": "RATE_LIMITED: más de 20 consultas por minuto al dashboard y los reportes (cupo compartido, por usuario). `Retry-After` dice cuántos segundos esperar."
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido."
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`RESOURCE_NOT_FOUND`: la página no existe (fuera de rango o no numérica)."
                     }
                 }
             },
@@ -19962,6 +21206,26 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido."
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`RESOURCE_NOT_FOUND`: la página no existe (fuera de rango o no numérica)."
                     }
                 }
             }
@@ -20097,6 +21361,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`RESOURCE_NOT_FOUND`: la página no existe (fuera de rango o no numérica)."
                     }
                 }
             },
@@ -20614,6 +21888,26 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido."
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`RESOURCE_NOT_FOUND`: la página no existe (fuera de rango o no numérica)."
                     }
                 }
             },
@@ -20689,6 +21983,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -20830,6 +22134,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -20906,6 +22220,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -20993,6 +22317,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -21091,6 +22425,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -21239,6 +22583,26 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido."
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`RESOURCE_NOT_FOUND`: la página no existe (fuera de rango o no numérica)."
                     }
                 }
             }
@@ -21334,6 +22698,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido."
                     }
                 }
             }
@@ -21451,6 +22825,26 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido."
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "`RESOURCE_NOT_FOUND`: la página no existe (fuera de rango o no numérica)."
                     }
                 }
             },
@@ -21515,6 +22909,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -21666,6 +23070,16 @@
                             }
                         },
                         "description": "PERMISSION_DENIED o CSRF_FAILED"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        },
+                        "description": "Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio."
                     }
                 }
             }
@@ -22679,7 +24093,7 @@
                 ]
             },
             "ApplicationDetailByRole": {
-                "oneOf": [
+                "anyOf": [
                     {
                         "$ref": "#/components/schemas/ApplicationDetail"
                     },
@@ -23367,7 +24781,8 @@
                     },
                     "operational_notes": {
                         "type": "string",
-                        "default": ""
+                        "default": "",
+                        "maxLength": 4000
                     }
                 },
                 "required": [
@@ -24142,7 +25557,7 @@
                     },
                     "email": {
                         "type": "string",
-                        "format": "email",
+                        "description": "Correo electrónico, o vacío si no se registró.",
                         "readOnly": true
                     },
                     "phone": {
@@ -25974,7 +27389,7 @@
                     },
                     "email": {
                         "type": "string",
-                        "format": "email",
+                        "description": "Correo electrónico, o vacío si no se registró.",
                         "readOnly": true
                     },
                     "phone": {
@@ -26801,7 +28216,7 @@
                     },
                     "email": {
                         "type": "string",
-                        "format": "email",
+                        "description": "Correo electrónico, o vacío si no se registró.",
                         "readOnly": true
                     },
                     "phone": {
@@ -26862,7 +28277,7 @@
                 ]
             },
             "ClientByRole": {
-                "oneOf": [
+                "anyOf": [
                     {
                         "$ref": "#/components/schemas/Client"
                     },
@@ -26975,7 +28390,7 @@
                     },
                     "email": {
                         "type": "string",
-                        "format": "email",
+                        "description": "Correo electrónico, o vacío si no se registró.",
                         "readOnly": true
                     },
                     "phone": {
@@ -27044,7 +28459,7 @@
                 ]
             },
             "ClientDetailByRole": {
-                "oneOf": [
+                "anyOf": [
                     {
                         "$ref": "#/components/schemas/ClientDetail"
                     },
@@ -27314,7 +28729,8 @@
                                 "$ref": "#/components/schemas/CommissionSettlementStatusEnum"
                             }
                         ],
-                        "readOnly": true
+                        "readOnly": true,
+                        "default": "ACTIVE"
                     },
                     "status_label": {
                         "type": "string",
@@ -31030,7 +32446,8 @@
                                 "$ref": "#/components/schemas/PartnerStatusEnum"
                             }
                         ],
-                        "readOnly": true
+                        "readOnly": true,
+                        "default": "ACTIVE"
                     },
                     "status_label": {
                         "type": "string",
@@ -31857,7 +33274,7 @@
                 ]
             },
             "OpportunityDetailByRole": {
-                "oneOf": [
+                "anyOf": [
                     {
                         "$ref": "#/components/schemas/OpportunityDetail"
                     },
@@ -32215,7 +33632,7 @@
                 ]
             },
             "PaginatedApplicationListByRole": {
-                "oneOf": [
+                "anyOf": [
                     {
                         "$ref": "#/components/schemas/PaginatedApplicationList"
                     },
@@ -32361,47 +33778,6 @@
                         "type": "array",
                         "items": {
                             "$ref": "#/components/schemas/AuditEvent"
-                        }
-                    },
-                    "page": {
-                        "type": "integer",
-                        "example": 1
-                    },
-                    "page_size": {
-                        "type": "integer",
-                        "example": 25
-                    },
-                    "total": {
-                        "type": "integer",
-                        "example": 128
-                    },
-                    "next": {
-                        "type": "string",
-                        "nullable": true,
-                        "example": "/api/v1/x?page=2"
-                    },
-                    "previous": {
-                        "type": "string",
-                        "nullable": true,
-                        "example": null
-                    }
-                }
-            },
-            "PaginatedAvailableActionList": {
-                "type": "object",
-                "required": [
-                    "items",
-                    "page",
-                    "page_size",
-                    "total",
-                    "next",
-                    "previous"
-                ],
-                "properties": {
-                    "items": {
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/components/schemas/AvailableAction"
                         }
                     },
                     "page": {
@@ -33082,7 +34458,7 @@
                 ]
             },
             "PaginatedClientListByRole": {
-                "oneOf": [
+                "anyOf": [
                     {
                         "$ref": "#/components/schemas/PaginatedClientList"
                     },
@@ -33829,7 +35205,7 @@
                 ]
             },
             "PaginatedOpportunityListByRole": {
-                "oneOf": [
+                "anyOf": [
                     {
                         "$ref": "#/components/schemas/PaginatedOpportunityList"
                     },
@@ -34408,7 +35784,7 @@
                     },
                     "contact_email": {
                         "type": "string",
-                        "format": "email",
+                        "description": "Correo electrónico, o vacío si no se registró.",
                         "readOnly": true
                     },
                     "contact_phone": {
@@ -34523,7 +35899,7 @@
                     },
                     "contact_email": {
                         "type": "string",
-                        "format": "email",
+                        "description": "Correo electrónico, o vacío si no se registró.",
                         "readOnly": true
                     },
                     "contact_phone": {
@@ -34780,7 +36156,8 @@
                         "maxLength": 30
                     },
                     "operational_notes": {
-                        "type": "string"
+                        "type": "string",
+                        "maxLength": 4000
                     }
                 }
             },

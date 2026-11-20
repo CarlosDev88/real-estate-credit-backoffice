@@ -11,6 +11,8 @@ import os
 
 from django.core.wsgi import get_wsgi_application
 
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings.local")
+# Producción por defecto (SEC-01): `local` fuerza `DEBUG=True`. El compose y el CI fijan
+# `DJANGO_SETTINGS_MODULE` en cada servicio; `manage.py` sigue con `local`.
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings.production")
 
 application = get_wsgi_application()

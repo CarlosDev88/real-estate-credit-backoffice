@@ -35,10 +35,10 @@ Las piezas y su conexión están en [03 · Arquitectura](03-arquitectura.md). Lo
 | Asincronía (RNF-17, RNF-19, RNF-21) | ZIP, antivirus, correo y CSV fuera de la petición, reintentables | Celery (worker o modo inmediato), tareas idempotentes con reintentos | ✅ |
 | Rendimiento (RNF-07, RNF-17) | Listas paginadas; p95 < 800 ms | Paginación de 25 (máx. 100), sin consultas por fila (48 pruebas de número de consultas), agregados en la base, 54 índices con nombre | ✅ diseño · ⏳ medición en la auditoría de carga |
 | Observabilidad (RNF-16, RNF-18) | `request_id`, logs sin secretos, `health`/`ready` | `X-Request-ID` en cada respuesta y log; filtro que tacha URL firmadas; `/health` y `/ready` | ✅ parcial (sin métricas) |
-| Límites de consumo (§9.3, RNF-13) | Límites en Redis o equivalente | 10 límites en `AUTH_RATE_LIMITS`, en caché compartida (Redis o PostgreSQL) | ✅ parcial (sin límite general) |
+| Límites de consumo (§9.3, RNF-13) | Límites en Redis o equivalente | 18 límites en `AUTH_RATE_LIMITS`, en caché compartida (Redis o PostgreSQL): los de cada flujo sensible y los generales por usuario | ✅ con desvío (las lecturas, 600/min como API §26) |
 | Privacidad (RNF-08, §9.2) | Respuestas por rol, sin PII de más | Serializers por rol, documento enmascarado, auditoría y logs saneados | ✅ |
 
-**La auditoría de seguridad independiente** (fase A, en `master` desde el #32) confirmó el diseño: su matriz pidió **cada una de las 235 operaciones como cada uno de 9 actores (2.115 casos) sin ninguna brecha de acceso**, y encontró **20 hallazgos: ninguno crítico ni alto, 5 medios, 10 bajos y 5 informativos**. El informe es [`docs/SEGURIDAD.md`](../SEGURIDAD.md); las fichas, [`docs/seguridad/hallazgos.md`](../seguridad/hallazgos.md); el resumen con cómo se soluciona cada uno, [12 · Auditorías](12-auditorias.md). La fase B (las correcciones) está en curso. Donde un hallazgo toca una sección de este documento, se cita su `SEC-NN`.
+**La auditoría de seguridad independiente** confirmó el diseño: en la fase A (#32) su matriz pidió **cada una de las 235 operaciones como cada uno de 9 actores (2.115 casos) sin ninguna brecha de acceso**, y encontró **20 hallazgos: ninguno crítico ni alto, 5 medios, 10 bajos y 5 informativos**. La fase B (#37) corrigió 19, aceptó 1 (SEC-16) y en el re-test encontró y corrigió uno más, informativo (SEC-21): **21 en total, 20 corregidos y 1 aceptado**. El informe es [`docs/SEGURIDAD.md`](../SEGURIDAD.md); las fichas, [`docs/seguridad/hallazgos.md`](../seguridad/hallazgos.md); el resumen con cómo se solucionó cada uno, [12 · Auditorías](12-auditorias.md). Donde un hallazgo toca una sección de este documento, se cita su `SEC-NN`.
 
 ---
 
@@ -55,7 +55,7 @@ Las piezas y su conexión están en [03 · Arquitectura](03-arquitectura.md). Lo
 - **Cada petición revisa la sesión, no solo la firma.** `CookieJWTAuthentication` (`backend/apps/identity/authentication.py`) valida el token y además busca la sesión `sid` en `auth_sessions`: si se cerró, venció o el usuario ya no puede entrar, responde `401 SESSION_EXPIRED`. Así, desactivar a alguien corta su acceso **de inmediato**, sin esperar a que venza el JWT.
 - **Refresh rotativo con detección de robo.** Cada `POST /auth/refresh` crea una sesión nueva encadenada a la anterior (`auth_sessions.rotated_from`). Si alguien reutiliza un refresh ya rotado, se revoca **toda la cadena** (`_revoke_descendants` en `backend/apps/identity/services.py`). La rotación no alarga las 8 horas del login.
 - **CSRF en toda escritura autenticada por cookie** (`enforce_csrf`, mismo archivo), con `CSRF_TRUSTED_ORIGINS` explícitos.
-- **Recuperación de contraseña:** siempre `202` exista o no el correo (no revela cuentas), token de un solo uso de 30 minutos que revoca todas las sesiones; cambiar la contraseña exige la actual y cierra las demás sesiones (`backend/README.md`).
+- **Recuperación de contraseña:** siempre `202` exista o no el correo (no revela cuentas), token de un solo uso de 30 minutos que revoca todas las sesiones; cambiar la contraseña exige la actual y cierra las demás sesiones (`backend/README.md`). El token se genera y el correo se envía en el worker de Celery (`send_password_reset`, `backend/apps/identity/tasks.py`), así que ni un fallo del correo ni el tiempo de enviarlo llegan a la respuesta (SEC-14).
 - **Invitaciones:** un usuario interno entra por invitación de un solo uso (72 h, solo el hash), y una invitación nunca puede tomar una cuenta que ya tiene contraseña.
 
 **Qué se probó:** `backend/tests/identity/test_sessions.py` (rotación, el token de una sesión rotada deja de servir, la reutilización revoca la cadena), `test_login.py`, `test_passwords.py`, `test_invitations.py`, `test_users.py` y `test_models.py` ("una sesión solo se rota una vez").
@@ -94,7 +94,7 @@ Las piezas y su conexión están en [03 · Arquitectura](03-arquitectura.md). Lo
 - Si el recurso no está en ese conjunto, la respuesta es `404 RESOURCE_NOT_FOUND`, **no** `403`: no se confirma que existe (docstring de `backend/apps/crm/services.py`).
 - Ningún id que mande el front amplía privilegios: la constructora no puede usar un `partner_id` ajeno (se deriva de su membresía) y el enlace mágico ignora el `client_id` de la entrada (REQ §8.6).
 
-**Qué se probó:** 156 comprobaciones de `404` en `backend/tests/` y 22 pruebas cuyo nombre habla de "otro asesor", "no asignado" o "fuera de alcance". Y la matriz de la auditoría de seguridad: 2.115 casos (235 operaciones × 9 actores), todos con el resultado esperado (`backend/tests/security/test_access_matrix.py`; [`docs/seguridad/03-matriz-acceso.md`](../seguridad/03-matriz-acceso.md)), que corre en cada PR.
+**Qué se probó:** 156 comprobaciones de `404` en `backend/tests/` y 22 pruebas cuyo nombre habla de "otro asesor", "no asignado" o "fuera de alcance". Y la matriz de la auditoría de seguridad: hoy 2.124 casos (236 operaciones × 9 actores; 2.115 en la fase A), todos con el resultado esperado (`backend/tests/security/test_access_matrix.py`; [`docs/seguridad/03-matriz-acceso.md`](../seguridad/03-matriz-acceso.md)), que corre en cada PR.
 
 ### 2.5 Entrada validada
 
@@ -145,6 +145,9 @@ El `attachment` siempre y el `nosniff` son la respuesta a "nunca renderizar un a
 - Los secretos viven en `backend/.env` (fuera de git) y se leen con `django-environ`; `DJANGO_SECRET_KEY` y `AUTH_JWT_SIGNING_KEY` son obligatorias (sin valor por defecto, `backend/config/settings/base.py`).
 - La configuración insegura **no arranca**: almacenamiento en disco o memoria y antivirus falso exigen `DEBUG` (`validate_storage_settings`, `backend/apps/documents/storage.py`); sin modo inmediato y sin `REDIS_URL`, tampoco.
 - Las tareas de Celery solo reciben ids, nunca archivos ni datos personales (`CELERY_TASK_SERIALIZER = "json"` y comentario en `base.py`).
+- **Las claves débiles tampoco arrancan** (SEC-03): un *system check* (`backend/apps/identity/checks.py`) exige que `AUTH_JWT_SIGNING_KEY` tenga al menos 32 bytes (los 256 bits de HS256) y que `DJANGO_SECRET_KEY` tenga al menos 50 caracteres, 5 distintos y no empiece por `django-insecure-`; sin `DEBUG` es un error (`identity.E001`/`E002`) y la imagen de producción no arranca; con `DEBUG`, un aviso.
+- **Una configuración de producción** (SEC-01, SEC-02): `backend/config/settings/production.py` fija `DEBUG=False` sin que el entorno lo pueda encender, HSTS, la redirección a HTTPS y las cookies solo por HTTPS. `wsgi`, `asgi` y Celery la cargan por defecto; `manage.py` y el compose usan `local` ([03 · Arquitectura §9](03-arquitectura.md#9-cómo-se-pasaría-a-producción)).
+- **Lo de desarrollo no se publica sin `DEBUG`:** el `/admin/` de Django solo con `ADMIN_ENABLED` (en la ruta de `ADMIN_URL_PATH` y con límite de intentos, SEC-18), y el esquema y Swagger (`/openapi.json`, `/docs`) solo con `API_DOCS_PUBLIC` (SEC-19), en `backend/config/urls.py`. La referencia pública de la API es la de GitHub Pages, hecha con `contracts/openapi.json`.
 
 ---
 
@@ -278,7 +281,7 @@ Reglas comunes:
 **Cómo se resolvió:**
 
 - **`request_id`** (`backend/config/middleware.py`): cada petición recibe uno. Si el front manda `X-Request-ID` y es seguro (8 a 64 caracteres de `[A-Za-z0-9._-]`), se conserva; si no, se genera un UUID. Vuelve en la cabecera de la respuesta, en el cuerpo de todo error y en cada línea de log (`RequestIDLogFilter`, formato `[request_id=…]` en `LOGGING`). El front manda uno nuevo por petición (`frontend/src/lib/api/fetch.ts`).
-- **Logs sin secretos:** `RedactObjectTokensFilter` (`backend/config/log_redaction.py`) tacha el token de las URL firmadas en cualquier mensaje; los servicios registran ids y clases de error, nunca correos ni documentos (por ejemplo, el correo fallido registra la clase de la excepción, no el destinatario).
+- **Logs sin secretos:** `RedactObjectTokensFilter` (`backend/config/log_redaction.py`) tacha el token de las URL firmadas en cualquier mensaje y, desde la fase B, también el valor de `search`, `email`, `document_number` y `q` en la URL de cada petición (`?search=***`, SEC-15); gunicorn corre sin *access log*, que escribiría la URL sin pasar por ese filtro. Los servicios registran ids y clases de error, nunca correos ni documentos (por ejemplo, el correo fallido registra la clase de la excepción, no el destinatario).
 - **`/health`** responde `{"status": "ok"}` sin tocar dependencias; **`/ready`** abre un cursor de PostgreSQL y responde `503` si no puede (`backend/config/views.py`).
 - **Arranque:** el backend escribe una línea con el modo de cada servicio (`describe_local_services`) y `check_document_services` verifica almacenamiento y antivirus.
 - **Auditoría técnica** ([§2.7](#27-auditoría-inmutable)) y **actividad funcional** (la línea de tiempo del expediente, `backend/apps/activity/`) son las dos trazas de negocio: la primera para investigar, la segunda para operar.
@@ -298,8 +301,8 @@ Reglas comunes:
 
 | Flujo | Límite | REQ §9.3 pedía |
 | --- | --- | --- |
-| Login | 5 por correo + IP cada 15 min | Igual |
-| Pedir recuperación de contraseña | 3 por hora | Igual |
+| Login | 5 por correo + IP cada 15 min; además, 20 por IP sobre todos los correos y 10 por cuenta desde todas las IP (SEC-09) | 5 por correo e IP |
+| Pedir recuperación de contraseña | 3 por correo + IP por hora; además, 10 por IP y 5 por cuenta (SEC-09) | 3 por correo e IP |
 | Confirmar la recuperación | 10 cada 15 min | — |
 | Cambiar contraseña | 5 cada 15 min | — |
 | Aceptar invitación | 10 cada 15 min | — |
@@ -308,6 +311,12 @@ Reglas comunes:
 | Cargar documentos | 60 por hora por sesión y solicitud | 30 por minuto (lo cambió Carlos) |
 | Descargar documentos | 60 por hora por usuario o sesión | — |
 | Dashboard y reportes | 20 por minuto por usuario | "Límite inferior para endpoints costosos" |
+| **General: lecturas** (`GET`, `HEAD`, `OPTIONS`) de toda la API | 600 por minuto por usuario o sesión del comprador; sin sesión, por IP (SEC-10) | 120 por minuto para todo; API §26 separa 600 lecturas y 120 escrituras, y quedó como API |
+| **General: escrituras** de toda la API | 120 por minuto, con la misma clave | 120 por minuto |
+| Cambios de estado, desistimientos, radicaciones y transiciones de la oportunidad | 20 por minuto en un cupo común (`throttle_scope = "state_changes"`) | 20 por minuto |
+| Login del `/admin/` de Django, cuando se publica | 10 por IP cada 15 min (SEC-18) | — |
+
+Los generales se suman a los propios: una vista con su límite (el login, la carga de documentos, los reportes) también cuenta en el general, y una prueba exige que toda vista nueva los herede (`test_every_api_view_keeps_the_general_limits` en `backend/tests/security/test_rate_limits.py`).
 
 - **Guardados en una caché compartida:** Redis en el modo completo y una tabla de PostgreSQL (`django_cache`, `DatabaseCache`) en el modo simple, que también es compartida entre procesos (`backend/config/runtime_services.py`; Parte 2 de `TAREA-local-simple.md`).
 - **Un solo mensaje en español** para todo `429`: "Hiciste demasiados intentos. Vuelve a intentarlo en N minutos.", con `code: "RATE_LIMITED"` y `Retry-After` (`rate_limited_message` en `backend/config/exceptions.py`).
@@ -315,9 +324,9 @@ Reglas comunes:
 - **Auditados:** todo `429` queda en la auditoría como `AUTH_RATE_LIMITED`.
 - **La IP real:** `NUM_PROXIES` (0 por defecto) define cuántos proxies de confianza hay delante; con 0 se ignora `X-Forwarded-For`, así nadie lo falsifica desde internet (REQ §9.5).
 
-**Qué se probó:** `backend/tests/identity/test_rate_limits.py` (el mensaje, el redondeo, `Retry-After`, el multiplicador con y sin `DEBUG`) y `test_database_cache.py` (los límites funcionan con la caché en PostgreSQL).
+**Qué se probó:** `backend/tests/identity/test_rate_limits.py` (el mensaje, el redondeo, `Retry-After`, el multiplicador con y sin `DEBUG`), `test_database_cache.py` (los límites funcionan con la caché en PostgreSQL) y `backend/tests/security/test_rate_limits.py` (los generales por usuario, por sesión del comprador y por IP, el cupo común de cambios de estado y el login que corta en el 21.º correo desde una IP y en el 11.º fallo de una cuenta). En las pruebas, `backend/config/settings/test.py` sube los generales ×1000 para que las demás suites no choquen con ellos.
 
-**Lo que no hay:** el límite general de 120 por minuto para toda la API autenticada ni el de 20 por minuto para transiciones y radicación (§9.3; hallazgo SEC-10). Hoy solo tienen límite los flujos de la tabla. Y la auditoría mostró que el límite del login y de la recuperación, al ser por correo + IP, se salta probando otros correos desde la misma IP o el mismo correo desde muchas IP (SEC-09, severidad media).
+**Lo que no hay:** protección contra un ataque desde miles de IP, que es del perímetro al desplegar (WAF o límites en el proxy). Y el límite por cuenta tiene su costo, aceptado en SEGURIDAD §7: quien conozca un correo puede dejar esa cuenta 15 minutos sin poder entrar.
 
 ---
 
@@ -361,11 +370,7 @@ Requisitos de REQ que el código de `master` **no** cumple todavía, para que na
 
 | Requisito | Estado | Fuente |
 | --- | --- | --- |
-| Cabeceras de seguridad (HSTS, `Content-Security-Policy`, `Referrer-Policy`, `frame-ancestors`) | No configuradas en `backend/config/settings/` | REQ §9.2, §9.5; SEC-02 |
-| `Cache-Control: no-store` en las respuestas con datos personales | Solo en algunas vistas (las descargas, el portal del comprador y sus avisos); el resto de la API, no | SEC-08 |
-| Límite general de la API (120/min) y de transiciones y radicación (20/min) | No implementados | REQ §9.3; SEC-10 |
-| Límite de login y recuperación que no se pueda saltar con otros correos u otras IP | Hoy es por correo + IP | SEC-09 |
-| Configuración de producción y validación de claves al arrancar | No existe un `settings` de producción | SEC-01, SEC-03 |
+| `Content-Security-Policy`, `Referrer-Policy` y `frame-ancestors` del sitio | No configuradas: la API responde solo JSON con `nosniff` y la auditoría no revisó el frontend como aplicación. HSTS sí quedó, en `production.py` (SEC-02) | REQ §9.2, §9.5 |
 | `Idempotency-Key` obligatoria | Opcional por decisión | REQ §9.3; `TAREA-notificaciones.md` |
 | MFA para `ADMIN` y `ADVISOR` | No implementado | REQ §9.5 |
 | Análisis de dependencias y detección de secretos en el CI | ✅ En el CI del backend desde el #32 (`pip-audit`, `gitleaks`, `bandit`); el frontend no tiene un paso propio | REQ §9.5; [09 · Calidad §7](09-calidad.md#7-qué-no-cubre-el-ci) |
@@ -373,8 +378,10 @@ Requisitos de REQ que el código de `master` **no** cumple todavía, para que na
 | `request_id` hasta el worker | No se propaga | REQ §11.1 |
 | Respaldo y restauración probados | Fuera del alcance (sin despliegue) | RNF-09 |
 | Medición del p95 | En la auditoría de carga, en preparación | RNF-17 |
+| Protección perimetral (WAF o límites en el proxy) contra la fuerza bruta desde miles de IP | Del despliegue | SEGURIDAD §7 |
+| Imagen de producción sin herramientas de prueba | `requirements.txt` es uno solo, así que la etapa `production` también las trae | SEGURIDAD §7 |
 
-Los puntos con `SEC-NN` son hallazgos de la auditoría de seguridad y se corrigen (o se aceptan con su motivo) en la fase B; el estado de cada uno está en [12 · Auditorías](12-auditorias.md).
+Lo que la fase B de la auditoría de seguridad (#37) cerró y salió de esta tabla: el `Cache-Control: no-store` en toda la API (SEC-08), los límites generales y de cambios de estado (SEC-10), el login que ya no se salta con otros correos u otras IP (SEC-09), HSTS y la configuración de producción con las claves validadas al arrancar (SEC-01 a SEC-03). Lo aceptado y el riesgo que queda están en [12 · Auditorías §2.4 y §2.5](12-auditorias.md#24-aceptados-con-su-motivo).
 
 ---
 

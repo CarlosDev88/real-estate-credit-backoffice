@@ -12,7 +12,7 @@ from apps.crm.actions import action_kind, reason_required
 from apps.crm.models import Client, ClientAddress, Opportunity, OpportunityAssignment
 from apps.crm.validators import mask_document_number, normalize_document_number
 from apps.identity.models import User
-from config.serializers import ChoiceLabelField, StrictSerializer
+from config.serializers import BlankableEmailField, ChoiceLabelField, StrictSerializer
 from config.validators import validate_e164_phone
 
 
@@ -29,6 +29,7 @@ class ClientSerializer(serializers.ModelSerializer):
     full_name = serializers.CharField(read_only=True)
     origin = CatalogItemRefSerializer(source="origin_item", read_only=True, allow_null=True)
     created_by = UserRefSerializer(read_only=True, allow_null=True)
+    email = BlankableEmailField(read_only=True)
     # No se declara de solo lectura para que OpenAPI no lo marque obligatorio: falta en el
     # cliente que va dentro de un participante (`ApplicationParticipant.client`).
     applications_count = serializers.IntegerField(
@@ -66,6 +67,7 @@ class BrokerClientSerializer(serializers.ModelSerializer):
     document_type = serializers.CharField(source="document_type_item.code", read_only=True)
     document_number = serializers.SerializerMethodField()
     full_name = serializers.CharField(read_only=True)
+    email = BlankableEmailField(read_only=True)
 
     class Meta:
         model = Client

@@ -4301,7 +4301,7 @@ export interface components {
             readonly first_names: string;
             readonly last_names: string;
             readonly full_name: string;
-            /** Format: email */
+            /** @description Correo electrónico, o vacío si no se registró. */
             readonly email: string;
             readonly phone: string;
             /** Format: date-time */
@@ -4787,7 +4787,7 @@ export interface components {
             readonly document_number: string;
             /** Format: date */
             readonly birth_date: string | null;
-            /** Format: email */
+            /** @description Correo electrónico, o vacío si no se registró. */
             readonly email: string;
             readonly phone: string;
             readonly addresses: {
@@ -5035,7 +5035,7 @@ export interface components {
             readonly full_name: string;
             /** Format: date */
             readonly birth_date: string | null;
-            /** Format: email */
+            /** @description Correo electrónico, o vacío si no se registró. */
             readonly email: string;
             readonly phone: string;
             readonly origin: components["schemas"]["CatalogItemRef"] | null;
@@ -5076,7 +5076,7 @@ export interface components {
             readonly full_name: string;
             /** Format: date */
             readonly birth_date: string | null;
-            /** Format: email */
+            /** @description Correo electrónico, o vacío si no se registró. */
             readonly email: string;
             readonly phone: string;
             readonly origin: components["schemas"]["CatalogItemRef"] | null;
@@ -5196,6 +5196,7 @@ export interface components {
             /** Format: decimal */
             readonly rate_pct: string;
             readonly total_amount_cop: number;
+            /** @default ACTIVE */
             readonly status: components["schemas"]["CommissionSettlementStatusEnum"];
             readonly status_label: string;
             readonly needs_review: boolean;
@@ -6264,6 +6265,7 @@ export interface components {
             readonly partner_name: string;
             readonly user: components["schemas"]["UserSummary"];
             readonly job_title: string;
+            /** @default ACTIVE */
             readonly status: components["schemas"]["PartnerStatusEnum"];
             readonly status_label: string;
             /** Format: date */
@@ -6661,19 +6663,6 @@ export interface components {
         };
         PaginatedAuditEventList: {
             items: components["schemas"]["AuditEvent"][];
-            /** @example 1 */
-            page: number;
-            /** @example 25 */
-            page_size: number;
-            /** @example 128 */
-            total: number;
-            /** @example /api/v1/x?page=2 */
-            next: string | null;
-            /** @example null */
-            previous: string | null;
-        };
-        PaginatedAvailableActionList: {
-            items: components["schemas"]["AvailableAction"][];
             /** @example 1 */
             page: number;
             /** @example 25 */
@@ -7284,7 +7273,7 @@ export interface components {
             readonly status: components["schemas"]["PartnerStatusEnum"];
             readonly status_label: string;
             readonly contact_name: string;
-            /** Format: email */
+            /** @description Correo electrónico, o vacío si no se registró. */
             readonly contact_email: string;
             readonly contact_phone: string;
             /** Format: date-time */
@@ -7314,7 +7303,7 @@ export interface components {
             readonly status: components["schemas"]["PartnerStatusEnum"];
             readonly status_label: string;
             readonly contact_name: string;
-            /** Format: email */
+            /** @description Correo electrónico, o vacío si no se registró. */
             readonly contact_email: string;
             readonly contact_phone: string;
             /** Format: date-time */
@@ -8588,6 +8577,15 @@ export interface operations {
                 };
                 content?: never;
             };
+            /** @description VALIDATION_ERROR: el titular no se retira */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
             401: {
                 headers: {
@@ -8652,6 +8650,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApplicationParticipant"];
+                };
+            };
+            /** @description Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
                 };
             };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
@@ -8789,6 +8796,15 @@ export interface operations {
                     "application/json": components["schemas"]["FinancialProfile"];
                 };
             };
+            /** @description Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
             401: {
                 headers: {
@@ -8875,6 +8891,15 @@ export interface operations {
                     "application/json": components["schemas"]["PaginatedApplicationListByRole"];
                 };
             };
+            /** @description `VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
             401: {
                 headers: {
@@ -8886,6 +8911,15 @@ export interface operations {
             };
             /** @description PERMISSION_DENIED o CSRF_FAILED */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description `RESOURCE_NOT_FOUND`: la página no existe (fuera de rango o no numérica). */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -8916,6 +8950,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApplicationDetail"];
+                };
+            };
+            /** @description Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
                 };
             };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
@@ -8980,6 +9023,15 @@ export interface operations {
                     "application/json": components["schemas"]["ApplicationDetailByRole"];
                 };
             };
+            /** @description `VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
             401: {
                 headers: {
@@ -9035,6 +9087,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApplicationDetail"];
+                };
+            };
+            /** @description Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
                 };
             };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
@@ -9110,6 +9171,15 @@ export interface operations {
                     "application/json": components["schemas"]["PaginatedActivityList"];
                 };
             };
+            /** @description `VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
             401: {
                 headers: {
@@ -9171,6 +9241,15 @@ export interface operations {
                 };
                 content?: never;
             };
+            /** @description Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
             401: {
                 headers: {
@@ -9220,12 +9299,7 @@ export interface operations {
     };
     applications_available_actions: {
         parameters: {
-            query?: {
-                /** @description Un número de página dentro del conjunto de resultados paginado. */
-                page?: number;
-                /** @description Número de resultados a devolver por página. */
-                page_size?: number;
-            };
+            query?: never;
             header?: never;
             path: {
                 application_id: string;
@@ -9241,7 +9315,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["PaginatedAvailableActionList"];
+                    "application/json": components["schemas"]["AvailableAction"][];
                 };
             };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
@@ -9414,6 +9488,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PaginatedBuyerAccessLinkList"];
+                };
+            };
+            /** @description `VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
                 };
             };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
@@ -9696,6 +9779,15 @@ export interface operations {
                     "application/json": components["schemas"]["PaginatedConsentRecordList"];
                 };
             };
+            /** @description `VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
             401: {
                 headers: {
@@ -9747,6 +9839,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PaginatedDocumentPackageJobList"];
+                };
+            };
+            /** @description `VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
                 };
             };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
@@ -9895,6 +9996,15 @@ export interface operations {
                     "application/json": components["schemas"]["PaginatedDocumentSlotList"];
                 };
             };
+            /** @description `VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
             401: {
                 headers: {
@@ -10007,6 +10117,15 @@ export interface operations {
                     "application/json": components["schemas"]["PaginatedEligibleBankProductList"];
                 };
             };
+            /** @description `VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
             401: {
                 headers: {
@@ -10058,6 +10177,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PaginatedFilingList"];
+                };
+            };
+            /** @description `VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
                 };
             };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
@@ -10261,6 +10389,15 @@ export interface operations {
                     "application/json": components["schemas"]["Financing"];
                 };
             };
+            /** @description Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
             401: {
                 headers: {
@@ -10330,6 +10467,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PaginatedNoteList"];
+                };
+            };
+            /** @description `VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
                 };
             };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
@@ -10446,6 +10592,15 @@ export interface operations {
                     "application/json": components["schemas"]["PaginatedApplicationNotificationList"];
                 };
             };
+            /** @description `VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
             401: {
                 headers: {
@@ -10503,6 +10658,15 @@ export interface operations {
                     "application/json": components["schemas"]["PaginatedApplicationParticipantList"];
                 };
             };
+            /** @description `VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
             401: {
                 headers: {
@@ -10555,6 +10719,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApplicationParticipant"];
+                };
+            };
+            /** @description Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
                 };
             };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
@@ -10683,6 +10856,15 @@ export interface operations {
                     "application/json": components["schemas"]["Property"];
                 };
             };
+            /** @description Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
             401: {
                 headers: {
@@ -10763,6 +10945,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PaginatedStatusHistoryList"];
+                };
+            };
+            /** @description `VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
                 };
             };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
@@ -10951,6 +11142,15 @@ export interface operations {
                     "application/json": components["schemas"]["StatusChange"];
                 };
             };
+            /** @description Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
             401: {
                 headers: {
@@ -11017,6 +11217,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["QuickFilter"][];
+                };
+            };
+            /** @description `VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
                 };
             };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
@@ -11094,6 +11303,15 @@ export interface operations {
             };
             /** @description PERMISSION_DENIED (solo el administrador; el intento queda auditado) */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description `RESOURCE_NOT_FOUND`: la página no existe (fuera de rango o no numérica). */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -11474,6 +11692,15 @@ export interface operations {
                     "application/json": components["schemas"]["PaginatedBankPolicyRuleList"];
                 };
             };
+            /** @description `VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
             401: {
                 headers: {
@@ -11485,6 +11712,15 @@ export interface operations {
             };
             /** @description PERMISSION_DENIED o CSRF_FAILED */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description `RESOURCE_NOT_FOUND`: la página no existe (fuera de rango o no numérica). */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -11513,6 +11749,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["BankPolicyRule"];
+                };
+            };
+            /** @description Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
                 };
             };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
@@ -11621,6 +11866,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["BankPolicyRule"];
+                };
+            };
+            /** @description Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
                 };
             };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
@@ -11798,6 +12052,15 @@ export interface operations {
                     "application/json": components["schemas"]["RuleTestResponse"];
                 };
             };
+            /** @description Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
             401: {
                 headers: {
@@ -11858,6 +12121,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PaginatedBankPolicyRuleList"];
+                };
+            };
+            /** @description `VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
                 };
             };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
@@ -11960,6 +12232,15 @@ export interface operations {
                     "application/json": components["schemas"]["PaginatedBankProductList"];
                 };
             };
+            /** @description `VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
             401: {
                 headers: {
@@ -11971,6 +12252,15 @@ export interface operations {
             };
             /** @description PERMISSION_DENIED o CSRF_FAILED */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description `RESOURCE_NOT_FOUND`: la página no existe (fuera de rango o no numérica). */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -11999,6 +12289,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["BankProduct"];
+                };
+            };
+            /** @description Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
                 };
             };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
@@ -12101,6 +12400,15 @@ export interface operations {
                     "application/json": components["schemas"]["BankProduct"];
                 };
             };
+            /** @description Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
             401: {
                 headers: {
@@ -12151,6 +12459,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["BankProduct"];
+                };
+            };
+            /** @description Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
                 };
             };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
@@ -12205,6 +12522,15 @@ export interface operations {
                     "application/json": components["schemas"]["BankProduct"];
                 };
             };
+            /** @description Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
             401: {
                 headers: {
@@ -12255,6 +12581,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["BankProduct"];
+                };
+            };
+            /** @description Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
                 };
             };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
@@ -12313,6 +12648,15 @@ export interface operations {
                     "application/json": components["schemas"]["PaginatedBankList"];
                 };
             };
+            /** @description `VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
             401: {
                 headers: {
@@ -12324,6 +12668,15 @@ export interface operations {
             };
             /** @description PERMISSION_DENIED o CSRF_FAILED */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description `RESOURCE_NOT_FOUND`: la página no existe (fuera de rango o no numérica). */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -12352,6 +12705,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Bank"];
+                };
+            };
+            /** @description Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
                 };
             };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
@@ -12454,6 +12816,15 @@ export interface operations {
                     "application/json": components["schemas"]["BankDetail"];
                 };
             };
+            /** @description Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
             401: {
                 headers: {
@@ -12506,6 +12877,15 @@ export interface operations {
                     "application/json": components["schemas"]["Bank"];
                 };
             };
+            /** @description Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
             401: {
                 headers: {
@@ -12556,6 +12936,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Bank"];
+                };
+            };
+            /** @description Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
                 };
             };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
@@ -12612,6 +13001,15 @@ export interface operations {
                     "application/json": components["schemas"]["PaginatedBrokerOpportunityList"];
                 };
             };
+            /** @description `VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
             401: {
                 headers: {
@@ -12623,6 +13021,15 @@ export interface operations {
             };
             /** @description PERMISSION_DENIED o CSRF_FAILED */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description `RESOURCE_NOT_FOUND`: la página no existe (fuera de rango o no numérica). */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -12803,6 +13210,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PaginatedActivityList"];
+                };
+            };
+            /** @description `VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
                 };
             };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
@@ -12993,6 +13409,15 @@ export interface operations {
                     "application/json": components["schemas"]["PaginatedBuyerDocumentSlotList"];
                 };
             };
+            /** @description `VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
             401: {
                 headers: {
@@ -13046,6 +13471,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PaginatedBuyerEligibleBankProductList"];
+                };
+            };
+            /** @description `VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
                 };
             };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
@@ -13245,6 +13679,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PaginatedBuyerParticipantSummaryList"];
+                };
+            };
+            /** @description `VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
                 };
             };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
@@ -13879,6 +14322,15 @@ export interface operations {
                     "application/json": components["schemas"]["PaginatedBuyerDocumentVersionList"];
                 };
             };
+            /** @description `VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
             401: {
                 headers: {
@@ -13932,6 +14384,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PaginatedBuyerIncomeSourceList"];
+                };
+            };
+            /** @description `VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
                 };
             };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
@@ -14219,6 +14680,15 @@ export interface operations {
                 };
                 content?: never;
             };
+            /** @description `VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
             401: {
                 headers: {
@@ -14283,6 +14753,15 @@ export interface operations {
             };
             /** @description CSRF_FAILED */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description `RESOURCE_NOT_FOUND`: la página no existe (fuera de rango o no numérica). */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -14660,6 +15139,15 @@ export interface operations {
                     "application/json": components["schemas"]["PaginatedBuyerProcessList"];
                 };
             };
+            /** @description `VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
             401: {
                 headers: {
@@ -14671,6 +15159,15 @@ export interface operations {
             };
             /** @description CSRF_FAILED */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description `RESOURCE_NOT_FOUND`: la página no existe (fuera de rango o no numérica). */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -14813,6 +15310,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CatalogItem"];
+                };
+            };
+            /** @description Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
                 };
             };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
@@ -14994,6 +15500,15 @@ export interface operations {
                     "application/json": components["schemas"]["PaginatedCatalogList"];
                 };
             };
+            /** @description `VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
             401: {
                 headers: {
@@ -15005,6 +15520,15 @@ export interface operations {
             };
             /** @description PERMISSION_DENIED o CSRF_FAILED */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description `RESOURCE_NOT_FOUND`: la página no existe (fuera de rango o no numérica). */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -15033,6 +15557,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Catalog"];
+                };
+            };
+            /** @description Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
                 };
             };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
@@ -15135,6 +15668,15 @@ export interface operations {
                     "application/json": components["schemas"]["Catalog"];
                 };
             };
+            /** @description Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
             401: {
                 headers: {
@@ -15203,6 +15745,15 @@ export interface operations {
                     "application/json": components["schemas"]["PaginatedCatalogItemList"];
                 };
             };
+            /** @description `VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
             401: {
                 headers: {
@@ -15253,6 +15804,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CatalogItem"];
+                };
+            };
+            /** @description Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
                 };
             };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
@@ -15319,6 +15879,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PaginatedCatalogItemList"];
+                };
+            };
+            /** @description Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
                 };
             };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
@@ -15429,6 +15998,15 @@ export interface operations {
                     "application/json": components["schemas"]["Address"];
                 };
             };
+            /** @description Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
             401: {
                 headers: {
@@ -15488,6 +16066,15 @@ export interface operations {
                     "application/json": components["schemas"]["PaginatedClientListByRole"];
                 };
             };
+            /** @description `VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
             401: {
                 headers: {
@@ -15499,6 +16086,15 @@ export interface operations {
             };
             /** @description PERMISSION_DENIED o CSRF_FAILED */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description `RESOURCE_NOT_FOUND`: la página no existe (fuera de rango o no numérica). */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -15527,6 +16123,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ClientByRole"];
+                };
+            };
+            /** @description Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
                 };
             };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
@@ -15629,6 +16234,15 @@ export interface operations {
                     "application/json": components["schemas"]["ClientDetailByRole"];
                 };
             };
+            /** @description Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
             401: {
                 headers: {
@@ -15691,6 +16305,15 @@ export interface operations {
                     "application/json": components["schemas"]["PaginatedAddressList"];
                 };
             };
+            /** @description `VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
             401: {
                 headers: {
@@ -15741,6 +16364,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Address"];
+                };
+            };
+            /** @description Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
                 };
             };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
@@ -15797,6 +16429,15 @@ export interface operations {
                     "application/json": components["schemas"]["PaginatedApplicationListByRole"];
                 };
             };
+            /** @description `VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
             401: {
                 headers: {
@@ -15850,6 +16491,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PaginatedOpportunityListByRole"];
+                };
+            };
+            /** @description `VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
                 };
             };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
@@ -15925,6 +16575,15 @@ export interface operations {
             };
             /** @description PERMISSION_DENIED o CSRF_FAILED */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description `RESOURCE_NOT_FOUND`: la página no existe (fuera de rango o no numérica). */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -16048,7 +16707,10 @@ export interface operations {
     commission_plans_partial_update: {
         parameters: {
             query?: never;
-            header?: never;
+            header: {
+                /** @description Versión que se edita, como la devolvió `ETag` (API §6). */
+                "If-Match": string;
+            };
             path: {
                 plan_id: string;
             };
@@ -16244,6 +16906,15 @@ export interface operations {
             };
             /** @description PERMISSION_DENIED o CSRF_FAILED */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description `RESOURCE_NOT_FOUND`: la página no existe (fuera de rango o no numérica). */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -17078,6 +17749,15 @@ export interface operations {
                     "application/json": components["schemas"]["PaginatedDocumentRequirementList"];
                 };
             };
+            /** @description `VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
             401: {
                 headers: {
@@ -17089,6 +17769,15 @@ export interface operations {
             };
             /** @description PERMISSION_DENIED o CSRF_FAILED */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description `RESOURCE_NOT_FOUND`: la página no existe (fuera de rango o no numérica). */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -17117,6 +17806,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DocumentRequirement"];
+                };
+            };
+            /** @description Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
                 };
             };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
@@ -17225,6 +17923,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DocumentRequirement"];
+                };
+            };
+            /** @description Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
                 };
             };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
@@ -17400,6 +18107,15 @@ export interface operations {
                     "application/json": components["schemas"]["ChecklistPreviewResponse"];
                 };
             };
+            /** @description Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
             401: {
                 headers: {
@@ -17571,6 +18287,15 @@ export interface operations {
                     "application/json": components["schemas"]["PaginatedDocumentFileList"];
                 };
             };
+            /** @description `VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
             401: {
                 headers: {
@@ -17628,6 +18353,15 @@ export interface operations {
                     "application/json": components["schemas"]["PaginatedDocumentTypeList"];
                 };
             };
+            /** @description `VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
             401: {
                 headers: {
@@ -17639,6 +18373,15 @@ export interface operations {
             };
             /** @description PERMISSION_DENIED o CSRF_FAILED */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description `RESOURCE_NOT_FOUND`: la página no existe (fuera de rango o no numérica). */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -17667,6 +18410,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DocumentType"];
+                };
+            };
+            /** @description Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
                 };
             };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
@@ -17769,6 +18521,15 @@ export interface operations {
                     "application/json": components["schemas"]["DocumentType"];
                 };
             };
+            /** @description Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
             401: {
                 headers: {
@@ -17821,6 +18582,15 @@ export interface operations {
                     "application/json": components["schemas"]["DocumentType"];
                 };
             };
+            /** @description Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
             401: {
                 headers: {
@@ -17871,6 +18641,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DocumentType"];
+                };
+            };
+            /** @description Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
                 };
             };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
@@ -18193,6 +18972,15 @@ export interface operations {
                     "application/json": components["schemas"]["Filing"];
                 };
             };
+            /** @description Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
             401: {
                 headers: {
@@ -18255,6 +19043,15 @@ export interface operations {
                     "application/json": components["schemas"]["PaginatedFilingDocumentSnapshotList"];
                 };
             };
+            /** @description `VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
             401: {
                 headers: {
@@ -18306,6 +19103,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PaginatedFilingResponseList"];
+                };
+            };
+            /** @description `VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
                 };
             };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
@@ -18447,6 +19253,15 @@ export interface operations {
                     "application/json": components["schemas"]["PaginatedIncomeSourceList"];
                 };
             };
+            /** @description `VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
             401: {
                 headers: {
@@ -18499,6 +19314,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["IncomeSource"];
+                };
+            };
+            /** @description Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
                 };
             };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
@@ -18625,6 +19449,15 @@ export interface operations {
                     "application/json": components["schemas"]["IncomeSource"];
                 };
             };
+            /** @description Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
             401: {
                 headers: {
@@ -18701,6 +19534,15 @@ export interface operations {
                     "application/json": components["schemas"]["PaginatedInvitationList"];
                 };
             };
+            /** @description `VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
             401: {
                 headers: {
@@ -18712,6 +19554,15 @@ export interface operations {
             };
             /** @description PERMISSION_DENIED o CSRF_FAILED */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description `RESOURCE_NOT_FOUND`: la página no existe (fuera de rango o no numérica). */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -18740,6 +19591,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Invitation"];
+                };
+            };
+            /** @description Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
                 };
             };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
@@ -19006,6 +19866,15 @@ export interface operations {
                     "application/json": components["schemas"]["Error"];
                 };
             };
+            /** @description `RESOURCE_NOT_FOUND`: la página no existe (fuera de rango o no numérica). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
         };
     };
     metadata_bootstrap: {
@@ -19080,6 +19949,15 @@ export interface operations {
                 };
                 content?: never;
             };
+            /** @description `VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
             401: {
                 headers: {
@@ -19132,6 +20010,15 @@ export interface operations {
                     "application/json": components["schemas"]["PaginatedOpportunityListByRole"];
                 };
             };
+            /** @description `VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
             401: {
                 headers: {
@@ -19143,6 +20030,15 @@ export interface operations {
             };
             /** @description PERMISSION_DENIED o CSRF_FAILED */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description `RESOURCE_NOT_FOUND`: la página no existe (fuera de rango o no numérica). */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -19171,6 +20067,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OpportunityDetailByRole"];
+                };
+            };
+            /** @description Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
                 };
             };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
@@ -19282,6 +20187,15 @@ export interface operations {
                     "application/json": components["schemas"]["OpportunityDetailByRole"];
                 };
             };
+            /** @description Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
             401: {
                 headers: {
@@ -19352,6 +20266,15 @@ export interface operations {
                     "application/json": components["schemas"]["OpportunityDetail"];
                 };
             };
+            /** @description Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
             401: {
                 headers: {
@@ -19420,6 +20343,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OpportunityDetail"];
+                };
+            };
+            /** @description Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
                 };
             };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
@@ -19578,6 +20510,15 @@ export interface operations {
                     "application/json": components["schemas"]["Membership"];
                 };
             };
+            /** @description Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
             401: {
                 headers: {
@@ -19645,6 +20586,15 @@ export interface operations {
                     "application/json": components["schemas"]["PaginatedPartnerList"];
                 };
             };
+            /** @description `VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
             401: {
                 headers: {
@@ -19656,6 +20606,15 @@ export interface operations {
             };
             /** @description PERMISSION_DENIED o CSRF_FAILED */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description `RESOURCE_NOT_FOUND`: la página no existe (fuera de rango o no numérica). */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -19684,6 +20643,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Partner"];
+                };
+            };
+            /** @description Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
                 };
             };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
@@ -19786,6 +20754,15 @@ export interface operations {
                     "application/json": components["schemas"]["PartnerDetail"];
                 };
             };
+            /** @description Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
             401: {
                 headers: {
@@ -19838,6 +20815,15 @@ export interface operations {
                     "application/json": components["schemas"]["Partner"];
                 };
             };
+            /** @description Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
             401: {
                 headers: {
@@ -19888,6 +20874,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Partner"];
+                };
+            };
+            /** @description Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
                 };
             };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
@@ -19944,6 +20939,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PaginatedMembershipList"];
+                };
+            };
+            /** @description `VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
                 };
             };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
@@ -20004,6 +21008,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Invitation"];
+                };
+            };
+            /** @description Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
                 };
             };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
@@ -20083,6 +21096,15 @@ export interface operations {
                     "application/json": components["schemas"]["PaginatedProjectList"];
                 };
             };
+            /** @description `VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
             401: {
                 headers: {
@@ -20094,6 +21116,15 @@ export interface operations {
             };
             /** @description PERMISSION_DENIED o CSRF_FAILED */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description `RESOURCE_NOT_FOUND`: la página no existe (fuera de rango o no numérica). */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -20122,6 +21153,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProjectDetail"];
+                };
+            };
+            /** @description Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
                 };
             };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
@@ -20233,6 +21273,15 @@ export interface operations {
                     "application/json": components["schemas"]["ProjectDetail"];
                 };
             };
+            /** @description Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
             401: {
                 headers: {
@@ -20292,6 +21341,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProjectDetail"];
+                };
+            };
+            /** @description Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
                 };
             };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
@@ -20364,6 +21422,15 @@ export interface operations {
                     "application/json": components["schemas"]["ProjectDetail"];
                 };
             };
+            /** @description Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
             401: {
                 headers: {
@@ -20434,6 +21501,15 @@ export interface operations {
                     "application/json": components["schemas"]["ProjectDetail"];
                 };
             };
+            /** @description Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
             401: {
                 headers: {
@@ -20502,6 +21578,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProjectDetail"];
+                };
+            };
+            /** @description Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
                 };
             };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
@@ -20748,6 +21833,15 @@ export interface operations {
                     "application/json": components["schemas"]["Error"];
                 };
             };
+            /** @description `RESOURCE_NOT_FOUND`: la página no existe (fuera de rango o no numérica). */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
             /** @description RATE_LIMITED: más de 20 consultas por minuto al dashboard y los reportes (cupo compartido, por usuario). `Retry-After` dice cuántos segundos esperar. */
             429: {
                 headers: {
@@ -20865,6 +21959,15 @@ export interface operations {
                     "application/json": components["schemas"]["PaginatedReportExportJobList"];
                 };
             };
+            /** @description `VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
             401: {
                 headers: {
@@ -20876,6 +21979,15 @@ export interface operations {
             };
             /** @description PERMISSION_DENIED o FILTER_OUT_OF_SCOPE (`all` sin `reports.manage`) */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description `RESOURCE_NOT_FOUND`: la página no existe (fuera de rango o no numérica). */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -21070,6 +22182,15 @@ export interface operations {
                     "application/json": components["schemas"]["PaginatedRoleList"];
                 };
             };
+            /** @description `VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
             401: {
                 headers: {
@@ -21081,6 +22202,15 @@ export interface operations {
             };
             /** @description PERMISSION_DENIED o CSRF_FAILED */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description `RESOURCE_NOT_FOUND`: la página no existe (fuera de rango o no numérica). */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -21141,6 +22271,15 @@ export interface operations {
             };
             /** @description PERMISSION_DENIED o CSRF_FAILED */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description `RESOURCE_NOT_FOUND`: la página no existe (fuera de rango o no numérica). */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -21483,6 +22622,15 @@ export interface operations {
                     "application/json": components["schemas"]["PaginatedUserList"];
                 };
             };
+            /** @description `VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
             401: {
                 headers: {
@@ -21494,6 +22642,15 @@ export interface operations {
             };
             /** @description PERMISSION_DENIED o CSRF_FAILED */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description `RESOURCE_NOT_FOUND`: la página no existe (fuera de rango o no numérica). */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -21522,6 +22679,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["UserCreated"];
+                };
+            };
+            /** @description Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
                 };
             };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
@@ -21633,6 +22799,15 @@ export interface operations {
                     "application/json": components["schemas"]["User"];
                 };
             };
+            /** @description Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
             401: {
                 headers: {
@@ -21685,6 +22860,15 @@ export interface operations {
                     "application/json": components["schemas"]["User"];
                 };
             };
+            /** @description Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
             401: {
                 headers: {
@@ -21735,6 +22919,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["User"];
+                };
+            };
+            /** @description Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
                 };
             };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
@@ -21796,6 +22989,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["User"];
+                };
+            };
+            /** @description Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
                 };
             };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
@@ -21880,6 +23082,15 @@ export interface operations {
                     "application/json": components["schemas"]["PaginatedWorkdayApplicationList"];
                 };
             };
+            /** @description `VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
             401: {
                 headers: {
@@ -21891,6 +23102,15 @@ export interface operations {
             };
             /** @description PERMISSION_DENIED o CSRF_FAILED */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description `RESOURCE_NOT_FOUND`: la página no existe (fuera de rango o no numérica). */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -21923,6 +23143,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["WorkdaySummary"];
+                };
+            };
+            /** @description `VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
                 };
             };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
@@ -21975,6 +23204,15 @@ export interface operations {
                     "application/json": components["schemas"]["PaginatedWorkflowTransitionList"];
                 };
             };
+            /** @description `VALIDATION_ERROR`: un filtro o parámetro de la consulta no es válido. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
             401: {
                 headers: {
@@ -21986,6 +23224,15 @@ export interface operations {
             };
             /** @description PERMISSION_DENIED o CSRF_FAILED */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description `RESOURCE_NOT_FOUND`: la página no existe (fuera de rango o no numérica). */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -22014,6 +23261,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["WorkflowTransition"];
+                };
+            };
+            /** @description Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
                 };
             };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */
@@ -22114,6 +23370,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["WorkflowTransition"];
+                };
+            };
+            /** @description Datos inválidos (`VALIDATION_ERROR`, `MALFORMED_REQUEST`) o regla de negocio. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
                 };
             };
             /** @description NOT_AUTHENTICATED o SESSION_EXPIRED */

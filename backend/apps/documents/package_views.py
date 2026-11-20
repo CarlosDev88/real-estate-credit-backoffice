@@ -27,7 +27,7 @@ from apps.documents.dossier_views import (
 from apps.documents.models import DocumentPackageJob
 from apps.documents.package_serializers import DocumentPackageJobSerializer
 from apps.idempotency.decorators import IDEMPOTENCY_PARAMETER, idempotency_responses, idempotent
-from apps.identity.throttling import DocumentDownloadRateThrottle
+from apps.identity.throttling import GENERAL_THROTTLES, DocumentDownloadRateThrottle
 
 PREPARE = "filings.prepare"
 
@@ -120,7 +120,7 @@ class DocumentPackageJobDownloadView(PackageView):
     audit_actions = {"GET": AuditAction.PACKAGE_DOWNLOADED}
     audit_resource_type = "document_package_jobs"
     required_permissions = {"GET": PREPARE}
-    throttle_classes = [DocumentDownloadRateThrottle]
+    throttle_classes = [*GENERAL_THROTTLES, DocumentDownloadRateThrottle]
 
     @extend_schema(
         tags=[DOSSIER_TAG],

@@ -25,4 +25,4 @@ drf-spectacular genera `contracts/openapi.json` (OpenAPI 3.1) desde las vistas y
 - **Costo:** cada cambio del backend exige regenerar el contrato **y** los tipos del front (lo recuerdan todas las specs).
 - **Nombres inestables de enums:** drf-spectacular puede renombrar un enum si otro campo coincide. Se fijan en `ENUM_NAME_OVERRIDES` y los protege `backend/tests/test_contract_names.py`.
 - **Cabeceras:** el contrato declara `ETag` donde la API lo envía; `backend/tests/test_etag_contract.py` lo exige.
-- Tamaño al 18-11-2026: 175 rutas, 235 operaciones, 374 esquemas; al 19-11, después del #36: 176, 236 y 381 (solo se agregó).
+- Tamaño al 18-11-2026: 175 rutas, 235 operaciones, 374 esquemas; al 19-11, después del #36: 176, 236 y 381 (solo se agregó); después del #37 (fase B de seguridad): 176, 236 y 380, porque el contrato pasó a decir la lista que `available-actions` ya respondía (SEC-13).

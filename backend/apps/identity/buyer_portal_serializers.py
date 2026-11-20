@@ -5,7 +5,7 @@ ver de su propio proceso. Las referencias compactas (catálogo, producto) sí se
 reutilizan, para que OpenAPI no tenga dos componentes con el mismo nombre.
 """
 
-from typing import Any
+from typing import Any, cast
 
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
@@ -110,7 +110,9 @@ class BuyerProcessSerializer(BuyerApplicationRefSerializer):
 
     def _progress(self, application: CreditApplication) -> buyer_portal.BuyerProgress:
         # Se calcula una sola vez por solicitud, aunque lo usen dos campos.
-        cache: dict[Any, buyer_portal.BuyerProgress] = self.context.setdefault("_progress", {})
+        cache: dict[Any, buyer_portal.BuyerProgress] = cast(
+            dict[str, Any], self.context
+        ).setdefault("_progress", {})
         if application.pk not in cache:
             cache[application.pk] = buyer_portal.buyer_progress(application)
         return cache[application.pk]

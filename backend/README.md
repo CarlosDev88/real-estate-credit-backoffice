@@ -527,11 +527,11 @@ In local development (`AUTH_COOKIE_SECURE=false`, plain HTTP) the cookie names d
 
 | Method | Route | Notes |
 | --- | --- | --- |
-| `POST` | `/api/v1/auth/login` | 5 attempts per email + IP every 15 minutes. |
+| `POST` | `/api/v1/auth/login` | 5 attempts per email + IP, 20 per IP over all emails, and 10 per email over all IPs, every 15 minutes. |
 | `POST` | `/api/v1/auth/refresh` | Rotates the refresh token. Reusing a rotated token revokes the whole session chain. |
 | `POST` | `/api/v1/auth/logout` | `204`; revokes the current session. Idempotent. |
 | `GET` | `/api/v1/auth/me` | Profile, role, permissions, and scope. Source of truth for the frontend. |
-| `POST` | `/api/v1/auth/password-reset-requests` | Always `202`, whether or not the email exists. 3 per email + IP per hour. |
+| `POST` | `/api/v1/auth/password-reset-requests` | Always `202`, whether or not the email exists; the email goes out through the Celery queue. 3 per email + IP, 10 per IP, and 5 per email per hour. |
 | `POST` | `/api/v1/auth/password-resets/confirm` | Single-use token valid for 30 minutes; revokes every session. |
 | `POST` | `/api/v1/auth/change-password` | Requires the current password; revokes the other sessions. |
 
@@ -541,6 +541,52 @@ Frontend integration rules:
 - On every `POST`, `PUT`, `PATCH`, or `DELETE`, send the `X-CSRFToken` header with the value of the `app_csrf` cookie.
 - On a `401 SESSION_EXPIRED`, call `/auth/refresh` once and retry. Serialize refresh calls (one at a time across tabs): two concurrent refreshes with the same token look like token theft and close the session.
 - Revoking a session or deactivating a user cuts access immediately: every request checks that the JWT session is still active.
+
+## Security Settings and Production Image
+
+These come from the security audit, phase B ([`docs/SEGURIDAD.md`](../docs/SEGURIDAD.md)).
+
+**Rate limits.** Every quota lives in `AUTH_RATE_LIMITS` (`config/settings/base.py`) and is multiplied by `AUTH_RATE_LIMIT_MULTIPLIER` only with `DJANGO_DEBUG=True`:
+
+| Key | Default | Applies to |
+| --- | --- | --- |
+| `general_read` | `600/1m` | Every `GET`, `HEAD`, and `OPTIONS`, per internal user or buyer session; per IP without a session. |
+| `general_write` | `120/1m` | Every other method, with the same key. |
+| `state_changes` | `20/1m` | One shared quota for status transitions, withdrawals, filings, and opportunity transitions (views with `throttle_scope = "state_changes"`). |
+| `login_ip` / `login_account` | `20/15m` / `10/15m` | Login per IP over all emails / per email over all IPs (besides `login`, per email + IP). |
+| `password_reset_request_ip` / `password_reset_request_account` | `10/1h` / `5/1h` | The same for password reset requests. |
+| `admin_login` | `10/15m` | `/admin/` login per IP, when the admin is published. |
+
+Views with their own limits add them to the general ones: `throttle_classes = [*GENERAL_THROTTLES, ...]`. Tests raise the general rates ×1000 in `config/settings/test.py`; only the rate-limit tests bring them back.
+
+**New variables** (all optional; the defaults are the safe ones):
+
+| Variable | Default | What it does |
+| --- | --- | --- |
+| `ADMIN_ENABLED` | `False` | Publishes Django's `/admin/` without `DEBUG`. With `DEBUG` it is always published. |
+| `ADMIN_URL_PATH` | `admin/` | Path of the admin when published. |
+| `API_DOCS_PUBLIC` | `False` | Publishes `/openapi.json` and `/docs` without `DEBUG`. The frontend and the published reference use `contracts/openapi.json` instead. |
+| `SECURE_SSL_REDIRECT` | `True` | Production only: redirect HTTP to HTTPS (turn it off if the proxy already redirects). |
+| `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD`, `EMAIL_USE_TLS`, `EMAIL_USE_SSL`, `EMAIL_TIMEOUT` | `localhost`, `587`, empty, empty, `True`, `False`, `10` | Production only: the SMTP server. |
+| `GUNICORN_WORKERS`, `GUNICORN_BIND`, `GUNICORN_TIMEOUT`, `GUNICORN_MAX_REQUESTS`, `GUNICORN_MAX_REQUESTS_JITTER`, `GUNICORN_LOG_LEVEL` | `3`, `0.0.0.0:8000`, `60`, `1000`, `100`, `info` | Production image only (`config/gunicorn.py`). |
+
+**Keys.** Without `DEBUG`, Django refuses to start if `AUTH_JWT_SIGNING_KEY` has fewer than 32 bytes or `DJANGO_SECRET_KEY` has fewer than 50 characters, fewer than 5 distinct ones, or the `django-insecure-` prefix (`identity.E001`/`E002`); with `DEBUG` they are warnings. Generate each key with:
+
+```powershell
+python -c "import secrets; print(secrets.token_urlsafe(48))"
+```
+
+**Settings modules.** `config.settings.local` (what `manage.py` uses and what the compose sets in every Django service), `config.settings.test` (pytest and the CI), and `config.settings.production` (`DEBUG = False` fixed, SMTP, HSTS for one hour, HTTPS redirect behind a proxy that sends `X-Forwarded-Proto`, and `Secure` cookies). `config/wsgi.py`, `config/asgi.py`, and `config/celery.py` default to `production`, so any process started without `DJANGO_SETTINGS_MODULE` never runs with `DEBUG`.
+
+**Production image.** The `Dockerfile` has two stages on a base pinned by digest: `dev` (the one the compose builds, with `runserver`) and `production` (gunicorn, only `manage.py`, `config/`, and `apps/`, non-root user, no access log, and `manage.py check` before starting):
+
+```powershell
+docker build --target production -t mvp-credit-backend:production .
+docker run --rm -p 127.0.0.1:8000:8000 --env-file <production env file> mvp-credit-backend:production
+python manage.py check --deploy --settings=config.settings.production   # with production variables
+```
+
+The compose publishes every port only on `127.0.0.1`.
 
 ## Users and Roles
 

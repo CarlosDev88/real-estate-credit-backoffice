@@ -62,7 +62,7 @@ Next.js 16, Ant Design 6, Tailwind 4, TanStack Query, React Hook Form + Zod, and
 - Backend: Ruff, mypy, migrations check, pytest with a 95% coverage minimum, and the OpenAPI contract check.
 - Frontend: ESLint, Prettier, TypeScript, Vitest with coverage, generated API types, the build, Storybook, and an accessibility check of every story; Playwright end-to-end tests with axe run locally.
 - Four security checks in the backend CI: `pip-audit` (dependencies), `gitleaks` (secrets across the whole history), `bandit` (static analysis), and that the generated access-matrix document matches its test.
-- **Security audit (phase A done, November 2026):** automated scans, dynamic testing against a local copy of the API, a role access matrix that requests every API operation as each of 9 actors (2,106 cases, no access gaps), and a manual review. It found 20 issues, **none critical or high** (5 medium, 10 low, 5 informational), and left about 2,400 security tests in `backend/tests/security/`. Report (Spanish): [`docs/SEGURIDAD.md`](docs/SEGURIDAD.md). The fixes (phase B) come next.
+- **Security audit (November 2026):** automated scans, dynamic testing against a local copy of the API, a role access matrix that requests every API operation as each of 9 actors (2,124 cases, no access gaps), and a manual review, with about 2,500 security tests in `backend/tests/security/`. Phase A: 20 findings (0 critical, 0 high); phase B: 19 fixed and 1 accepted, plus 1 informational finding from the re-test, also fixed. Report (Spanish): [`docs/SEGURIDAD.md`](docs/SEGURIDAD.md).
 - Next: a frontend performance audit (Lighthouse and Web Vitals) and backend load and stress tests, both with their results published.
 
 ## Repository Structure

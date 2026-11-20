@@ -23,7 +23,7 @@ from apps.documents.dossier_views import no_store
 from apps.idempotency.decorators import IDEMPOTENCY_PARAMETER, idempotency_responses, idempotent
 from apps.identity.models import User
 from apps.identity.permissions import HasPermissionCode, get_request_permission_codes
-from apps.identity.throttling import DocumentDownloadRateThrottle
+from apps.identity.throttling import GENERAL_THROTTLES, DocumentDownloadRateThrottle
 from apps.reporting import export_jobs
 from apps.reporting.filters import out_of_scope, parse_filters
 from apps.reporting.models import ReportExportJob
@@ -94,7 +94,7 @@ class ApplicationExportJobsView(ExportJobView):
         "GET": export_jobs.EXPORT_PERMISSION,
         "POST": export_jobs.EXPORT_PERMISSION,
     }
-    throttle_classes = [ReportsRateThrottle]
+    throttle_classes = [*GENERAL_THROTTLES, ReportsRateThrottle]
     pagination_class = StandardResultsSetPagination
 
     @extend_schema(
@@ -188,7 +188,7 @@ class ReportExportJobDetailView(ExportJobView):
 
 
 class ReportExportJobDownloadView(ExportJobView):
-    throttle_classes = [DocumentDownloadRateThrottle]
+    throttle_classes = [*GENERAL_THROTTLES, DocumentDownloadRateThrottle]
     # Auditoría (módulo 14, apps/audit/hooks.py): como la descarga de paquetes.
     audit_actions = {"GET": AuditAction.REPORT_EXPORT_DOWNLOADED}
     audit_resource_type = "report_export_jobs"

@@ -2,7 +2,7 @@
 
 > **En simple:** además de las pruebas y el CI, el proyecto pasa por **tres auditorías independientes**: de seguridad, de rendimiento del frontend y de carga y estrés del backend. Cada una revisa con un método propio, deja su informe completo y una lista de hallazgos. Este documento junta las tres en lenguaje simple y, para cada hallazgo, cuenta **qué pasaba, por qué, qué se cambió, cómo se comprobó y en qué PR se cerró**.
 
-> **Estado al 19 de noviembre de 2026.** La auditoría de **seguridad** terminó su fase A (encontrar y documentar) y está en `master` desde el #32; su fase B (corregir) está en curso, así que las columnas de causa, solución y verificación se llenan cuando se fusione. Las auditorías de **rendimiento del frontend** y de **carga del backend** siguen en preparación.
+> **Estado al 19 de noviembre de 2026.** La auditoría de **seguridad** está cerrada: la fase A (encontrar y documentar) entró con el #32 y la fase B (corregir y volver a probar) con el #37. Quedaron 21 hallazgos, 20 corregidos y 1 aceptado. Las auditorías de **rendimiento del frontend** y de **carga del backend** siguen en preparación.
 
 ---
 
@@ -21,30 +21,44 @@
 
 | Auditoría | Qué revisa | Informe | Hallazgos | Estado |
 | --- | --- | --- | --- | --- |
-| Seguridad | La API completa (235 operaciones), el código, las dependencias, el historial de git y los contenedores | [`docs/SEGURIDAD.md`](../SEGURIDAD.md) y [`docs/seguridad/`](../seguridad/hallazgos.md) | **20**: 0 críticos, 0 altos, 5 medios, 10 bajos, 5 informativos | ✅ Fase A en `master` (#32) · 🔄 Fase B (correcciones) en curso |
+| Seguridad | La API completa (autenticación, autorización por rol y por objeto, archivos, datos personales, configuración), el código, las dependencias, el historial de git y los contenedores | [`docs/SEGURIDAD.md`](../SEGURIDAD.md) y [`docs/seguridad/`](../seguridad/hallazgos.md) | **21**: 0 críticos, 0 altos, 5 medios, 10 bajos, 6 informativos | ✅ Fase A (#32) y fase B (#37): 20 corregidos y 1 aceptado |
 | Rendimiento del frontend | Peso de las páginas, tiempos de carga y de interacción | `docs/PERFORMANCE.md` *(en curso)* | Pendiente | 🔄 En preparación |
 | Carga y estrés del backend | Latencia bajo carga (el p95 < 800 ms de RNF-17), errores y límites | `docs/PERFORMANCE.md` *(en curso)* | Pendiente | 🔄 En preparación |
+
+Los informes de rendimiento y carga se enlazarán aquí cuando se fusionen sus ramas.
 
 ---
 
 ## 2. Seguridad
 
+Informe completo: [`docs/SEGURIDAD.md`](../SEGURIDAD.md) (resumen, método, modelo de amenazas, matriz de acceso, cada hallazgo con su ficha y el re-test). Fichas largas: [`docs/seguridad/hallazgos.md`](../seguridad/hallazgos.md). Cómo repetir la auditoría en local: [`backend/security/README.md`](../../backend/security/README.md).
+
 ### 2.1 Qué se revisó y con qué método
 
-En cuatro partes, todo en local, sobre datos de demo y con una base de datos de usar y tirar ([`docs/SEGURIDAD.md`](../SEGURIDAD.md) §2):
+**Fase A (#32), encontrar y documentar.** En cuatro partes, todo en local, sobre datos de demo y con una base de datos de usar y tirar ([`docs/SEGURIDAD.md`](../SEGURIDAD.md) §2):
 
 | Parte | Qué | Con qué | Detalle |
 | --- | --- | --- | --- |
 | 1 · Automático | Configuración de Django, código, dependencias, secretos en todo el historial y contenedores | `manage.py check --deploy`, bandit, semgrep, pip-audit, pnpm audit, gitleaks, hadolint | [`01-automatico.md`](../seguridad/01-automatico.md) |
 | 2 · Dinámico | Ataques simulados contra una copia local de la API: fuzzing con 4 sesiones, escaneo pasivo y activo, cabeceras, CORS, cookies, límites y errores | schemathesis (~42.000 casos), OWASP ZAP (~72.000 peticiones), curl | [`02-dinamico.md`](../seguridad/02-dinamico.md) |
-| 3 · Matriz de acceso | Cada una de las 235 operaciones pedida como cada uno de 9 actores: sin sesión, admin, la asesora dueña, otro asesor, el broker que originó, otro broker, la constructora, el comprador dueño y otro comprador | pytest (`backend/tests/security/`) | [`03-matriz-acceso.md`](../seguridad/03-matriz-acceso.md) |
+| 3 · Matriz de acceso | Cada una de las 235 operaciones de entonces pedida como cada uno de 9 actores: sin sesión, admin, la asesora dueña, otro asesor, el broker que originó, otro broker, la constructora, el comprador dueño y otro comprador | pytest (`backend/tests/security/`) | [`03-matriz-acceso.md`](../seguridad/03-matriz-acceso.md) |
 | 4 · Manual | Revisión del código de 10 áreas sensibles, incluidas carreras (diez peticiones a la vez) | lectura de código, pytest, `backend/security/race_checks.py` | [`04-manual.md`](../seguridad/04-manual.md) |
 
 **Lo más importante es lo que no apareció** (SEGURIDAD §1): la matriz dio **2.115 casos, todos con el resultado esperado, sin ninguna brecha de acceso**; nadie puede ver ni tocar expedientes, documentos, clientes o comisiones que no le corresponden; sin sesión no se llega a ningún dato; no hay inyecciones; los archivos se validan por su contenido real; y los enlaces del comprador, las radicaciones y los pagos no se duplican aunque lleguen diez peticiones a la vez.
 
-**Lo que quedó en el CI** para que no vuelva a pasar: la matriz corre en cada PR y exige una fila para cada operación nueva del contrato (ya pasó una vez: el #36 sumó `GET /bank-policy-rules/fields` con su fila, y hoy son 236 operaciones y 2.124 casos, también sin brechas, en [`docs/seguridad/03-matriz-acceso.md`](../seguridad/03-matriz-acceso.md)); `pip-audit`, `gitleaks` y `bandit` corren en cada PR ([09 · Calidad §3](09-calidad.md#3-el-ci-dos-revisiones-obligatorias)).
+**Criterio con que se decidió cada hallazgo** (SEGURIDAD §6): los críticos y altos se corrigen todos; los medios, si el esfuerzo es pequeño (si no, se aceptan con su motivo); los bajos e informativos se documentan y se corrigen si son de una línea. No hubo críticos ni altos, y los cinco medios se corrigieron.
 
-**Criterio de la fase B** (SEGURIDAD §6): los críticos y altos se corrigen todos; los medios, si el esfuerzo es pequeño (si no, se aceptan con su motivo); los bajos e informativos se documentan y se corrigen si son de una línea.
+**Fase B (#37), corregir y volver a probar.** Cada corrección trae su prueba en `backend/tests/security/` (tres archivos nuevos, `test_deployment.py`, `test_http_responses.py` y `test_rate_limits.py`, y casos agregados a los existentes). Después, el re-test repitió cada reproducción de la fase A con su "antes" y su "después" y volvió a pasar las mismas herramientas con las mismas versiones (SEGURIDAD §9):
+
+| Herramienta | Fase A | Fase B (re-test) |
+| --- | --- | --- |
+| schemathesis, como admin | 3.866 casos; 6 respuestas 5xx (`OPTIONS`), 66 errores sin documentar | 9.101 casos; **0 respuestas 5xx**, 0 errores sin documentar |
+| OWASP ZAP activo | ~72.000 peticiones, ningún 5xx, ninguna alerta alta | 61.717 peticiones, **ningún 5xx**; la única alerta alta (inyección SQL) se comprobó a mano y es un falso positivo |
+| gitleaks (todo el historial) | 7 resultados, todos descartados | **0** |
+| `pytest tests/security` | ~2.400 pruebas, 8 `xfail` (las brechas abiertas) | **2.493 pruebas, 0 `xfail`**; matriz de **2.124 casos** sin brechas (9 más por la operación que sumó el #36) |
+| `check --deploy` con la configuración de producción | 4 avisos | Solo `W021` (el *preload* de HSTS, que se decide al tener dominio) |
+
+**Lo que quedó en el CI** para que no vuelva a pasar: la matriz corre en cada PR y exige una fila para cada operación nueva del contrato (ya pasó una vez: el #36 sumó `GET /bank-policy-rules/fields` con su fila, y hoy son 236 operaciones y 2.124 casos, en [`docs/seguridad/03-matriz-acceso.md`](../seguridad/03-matriz-acceso.md)); cada vista nueva hereda los límites generales de SEC-10 (una prueba lo exige); el contrato documenta solo sus errores (el *hook* de SEC-13); y `pip-audit`, `gitleaks` y `bandit` corren en cada PR ([09 · Calidad §3](09-calidad.md#3-el-ci-dos-revisiones-obligatorias)).
 
 ### 2.2 Hallazgos por severidad
 
@@ -54,47 +68,54 @@ Escala de la auditoría: **Crítica** (acceso sin sesión a datos personales, to
 | --- | ---: | ---: | ---: |
 | Crítica | 0 | — | — |
 | Alta | 0 | — | — |
-| Media | 5 | *(fase B)* | *(fase B)* |
-| Baja | 10 | *(fase B)* | *(fase B)* |
-| Informativa | 5 | *(fase B)* | *(fase B)* |
-| **Total** | **20** | *(fase B)* | *(fase B)* |
+| Media | 5 | 5 | 0 |
+| Baja | 10 | 9 | 1 |
+| Informativa | 6 | 6 | 0 |
+| **Total** | **21** (SEC-01 a SEC-21) | **20** | **1** |
 
-Los tres más importantes, según el informe: **SEC-09** (se puede probar una contraseña contra todas las cuentas desde un solo equipo, o una cuenta desde muchos), **SEC-04** (dos vulnerabilidades públicas de la librería de la API que permiten dejar sin respuesta al servidor sin cuenta) y **SEC-08** (datos personales que el navegador puede guardar en disco).
+La fase A encontró 20; **SEC-21** (informativo) apareció en el re-test de la fase B y se corrigió en el mismo PR. Los tres más importantes de la fase A, los tres corregidos: **SEC-09** (se podía probar una contraseña contra todas las cuentas desde un solo equipo, o una cuenta desde muchos), **SEC-04** (dos vulnerabilidades públicas de la librería de la API que permitían dejar sin respuesta al servidor sin cuenta) y **SEC-08** (datos personales que el navegador podía guardar en disco).
 
 ### 2.3 Hallazgos y cómo se solucionó cada uno
 
-Problema y severidad, de [`docs/seguridad/hallazgos.md`](../seguridad/hallazgos.md), donde está la ficha de cada uno: dónde, cómo reproducirlo, impacto y la corrección sugerida.
+Cada id lleva a su ficha en [`docs/seguridad/hallazgos.md`](../seguridad/hallazgos.md): dónde, cómo reproducirlo, impacto y la corrección. El "antes" y el "después" medidos de cada uno están en SEGURIDAD §9.1. Las pruebas citadas están en `backend/tests/security/`.
 
 | Id | Problema | Severidad | Causa | Solución aplicada | Cómo se verificó | PR |
 | --- | --- | --- | --- | --- | --- | --- |
-| [SEC-01](../seguridad/hallazgos.md) | No hay una configuración de producción: los puntos de entrada cargan la local, que fuerza `DEBUG=True` | Baja (sube a Alta si se desplegara así) | *(Fase B en curso)* | *(Fase B en curso)* | *(Fase B en curso)* | — |
-| [SEC-02](../seguridad/hallazgos.md) | La configuración base no endurece HTTPS (HSTS, redirección, cookies seguras de sesión) | Baja | *(Fase B en curso)* | *(Fase B en curso)* | *(Fase B en curso)* | — |
-| [SEC-03](../seguridad/hallazgos.md) | Las claves no se validan al arrancar; la clave JWT del `.env` local tiene 31 bytes | Baja | *(Fase B en curso)* | *(Fase B en curso)* | *(Fase B en curso)* | — |
-| [SEC-04](../seguridad/hallazgos.md) | La versión de Django REST Framework tiene dos vulnerabilidades públicas de denegación de servicio sin sesión | **Media** | *(Fase B en curso)* | *(Fase B en curso)* | *(Fase B en curso)* | — |
-| [SEC-05](../seguridad/hallazgos.md) | El compose publica PostgreSQL y el backend en todas las interfaces de la máquina | Baja | *(Fase B en curso)* | *(Fase B en curso)* | *(Fase B en curso)* | — |
-| [SEC-06](../seguridad/hallazgos.md) | La imagen del backend no fija su base por digest ni la versión de `pip`, y arranca con `runserver` | Informativa | *(Fase B en curso)* | *(Fase B en curso)* | *(Fase B en curso)* | — |
-| [SEC-07](../seguridad/hallazgos.md) | `OPTIONS` responde `500` en 27 rutas, una de ellas pública | Baja | *(Fase B en curso)* | *(Fase B en curso)* | *(Fase B en curso)* | — |
-| [SEC-08](../seguridad/hallazgos.md) | Las respuestas con datos personales no le piden al navegador que no las guarde (`Cache-Control: no-store`, `Vary: Cookie`) | **Media** | *(Fase B en curso)* | *(Fase B en curso)* | *(Fase B en curso)* | — |
-| [SEC-09](../seguridad/hallazgos.md) | El límite de intentos del login y de la recuperación se salta probando otros correos o desde otras IP | **Media** | *(Fase B en curso)* | *(Fase B en curso)* | *(Fase B en curso)* | — |
-| [SEC-10](../seguridad/hallazgos.md) | Faltan los límites generales por usuario que piden REQ §9.3 y API §26 | **Media** | *(Fase B en curso)* | *(Fase B en curso)* | *(Fase B en curso)* | — |
-| [SEC-11](../seguridad/hallazgos.md) | Un JSON de más de 2,5 MB responde `500` (o la página de depuración con `DEBUG`) en lugar de `413` | Baja | *(Fase B en curso)* | *(Fase B en curso)* | *(Fase B en curso)* | — |
-| [SEC-12](../seguridad/hallazgos.md) | Las rutas inexistentes y los ids que no son UUID responden HTML de Django, no el formato de error de la API | Baja | *(Fase B en curso)* | *(Fase B en curso)* | *(Fase B en curso)* | — |
-| [SEC-13](../seguridad/hallazgos.md) | El contrato no coincide con la API en 2 respuestas y no documenta varios estados | Informativa | *(Fase B en curso)* | *(Fase B en curso)* | *(Fase B en curso)* | — |
-| [SEC-14](../seguridad/hallazgos.md) | La recuperación de contraseña revela si el correo existe cuando falla el envío | **Media** | *(Fase B en curso)* | *(Fase B en curso)* | *(Fase B en curso)* | — |
-| [SEC-15](../seguridad/hallazgos.md) | El log de peticiones guarda la búsqueda completa (un documento o un nombre) | Baja | *(Fase B en curso)* | *(Fase B en curso)* | *(Fase B en curso)* | — |
-| [SEC-16](../seguridad/hallazgos.md) | El `409` al crear un cliente confirma que esa cédula ya está registrada | Baja (Media mientras falte SEC-10) | *(Fase B en curso)* | *(Fase B en curso)* | *(Fase B en curso)* | — |
-| [SEC-17](../seguridad/hallazgos.md) | Textos de la configuración de bancos sin longitud máxima | Informativa | *(Fase B en curso)* | *(Fase B en curso)* | *(Fase B en curso)* | — |
-| [SEC-18](../seguridad/hallazgos.md) | El `/admin/` de Django está publicado con la API y su login no tiene límite de intentos | Baja | *(Fase B en curso)* | *(Fase B en curso)* | *(Fase B en curso)* | — |
-| [SEC-19](../seguridad/hallazgos.md) | El esquema OpenAPI y la documentación interactiva son públicos | Informativa | *(Fase B en curso)* | *(Fase B en curso)* | *(Fase B en curso)* | — |
-| [SEC-20](../seguridad/hallazgos.md) | La documentación de la API promete 9 rutas que no existen y omite 5 que sí | Informativa | *(Fase B en curso)* | *(Fase B en curso)* | *(Fase B en curso)* | — |
+| [SEC-01](../seguridad/hallazgos.md#sec-01--no-hay-configuración-de-producción-y-los-puntos-de-entrada-cargan-local-que-fuerza-debugtrue) | No había configuración de producción | Baja (Alta si se desplegara así) | Los puntos de entrada cargaban `local`, que fuerza `DEBUG=True` | `backend/config/settings/production.py` (`DEBUG` fijo en `False`); `wsgi`, `asgi` y Celery la usan por defecto | `test_deployment.py`; `check --deploy` solo con `W021` | #37 |
+| [SEC-02](../seguridad/hallazgos.md#sec-02--la-configuración-base-no-endurece-https) | HTTPS sin endurecer | Baja | Nada fijaba HSTS, la redirección ni las cookies `Secure` | Lo fija `production.py` (HSTS de una hora para empezar, redirección y cookies solo por HTTPS) | `test_deployment.py`; la imagen `production` redirige con `301` y manda HSTS | #37 |
+| [SEC-03](../seguridad/hallazgos.md#sec-03--las-claves-no-se-validan-al-arrancar-la-clave-jwt-local-tiene-31-bytes) | Claves sin validar | Baja | Se exigía que existieran, no que fueran fuertes | *System check* `identity.E001`/`E002` en `backend/apps/identity/checks.py` (con `DEBUG`, solo aviso) | `test_deployment.py`; sin `DEBUG`, el backend no arranca con claves débiles | #37 |
+| [SEC-04](../seguridad/hallazgos.md#sec-04--djangorestframework-3172-tiene-dos-cve-de-denegación-de-servicio-sin-sesión) | DRF con dos CVE de denegación de servicio | **Media** | El rango de `requirements.txt` dejaba fuera la versión corregida | DRF `>=3.18.2,<3.19` | `test_resources.py`; un cuerpo comprimido de 96 bytes ya no se expande a 5 MB | #37 |
+| [SEC-05](../seguridad/hallazgos.md#sec-05--el-compose-publica-postgresql-y-el-backend-en-todas-las-interfaces-del-equipo) | Puertos en todas las interfaces | Baja | El compose no ponía IP | `127.0.0.1:` en cada puerto de `backend/docker-compose.yml` | `test_deployment.py`; compose levantado | #37 |
+| [SEC-06](../seguridad/hallazgos.md#sec-06--imagen-del-backend-base-sin-digest-pip-sin-versión-y-runserver-como-comando) | Imagen no reproducible y con `runserver` | Informativa | Una sola etapa, con la base y `pip` sin fijar | `backend/Dockerfile` en dos etapas (`dev` y `production`), base por digest, `pip` fijo y gunicorn en `production` | `test_deployment.py`; hadolint sin `DL3013`; la imagen responde `Server: gunicorn` | #37 |
+| [SEC-07](../seguridad/hallazgos.md#sec-07--options-responde-500-en-27-rutas-una-de-ellas-pública) | `OPTIONS` respondía `500` | Baja | La metadata de DRF fallaba en las vistas sin `serializer_class` | `DEFAULT_METADATA_CLASS = None` | `test_http_responses.py`; 0 de 176 rutas con 5xx | #37 |
+| [SEC-08](../seguridad/hallazgos.md#sec-08--las-respuestas-con-datos-personales-no-llevan-cache-control-no-store-ni-vary-cookie) | Datos personales que el navegador podía guardar | **Media** | DRF no pone `Cache-Control` | Un *middleware* (`backend/config/middleware.py`) con `Cache-Control: no-store` y `Vary: Cookie` en toda la API | `test_http_responses.py`; ZAP ya no la marca como cacheable | #37 |
+| [SEC-09](../seguridad/hallazgos.md#sec-09--el-límite-de-login-y-de-recuperación-se-salta-con-otros-correos-o-con-otras-ip) | El límite del login se saltaba | **Media** | Una sola clave, "IP + correo" | Límites por IP (sobre todas las cuentas) y por cuenta (desde todas las IP) en `backend/apps/identity/throttling.py` | `test_rate_limits.py`; corta en el 21.º correo desde una IP y en el 11.º fallo de una cuenta desde 3 IP | #37 |
+| [SEC-10](../seguridad/hallazgos.md#sec-10--no-existen-los-límites-generales-por-usuario-que-piden-req-93-y-api-26) | Sin límites generales por usuario | **Media** | No había `DEFAULT_THROTTLE_CLASSES` | 600 lecturas, 120 escrituras y 20 cambios de estado por minuto (`AUTH_RATE_LIMITS` en `base.py`) | `test_rate_limits.py`; `429` con `Retry-After` en la petición 601, 121 y 21 | #37 |
+| [SEC-11](../seguridad/hallazgos.md#sec-11--un-json-de-más-de-25-mb-responde-500-sin-debug-o-la-página-de-depuración-con-debug-no-413) | Un JSON grande respondía `500` | Baja | `RequestDataTooBig` es de Django y DRF no lo traduce | `413 PAYLOAD_TOO_LARGE` en `backend/config/exceptions.py` | `test_http_responses.py` | #37 |
+| [SEC-12](../seguridad/hallazgos.md#sec-12--las-rutas-inexistentes-y-los-ids-que-no-son-uuid-responden-html-de-django-no-el-formato-de-error-de-la-api) | `404` en HTML | Baja | Sin `handler404` ni `handler500` | Errores en JSON bajo `/api/` (`backend/config/urls.py`, sin `DEBUG`) | `test_http_responses.py` | #37 |
+| [SEC-13](../seguridad/hallazgos.md#sec-13--el-contrato-no-coincide-con-la-api-en-2-respuestas-y-no-documenta-varios-estados) | Contrato desalineado | Informativa | Dos esquemas mal y errores sin documentar | Esquemas corregidos y un *hook* (`backend/config/openapi.py`) que documenta `400`, `404` y `428` | `test_deployment.py`; schemathesis sin `ST103` ni `ST108` | #37 |
+| [SEC-14](../seguridad/hallazgos.md#sec-14--la-recuperación-de-contraseña-revela-si-el-correo-existe-cuando-falla-el-envío) | La recuperación revelaba si el correo existe | **Media** | El correo salía en la misma petición, solo si el usuario existía | El correo va por la cola de Celery (`backend/apps/identity/tasks.py`) y el token se genera en el worker | `test_auth.py`; `202` siempre y el mismo tiempo de respuesta | #37 |
+| [SEC-15](../seguridad/hallazgos.md#sec-15--el-log-de-peticiones-guarda-la-búsqueda-completa-documento-o-nombre) | Búsquedas completas en el log | Baja | El filtro solo ocultaba tokens | `***` en `search`, `email`, `document_number` y `q` (`backend/config/log_redaction.py`); gunicorn sin *access log* | `test_exposure.py` | #37 |
+| [SEC-16](../seguridad/hallazgos.md#sec-16--un-409-al-crear-un-cliente-confirma-que-esa-cédula-ya-está-registrada) | El `409` confirma que una cédula ya es cliente | Baja | La unicidad del documento es una regla de negocio | **Aceptado** (ver 2.4) | `test_exposure.py` fija el comportamiento | #37 |
+| [SEC-17](../seguridad/hallazgos.md#sec-17--textos-de-la-configuración-de-bancos-sin-longitud-máxima) | Textos de bancos sin tope | Informativa | Sin `max_length` | `max_length=4000` en `backend/apps/banking/serializers.py` | `test_resources.py`; 100.000 caracteres → `400` | #37 |
+| [SEC-18](../seguridad/hallazgos.md#sec-18--admin-de-django-está-publicado-con-la-api-y-su-login-no-tiene-límite-de-intentos) | `/admin/` publicado y sin límite | Baja | Se montaba siempre | Solo con `DEBUG` o `ADMIN_ENABLED`, en `ADMIN_URL_PATH` y con límite por IP | `test_config_inventory.py`; `429` en el 11.º intento | #37 |
+| [SEC-19](../seguridad/hallazgos.md#sec-19--el-esquema-openapi-y-la-documentación-interactiva-son-públicos) | Esquema y Swagger públicos | Informativa | Se montaban siempre | Solo con `DEBUG` o `API_DOCS_PUBLIC`; la referencia pública es la de GitHub Pages, hecha con `contracts/openapi.json` | `test_config_inventory.py` | #37 |
+| [SEC-20](../seguridad/hallazgos.md#sec-20--la-documentación-de-la-api-promete-9-rutas-que-no-existen-y-omite-5-que-sí) | La documentación de la API no coincidía con las rutas | Informativa | No se actualizó al construir el MVP | `docs/API_REST_MVP_CREDITO.md`: 9 rutas a "Fuera del MVP" y las que faltaban, documentadas | `test_config_inventory.py`, en los dos sentidos | #37 |
+| [SEC-21](../seguridad/hallazgos.md#sec-21--las-respuestas-que-cambian-según-el-rol-no-validan-cuando-la-página-está-vacía) | Respuestas por rol que no validaban con la página vacía | Informativa | Con `oneOf`, una página vacía valía para las dos formas | `anyOf` en el contrato | `test_deployment.py`; schemathesis sin `ST108` | #37 |
 
 ### 2.4 Aceptados, con su motivo
 
-*(Se completa con la fase B: un hallazgo aceptado es uno que no se corrige en el MVP, con el riesgo explicado y quién lo aceptó.)*
+- **SEC-16 (baja), aceptado por Carlos.** El documento identifica a la persona y no tiene sentido crear el mismo cliente una vez por broker: la unicidad es regla de negocio. Mitigación: el `409` no trae ningún dato del otro cliente y el límite general de escrituras (SEC-10) deja probar como mucho 120 cédulas por minuto. Riesgo residual: confirmar que una cédula ya es cliente, sin saber de quién.
 
 ### 2.5 Riesgo residual
 
-Lo que queda aunque se corrija todo, según SEGURIDAD §7: la fuerza bruta distribuida (desde miles de IP) necesita protección perimetral al desplegar; un PDF con contenido activo es un PDF válido (lo acotan el antivirus, la descarga siempre adjunta y con `nosniff`); quien tenga un enlace mágico antes que el comprador entra a su portal (lo acotan el solo uso, el vencimiento y la sesión de 24 h); y la configuración de producción (HTTPS, HSTS, secretos, logs, respaldos) se revisa al desplegar. **No se probó** el frontend como aplicación (XSS, CSP del sitio), el modo completo con S3 real ni la carga sostenida.
+Lo que queda después de la fase B, según SEGURIDAD §7:
+
+- **Fuerza bruta muy distribuida y bloqueo de cuentas.** El límite por cuenta frena el ataque a una cuenta desde muchas IP, pero quien conozca un correo puede dejar esa cuenta 15 minutos sin entrar. Un ataque desde miles de IP lo frena la protección perimetral (WAF o límites en el proxy) al desplegar.
+- **Producción todavía no existe.** La configuración y la imagen `production` quedaron listas y probadas en local; al desplegar faltan el proxy con TLS, los secretos reales (el check de SEC-03 exige que sean fuertes, pero generarlos y rotarlos es del despliegue), los logs centralizados y los backups. La imagen `production` todavía trae las herramientas de prueba, porque `requirements.txt` es uno solo.
+- **El modo local simple.** Allí la recuperación de contraseña envía el correo en el mismo proceso (no hay worker), así que el tiempo del envío se nota cuando el correo existe; producción usa el worker. Y los contenedores que ya estaban creados siguen publicados en todas las interfaces hasta que se recrean con el compose nuevo.
+- **Archivos y enlaces.** Un PDF con contenido activo es un PDF válido (lo acotan el antivirus del modo completo, la descarga siempre adjunta y con `nosniff`); quien tenga un enlace mágico antes que el comprador entra a su portal (lo acotan el solo uso, el vencimiento, la revocación y la sesión de 24 h).
+- **No se probó** el frontend como aplicación (XSS, CSP del sitio), el modo completo con S3 real y Celery distribuido, ni la carga sostenida (esa es la auditoría de la §4).
 
 ---
 

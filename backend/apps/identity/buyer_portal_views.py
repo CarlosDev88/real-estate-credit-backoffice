@@ -57,7 +57,7 @@ from apps.identity.cookies import (
 )
 from apps.identity.exceptions import BuyerSessionExpired
 from apps.identity.models import BuyerSession
-from apps.identity.throttling import BuyerAccessConsumeRateThrottle
+from apps.identity.throttling import GENERAL_THROTTLES, BuyerAccessConsumeRateThrottle
 from config.openapi import etag_response_headers
 from config.serializers import ErrorSerializer
 
@@ -124,7 +124,7 @@ class BuyerAccessConsumeView(APIView):
 
     authentication_classes: list[Any] = []
     permission_classes = [AllowAny]
-    throttle_classes = [BuyerAccessConsumeRateThrottle]
+    throttle_classes = [*GENERAL_THROTTLES, BuyerAccessConsumeRateThrottle]
 
     @extend_schema(
         tags=[BUYER_PORTAL_TAG],

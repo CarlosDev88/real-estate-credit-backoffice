@@ -20,6 +20,7 @@ from apps.applications.services import get_application_scope
 from apps.crm.services import CrmScope
 from apps.identity.models import User
 from apps.identity.permissions import HasPermissionCode
+from apps.identity.throttling import GENERAL_THROTTLES
 from apps.reporting import services
 from apps.reporting.filters import DashboardFilterSerializer, ReportFilters, parse_filters
 from apps.reporting.serializers import (
@@ -145,7 +146,7 @@ PERIOD_EXAMPLE = {"date_from": "2026-11-01", "date_to": "2026-11-17"}
 class DashboardView(GenericAPIView):
     permission_classes = [HasPermissionCode]
     required_permissions = {"GET": "dashboard.read"}
-    throttle_classes = [ReportsRateThrottle]
+    throttle_classes = [*GENERAL_THROTTLES, ReportsRateThrottle]
     pagination_class: type[BasePagination] | None = None
     filter_serializer_class: type[DashboardFilterSerializer] = DashboardFilterSerializer
     # Solo el administrador y el asesor; el broker recibe 403.

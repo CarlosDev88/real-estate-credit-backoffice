@@ -6,7 +6,7 @@ local, contra contenedores de un solo uso y un servidor propio de auditoría. Nu
 
 | Archivo | Para qué |
 | --- | --- |
-| `seed_actors.py` | Completa `seed_demo_data` con los actores de la matriz: `broker.b@`, `constructora@` y un segundo comprador. Solo con `DEBUG`; idempotente. |
+| `seed_actors.py` | Completa `seed_demo_data` con los actores de la matriz: `broker.b@` y un segundo comprador (`constructora@` ya viene en la demo). Solo con `DEBUG`; idempotente. |
 | `render_matrix.py` | Genera `docs/seguridad/03-matriz-acceso.md` desde `tests/security/access_matrix.py`. `--check` falla si el documento no está al día (lo corre el CI). |
 | `race_checks.py` | Carreras con transacciones reales (enlace mágico, radicación sin `Idempotency-Key`, `If-Match`, pago doble). Solo con `DEBUG`; escribe datos. |
 | `pip-audit-ignore.txt` | Vulnerabilidades revisadas que el CI todavía no bloquea, cada una con su `SEC-NN`. |

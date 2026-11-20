@@ -8,7 +8,8 @@ services:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
-      - "${POSTGRES_HOST_PORT:-5433}:5432"
+      # Solo en este equipo (SEC-05): sin IP, Docker escucha en todas las interfaces.
+      - "127.0.0.1:${POSTGRES_HOST_PORT:-5433}:5432"
     volumes:
       - mvp_credit_postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -24,6 +25,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      # La etapa `dev` (runserver); `production` (gunicorn) es para desplegar (SEC-06).
+      target: dev
     # Antes de servir: migraciones y tabla de la caché (las dos se pueden repetir sin
     # efecto), la completitud guardada del listado y una línea en el log con el modo de
     # los servicios. Si una migración falla, el backend no arranca; el recálculo de la
@@ -36,8 +39,11 @@ services:
       && exec python manage.py runserver 0.0.0.0:8000"
     env_file:
       - .env
+    environment:
+      # Explícito (SEC-01): `wsgi`, `asgi` y Celery cargan `production` por defecto.
+      DJANGO_SETTINGS_MODULE: config.settings.local
     ports:
-      - "${BACKEND_HOST_PORT:-8000}:8000"
+      - "127.0.0.1:${BACKEND_HOST_PORT:-8000}:8000"
     volumes:
       - .:/app
       # Contrato OpenAPI del monorepo: desde /app, `../contracts` es esta carpeta.
@@ -68,7 +74,7 @@ services:
       args:
         API_ORIGIN: http://backend:8000
     ports:
-      - "${FRONTEND_HOST_PORT:-3000}:3000"
+      - "127.0.0.1:${FRONTEND_HOST_PORT:-3000}:3000"
     depends_on:
       backend:
         condition: service_started
@@ -101,7 +107,7 @@ services:
         printf '{"identities":[{"name":"backend","credentials":[{"accessKey":"%s","secretKey":"%s"}],"actions":["Admin","Read","Write","List","Tagging"]}]}' "$$S3_ACCESS_KEY" "$$S3_SECRET_KEY" > /tmp/s3.json
         exec weed server -dir=/data -s3 -s3.port=8333 -s3.config=/tmp/s3.json -volume.max=0 -master.volumeSizeLimitMB=1024
     ports:
-      - "${DOCUMENT_STORAGE_HOST_PORT:-8333}:8333"
+      - "127.0.0.1:${DOCUMENT_STORAGE_HOST_PORT:-8333}:8333"
     volumes:
       - mvp_credit_seaweedfs_data:/data
     healthcheck:
@@ -120,10 +126,15 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      # La etapa `dev` (runserver); `production` (gunicorn) es para desplegar (SEC-06).
+      target: dev
     profiles: ["full"]
     command: python manage.py init_document_storage
     env_file:
       - .env
+    environment:
+      # Explícito (SEC-01): `wsgi`, `asgi` y Celery cargan `production` por defecto.
+      DJANGO_SETTINGS_MODULE: config.settings.local
     volumes:
       - .:/app
     depends_on:
@@ -152,10 +163,15 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      # La etapa `dev` (runserver); `production` (gunicorn) es para desplegar (SEC-06).
+      target: dev
     profiles: ["full"]
     command: celery -A config worker --loglevel=INFO
     env_file:
       - .env
+    environment:
+      # Explícito (SEC-01): `wsgi`, `asgi` y Celery cargan `production` por defecto.
+      DJANGO_SETTINGS_MODULE: config.settings.local
     volumes:
       - .:/app
     depends_on:

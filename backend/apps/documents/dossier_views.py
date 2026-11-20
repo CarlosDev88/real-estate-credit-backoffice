@@ -30,7 +30,7 @@ from apps.documents.models import ApplicationDocumentSlot, DocumentFile, SlotSta
 from apps.documents.models.review import SLOT_DECISIONS
 from apps.identity.models import User
 from apps.identity.permissions import HasPermissionCode, get_request_permission_codes
-from apps.identity.throttling import DocumentDownloadRateThrottle
+from apps.identity.throttling import GENERAL_THROTTLES, DocumentDownloadRateThrottle
 from config.filters import parse_bool_param, parse_uuid_param
 from config.serializers import ErrorSerializer
 
@@ -324,7 +324,7 @@ class DocumentFileDownloadView(DossierView):
     audit_actions = {"GET": AuditAction.DOCUMENT_DOWNLOADED}
     audit_resource_type = "document_files"
     required_permissions = {"GET": DOWNLOAD}
-    throttle_classes = [DocumentDownloadRateThrottle]
+    throttle_classes = [*GENERAL_THROTTLES, DocumentDownloadRateThrottle]
 
     @extend_schema(
         tags=[DOSSIER_TAG],

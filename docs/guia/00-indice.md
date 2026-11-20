@@ -14,10 +14,10 @@ Contado en `master` el **19 de noviembre de 2026**:
 | Tablas propias en PostgreSQL | 57 | [05 · Modelo de datos](05-modelo-de-datos.md) |
 | Operaciones de la API (contrato OpenAPI 3.1) | 236 | [03 · Arquitectura §6](03-arquitectura.md#6-el-contrato-openapi-primero) |
 | Vistas del producto (14 de operación y 8 del portal) | 22 | [01 · El producto §5](01-el-producto.md#5-las-22-vistas) |
-| Funciones de prueba del backend · cobertura mínima | 1.879 · 95 % | [09 · Calidad](09-calidad.md#2-los-números) |
+| Funciones de prueba del backend · cobertura mínima | 1.937 · 95 % | [09 · Calidad](09-calidad.md#2-los-números) |
 | Archivos de prueba del frontend · cobertura mínima | 60 · 70 % | [09 · Calidad](09-calidad.md#2-los-números) |
 | Casos de la matriz de acceso · brechas encontradas | 2.124 · 0 (2.115 en la fase A) | [12 · Auditorías §2](12-auditorias.md#2-seguridad) |
-| Hallazgos de la auditoría de seguridad (fase A) | 20: 0 críticos, 0 altos, 5 medios | [12 · Auditorías §2](12-auditorias.md#2-seguridad) |
+| Hallazgos de la auditoría de seguridad · corregidos · aceptados | 21 (0 críticos, 0 altos, 5 medios) · 20 · 1 | [12 · Auditorías §2](12-auditorias.md#2-seguridad) |
 | Revisiones obligatorias del CI por PR | 2 | [09 · Calidad §3](09-calidad.md#3-el-ci-dos-revisiones-obligatorias) |
 | Decisiones de arquitectura registradas | 15 | [ADR](../adr/README.md) |
 
@@ -46,7 +46,7 @@ Contado en `master` el **19 de noviembre de 2026**:
 | [09 · Calidad](09-calidad.md) | Estrategia de pruebas, números reales, CI con reporte en el PR, contrato verificado, la regla de colores y lo que el CI no cubre. | ✅ |
 | [10 · Operación local](10-operacion-local.md) | Cómo correrlo: la demo en un comando, el recorrido sugerido por rol, los dos modos, puertos, comandos útiles y problemas comunes. | ✅ |
 | [11 · Cómo se construyó](11-como-se-construyo.md) | El método: specs cerradas, agentes en paralelo, revisión, el CI como filtro y los errores reales que se atraparon. | ✅ |
-| [12 · Auditorías](12-auditorias.md) | Las auditorías de seguridad, performance del front y carga del backend: qué se encontró y cómo se solucionó. | 🔄 Seguridad con sus 20 hallazgos y su severidad; las soluciones, con la fase B. Performance y carga, en preparación |
+| [12 · Auditorías](12-auditorias.md) | Las auditorías de seguridad, performance del front y carga del backend: qué se encontró y cómo se solucionó. | 🔄 Seguridad ✅ (21 hallazgos con su causa, solución, verificación y PR). Performance y carga, en preparación |
 | [ADR](../adr/README.md) | 15 registros de decisiones de arquitectura, cada uno con contexto, opciones, decisión y consecuencias. | ✅ |
 
 ## Documentación de referencia

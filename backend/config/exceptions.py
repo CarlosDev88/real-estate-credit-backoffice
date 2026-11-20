@@ -12,6 +12,7 @@ from typing import Any
 
 from django.conf import settings
 from django.core.exceptions import PermissionDenied as DjangoPermissionDenied
+from django.core.exceptions import RequestDataTooBig
 from django.http import Http404
 from rest_framework import exceptions, status
 from rest_framework.response import Response
@@ -74,6 +75,14 @@ def rate_limited_message(wait: float | None) -> str:
 INTERNAL_ERROR_MESSAGE = "Ocurrió un error interno. Intenta de nuevo más tarde."
 
 
+class PayloadTooLarge(ApiError):
+    """El cuerpo supera ``DATA_UPLOAD_MAX_MEMORY_SIZE`` (SEC-11)."""
+
+    status_code = status.HTTP_413_REQUEST_ENTITY_TOO_LARGE
+    error_code = "PAYLOAD_TOO_LARGE"
+    default_detail = "El cuerpo de la solicitud es demasiado grande."
+
+
 def _error_code(exc: exceptions.APIException) -> str:
     explicit = getattr(exc, "error_code", None)
     if explicit:
@@ -132,6 +141,10 @@ def api_exception_handler(exc: Exception, context: dict[str, Any]) -> Response |
         exc = exceptions.NotFound()
     elif isinstance(exc, DjangoPermissionDenied):
         exc = exceptions.PermissionDenied()
+    elif isinstance(exc, RequestDataTooBig):
+        # Django la lanza al leer un cuerpo de más de 2,5 MB; no es de DRF y terminaba
+        # en un 500 (o la página de depuración con `DEBUG`).
+        exc = PayloadTooLarge()
 
     # El manejador de DRF conserva cabeceras como WWW-Authenticate y Retry-After.
     response = drf_exception_handler(exc, context)

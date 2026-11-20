@@ -16,11 +16,8 @@ def build_password_reset_url(raw_token: str) -> str:
 
 
 def send_password_reset_email(*, user: User, raw_token: str) -> None:
-    """Envía el enlace de recuperación.
-
-    Por ahora el envío es síncrono, al confirmar la transacción. Cuando exista el
-    worker de Celery y el outbox (módulo notifications), debe pasar a una tarea.
-    """
+    """Envía el enlace de recuperación. Lo llama la tarea ``send_password_reset``
+    (``apps/identity/tasks.py``), nunca la petición (SEC-14)."""
     minutes = int(settings.AUTH_PASSWORD_RESET_TOKEN_LIFETIME.total_seconds() // 60)
     reset_url = build_password_reset_url(raw_token)
     send_mail(
@@ -42,7 +39,8 @@ def build_invitation_url(raw_token: str) -> str:
 
 
 def send_invitation_email(*, invitation: InternalInvitation, raw_token: str) -> None:
-    """Envía la invitación interna. Igual que la recuperación, por ahora es síncrono."""
+    """Envía la invitación interna. Lo llama la tarea ``send_invitation``, como la
+    recuperación (SEC-14)."""
     hours = int(settings.AUTH_INVITATION_LIFETIME.total_seconds() // 3600)
     partner_line = (
         f"Te unirás al equipo de {invitation.partner}.\n" if invitation.partner_id else ""
@@ -67,7 +65,8 @@ def build_buyer_access_url(raw_token: str) -> str:
 
 
 def send_buyer_access_email(*, client: "Client", link: BuyerAccessLink, raw_token: str) -> None:
-    """Envía el enlace de acceso al titular. Por ahora es síncrono, como los demás.
+    """Envía el enlace de acceso al titular. Por ahora es síncrono (la recuperación y la
+    invitación ya van por la cola de Celery, SEC-14).
 
     Siguiendo REQUERIMIENTOS §9.2, no incluye datos del expediente: solo el saludo, el
     enlace y su vencimiento.

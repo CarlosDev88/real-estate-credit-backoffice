@@ -2,7 +2,7 @@
 
 > **En simple:** nada entra a `master` sin pasar dos revisiones automáticas, una del backend y otra del frontend. Cada una corre linters, tipos, pruebas, cobertura mínima y la verificación del contrato, y deja un **reporte en el PR** con lo que pasó. Debajo hay una pirámide de pruebas: muchas pruebas rápidas de reglas y de API, pruebas de pantallas con la API simulada, y pruebas de punta a punta en el navegador con revisión de accesibilidad.
 
-La estrategia de pruebas viene de REQ §10 ([`docs/REQUERIMIENTOS_MVP_CREDITO.md`](../REQUERIMIENTOS_MVP_CREDITO.md)). Números contados en `master` el **19 de noviembre de 2026** (con la F6, la fase A de la auditoría de seguridad, la F7 y la demo completa del #36 ya fusionadas), sin correr ninguna suite (las cuentan las funciones de prueba, no las ejecuciones).
+La estrategia de pruebas viene de REQ §10 ([`docs/REQUERIMIENTOS_MVP_CREDITO.md`](../REQUERIMIENTOS_MVP_CREDITO.md)). Números contados en `master` el **19 de noviembre de 2026** (con la F6, las dos fases de la auditoría de seguridad, la F7 y la demo completa del #36 ya fusionadas), sin correr ninguna suite (las cuentan las funciones de prueba, no las ejecuciones).
 
 ---
 
@@ -26,7 +26,7 @@ flowchart TB
     e2e["<b>Punta a punta</b> · Playwright + axe<br/>14 specs, contra el backend local<br/>login, portal en celular y escritorio, radicación, clientes, operación, administración, comisiones y broker"]
     sb["<b>Componentes</b> · Storybook + axe<br/>23 archivos de stories, axe en cada una, en el CI"]
     fe["<b>Pantallas e integración del front</b> · Vitest + Testing Library + MSW<br/>60 archivos, ~630 casos, API simulada"]
-    be["<b>Backend</b> · pytest + pytest-django<br/>133 archivos, 1.879 funciones de prueba<br/>reglas, API con base real, permisos, consultas, concurrencia<br/>y la matriz de acceso: 236 operaciones × 9 actores"]
+    be["<b>Backend</b> · pytest + pytest-django<br/>136 archivos, 1.937 funciones de prueba<br/>reglas, API con base real, permisos, consultas, concurrencia<br/>y la matriz de acceso: 236 operaciones × 9 actores"]
     e2e --- sb --- fe --- be
 ```
 
@@ -49,7 +49,7 @@ Reglas que se repiten en todas las specs:
 
 | Qué | Cuánto | Cómo se contó |
 | --- | ---: | --- |
-| Pruebas del backend | **1.879** funciones en **133** archivos | `def test_` en `backend/tests/` (sin las combinaciones de `@pytest.mark.parametrize`, que se usa 218 veces); 57 de ellas en `backend/tests/security/` |
+| Pruebas del backend | **1.937** funciones en **136** archivos | `def test_` en `backend/tests/` (sin las combinaciones de `@pytest.mark.parametrize`, que se usa 225 veces); 115 de ellas en `backend/tests/security/` (57 en la fase A; la fase B sumó `test_deployment.py`, `test_http_responses.py` y `test_rate_limits.py`). Corridas, `pytest tests/security` son 2.493 pruebas (SEGURIDAD §9.2) |
 | Matriz de acceso | **2.124** casos: cada una de las 236 operaciones como cada uno de 9 actores (2.115 en la fase A de la auditoría, antes de que el #36 sumara `GET /bank-policy-rules/fields`) | `backend/tests/security/access_matrix.py` y `test_access_matrix.py`; el resultado, en [`docs/seguridad/03-matriz-acceso.md`](../seguridad/03-matriz-acceso.md) |
 | Cobertura mínima del backend | **95 %** | `CI_COVERAGE_MIN: "95"` en `.github/workflows/backend.yml` |
 | Pruebas del front | **60** archivos, **~630** casos | `*.test.ts(x)` y `it(`/`test(` en `frontend/` |
@@ -149,7 +149,7 @@ Tres revisiones independientes, con su informe y su seguimiento hasta la correcc
 
 | Auditoría | Informe | Estado |
 | --- | --- | --- |
-| Seguridad | [`docs/SEGURIDAD.md`](../SEGURIDAD.md) y [`docs/seguridad/`](../seguridad/hallazgos.md) | Fase A (encontrar y documentar) en `master` (#32): 20 hallazgos, ninguno crítico ni alto. Fase B (corregir) en curso |
+| Seguridad | [`docs/SEGURIDAD.md`](../SEGURIDAD.md) y [`docs/seguridad/`](../seguridad/hallazgos.md) | Cerrada: fase A (encontrar y documentar, #32) y fase B (corregir y volver a probar, #37). 21 hallazgos, ninguno crítico ni alto: 20 corregidos y 1 aceptado ([12 · Auditorías §2](12-auditorias.md#2-seguridad)) |
 | Performance del frontend | `docs/PERFORMANCE.md` *(en curso)* | En preparación |
 | Carga y estrés del backend | `docs/PERFORMANCE.md` *(en curso)* | En preparación |
 

@@ -29,7 +29,7 @@ from apps.identity.serializers import (
     InvitationSerializer,
 )
 from apps.identity.services import get_access_profile
-from apps.identity.throttling import InvitationAcceptRateThrottle
+from apps.identity.throttling import GENERAL_THROTTLES, InvitationAcceptRateThrottle
 from config.filters import StrictOrderingFilter, parse_uuid_param
 from config.serializers import ErrorSerializer
 
@@ -171,7 +171,7 @@ class InvitationAcceptView(GenericAPIView):
 
     authentication_classes: list[Any] = []
     permission_classes = [AllowAny]
-    throttle_classes = [InvitationAcceptRateThrottle]
+    throttle_classes = [*GENERAL_THROTTLES, InvitationAcceptRateThrottle]
 
     @extend_schema(
         tags=[INVITATIONS_TAG],
