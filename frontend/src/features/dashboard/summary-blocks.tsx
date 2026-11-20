@@ -56,76 +56,107 @@ const money = (value: string) => formatCOP(Number(value)) ?? "—";
 export const MY_DAY_OVERDUE = "/mi-dia?tab=tareas&due=overdue";
 export const MY_DAY_TODAY = "/mi-dia?tab=tareas&due=today";
 
+/** Esqueleto del número: ocupa la misma línea que la cifra, así la tarjeta no cambia de alto. */
+const VALUE_SKELETON = (
+  <span
+    aria-hidden="true"
+    className="bg-bg-muted inline-block h-[0.9em] w-16 animate-pulse rounded align-middle motion-reduce:animate-none"
+  />
+);
+
+/**
+ * Las tarjetas con sus cifras o, sin datos todavía, con el esqueleto en lugar del número.
+ * Las etiquetas son fijas: el bloque de carga ya tiene el alto final (PERF-02).
+ */
+function SummaryGrid({
+  data,
+  showTasks,
+  linkTasks,
+  showAmounts,
+}: {
+  data: DashboardSummary | null;
+  showTasks: boolean;
+  linkTasks: boolean;
+  showAmounts: boolean;
+}) {
+  const amounts = data ? data.amounts : null;
+  return (
+    <div className="grid gap-3">
+      <div className="grid grid-cols-2 gap-3 min-[1100px]:grid-cols-4">
+        <StatTile
+          label="Clientes creados"
+          value={data ? count(data.clients_created) : VALUE_SKELETON}
+          hint="en el periodo"
+        />
+        <StatTile
+          label="Solicitudes creadas"
+          value={data ? count(data.applications_created) : VALUE_SKELETON}
+          hint="en el periodo"
+        />
+        {showTasks && (
+          <>
+            <StatTile
+              label="Tareas vencidas"
+              value={data ? count(data.tasks.overdue) : VALUE_SKELETON}
+              hint="pendientes de días anteriores"
+              href={data && linkTasks ? MY_DAY_OVERDUE : undefined}
+            />
+            <StatTile
+              label="Tareas para hoy"
+              value={data ? count(data.tasks.due_today) : VALUE_SKELETON}
+              hint="pendientes con fecha de hoy"
+              href={data && linkTasks ? MY_DAY_TODAY : undefined}
+            />
+          </>
+        )}
+      </div>
+      {(data ? amounts : showAmounts) && (
+        <div className="grid gap-3 min-[600px]:grid-cols-3">
+          <StatTile
+            label="Monto solicitado"
+            value={amounts ? money(amounts.requested_total) : VALUE_SKELETON}
+            hint="de las solicitudes creadas en el periodo"
+          />
+          <StatTile
+            label="Monto aprobado"
+            value={amounts ? money(amounts.approved_total) : VALUE_SKELETON}
+            hint="última aprobación de cada solicitud"
+          />
+          <StatTile
+            label="Monto desembolsado"
+            value={amounts ? money(amounts.disbursed_total) : VALUE_SKELETON}
+            hint="último desembolso de cada solicitud"
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function SummaryTiles({
   query,
   showTasks,
   linkTasks,
+  showAmounts,
 }: {
   query: UseQueryResult<DashboardSummary>;
   /** Las tareas son del asesor y del administrador (el broker siempre recibe 0). */
   showTasks: boolean;
   /** Las tarjetas de tareas enlazan a "Mi día" si el usuario puede abrirlo. */
   linkTasks: boolean;
+  /** Mientras carga, reserva la fila de montos (administrador y asesor; el broker no la recibe). */
+  showAmounts: boolean;
 }) {
+  const grid = { showTasks, linkTasks, showAmounts };
   return (
     <section aria-label="Cifras del periodo">
       <BlockState
         query={query}
         errorTitle="No pudimos cargar las cifras."
         loadingLabel="Cargando cifras"
-        loadingBlocks={[84]}
+        loading={<SummaryGrid data={null} {...grid} />}
       >
-        {(data) => (
-          <div className="grid gap-3">
-            <div className="grid grid-cols-2 gap-3 min-[1100px]:grid-cols-4">
-              <StatTile
-                label="Clientes creados"
-                value={count(data.clients_created)}
-                hint="en el periodo"
-              />
-              <StatTile
-                label="Solicitudes creadas"
-                value={count(data.applications_created)}
-                hint="en el periodo"
-              />
-              {showTasks && (
-                <>
-                  <StatTile
-                    label="Tareas vencidas"
-                    value={count(data.tasks.overdue)}
-                    hint="pendientes de días anteriores"
-                    href={linkTasks ? MY_DAY_OVERDUE : undefined}
-                  />
-                  <StatTile
-                    label="Tareas para hoy"
-                    value={count(data.tasks.due_today)}
-                    hint="pendientes con fecha de hoy"
-                    href={linkTasks ? MY_DAY_TODAY : undefined}
-                  />
-                </>
-              )}
-            </div>
-            {data.amounts && (
-              <div className="grid gap-3 min-[600px]:grid-cols-3">
-                <StatTile
-                  label="Monto solicitado"
-                  value={money(data.amounts.requested_total)}
-                  hint="de las solicitudes creadas en el periodo"
-                />
-                <StatTile
-                  label="Monto aprobado"
-                  value={money(data.amounts.approved_total)}
-                  hint="última aprobación de cada solicitud"
-                />
-                <StatTile
-                  label="Monto desembolsado"
-                  value={money(data.amounts.disbursed_total)}
-                  hint="último desembolso de cada solicitud"
-                />
-              </div>
-            )}
-          </div>
-        )}
+        {(data) => <SummaryGrid data={data} {...grid} />}
       </BlockState>
     </section>
   );
@@ -170,6 +201,8 @@ export function StatusSnapshot({ query }: { query: UseQueryResult<DashboardSumma
         query={query}
         errorTitle="No pudimos cargar las solicitudes por estado."
         loadingLabel="Cargando solicitudes por estado"
+        // Alto de la lista con los estados de la demo: sin saltos en la grilla (PERF-02).
+        loadingBlocks={[520]}
       >
         {(data) => {
           const rows = showAll ? data.snapshot : data.snapshot.filter((s) => s.count > 0);

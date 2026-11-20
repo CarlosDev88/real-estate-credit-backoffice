@@ -32,6 +32,8 @@ export function FunnelBlock({ query }: { query: UseQueryResult<DashboardFunnel> 
         query={query}
         errorTitle="No pudimos cargar el embudo."
         loadingLabel="Cargando el embudo"
+        // Las etapas del embudo son fijas: el bloque reserva el alto de la tabla (PERF-02).
+        loadingBlocks={[376]}
       >
         {(data) =>
           (data.stages[0]?.count ?? 0) === 0 ? (

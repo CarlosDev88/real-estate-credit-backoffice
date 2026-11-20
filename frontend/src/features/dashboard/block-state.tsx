@@ -24,15 +24,29 @@ export function BlockState<T>({
   errorTitle,
   loadingLabel,
   loadingBlocks = [160],
+  loading,
   children,
 }: {
   query: UseQueryResult<T>;
   errorTitle: string;
   loadingLabel: string;
+  /** Alto de cada bloque de carga: el más parecido al contenido final (sin saltos, PERF-02). */
   loadingBlocks?: number[];
+  /** Esqueleto propio con la forma del contenido; reemplaza a los bloques de carga. */
+  loading?: ReactNode;
   children: (data: T) => ReactNode;
 }) {
-  if (query.isPending) return <LoadingState label={loadingLabel} blocks={loadingBlocks} />;
+  if (query.isPending) {
+    if (!loading) return <LoadingState label={loadingLabel} blocks={loadingBlocks} />;
+    return (
+      <div aria-busy="true">
+        <span className="sr-only" role="status">
+          {loadingLabel}
+        </span>
+        {loading}
+      </div>
+    );
+  }
   if (query.isError) {
     if (isFilterError(query.error)) return <FilterErrorNote />;
     return (

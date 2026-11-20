@@ -21,6 +21,40 @@ const count = (n: number) => formatInteger(n) || "0";
 
 // ---------- segmentos de atención ----------
 
+const SEGMENTS_GRID =
+  "m-0 grid list-none grid-cols-2 gap-2 p-0 min-[600px]:grid-cols-4 min-[1100px]:grid-cols-8";
+const SKELETON_LINE = "bg-bg-muted block animate-pulse rounded motion-reduce:animate-none";
+
+/**
+ * Mientras carga: la misma grilla, con "Todas" y los 7 segmentos de la API, para que la
+ * bandeja de abajo no salte al llegar el resumen (PERF-06). En la grilla de 8 columnas las
+ * etiquetas ocupan dos líneas.
+ */
+function SegmentsSkeleton() {
+  return (
+    <div aria-busy="true">
+      <span className="sr-only" role="status">
+        Cargando el resumen
+      </span>
+      <ul aria-hidden="true" className={SEGMENTS_GRID}>
+        {Array.from({ length: 8 }, (_, i) => (
+          <li
+            key={i}
+            className="bg-bg-surface border-border-default grid content-start gap-0.5 rounded-lg border px-3 py-2"
+          >
+            <span className="flex h-[1.25em] items-center text-xl leading-tight">
+              <span className={`${SKELETON_LINE} h-5 w-8`} />
+            </span>
+            <span className="flex h-[1.375em] items-center text-xs leading-snug min-[1100px]:h-[2.75em]">
+              <span className={`${SKELETON_LINE} h-3 w-20`} />
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 /**
  * Segmentos de `GET /workday/summary` como filtros: cada uno es un botón que se marca
  * (`aria-pressed`). Los segmentos no son excluyentes; "Todas" quita el filtro.
@@ -34,7 +68,7 @@ export function AttentionSegments({
   value: string;
   onChange: (code: string) => void;
 }) {
-  if (query.isPending) return <LoadingState label="Cargando el resumen" blocks={[64]} />;
+  if (query.isPending) return <SegmentsSkeleton />;
   if (query.isError) {
     return (
       <ErrorState
@@ -51,7 +85,7 @@ export function AttentionSegments({
   ];
   return (
     <div role="group" aria-label="Segmentos de atención">
-      <ul className="m-0 grid list-none grid-cols-2 gap-2 p-0 min-[600px]:grid-cols-4 min-[1100px]:grid-cols-8">
+      <ul className={SEGMENTS_GRID}>
         {items.map((item) => {
           const pressed = value === item.code;
           return (

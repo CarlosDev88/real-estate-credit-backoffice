@@ -228,7 +228,9 @@ describe("inicio del broker", { timeout: 20_000 }, () => {
     const user = userEvent.setup();
     renderWithProviders(<BrokerScreen />);
 
-    const summary = await screen.findByRole("region", { name: "Estado de tus solicitudes" });
+    // Mientras carga, la tarjeta ya está (con su esqueleto, PERF-06): se esperan los datos.
+    await screen.findByText("3 en total");
+    const summary = screen.getByRole("region", { name: "Estado de tus solicitudes" });
     expect(within(summary).getByText("Esperando documentos")).toBeInTheDocument();
     expect(within(summary).getByText("3 en total")).toBeInTheDocument();
     // Un estado en 0 no se lista.
