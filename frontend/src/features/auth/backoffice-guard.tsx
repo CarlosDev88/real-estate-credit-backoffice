@@ -1,12 +1,15 @@
 "use client";
 
+import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "antd";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 
 import { AppShell, AppShellSkeleton } from "@/components/ui/app-shell";
+import { useBootstrap } from "@/features/applications/queries";
 import { useLogout, useMe } from "@/features/auth/queries";
+import { hasOwnFirstPaintPrefetch, prefetchRoute } from "@/features/auth/route-prefetch";
 import { isApiError } from "@/lib/api/errors";
 import { redirectTo } from "@/lib/api/navigation";
 import {
@@ -24,6 +27,30 @@ import { useApiErrorToast } from "@/providers/api-error-toast";
  * login); aquí solo se muestra el esqueleto mientras tanto.
  */
 export function BackofficeGuard({ children }: { children: ReactNode }) {
+  return (
+    <>
+      <BootstrapPrefetch />
+      <Guarded>{children}</Guarded>
+    </>
+  );
+}
+
+/**
+ * Pide `/metadata/bootstrap` a la vez que `/auth/me`: casi todas las páginas lo usan y,
+ * sin esto, salía recién cuando la página se montaba, después de la sesión (PERF-05).
+ * Va aparte para que su respuesta no vuelva a pintar el shell.
+ */
+function BootstrapPrefetch() {
+  // Y lo que la ruta de entrada necesita para pintarse (por ahora, el expediente).
+  const client = useQueryClient();
+  const pathname = usePathname();
+  const [entry] = useState(pathname);
+  useBootstrap({ enabled: !hasOwnFirstPaintPrefetch(entry) });
+  useEffect(() => prefetchRoute(client, entry), [client, entry]);
+  return null;
+}
+
+function Guarded({ children }: { children: ReactNode }) {
   const me = useMe();
   const logout = useLogout();
   const showError = useApiErrorToast();

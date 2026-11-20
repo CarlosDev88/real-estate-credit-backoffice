@@ -84,11 +84,12 @@ export function bankLabel(bank: { name: string; short_name: string }): string {
  * Metadatos de `/metadata/bootstrap` (catálogos, permisos y banderas). Cambian poco:
  * se cachean y el navegador revalida con `If-None-Match`.
  */
-export function useBootstrap() {
+export function useBootstrap(options: { enabled?: boolean } = {}) {
   return useQuery({
     queryKey: ["metadata", "bootstrap"],
     queryFn: async () => (await call(api.GET("/api/v1/metadata/bootstrap"))).data,
     staleTime: 10 * 60_000,
+    enabled: options.enabled ?? true,
   });
 }
 

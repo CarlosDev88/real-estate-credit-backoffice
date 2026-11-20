@@ -1,6 +1,12 @@
 "use client";
 
-import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  queryOptions,
+  useMutation,
+  useQueries,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 
 import { applicationKeys } from "@/features/applications/queries";
 import { api, call } from "@/lib/api/client";
@@ -65,8 +71,8 @@ export interface DetailWithVersion {
  * backoffice es de asesor y administrador: recibe `ApplicationDetail`, no el resumen
  * del broker (`ApplicationSummary`, la otra forma del `oneOf`).
  */
-export function useApplicationDetail(id: string) {
-  return useQuery({
+export const applicationDetailQuery = (id: string) =>
+  queryOptions({
     queryKey: workspaceKeys.detail(id),
     queryFn: async (): Promise<DetailWithVersion> => {
       const { data, version } = await call(
@@ -78,6 +84,9 @@ export function useApplicationDetail(id: string) {
       return { detail, version: version ?? detail.version };
     },
   });
+
+export function useApplicationDetail(id: string) {
+  return useQuery(applicationDetailQuery(id));
 }
 
 export function useCompleteness(id: string) {
@@ -95,8 +104,8 @@ export function useCompleteness(id: string) {
 }
 
 /** Participantes vigentes y el perfil financiero de cada uno (si lo tiene). */
-export function useParticipants(id: string) {
-  const participants = useQuery({
+export const participantsQuery = (id: string) =>
+  queryOptions({
     queryKey: workspaceKeys.participants(id),
     queryFn: async () =>
       (
@@ -107,6 +116,9 @@ export function useParticipants(id: string) {
         )
       ).data.items,
   });
+
+export function useParticipants(id: string) {
+  const participants = useQuery(participantsQuery(id));
   const withProfile = (participants.data ?? []).filter((p) => p.financial_profile_id);
   const profiles = useQueries({
     queries: withProfile.map((p) => ({
@@ -135,8 +147,8 @@ export function useParticipants(id: string) {
   };
 }
 
-export function useProperty(id: string) {
-  return useQuery({
+export const propertyQuery = (id: string) =>
+  queryOptions({
     queryKey: workspaceKeys.property(id),
     queryFn: () =>
       nullOn404(
@@ -147,6 +159,9 @@ export function useProperty(id: string) {
         ).then((r) => r.data),
       ),
   });
+
+export function useProperty(id: string) {
+  return useQuery(propertyQuery(id));
 }
 
 export function useFinancing(id: string) {

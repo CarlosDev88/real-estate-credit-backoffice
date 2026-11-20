@@ -96,6 +96,10 @@ describe("radicación: pestaña", { timeout: 20_000 }, () => {
     useFilingsApi({ filings: [makeFiling(2), makeFiling(1)] });
     renderScreen();
     await filingTab();
+    // El conteo llega con su propia consulta (la pestaña ya está): se espera.
+    await waitFor(() =>
+      expect(screen.getAllByRole("tab").map((t) => t.textContent)).toContain("Radicación 2"),
+    );
 
     const tabs = screen.getAllByRole("tab").map((t) => t.textContent);
     expect(tabs.indexOf("Radicación 2")).toBeGreaterThan(-1);
