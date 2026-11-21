@@ -25,4 +25,4 @@ Opción 3, en dos capas:
 
 - **A favor:** una vista nueva hereda el alcance si usa la función del módulo; un atacante no distingue "no existe" de "no es tuyo".
 - **Excepción deliberada:** un permiso que el rol no tiene responde `403` (por ejemplo, el broker en el expediente completo): ahí no se revela ningún recurso concreto. En reportes, un **filtro** fuera del alcance responde `403 FILTER_OUT_OF_SCOPE`, porque un resultado vacío haría creer que no hay datos.
-- **Verificación:** 156 comprobaciones de `404` en `backend/tests/`; la auditoría de seguridad en curso recorre 235 operaciones × 9 actores.
+- **Verificación:** 156 comprobaciones de `404` en `backend/tests/`; la auditoría de seguridad (fase A, #32) pidió las 235 operaciones como cada uno de 9 actores: 2.115 casos, **ninguna brecha de acceso** ([`docs/seguridad/03-matriz-acceso.md`](../seguridad/03-matriz-acceso.md)). Esa matriz quedó como prueba y corre en cada PR.

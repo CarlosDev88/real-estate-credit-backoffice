@@ -30,7 +30,7 @@ Las piezas comunes (capas, señales, contrato) están en [03 · Arquitectura](03
 | 16 | [Comisiones](#16-comisiones) | `commissions` | Planes, liquidación al desembolso, reparto y pagos | 3 | 6, 8, 11 | 11 | 65 |
 | | **Total** | 16 apps | | **57** | | **235** | **1.794** |
 
-El orden y las dependencias son los de [`docs/DER_COMPLETO_MVP_CREDITO.md`](../DER_COMPLETO_MVP_CREDITO.md) §15. Las 1.794 pruebas incluyen 21 transversales en la raíz de `backend/tests/` (contrato, etiquetas, `request_id`, servicios del modo local) y 30 del reporte del CI (`backend/tests/ci/`). Las cuatro tablas de `identity` del módulo 9 y la de invitaciones suman, con las 7 del núcleo, las 12 de `identity`.
+El orden y las dependencias son los de [`docs/DER_COMPLETO_MVP_CREDITO.md`](../DER_COMPLETO_MVP_CREDITO.md) §15. Las 1.794 pruebas (contadas el 18 de noviembre) incluyen 21 transversales en la raíz de `backend/tests/` (contrato, etiquetas, `request_id`, servicios del modo local) y 30 del reporte del CI (`backend/tests/ci/`). Desde el 19 de noviembre se suman 57 en `backend/tests/security/` (la matriz de acceso y la revisión manual de la auditoría de seguridad, #32) y las pruebas de las verificaciones de seguridad del reporte del CI: el total era 1.860 en 129 archivos. Con la F7 y la demo completa (#33 y #36, el mismo 19) son 1.879 en 133, y el #36 sumó una operación a bancos (`GET /bank-policy-rules/fields`): 236. Con la fase B de la auditoría (#37, también el 19) son **1.937 en 136**: 115 de ellas en `backend/tests/security/` ([09 · Calidad §2](09-calidad.md#2-los-números)). Las cuatro tablas de `identity` del módulo 9 y la de invitaciones suman, con las 7 del núcleo, las 12 de `identity`.
 
 ```mermaid
 flowchart LR
@@ -160,7 +160,7 @@ flowchart LR
 
 **Cómo se prueba:** `backend/tests/partners/` — `test_partners_api.py`, `test_projects_api.py`, `test_validators.py`.
 
-**Qué quedó fuera:** `GET /projects/{id}/summary` con conteos (anotado en `backend/README.md`). La vista del frontend para proyectos y constructoras está en construcción (vistas 12 y 13).
+**Qué quedó fuera:** `GET /projects/{id}/summary` con conteos (anotado en `backend/README.md`). Las vistas del frontend, `/proyectos` y `/admin/constructoras` (vistas 12 y 13), entraron con la F6 (#34).
 
 ---
 
@@ -187,7 +187,7 @@ flowchart LR
 
 **Cómo se prueba:** `backend/tests/identity/test_invitations.py`.
 
-**Qué quedó fuera:** nada pendiente en el backend; la pantalla de administración de usuarios está en construcción (vista 11).
+**Qué quedó fuera:** nada pendiente en el backend. La pantalla `/admin/usuarios` (con la pestaña de invitaciones) y la pública `/aceptar-invitacion`, que quita el token de la URL al cargar, entraron con la F6 (#34).
 
 ---
 
@@ -263,7 +263,7 @@ flowchart LR
 
 **Cómo se prueba:** `backend/tests/banking/` — `test_rule_engine.py`, `test_rules_api.py`, `test_banks_api.py`, `test_products_api.py`, `test_bank_short_name.py`, `test_seed.py`.
 
-**Qué quedó fuera:** integración con los bancos y decisión automática de crédito. La pantalla de catálogos y bancos está en construcción (vista 14).
+**Qué quedó fuera:** integración con los bancos y decisión automática de crédito. Las pantallas `/admin/bancos` (productos, finalidades, reglas con sus versiones y su prueba), `/admin/documentos`, `/admin/catalogos` y `/admin/flujos` (vista 14) entraron con la F6 (#34).
 
 ---
 
@@ -337,7 +337,7 @@ flowchart LR
 
 **Eventos:** emite `application_created`, `application_updated`, `application_assigned`, `participant_added`, `participant_removed` y `application_status_changed`; los escuchan `activity`, `audit` y `notifications`.
 
-**Decisiones:** `ParticipantRole` se reutiliza de `documents` para que requisitos y participantes no diverjan; la completitud del listado se **guarda** (`completeness_pct`, `ready_to_file_ok`) porque calcularla por fila costaba de 6 a 10 consultas (Precisión A de [`specs/TAREA-applications-listado.md`](../../specs/TAREA-applications-listado.md)); los rangos del producto no se validan al guardar, los revisa la evaluación; las etapas del portal y del expediente salen de una sola tabla (`backend/apps/applications/stages.py`); `seed_demo_data` vive aquí (34 solicitudes de demo, P0 de [`specs/TAREA-brechas.md`](../../specs/TAREA-brechas.md) y Parte 2 de `TAREA-brechas-2.md`).
+**Decisiones:** `ParticipantRole` se reutiliza de `documents` para que requisitos y participantes no diverjan; la completitud del listado se **guarda** (`completeness_pct`, `ready_to_file_ok`) porque calcularla por fila costaba de 6 a 10 consultas (Precisión A de [`specs/TAREA-applications-listado.md`](../../specs/TAREA-applications-listado.md)); los rangos del producto no se validan al guardar, los revisa la evaluación; las etapas del portal y del expediente salen de una sola tabla (`backend/apps/applications/stages.py`); `seed_demo_data` vive aquí: 64 solicitudes de demo en los últimos seis meses y en todos los estados, en 16 bloques idempotentes (`demo_seed.py`, `demo_data.py`, `demo_history.py`; otros once módulos aportan su propio `demo_data.py`), de P0 de [`specs/TAREA-brechas.md`](../../specs/TAREA-brechas.md), la Parte 2 de `TAREA-brechas-2.md` y [`specs/TAREA-brechas-3-demo.md`](../../specs/TAREA-brechas-3-demo.md) (#36). Qué trae: [10 · Operación local §2](10-operacion-local.md#2-la-demo-en-un-comando).
 
 **Cómo se prueba:** `backend/tests/applications/` (raíz) — `test_applications_api.py`, `test_participants_api.py`, `test_financial_profiles_api.py`, `test_property_financing_api.py`, `test_bank_rules_api.py`, `test_status_api.py`, `test_quick_filters.py`, `test_list_fields.py`, `test_action_kinds.py`, `test_stages.py`, `test_demo_data.py`, entre otros (17 archivos).
 
@@ -440,7 +440,7 @@ flowchart LR
 
 **Decisiones** (Precisiones de [`specs/TAREA-radicacion.md`](../../specs/TAREA-radicacion.md)): `DISBURSED` como tipo nuevo; transiciones `system_only`; `MARK_READY_TO_REFILE` con su propia guarda; el paquete radicado no se reutiliza; las observaciones se consultan desde un archivo que solo importa modelos, para evitar ciclos; la evidencia pasa por el mismo antivirus con su propia tarea; corrección del desembolso solo para el admin (Parte 2 de `TAREA-brechas-2.md`); `is_response_overdue` y la metadata de campos por tipo para el front.
 
-**Cómo se prueba:** `backend/tests/applications/filings/` — `test_filings_api.py`, `test_responses_api.py`, `test_evidence.py`, `test_transitions.py`, `test_models.py`, `test_seed.py`, `test_demo_data.py`, `test_filing_gaps.py` y `test_disbursement_correction_commissions.py` (de punta a punta con comisiones).
+**Cómo se prueba:** `backend/tests/applications/filings/` — `test_filings_api.py`, `test_responses_api.py`, `test_evidence.py`, `test_transitions.py`, `test_models.py`, `test_seed.py`, `test_filing_gaps.py` y `test_disbursement_correction_commissions.py` (de punta a punta con comisiones).
 
 **Qué quedó fuera:** cualquier integración con el banco; corregir respuestas de tipo `RETURNED`, `APPROVED` o `REJECTED`.
 
@@ -504,7 +504,7 @@ flowchart LR
 
 **Decisiones** (Precisiones de [`specs/TAREA-notificaciones.md`](../../specs/TAREA-notificaciones.md)): la señal `document_reviewed` la creó este módulo; una devolución avisa dos cosas (la devolución y cada documento); el correo no usa `self.retry` para que el modo inmediato no reintente en el acto; `NO_DESTINATION` no cuenta como intento; la idempotencia es una app propia porque es infraestructura de la API; únicos parciales por actor en `idempotency_keys` (corrigió el SQL); el enlace mágico no repite su respuesta porque lleva el token en claro.
 
-**Cómo se prueba:** `backend/tests/applications/notifications/` (`test_events.py`, `test_api.py`, `test_emails.py`, `test_demo_data.py`) y `backend/tests/applications/idempotency/test_idempotency.py`.
+**Cómo se prueba:** `backend/tests/applications/notifications/` (`test_events.py`, `test_api.py`, `test_emails.py`; sus datos de demo se prueban desde el #36 en `backend/tests/applications/test_demo_data.py`) y `backend/tests/applications/idempotency/test_idempotency.py`.
 
 **Qué quedó fuera:** notificaciones internas del backoffice (la campana) y WhatsApp.
 
