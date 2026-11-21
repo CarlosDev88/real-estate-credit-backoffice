@@ -2,6 +2,7 @@ import { QueryClient } from "@tanstack/react-query";
 import { describe, expect, it, vi } from "vitest";
 
 import { workspaceKeys } from "@/features/applications/workspace-queries";
+import { hasFirstPaintPrefetch } from "@/features/auth/route-paths";
 import { prefetchRoute } from "@/features/auth/route-prefetch";
 
 function spyClient() {
@@ -29,4 +30,12 @@ describe("prefetchRoute (PERF-01)", () => {
       expect(keys()).toEqual([]);
     },
   );
+});
+
+describe("hasFirstPaintPrefetch", () => {
+  it("solo el expediente", () => {
+    expect(hasFirstPaintPrefetch("/solicitudes/app-1")).toBe(true);
+    expect(hasFirstPaintPrefetch("/solicitudes")).toBe(false);
+    expect(hasFirstPaintPrefetch("/dashboard")).toBe(false);
+  });
 });

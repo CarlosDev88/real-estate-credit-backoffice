@@ -5,16 +5,7 @@ import {
   participantsQuery,
   propertyQuery,
 } from "@/features/applications/workspace-queries";
-
-const DOSSIER = /^\/solicitudes\/([^/]+)$/;
-
-/**
- * La ruta pide por su cuenta lo que necesita para su primera pintura: el bootstrap (36 kB)
- * puede esperar a que la página se monte, en lugar de competir con esas consultas.
- */
-export function hasOwnFirstPaintPrefetch(pathname: string): boolean {
-  return DOSSIER.test(pathname);
-}
+import { DOSSIER } from "@/features/auth/route-paths";
 
 /**
  * Lo que una ruta necesita para su primera pintura, pedido a la vez que `/auth/me` (PERF-01):

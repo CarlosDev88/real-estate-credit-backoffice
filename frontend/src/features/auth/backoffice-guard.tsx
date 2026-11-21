@@ -7,9 +7,8 @@ import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 
 import { AppShell, AppShellSkeleton } from "@/components/ui/app-shell";
-import { useBootstrap } from "@/features/applications/queries";
 import { useLogout, useMe } from "@/features/auth/queries";
-import { hasOwnFirstPaintPrefetch, prefetchRoute } from "@/features/auth/route-prefetch";
+import { hasFirstPaintPrefetch } from "@/features/auth/route-paths";
 import { isApiError } from "@/lib/api/errors";
 import { redirectTo } from "@/lib/api/navigation";
 import {
@@ -29,24 +28,27 @@ import { useApiErrorToast } from "@/providers/api-error-toast";
 export function BackofficeGuard({ children }: { children: ReactNode }) {
   return (
     <>
-      <BootstrapPrefetch />
+      <RoutePrefetch />
       <Guarded>{children}</Guarded>
     </>
   );
 }
 
 /**
- * Pide `/metadata/bootstrap` a la vez que `/auth/me`: casi todas las páginas lo usan y,
- * sin esto, salía recién cuando la página se montaba, después de la sesión (PERF-05).
- * Va aparte para que su respuesta no vuelva a pintar el shell.
+ * Pide, a la vez que `/auth/me`, lo que la ruta de entrada necesita para su primera pintura
+ * (por ahora, el expediente: PERF-01). Va aparte para que sus respuestas no vuelvan a pintar
+ * el shell. El bootstrap no se adelanta: medido, sumaba TBT en las páginas que no lo usan
+ * y no movía el LCP (PERF-05).
  */
-function BootstrapPrefetch() {
-  // Y lo que la ruta de entrada necesita para pintarse (por ahora, el expediente).
+function RoutePrefetch() {
   const client = useQueryClient();
   const pathname = usePathname();
   const [entry] = useState(pathname);
-  useBootstrap({ enabled: !hasOwnFirstPaintPrefetch(entry) });
-  useEffect(() => prefetchRoute(client, entry), [client, entry]);
+  useEffect(() => {
+    // Solo con una ruta que lo necesita: las demás no cargan este módulo (ni sus consultas).
+    if (!hasFirstPaintPrefetch(entry)) return;
+    void import("@/features/auth/route-prefetch").then((m) => m.prefetchRoute(client, entry));
+  }, [client, entry]);
   return null;
 }
 
