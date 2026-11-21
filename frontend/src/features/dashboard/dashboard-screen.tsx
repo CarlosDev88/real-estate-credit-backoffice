@@ -112,6 +112,8 @@ export function DashboardScreen() {
         query={summary}
         showTasks={permissions.includes("tasks.read")}
         linkTasks={permissions.includes(MY_DAY_PERMISSION)}
+        // Los montos son del administrador y del asesor, los mismos que tienen tareas.
+        showAmounts={permissions.includes("tasks.read")}
       />
 
       <div className="grid gap-4 min-[1100px]:grid-cols-2">

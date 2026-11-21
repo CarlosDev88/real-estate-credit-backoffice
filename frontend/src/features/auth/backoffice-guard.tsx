@@ -1,12 +1,14 @@
 "use client";
 
+import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "antd";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 
 import { AppShell, AppShellSkeleton } from "@/components/ui/app-shell";
 import { useLogout, useMe } from "@/features/auth/queries";
+import { hasFirstPaintPrefetch } from "@/features/auth/route-paths";
 import { isApiError } from "@/lib/api/errors";
 import { redirectTo } from "@/lib/api/navigation";
 import {
@@ -24,6 +26,33 @@ import { useApiErrorToast } from "@/providers/api-error-toast";
  * login); aquí solo se muestra el esqueleto mientras tanto.
  */
 export function BackofficeGuard({ children }: { children: ReactNode }) {
+  return (
+    <>
+      <RoutePrefetch />
+      <Guarded>{children}</Guarded>
+    </>
+  );
+}
+
+/**
+ * Pide, a la vez que `/auth/me`, lo que la ruta de entrada necesita para su primera pintura
+ * (por ahora, el expediente: PERF-01). Va aparte para que sus respuestas no vuelvan a pintar
+ * el shell. El bootstrap no se adelanta: medido, sumaba TBT en las páginas que no lo usan
+ * y no movía el LCP (PERF-05).
+ */
+function RoutePrefetch() {
+  const client = useQueryClient();
+  const pathname = usePathname();
+  const [entry] = useState(pathname);
+  useEffect(() => {
+    // Solo con una ruta que lo necesita: las demás no cargan este módulo (ni sus consultas).
+    if (!hasFirstPaintPrefetch(entry)) return;
+    void import("@/features/auth/route-prefetch").then((m) => m.prefetchRoute(client, entry));
+  }, [client, entry]);
+  return null;
+}
+
+function Guarded({ children }: { children: ReactNode }) {
   const me = useMe();
   const logout = useLogout();
   const showError = useApiErrorToast();

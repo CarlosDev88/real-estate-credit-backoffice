@@ -1,6 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { loginUrl, readCookie, safeNextPath } from "@/lib/api/session";
+import { loginUrl, readCookie, refreshSession, safeNextPath } from "@/lib/api/session";
 
 describe("safeNextPath", () => {
   it.each([
@@ -45,5 +45,22 @@ describe("readCookie", () => {
     document.cookie = "otra=1; Path=/";
     expect(readCookie("app_csrf")).toBe("a b");
     expect(readCookie("falta")).toBeNull();
+  });
+});
+
+describe("refreshSession", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    window.localStorage.clear();
+  });
+
+  it.each([
+    [403, false],
+    [200, true],
+  ])("lee el cuerpo de la respuesta %i del refresh (PERF-09)", async (status, ok) => {
+    const response = new Response(JSON.stringify({ code: "CSRF_FAILED" }), { status });
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(response);
+    await expect(refreshSession(Date.now())).resolves.toBe(ok);
+    expect(response.bodyUsed).toBe(true);
   });
 });

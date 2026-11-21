@@ -1,16 +1,11 @@
 "use client";
 
 import { Button, Dropdown, type MenuProps } from "antd";
+import dynamic from "next/dynamic";
 import { useState } from "react";
 
 import { Money } from "@/components/ui/money";
 import { StatusBadge } from "@/components/ui/status-badge";
-import {
-  BuyerLinkModal,
-  ReassignModal,
-  TransitionModal,
-  WithdrawModal,
-} from "@/features/applications/action-modals";
 import { bankLabel } from "@/features/applications/queries";
 import {
   useEvaluateRules,
@@ -22,7 +17,17 @@ import {
   type Property,
 } from "@/features/applications/workspace-queries";
 import { formatPercentDecimal } from "@/lib/format";
+import { useIdlePreload, useMountedOnce } from "@/lib/hooks/use-lazy";
 import { useToast } from "@/providers/toast";
+
+// Los modales de las acciones (formularios con Zod, react-hook-form y Select) no entran en la
+// primera carga del expediente: se montan al abrirse y se precargan en reposo (PERF-01).
+const loadActionModals = () => import("@/features/applications/action-modals");
+const ACTION_PRELOADS = [loadActionModals] as const;
+const TransitionModal = dynamic(() => loadActionModals().then((m) => m.TransitionModal));
+const WithdrawModal = dynamic(() => loadActionModals().then((m) => m.WithdrawModal));
+const ReassignModal = dynamic(() => loadActionModals().then((m) => m.ReassignModal));
+const BuyerLinkModal = dynamic(() => loadActionModals().then((m) => m.BuyerLinkModal));
 
 /** Guarda de "lista para radicar" (API §16.3): su resultado es `completeness.ready_to_file`. */
 const READY_TO_FILE_GUARD = "APPLICATION_READY_TO_FILE";
@@ -76,6 +81,11 @@ export function WorkspaceActions({
   onReview,
 }: ActionsProps) {
   const [dialog, setDialog] = useState<Dialog>(null);
+  const transitionMounted = useMountedOnce(dialog?.kind === "transition");
+  const withdrawMounted = useMountedOnce(dialog?.kind === "withdraw");
+  const reassignMounted = useMountedOnce(dialog?.kind === "reassign");
+  const linkMounted = useMountedOnce(dialog?.kind === "link");
+  useIdlePreload(ACTION_PRELOADS);
   const toast = useToast();
   const evaluate = useEvaluateRules(detail.id);
   const closed = detail.closed_at !== null;
@@ -180,30 +190,38 @@ export function WorkspaceActions({
         </div>
       )}
 
-      <TransitionModal
-        applicationId={detail.id}
-        open={dialog?.kind === "transition"}
-        action={dialog?.kind === "transition" ? dialog.action : null}
-        version={version}
-        onClose={() => setDialog(null)}
-      />
-      <WithdrawModal
-        applicationId={detail.id}
-        open={dialog?.kind === "withdraw"}
-        version={version}
-        onClose={() => setDialog(null)}
-      />
-      <ReassignModal
-        applicationId={detail.id}
-        open={dialog?.kind === "reassign"}
-        currentAdvisorId={detail.assigned_advisor.id}
-        onClose={() => setDialog(null)}
-      />
-      <BuyerLinkModal
-        applicationId={detail.id}
-        open={dialog?.kind === "link"}
-        onClose={() => setDialog(null)}
-      />
+      {transitionMounted && (
+        <TransitionModal
+          applicationId={detail.id}
+          open={dialog?.kind === "transition"}
+          action={dialog?.kind === "transition" ? dialog.action : null}
+          version={version}
+          onClose={() => setDialog(null)}
+        />
+      )}
+      {withdrawMounted && (
+        <WithdrawModal
+          applicationId={detail.id}
+          open={dialog?.kind === "withdraw"}
+          version={version}
+          onClose={() => setDialog(null)}
+        />
+      )}
+      {reassignMounted && (
+        <ReassignModal
+          applicationId={detail.id}
+          open={dialog?.kind === "reassign"}
+          currentAdvisorId={detail.assigned_advisor.id}
+          onClose={() => setDialog(null)}
+        />
+      )}
+      {linkMounted && (
+        <BuyerLinkModal
+          applicationId={detail.id}
+          open={dialog?.kind === "link"}
+          onClose={() => setDialog(null)}
+        />
+      )}
     </div>
   );
 }

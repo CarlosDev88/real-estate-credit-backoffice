@@ -74,6 +74,23 @@ function StatusSummary({ snapshot }: { snapshot: StatusCount[] }) {
   );
 }
 
+/** La tarjeta del resumen con un esqueleto del alto de la lista de estados de la demo. */
+function StatusSummarySkeleton() {
+  return (
+    <Card title="Estado de tus solicitudes">
+      <div aria-busy="true">
+        <span className="sr-only" role="status">
+          Cargando el estado de tus solicitudes
+        </span>
+        <div
+          aria-hidden="true"
+          className="bg-bg-muted h-36 animate-pulse rounded-lg motion-reduce:animate-none min-[600px]:h-14 min-[1100px]:h-7"
+        />
+      </div>
+    </Card>
+  );
+}
+
 // ---------- prospectos ----------
 
 const opCol = dataColumns<BrokerOpportunity>();
@@ -449,7 +466,12 @@ export function BrokerScreen() {
         }
       />
 
-      {snapshot.data && <StatusSummary snapshot={snapshot.data} />}
+      {snapshot.data ? (
+        <StatusSummary snapshot={snapshot.data} />
+      ) : (
+        // Mientras carga, la tarjeta ya ocupa su lugar: las pestañas no saltan (PERF-06).
+        snapshot.isLoading && <StatusSummarySkeleton />
+      )}
 
       <ScrollTabs
         ariaLabel="Mis prospectos"

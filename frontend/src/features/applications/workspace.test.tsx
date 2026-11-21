@@ -700,6 +700,48 @@ describe("expediente: resumen", { timeout: 20_000 }, () => {
   });
 });
 
+describe("expediente: carga en paralelo (PERF-01)", { timeout: 20_000 }, () => {
+  it("pide las secciones sin esperar al detalle", async () => {
+    const state = useWorkspaceApi();
+    let release!: () => void;
+    const held = new Promise<void>((resolve) => (release = resolve));
+    const requested: string[] = [];
+    server.use(
+      http.get(apiUrl(base), async () => {
+        await held;
+        return HttpResponse.json(state.detail, {
+          headers: { ETag: `W/"${state.detail.version + 1}"` },
+        });
+      }),
+    );
+    const onRequest = ({ request }: { request: Request }) => {
+      requested.push(new URL(request.url).pathname);
+    };
+    server.events.on("request:start", onRequest);
+    try {
+      renderScreen();
+      // Con el detalle todavía en curso, ya salieron la completitud, los participantes,
+      // el inmueble, la financiación y el bootstrap.
+      await waitFor(() =>
+        expect(requested).toEqual(
+          expect.arrayContaining([
+            `/api/v1${base}/completeness`,
+            `/api/v1${base}/participants`,
+            `/api/v1${base}/property`,
+            `/api/v1${base}/financing`,
+            "/api/v1/metadata/bootstrap",
+          ]),
+        ),
+      );
+      expect(screen.queryByRole("heading", { name: "SOL-000182" })).toBeNull();
+      release();
+      await ready();
+    } finally {
+      server.events.removeListener("request:start", onRequest);
+    }
+  });
+});
+
 describe("expediente: pestañas e historial", { timeout: 20_000 }, () => {
   it("la pestaña sale de la URL y vuelve a la URL", async () => {
     window.history.replaceState(null, "", "/solicitudes/app-1?tab=historial");

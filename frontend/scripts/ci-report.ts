@@ -62,6 +62,8 @@ const CONTRACT = "Contrato API";
 const BUILD = "Build";
 const STORYBOOK = "Storybook";
 const STORYBOOK_A11Y = "Accesibilidad (Storybook)";
+const BUNDLE_BUDGET = "Presupuesto de bundle";
+const LIGHTHOUSE = "Lighthouse (páginas públicas)";
 
 const ANSI_ESCAPE = /\x1b\[[0-9;]*[A-Za-z]/g;
 const CONTROL_CHARS = /[\x00-\x08\x0b-\x1f\x7f]/g;
@@ -739,6 +741,149 @@ function checkStorybookA11y(ctx: Context): Verdict {
   };
 }
 
+// --- Presupuesto de bundle -----------------------------------------------------------------
+
+interface BudgetRoute {
+  route: string;
+  kb: number;
+  budget: number | null;
+  status: "ok" | "over" | "missing";
+}
+
+interface BudgetFile {
+  ok: boolean;
+  routes: BudgetRoute[];
+  stale: string[];
+}
+
+const kbText = (kb: number) => `${String(kb).replace(".", ",")} kB`;
+
+/**
+ * `node scripts/check-bundle-budget.ts`: JS de primera carga por ruta (gzip) contra
+ * `performance-budget.json`. Lee `bundle-budget.json`, que deja el script.
+ */
+function checkBundleBudget(ctx: Context): Verdict {
+  const succeeded = ctx.outcomes.bundle_budget === SUCCESS;
+  const status = succeeded ? Status.PASSED : Status.FAILED;
+  const data = readJson(ctx, "bundle-budget.json") as BudgetFile | null;
+  if (!data || !Array.isArray(data.routes)) {
+    return {
+      status,
+      summary: succeeded
+        ? "Dentro del presupuesto (sin detalle)"
+        : "Falló sin resultados (ver el log)",
+      details: succeeded
+        ? undefined
+        : tailDetails(`${BUNDLE_BUDGET}: salida`, readText(ctx, "bundle-budget.txt")),
+    };
+  }
+  const failing = data.routes.filter((r) => r.status !== "ok");
+  if (!failing.length) {
+    const largest = [...data.routes].sort((a, b) => b.kb - a.kb)[0];
+    const most = largest
+      ? ` · la mayor, ${largest.route}: ${kbText(largest.kb)} de ${kbText(largest.budget ?? 0)}`
+      : "";
+    return {
+      status,
+      summary: `${plural(data.routes.length, "ruta", "rutas")} dentro del presupuesto${most}`,
+    };
+  }
+  return {
+    status: Status.FAILED,
+    summary: `${failing.length} de ${plural(data.routes.length, "ruta", "rutas")} fuera del presupuesto`,
+    details: [
+      {
+        title: `Rutas fuera del presupuesto (${failing.length})`,
+        entries: [
+          ...failing.map((r) =>
+            r.status === "missing"
+              ? `${r.route}: ${kbText(r.kb)} · sin presupuesto en performance-budget.json`
+              : `${r.route}: ${kbText(r.kb)} · presupuesto ${kbText(r.budget ?? 0)}`,
+          ),
+          "",
+          "Si el aumento es a propósito: `node scripts/check-bundle-budget.ts --update` en frontend/ y explícalo en el PR.",
+        ],
+      },
+    ],
+  };
+}
+
+// --- Lighthouse de las páginas públicas -------------------------------------------------------
+
+interface LhciAssertion {
+  url: string;
+  auditId: string;
+  operator?: string;
+  expected?: number;
+  actual?: number;
+  passed: boolean;
+  level?: string;
+}
+
+interface LhciManifestEntry {
+  url: string;
+  isRepresentativeRun: boolean;
+  summary: Record<string, number>;
+}
+
+const urlPath = (url: string) => {
+  try {
+    return new URL(url).pathname;
+  } catch {
+    return url;
+  }
+};
+const scoreText = (n: number | undefined) => (n === undefined ? "—" : String(Math.round(n * 100)));
+
+/**
+ * `lhci autorun` en `/login`, `/aceptar-invitacion` y `/acceso` (3 corridas, móvil). Lee las
+ * aserciones fallidas (`lighthouse-assertions.json`) y las puntuaciones de la corrida
+ * representativa de cada página (`lighthouse/manifest.json`).
+ */
+function checkLighthouse(ctx: Context): Verdict {
+  const succeeded = ctx.outcomes.lighthouse === SUCCESS;
+  const manifest = (readJson(ctx, "lighthouse/manifest.json") as LhciManifestEntry[] | null) ?? [];
+  const representative = manifest.filter((m) => m.isRepresentativeRun);
+  const scores = representative
+    .map(
+      (m) =>
+        `${urlPath(m.url)} ${scoreText(m.summary.performance)}/${scoreText(m.summary.accessibility)}/${scoreText(m.summary["best-practices"])}`,
+    )
+    .join(" · ");
+  const assertions = (
+    (readJson(ctx, "lighthouse-assertions.json") as LhciAssertion[] | null) ?? []
+  ).filter((a) => !a.passed && a.level !== "warn");
+  if (succeeded) {
+    return {
+      status: Status.PASSED,
+      summary: representative.length
+        ? `${plural(representative.length, "página", "páginas")} cumplen (perf./a11y/buenas pr.: ${scores})`
+        : "Cumplen (sin detalle)",
+    };
+  }
+  if (!assertions.length) {
+    return {
+      status: Status.FAILED,
+      summary: "Falló sin resultados (ver el log)",
+      details: tailDetails("Lighthouse: salida", readText(ctx, "lighthouse.txt")),
+    };
+  }
+  const pages = new Set(assertions.map((a) => a.url));
+  return {
+    status: Status.FAILED,
+    summary: `${plural(assertions.length, "aserción falla", "aserciones fallan")} en ${plural(pages.size, "página", "páginas")}`,
+    details: [
+      {
+        title: `Aserciones que fallan (${assertions.length})`,
+        entries: assertions.map(
+          (a) =>
+            `${urlPath(a.url)} · ${a.auditId}: ${a.actual === undefined ? "—" : Math.round(a.actual * 1000) / 1000} (esperado ${a.operator ?? ""} ${a.expected ?? ""})`,
+        ),
+      },
+    ],
+  };
+}
+
 // --- Reporte -------------------------------------------------------------------------------
 
 interface CheckSpec {
@@ -763,6 +908,8 @@ const CHECKS: CheckSpec[] = [
   { name: BUILD, outcomeKey: "build", build: checkBuild },
   { name: STORYBOOK, outcomeKey: "storybook", build: checkStorybook },
   { name: STORYBOOK_A11Y, outcomeKey: "storybook_a11y", build: checkStorybookA11y },
+  { name: BUNDLE_BUDGET, outcomeKey: "bundle_budget", build: checkBundleBudget },
+  { name: LIGHTHOUSE, outcomeKey: "lighthouse", build: checkLighthouse },
 ];
 const OUTCOME_KEYS = ["install", ...CHECKS.map((c) => c.outcomeKey)];
 

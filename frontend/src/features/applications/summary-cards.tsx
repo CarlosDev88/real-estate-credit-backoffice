@@ -10,7 +10,7 @@ import { RelativeTime } from "@/components/ui/relative-time";
 import { TONE_CLASS, ToneBadge } from "@/components/ui/status-badge";
 import { toneFor } from "@design/status-tones";
 import { bankLabel } from "@/features/applications/queries";
-import { HistoryEntry } from "@/features/applications/status-history";
+import { HistoryEntry } from "@/features/applications/status-history-entry";
 import type {
   ApplicationDetail,
   BankRuleEvaluation,

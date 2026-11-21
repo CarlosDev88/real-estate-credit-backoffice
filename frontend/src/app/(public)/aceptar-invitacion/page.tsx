@@ -6,6 +6,12 @@ import { AcceptInvitationScreen } from "@/features/admin-users/accept-invitation
 // Sin `Referer`: el token nunca sale hacia otro sitio.
 export const metadata: Metadata = { title: "Aceptar invitación", referrer: "no-referrer" };
 
-export default function AceptarInvitacionPage() {
-  return <AcceptInvitationScreen />;
+export default async function AceptarInvitacionPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  // Solo si hay token: el token mismo no se usa en el servidor (lo lee y lo quita el cliente).
+  const { token } = await searchParams;
+  return <AcceptInvitationScreen hasToken={typeof token === "string" && token.trim() !== ""} />;
 }

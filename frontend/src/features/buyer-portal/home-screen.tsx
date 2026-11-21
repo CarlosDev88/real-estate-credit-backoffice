@@ -1,11 +1,11 @@
 "use client";
 
 import { Button } from "antd";
+import dynamic from "next/dynamic";
 import { useState } from "react";
 
 import { PageHeader } from "@/components/ui/page-header";
 import { ErrorState } from "@/components/ui/state-views";
-import { UploadSheet } from "@/features/buyer-documents/upload-sheet";
 import { firstName, bankName, inSentence } from "@/features/buyer-portal/home-format";
 import {
   AdvisorCard,
@@ -22,7 +22,15 @@ import {
   useMonthlyIncome,
   type BuyerDocumentSlot,
 } from "@/features/buyer-portal/queries";
-import { WithdrawModal } from "@/features/buyer-portal/withdraw-modal";
+import { useIdlePreload, useMountedOnce } from "@/lib/hooks/use-lazy";
+
+// Fuera de la primera carga: el formulario de retiro (Zod, react-hook-form, Select) y la
+// hoja de carga de documentos se piden al abrirlos (PERF-03).
+const loadWithdrawModal = () => import("@/features/buyer-portal/withdraw-modal");
+const loadUploadSheet = () => import("@/features/buyer-documents/upload-sheet");
+const PRELOADS = [loadUploadSheet, loadWithdrawModal] as const;
+const WithdrawModal = dynamic(() => loadWithdrawModal().then((m) => m.WithdrawModal));
+const UploadSheet = dynamic(() => loadUploadSheet().then((m) => m.UploadSheet));
 
 function HomeSkeleton() {
   return (
@@ -46,6 +54,9 @@ export function PortalHome() {
   const monthlyIncome = useMonthlyIncome(applicationId, detail?.participants ?? []);
   const [withdrawing, setWithdrawing] = useState(false);
   const [uploading, setUploading] = useState<BuyerDocumentSlot | null>(null);
+  useIdlePreload(PRELOADS);
+  const withdrawMounted = useMountedOnce(withdrawing);
+  const uploadMounted = useMountedOnce(uploading !== null);
 
   if (detailQuery.isPending || slotsQuery.isPending) {
     return (
@@ -113,15 +124,17 @@ export function PortalHome() {
           >
             Ya no quiero continuar con la solicitud
           </Button>
-          <WithdrawModal
-            applicationId={applicationId}
-            version={version}
-            open={withdrawing}
-            onClose={() => setWithdrawing(false)}
-          />
+          {withdrawMounted && (
+            <WithdrawModal
+              applicationId={applicationId}
+              version={version}
+              open={withdrawing}
+              onClose={() => setWithdrawing(false)}
+            />
+          )}
         </footer>
       )}
-      <UploadSheet slot={uploading} onClose={() => setUploading(null)} />
+      {uploadMounted && <UploadSheet slot={uploading} onClose={() => setUploading(null)} />}
     </PortalPage>
   );
 }

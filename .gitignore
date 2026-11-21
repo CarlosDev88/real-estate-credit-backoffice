@@ -22,4 +22,6 @@ frontend/next-env.d.ts
 frontend/*.tsbuildinfo
 frontend/storybook-static/
 frontend/debug-storybook.log
+# Lighthouse CI (lhci autorun) deja aquí sus corridas
+frontend/.lighthouseci/
 .env*.local

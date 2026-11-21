@@ -186,6 +186,31 @@ describe("DashboardScreen", { timeout: 30_000 }, () => {
     expect(within(banks).getByRole("row", { name: /Banco de Bogotá/ })).toHaveTextContent("—");
   });
 
+  it("mientras cargan, las cifras ya muestran sus tarjetas sin número (PERF-02)", async () => {
+    let release!: () => void;
+    const held = new Promise<void>((resolve) => (release = resolve));
+    mockApi({
+      summary: http.get(apiUrl("/dashboard/summary"), async () => {
+        await held;
+        return HttpResponse.json(SUMMARY);
+      }),
+    });
+    renderWithProviders(<DashboardScreen />);
+
+    const tiles = await screen.findByRole("region", { name: "Cifras del periodo" });
+    await within(tiles).findByRole("status");
+    expect(within(tiles).getByRole("status")).toHaveTextContent("Cargando cifras");
+    // Las 7 tarjetas del administrador (con tareas y montos), con su etiqueta y sin enlace.
+    for (const label of ["Clientes creados", "Tareas para hoy", "Monto desembolsado"]) {
+      expect(within(tiles).getByText(label)).toBeInTheDocument();
+    }
+    expect(within(tiles).queryByRole("link")).toBeNull();
+
+    release();
+    expect(await within(tiles).findByText("1.234")).toBeInTheDocument();
+    expect(within(tiles).getByRole("link", { name: /Tareas vencidas/ })).toBeInTheDocument();
+  });
+
   it("cambiar un filtro lo escribe en la URL y vuelve a pedir los bloques con él", async () => {
     const calls = mockApi();
     const user = userEvent.setup();

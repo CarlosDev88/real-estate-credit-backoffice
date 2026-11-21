@@ -9,3 +9,4 @@ src/lib/api/schema.d.ts
 .ci-report/
 scripts/__fixtures__/
 storybook-static/
+.lighthouseci/
