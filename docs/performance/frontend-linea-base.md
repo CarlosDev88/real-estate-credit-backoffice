@@ -1,5 +1,7 @@
 # Línea base de performance del frontend
 
+> **Nota de cierre (Parte 4).** Esta es la foto original del 2026-11-19, con el equipo cargado (la demo de punta a punta acababa de terminar y había ~4 GB libres). Al medir de nuevo, el mismo código daba otros números: por ejemplo, el TBT móvil del listado pasó de 1.244 a 644 ms. Por eso el antes y el después del informe ([`docs/PERFORMANCE.md`](../PERFORMANCE.md)) es un A/B del mismo día: el código de esta línea base (`19c75c7`) y el código final, medidos uno detrás de otro el 2026-11-20. Las tablas de aquí siguen siendo la referencia de qué se encontró y por qué.
+
 Parte 1 de la auditoría de performance del front (`specs/TAREA-performance-front.md`): medir sin cambiar nada. Es la foto de `master` en `269702d` (F7, brechas 3 con la demo ampliada y la fase B de seguridad). Los hallazgos están en [`frontend-hallazgos.md`](frontend-hallazgos.md).
 
 ## Resumen

@@ -116,3 +116,13 @@
 - **P19 — Presupuesto para todas las rutas.** `performance-budget.json` cubre las 35 rutas del build, no solo las 13 medidas. Una ruta nueva sin presupuesto hace fallar el paso, con el mensaje de cómo agregarla (`--update`). Una ruta del presupuesto que ya no existe solo avisa. Los valores salen del build limpio final de la Parte 2.
 - **P20 — Nombres de las filas.** En el workflow, los pasos se llaman como en la spec ("Bundle budget", "Lighthouse (public pages)"). En el reporte, que está en español como las demás filas, son "Presupuesto de bundle" y "Lighthouse (páginas públicas)".
 - **P21 — Herramientas de medición local.** `frontend/scripts/perf/` carga `lighthouse` y `web-vitals` desde `PERF_TOOLS`, una carpeta fuera del repo. Solo `@lhci/cli` (0.16.0, que trae `lighthouse` 13.6.0) entra en `devDependencies`, porque lo usa el CI.
+- **P22 — Antes y después, el mismo día.** Al re-medir, el código de la línea base dio otros números que en la Parte 1 (equipo cargado aquel día): por ejemplo, el TBT del listado fue 644 ms y no 1.244. El antes y el después del informe es un A/B del mismo día:
+  - el código de `19c75c7` (copia con `git archive`, solo lectura) y el código final, compilados limpios y medidos el 2026-11-20, intercalados por grupo de páginas;
+  - la línea base de la Parte 1 queda como la foto original, con una nota.
+- **P23 — Dos correcciones revertidas por la medición.**
+  - `ScrollTabs` (PERF-07, commit `15e39b5`): no mejoraba `/solicitudes` y subía el TBT de `/reportes` y `/admin/usuarios`.
+  - El bootstrap adelantado desde la guarda (PERF-05): +115 ms de TBT en `/admin/usuarios`, sin mover el LCP.
+  - El adelanto del expediente se conserva, pero su módulo se carga con `import()` solo en esa ruta, con `route-paths.ts` sin dependencias, para no sumar 4 kB a todas.
+  - El presupuesto se recalculó (`--update`) con el build final.
+- **P24 — Portal: la medición de la Parte 2 midió otra pantalla.** El enlace se creaba sobre una solicitud al azar. SOL-000010 tenía consentimientos pendientes, y se midió esa pantalla en lugar del inicio. `PERF_BUYER_APP_CODE` fija la solicitud (SOL-000013, la de la línea base). PERF-03 se corrigió en los documentos.
+- **P25 — Ruido aceptado.** Con el mismo código, el TBT móvil varía hasta ±100 ms entre campañas separadas por minutos (en el dashboard, 410–524 ms) y el LCP simulado ±0,2 s. Las diferencias de ese tamaño en las páginas no tocadas no se reportan como cambios. El dashboard se confirmó con una bisección: la línea base más solo su cambio da ~387 ms contra ~385. En el README, además de la línea de Quality, se ajustó la frase "Next:", que anunciaba esta auditoría como pendiente.

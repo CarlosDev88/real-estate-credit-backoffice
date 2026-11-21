@@ -63,7 +63,8 @@ Next.js 16, Ant Design 6, Tailwind 4, TanStack Query, React Hook Form + Zod, and
 - Frontend: ESLint, Prettier, TypeScript, Vitest with coverage, generated API types, the build, Storybook, and an accessibility check of every story; Playwright end-to-end tests with axe run locally.
 - Four security checks in the backend CI: `pip-audit` (dependencies), `gitleaks` (secrets across the whole history), `bandit` (static analysis), and that the generated access-matrix document matches its test.
 - **Security audit (November 2026):** automated scans, dynamic testing against a local copy of the API, a role access matrix that requests every API operation as each of 9 actors (2,124 cases, no access gaps), and a manual review, with about 2,500 security tests in `backend/tests/security/`. Phase A: 20 findings (0 critical, 0 high); phase B: 19 fixed and 1 accepted, plus 1 informational finding from the re-test, also fixed. Report (Spanish): [`docs/SEGURIDAD.md`](docs/SEGURIDAD.md).
-- Next: a frontend performance audit (Lighthouse and Web Vitals) and backend load and stress tests, both with their results published.
+- **Frontend performance audit (November 2026):** Lighthouse and lab Web Vitals on 13 pages, measured before and after on the same day. The dossier loads 30% less JavaScript and its mobile LCP drops from 5.1 to 3.9 s; opening "Registrar respuesta" goes from an INP of 360 to 104 ms; the dashboard no longer shifts while loading (CLS 0). A per-route bundle budget and Lighthouse CI on the public pages now block in CI. Report (Spanish): [`docs/PERFORMANCE.md`](docs/PERFORMANCE.md).
+- Next: backend load and stress tests (k6), with their results published.
 
 ## Repository Structure
 
@@ -138,6 +139,7 @@ The frontend has its own workflow, [`frontend.yml`](.github/workflows/frontend.y
 - [`docs/adr/`](docs/adr/README.md): 15 architecture decision records (context, options, decision, consequences).
 - [`docs/SEGURIDAD.md`](docs/SEGURIDAD.md): security audit report — scope, method, threat model, controls, access matrix, and every finding with its status (Spanish).
 - [`docs/seguridad/`](docs/seguridad/): detailed results of each audit phase; [`backend/security/README.md`](backend/security/README.md): how to repeat the audit locally.
+- [`docs/PERFORMANCE.md`](docs/PERFORMANCE.md): performance audit report — method, before and after, every finding with how it was fixed, and the CI budgets (Spanish); [`frontend/scripts/perf/README.md`](frontend/scripts/perf/README.md): how to repeat the measurement locally.
 - [`backend/README.md`](backend/README.md): backend setup, services, commands, and conventions.
 - [`frontend/README.md`](frontend/README.md): frontend setup, commands, folders, Storybook, and conventions.
 - [`docs/DESIGN-SYSTEM.md`](docs/DESIGN-SYSTEM.md): the Umbral design system guide (Spanish) — what it has, where the tokens come from, its rules, and how to add a component. [![Storybook](https://img.shields.io/badge/Storybook-Umbral-FF4785?logo=storybook&logoColor=white)](https://carlosdev88.github.io/real-estate-credit-backoffice/)

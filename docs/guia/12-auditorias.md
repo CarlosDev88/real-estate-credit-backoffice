@@ -22,7 +22,7 @@
 | Auditoría | Qué revisa | Informe | Hallazgos | Estado |
 | --- | --- | --- | --- | --- |
 | Seguridad | Autenticación, autorización por rol y objeto, archivos, datos personales, configuración | [`docs/SEGURIDAD.md`](../SEGURIDAD.md) y [`docs/seguridad/`](../seguridad/) | 21: 0 críticos, 0 altos, 5 medios, 10 bajos, 6 informativos | ✅ Fase A (#32) y Fase B (este PR): 20 corregidos y 1 aceptado |
-| Rendimiento del frontend | Peso de las páginas, tiempos de carga y de interacción | `docs/PERFORMANCE.md` *(en curso)* | Pendiente | 🔄 En preparación |
+| Rendimiento del frontend | Peso de las páginas, tiempos de carga y de interacción | [`docs/PERFORMANCE.md`](../PERFORMANCE.md) y [`docs/performance/`](../performance/) | 13: 4 altos, 5 medios, 1 bajo, 3 informativos | ✅ #39: 7 corregidos, 4 aceptados y 2 que dependen del backend |
 | Carga y estrés del backend | Latencia bajo carga (el p95 < 800 ms de RNF-17), errores y límites | `docs/PERFORMANCE.md` *(en curso)* | Pendiente | 🔄 En preparación |
 
 Los informes de rendimiento y carga se enlazarán aquí cuando se fusionen sus ramas.
@@ -84,21 +84,58 @@ SEC-21 (informativo) apareció en el re-test de la Fase B y se corrigió en el m
 
 ## 3. Rendimiento del frontend
 
+Informe completo: [`docs/PERFORMANCE.md`](../PERFORMANCE.md) (resumen, método, antes y después, cada hallazgo y los presupuestos del CI). Fichas largas: [`docs/performance/frontend-hallazgos.md`](../performance/frontend-hallazgos.md). Cómo repetir la medición en local: [`frontend/scripts/perf/README.md`](../../frontend/scripts/perf/README.md).
+
+> **En simple:** el expediente cargaba de entrada todo lo que podía llegar a usar y pedía sus datos en cadena. El dashboard saltaba mientras cargaba, y abrir un modal congelaba la pantalla medio segundo. Hoy el expediente baja 30 % menos de JavaScript y muestra su contenido 1,3 s antes en un móvil, el dashboard no se mueve y el modal abre al instante. Y el CI no deja pasar un PR que engorde una página.
+
 ### 3.1 Qué se revisó y con qué método
 
-*(Se completa con el informe: herramienta de medición, páginas medidas, en qué dispositivo y red, y las métricas — por ejemplo, tamaño de JavaScript por ruta, tiempo hasta el contenido principal y respuesta a la interacción.)*
+- **13 páginas, con el usuario que corresponde a cada una:**
+  - las 3 públicas (login, aceptar invitación y acceso del comprador);
+  - del administrador: dashboard, reportes y usuarios;
+  - de la asesora: Mi día, el listado, un expediente radicado, clientes y sus comisiones;
+  - la del broker (prospectos);
+  - el portal del comprador.
+- **Herramientas:**
+  - Lighthouse 13.6, en móvil (un teléfono de gama media con 4G lento simulado) y en escritorio;
+  - Web Vitals de laboratorio (LCP, CLS, INP) con Playwright;
+  - tres interacciones reales;
+  - el tamaño del JavaScript de cada ruta.
+- **Siempre sobre el build de producción**, con 5 corridas por página y la mediana.
+- **Antes y después, el mismo día.** La línea base del primer día se midió con el equipo cargado, y el mismo código daba otros números. Por eso el antes y el después se miden el mismo día, uno detrás de otro.
 
 ### 3.2 Hallazgos por severidad
 
-| Severidad | Cuántos | Corregidos | Aceptados |
-| --- | ---: | ---: | ---: |
-| *(pendiente)* | | | |
+| Severidad | Cuántos | Corregidos | Aceptados | Dependen del backend |
+| --- | ---: | ---: | ---: | ---: |
+| Alta | 4 | 3 | 0 | 1 (el portal) |
+| Media | 5 | 3 | 2 | 0 |
+| Baja | 1 | 1 | 0 | 0 |
+| Informativa | 3 | 0 | 2 | 1 |
+
+PERF-01 está corregido; el resto de su LCP también depende del backend.
 
 ### 3.3 Hallazgos y cómo se solucionó cada uno
 
 | Id | Problema | Causa | Solución aplicada | Antes → después | PR |
 | --- | --- | --- | --- | --- | --- |
-| *(pendiente)* | | | | | |
+| PERF-01 | El expediente tardaba en mostrar su título | Pedía sus secciones después del detalle, cargaba de entrada todas sus pestañas y modales, y se repintaba entero con cada respuesta | Secciones en paralelo; pestañas, paneles y modales cargados al usarlos; cada tarjeta escucha solo su dato (`workspace-screen.tsx`, `route-prefetch.ts`) | LCP móvil 5,1 → 3,9 s; JS −30 % | #39 |
+| PERF-02 | El dashboard saltaba mientras cargaba | Los bloques de carga eran mucho más bajos que el contenido | Las tarjetas muestran sus etiquetas desde el principio y los bloques reservan su alto (`summary-blocks.tsx`) | CLS 0,21–0,56 → 0 | #39 |
+| PERF-03 | El portal del comprador tardaba en mostrar su texto principal | Formularios en la primera carga y la cadena sesión → solicitud | Retiro y carga de documentos, al abrirlos (`home-screen.tsx`) | LCP 5,3 → 4,7 s; JS −25 %. El resto depende del backend | #39 |
+| PERF-04 | Abrir "Registrar respuesta" congelaba la pantalla | Se armaba todo el modal en el mismo clic | El modal se abre en una transición, con el botón en estado de carga (`response-timeline.tsx`) | INP 360 → 104 ms | #39 |
+| PERF-05 | Las páginas con sesión pintan después de validar la sesión | La guarda espera la sesión | Se probó adelantar datos y se revirtió: no ayudaba | Aceptado: pide la sesión en el servidor | #39 |
+| PERF-06 | Mi día y Prospectos saltaban al cargar | El mismo patrón que el dashboard | Esqueletos con la forma final (`tray.tsx`, `broker-screen.tsx`) | CLS 0,148 → 0,010 y 0,214 → 0 | #39 |
+| PERF-07 | El listado tenía mucho trabajo en el hilo principal | La hidratación de Ant Design y de la tabla | Se probó un cambio en las pestañas y se revirtió: la medición mostró que no ayudaba | Aceptado; propuesta: el modo `zeroRuntime` de Ant Design | #39 |
+| PERF-08 | "Aceptar invitación" sin token pintaba tarde | El aviso esperaba al JavaScript, y se cargaba el formulario entero | El servidor pinta el aviso; el formulario se carga solo con token (`accept-invitation-*.tsx`) | LCP móvil 3,7 → 0,8 s; JS −30 % | #39 |
+| PERF-09 | Una petición de sesión quedaba abierta | No se leía el cuerpo de la respuesta | Se lee (`session.ts`) | Cargas que no terminaban: 5 de 5 → 0 | #39 |
+| PERF-10 | El login cargaba Zod para dos campos | Validación en la primera carga | El esquema se carga al validar (`login-schema.ts`) | JS −9 % | #39 |
+| PERF-11 | El catálogo de metadatos (36 kB) se descarga en cada carga | El backend lo marca como no cacheable | — | Depende del backend | — |
+| PERF-12 | Fuentes sin precarga | `@fontsource` en el CSS | No se cambia: no hay nada que mover | Aceptado | — |
+| PERF-13 | Cada fila del listado precarga su expediente | Comportamiento por defecto de Next | Se deja: hace instantánea la navegación | Aceptado | — |
+
+**Lo que quedó en el CI para que no vuelva:**
+- un presupuesto de JavaScript por ruta (lo medido + 10 %), que bloquea si una página engorda;
+- Lighthouse CI en las tres páginas públicas, que bloquea si bajan la performance, la accesibilidad o las buenas prácticas, o si suben el LCP, el CLS o el bloqueo del hilo principal.
 
 ---
 
