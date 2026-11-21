@@ -116,7 +116,13 @@ async function createBuyerLink(context) {
   const api = context.request;
   const r = await api.get(`${BASE_URL}/api/v1/applications?quick_filter=waiting&page_size=50`);
   const items = (await r.json()).items;
-  const app = items[Math.floor(Math.random() * items.length)];
+  // Con PERF_BUYER_APP_CODE, siempre la misma solicitud (una sin consentimientos pendientes:
+  // si no, el portal muestra esa pantalla en lugar del inicio).
+  const fixed = process.env.PERF_BUYER_APP_CODE;
+  const app = fixed
+    ? items.find((i) => i.code === fixed)
+    : items[Math.floor(Math.random() * items.length)];
+  if (!app) throw new Error(`No hay una solicitud en espera ${fixed ?? ""}`);
   const created = await api.post(`${BASE_URL}/api/v1/applications/${app.id}/buyer-access-links`, {
     data: {},
     headers: await csrfHeader(context),
